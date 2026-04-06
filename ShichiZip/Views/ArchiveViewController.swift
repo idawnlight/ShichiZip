@@ -240,21 +240,12 @@ extension ArchiveViewController: NSOutlineViewDelegate {
             cell.addSubview(textField)
             cell.textField = textField
 
-            NSLayoutConstraint.activate([
-                textField.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
-                textField.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
-                textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-            ])
-
             if columnID == "name" {
                 let imageView = NSImageView()
                 imageView.translatesAutoresizingMaskIntoConstraints = false
+                imageView.imageScaling = .scaleProportionallyDown
                 cell.addSubview(imageView)
                 cell.imageView = imageView
-
-                NSLayoutConstraint.deactivate(textField.constraints.filter {
-                    ($0.firstAttribute == .leading && $0.firstItem as? NSView == textField)
-                })
 
                 NSLayoutConstraint.activate([
                     imageView.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
@@ -262,6 +253,14 @@ extension ArchiveViewController: NSOutlineViewDelegate {
                     imageView.widthAnchor.constraint(equalToConstant: 16),
                     imageView.heightAnchor.constraint(equalToConstant: 16),
                     textField.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 4),
+                    textField.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
+                    textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                ])
+            } else {
+                NSLayoutConstraint.activate([
+                    textField.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 4),
+                    textField.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
+                    textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
                 ])
             }
         }

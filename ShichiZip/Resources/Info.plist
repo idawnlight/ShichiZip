@@ -35,6 +35,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>7-Zip Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -47,6 +49,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>ZIP Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -59,6 +63,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>TAR Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -71,6 +77,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>GZip Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -83,6 +91,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>BZip2 Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -95,6 +105,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>XZ Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -107,6 +119,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>RAR Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -119,6 +133,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>ISO Image</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -126,6 +142,21 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.iso-image</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
 			</array>
 		</dict>
 	</array>

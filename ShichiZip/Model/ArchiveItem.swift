@@ -18,9 +18,11 @@ struct ArchiveItem {
 
     /// Parent path (directory containing this item)
     var parentPath: String {
+        guard path.contains("/") else { return "" }
         let url = URL(fileURLWithPath: path)
         let parent = url.deletingLastPathComponent().path
-        return parent == "." ? "" : parent
+        if parent == "." || parent == "/" { return "" }
+        return parent
     }
 
     /// File extension

@@ -5,6 +5,7 @@
 // Strategy: Let ObjC define BOOL first, then redirect 7-Zip's typedef to a dummy name
 
 #import <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
 #import "SZArchive.h"
 
 // Define INITGUID to make this TU define the IID constants
@@ -30,6 +31,7 @@
 #include "CPP/7zip/ICoder.h"
 #include "CPP/7zip/UI/Common/LoadCodecs.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
+#include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "CPP/7zip/PropID.h"
 #include "CPP/Windows/TimeUtils.h"
 #include "C/7zCrc.h"
@@ -132,9 +134,11 @@ public:
     UString Password; bool PasswordIsDefined;
     UString DestPath; UInt64 TotalSize;
     IInArchive *Archive; bool TestMode;
+    SZOverwriteMode OverwriteMode;
     __unsafe_unretained id<SZProgressDelegate> Delegate;
 
-    SZExtractCallback() : PasswordIsDefined(false), TotalSize(0), Archive(nullptr), TestMode(false), Delegate(nil) {}
+    SZExtractCallback() : PasswordIsDefined(false), TotalSize(0), Archive(nullptr),
+        TestMode(false), OverwriteMode(SZOverwriteModeOverwrite), Delegate(nil) {}
 
     Z7_COM_UNKNOWN_IMP_2(IArchiveExtractCallback, ICryptoGetTextPassword)
 
@@ -174,9 +178,68 @@ public:
         int sp = (int)fullPath.ReverseFind_PathSepar();
         if (sp >= 0) NWindows::NFile::NDir::CreateComplexDir(us2fs(fullPath.Left(sp)));
 
+        // Check if file exists and handle overwrite mode
+        FString fsPath = us2fs(fullPath);
+        NWindows::NFile::NFind::CFileInfo existingFi;
+        if (existingFi.Find(fsPath)) {
+            switch (OverwriteMode) {
+                case SZOverwriteModeSkip:
+                    return S_OK; // skip this file
+
+                case SZOverwriteModeRename: {
+                    // Auto-rename: append (1), (2), etc.
+                    UString basePath = fullPath;
+                    UString ext;
+                    int dotPos = (int)basePath.ReverseFind(L'.');
+                    int sepPos = (int)basePath.ReverseFind_PathSepar();
+                    if (dotPos > sepPos) {
+                        ext = basePath.Ptr(dotPos);
+                        basePath.DeleteFrom(dotPos);
+                    }
+                    for (int n = 1; n < 10000; n++) {
+                        UString newPath = basePath;
+                        wchar_t buf[32];
+                        swprintf(buf, sizeof(buf)/sizeof(buf[0]), L" (%d)", n);
+                        newPath += buf;
+                        newPath += ext;
+                        FString newFs = us2fs(newPath);
+                        NWindows::NFile::NFind::CFileInfo chk;
+                        if (!chk.Find(newFs)) {
+                            fsPath = newFs;
+                            break;
+                        }
+                    }
+                    break;
+                }
+
+                case SZOverwriteModeAsk: {
+                    // Ask user on main thread
+                    __block BOOL shouldOverwrite = YES;
+                    NSString *fileName = pathStr;
+                    dispatch_sync(dispatch_get_main_queue(), ^{
+                        NSAlert *alert = [[NSAlert alloc] init];
+                        alert.messageText = @"File already exists";
+                        alert.informativeText = [NSString stringWithFormat:
+                            @"The file \"%@\" already exists in the destination. Do you want to replace it?", fileName];
+                        alert.alertStyle = NSAlertStyleWarning;
+                        [alert addButtonWithTitle:@"Replace"];
+                        [alert addButtonWithTitle:@"Skip"];
+                        NSModalResponse resp = [alert runModal];
+                        shouldOverwrite = (resp == NSAlertFirstButtonReturn);
+                    });
+                    if (!shouldOverwrite) return S_OK;
+                    break;
+                }
+
+                case SZOverwriteModeOverwrite:
+                default:
+                    break; // fall through to create
+            }
+        }
+
         COutFileStream *spec = new COutFileStream;
         CMyComPtr<ISequentialOutStream> loc(spec);
-        if (!spec->Create_ALWAYS(us2fs(fullPath))) return E_FAIL;
+        if (!spec->Create_ALWAYS(fsPath)) return E_FAIL;
         *out = loc.Detach();
         return S_OK;
     }
@@ -267,7 +330,7 @@ public:
 @end
 @implementation SZExtractionSettings
 - (instancetype)init {
-    if ((self = [super init])) { _pathMode = SZPathModeFullPaths; _overwriteMode = SZOverwriteModeOverwrite; }
+    if ((self = [super init])) { _pathMode = SZPathModeFullPaths; _overwriteMode = SZOverwriteModeAsk; }
     return self;
 }
 @end
@@ -352,6 +415,7 @@ public:
     SZExtractCallback *cb = new SZExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(cb);
     cb->Archive = _archive; cb->DestPath = ToU(dest); cb->Delegate = p;
+    cb->OverwriteMode = s.overwriteMode;
     if (s.password) { cb->PasswordIsDefined = true; cb->Password = ToU(s.password); }
     HRESULT r = _archive->Extract(nullptr, (UInt32)(Int32)-1, 0, ec);
     if (r != S_OK) { if (error) *error = SZMakeError(r == E_ABORT ? -5 : -6, r == E_ABORT ? @"Cancelled" : @"Failed"); return NO; }
@@ -364,6 +428,7 @@ public:
     SZExtractCallback *cb = new SZExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(cb);
     cb->Archive = _archive; cb->DestPath = ToU(dest); cb->Delegate = p;
+    cb->OverwriteMode = s.overwriteMode;
     if (s.password) { cb->PasswordIsDefined = true; cb->Password = ToU(s.password); }
     std::vector<UInt32> ia; ia.reserve(indices.count);
     for (NSNumber *n in indices) ia.push_back([n unsignedIntValue]);

@@ -17,13 +17,16 @@ class ArchiveDocument: NSDocument {
             "public.bzip2-archive",
             "org.tukaani.xz-archive",
             "com.rarlab.rar-archive",
-            "com.microsoft.cab-archive",
             "public.iso-image",
             "com.apple.disk-image-udif",
-            "com.microsoft.wim-archive",
             "public.archive",
-            // Also handle by extension via UTI
+            "public.data",
         ]
+    }
+
+    // Accept all types — let 7-Zip core detect format
+    override class func isNativeType(_ type: String) -> Bool {
+        return true
     }
 
     override func makeWindowControllers() {

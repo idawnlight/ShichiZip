@@ -290,8 +290,10 @@
 					"-Wno-everything",
 				);
 				OTHER_LDFLAGS = (
-					"-l7zip",
+					"-force_load",
+					"$(PROJECT_DIR)/build/lib/lib7zip.a",
 					"-lpthread",
+					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
 				PRODUCT_NAME = ShichiZip;
@@ -393,8 +395,10 @@
 					"-Wno-everything",
 				);
 				OTHER_LDFLAGS = (
-					"-l7zip",
+					"-force_load",
+					"$(PROJECT_DIR)/build/lib/lib7zip.a",
 					"-lpthread",
+					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
 				PRODUCT_NAME = ShichiZip;
