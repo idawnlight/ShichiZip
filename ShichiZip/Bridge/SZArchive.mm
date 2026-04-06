@@ -361,7 +361,63 @@ public:
     CMyComPtr<IArchiveOpenCallback> oc(ocs);
     if (password) { ocs->PasswordIsDefined = true; ocs->Password = ToU(password); }
 
+    // Read file header for signature-based format detection (like real 7-Zip)
+    Byte header[16];
+    memset(header, 0, sizeof(header));
+    UInt32 headerSize = 0;
+    fs->Read(header, sizeof(header), &headerSize);
+    fs->Seek(0, STREAM_SEEK_SET, nullptr);
+
+    // Get file extension
+    NSString *ext = [[path pathExtension] lowercaseString];
+    UString uExt = ToU(ext);
+
+    // Build format candidate list in priority order:
+    // 1. Extension match + signature match (highest priority)
+    // 2. Signature match only
+    // 3. Extension match only
+    // 4. Everything else
+    std::vector<unsigned> tier1, tier2, tier3, tier4;
+
     for (unsigned i = 0; i < codecs->Formats.Size(); i++) {
+        const CArcInfoEx &ai = codecs->Formats[i];
+
+        // Check extension match
+        bool extMatch = false;
+        for (unsigned j = 0; j < ai.Exts.Size(); j++) {
+            if (ai.Exts[j].Ext.IsEqualTo_NoCase(uExt)) { extMatch = true; break; }
+        }
+
+        // Check signature match against file header bytes
+        bool sigMatch = false;
+        if (ai.Signatures.Size() > 0) {
+            for (unsigned s = 0; s < ai.Signatures.Size(); s++) {
+                const CByteBuffer &sig = ai.Signatures[s];
+                unsigned offset = ai.SignatureOffset;
+                if (sig.Size() > 0 && sig.Size() + offset <= headerSize) {
+                    if (memcmp(header + offset, sig, sig.Size()) == 0) {
+                        sigMatch = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (extMatch && sigMatch)       tier1.push_back(i);
+        else if (sigMatch)              tier2.push_back(i);
+        else if (extMatch)              tier3.push_back(i);
+        else                            tier4.push_back(i);
+    }
+
+    // Try in priority order
+    std::vector<unsigned> formatOrder;
+    formatOrder.insert(formatOrder.end(), tier1.begin(), tier1.end());
+    formatOrder.insert(formatOrder.end(), tier2.begin(), tier2.end());
+    formatOrder.insert(formatOrder.end(), tier3.begin(), tier3.end());
+    formatOrder.insert(formatOrder.end(), tier4.begin(), tier4.end());
+
+    for (unsigned idx = 0; idx < formatOrder.size(); idx++) {
+        unsigned i = formatOrder[idx];
         CMyComPtr<IInArchive> ar;
         if (codecs->CreateInArchive(i, ar) != S_OK || !ar) continue;
         const UInt64 scan = 1 << 23;
@@ -370,6 +426,7 @@ public:
         }
         ar->Close(); fs->Seek(0, STREAM_SEEK_SET, nullptr);
     }
+
     if (error) *error = SZMakeError(-3, @"Cannot open archive or unsupported format");
     return NO;
 }

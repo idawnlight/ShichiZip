@@ -5,3 +5,6 @@ DerivedData/
 *.o
 *.a
 vendor/7zip/CPP/7zip/Bundles/Alone2/b/
+**/.DS_Store
+test.zip
+TODO.md

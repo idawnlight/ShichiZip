@@ -35,17 +35,20 @@ class ArchiveDocument: NSDocument {
     }
 
     override func read(from url: URL, ofType typeName: String) throws {
+        NSLog("[ShichiZip] Opening: %@ (type: %@)", url.path, typeName)
         let arch = SZArchive()
 
         try arch.open(atPath: url.path)
 
         self.archive = arch
         self.formatName = arch.formatName ?? "Unknown"
+        NSLog("[ShichiZip] Format detected: %@", self.formatName)
 
         // Load entries
         let szEntries = arch.entries()
         self.entries = szEntries.map { ArchiveItem(from: $0) }
         self.treeRoot = ArchiveTreeNode.buildTree(from: entries)
+        NSLog("[ShichiZip] Loaded %d entries, %d tree roots", entries.count, treeRoot.count)
     }
 
     // MARK: - Operations

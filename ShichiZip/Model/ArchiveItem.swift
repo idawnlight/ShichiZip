@@ -18,16 +18,16 @@ struct ArchiveItem {
 
     /// Parent path (directory containing this item)
     var parentPath: String {
-        guard path.contains("/") else { return "" }
-        let url = URL(fileURLWithPath: path)
-        let parent = url.deletingLastPathComponent().path
-        if parent == "." || parent == "/" { return "" }
-        return parent
+        // Use string operations, NOT URL — URL converts to absolute paths
+        let trimmed = path.hasSuffix("/") ? String(path.dropLast()) : path
+        guard let lastSlash = trimmed.lastIndex(of: "/") else { return "" }
+        return String(trimmed[trimmed.startIndex..<lastSlash])
     }
 
     /// File extension
     var fileExtension: String {
-        URL(fileURLWithPath: path).pathExtension
+        guard let dotIndex = name.lastIndex(of: ".") else { return "" }
+        return String(name[name.index(after: dotIndex)...])
     }
 
     /// Compression ratio as a percentage
@@ -48,7 +48,13 @@ struct ArchiveItem {
     init(from entry: SZArchiveEntry) {
         self.index = Int(entry.index)
         self.path = entry.path
-        self.name = URL(fileURLWithPath: entry.path).lastPathComponent
+        // Extract name from path without URL (URL converts to absolute)
+        let trimmed = entry.path.hasSuffix("/") ? String(entry.path.dropLast()) : entry.path
+        if let lastSlash = trimmed.lastIndex(of: "/") {
+            self.name = String(trimmed[trimmed.index(after: lastSlash)...])
+        } else {
+            self.name = trimmed
+        }
         self.size = entry.size
         self.packedSize = entry.packedSize
         self.modifiedDate = entry.modifiedDate
@@ -98,8 +104,16 @@ class ArchiveTreeNode {
         var directoryNodes: [String: ArchiveTreeNode] = [:]
         var rootChildren: [ArchiveTreeNode] = []
 
+        // Normalize path: remove trailing slashes
+        func normalizePath(_ path: String) -> String {
+            var p = path
+            while p.hasSuffix("/") { p = String(p.dropLast()) }
+            return p
+        }
+
         // Ensure parent directories exist
-        func getOrCreateDirectory(_ path: String) -> ArchiveTreeNode {
+        func getOrCreateDirectory(_ rawPath: String) -> ArchiveTreeNode {
+            let path = normalizePath(rawPath)
             if let existing = directoryNodes[path] {
                 return existing
             }
