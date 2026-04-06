@@ -14,7 +14,9 @@
 		27AAAB1352382FE609A3B393 /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */; };
 		3526B672AB9F2CEAFD0E549B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 937563A1E648A0013C4DD0C3 /* Assets.xcassets */; };
 		3EB1A6D4145C14DAED1F6FFF /* ArchiveItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B2D1040171A178E5575D88 /* ArchiveItem.swift */; };
+		638B19CD6D0F3AD721A43B9A /* SZBridgeCommon.mm in Sources */ = {isa = PBXBuildFile; fileRef = 103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */; };
 		7071F3144087AF031874146C /* ArchiveWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C6B7F42F0CAB9D0400D4D03 /* ArchiveWindowController.swift */; };
+		77648FA14E470C55E65CAD70 /* SZCallbacks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 079C800E6F9E105461CEDF6F /* SZCallbacks.mm */; };
 		92508A846730EC64177768C0 /* CompressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB37EA2DD031212A342F87 /* CompressDialogController.swift */; };
 		93B0DD5084515EEB7FAFA4BF /* PasswordDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 795844E47B4BEC4837998CC8 /* PasswordDialogController.swift */; };
 		982013070593772CA679F1CB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */; };
@@ -31,11 +33,15 @@
 /* Begin PBXFileReference section */
 		03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerPaneController.swift; sourceTree = "<group>"; };
+		079C800E6F9E105461CEDF6F /* SZCallbacks.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZCallbacks.mm; sourceTree = "<group>"; };
+		103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZBridgeCommon.mm; sourceTree = "<group>"; };
 		15AF94624BC55B258E21F044 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		3C6B7F42F0CAB9D0400D4D03 /* ArchiveWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveWindowController.swift; sourceTree = "<group>"; };
 		43EB37EA2DD031212A342F87 /* CompressDialogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressDialogController.swift; sourceTree = "<group>"; };
 		4B79A5CCE90FE27ABBE045F6 /* ShichiZip-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ShichiZip-Bridging-Header.h"; sourceTree = "<group>"; };
 		5F58255DCB77AF28307EC7CE /* SZArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZArchive.h; sourceTree = "<group>"; };
+		66C60AB7E758ABD0F2751D95 /* SZCallbacks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZCallbacks.h; sourceTree = "<group>"; };
+		78EC0F8B9F4DC1C6D26F42CD /* SZBridgeCommon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZBridgeCommon.h; sourceTree = "<group>"; };
 		795844E47B4BEC4837998CC8 /* PasswordDialogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordDialogController.swift; sourceTree = "<group>"; };
 		7EBA01A2EEDB0976AD5EF4B5 /* ArchiveViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveViewController.swift; sourceTree = "<group>"; };
 		80B076D6AC7F0BF7BC2633E8 /* ShichiZip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShichiZip.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -97,6 +103,10 @@
 			children = (
 				5F58255DCB77AF28307EC7CE /* SZArchive.h */,
 				FC8109FC18679384CCE1FCC9 /* SZArchive.mm */,
+				78EC0F8B9F4DC1C6D26F42CD /* SZBridgeCommon.h */,
+				103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */,
+				66C60AB7E758ABD0F2751D95 /* SZCallbacks.h */,
+				079C800E6F9E105461CEDF6F /* SZCallbacks.mm */,
 			);
 			path = Bridge;
 			sourceTree = "<group>";
@@ -247,6 +257,8 @@
 				93B0DD5084515EEB7FAFA4BF /* PasswordDialogController.swift in Sources */,
 				D33844E6931D04F9C12964F0 /* ProgressDialogController.swift in Sources */,
 				2754EF55454FEC5CEE4E1E33 /* SZArchive.mm in Sources */,
+				638B19CD6D0F3AD721A43B9A /* SZBridgeCommon.mm in Sources */,
+				77648FA14E470C55E65CAD70 /* SZCallbacks.mm in Sources */,
 				A75F0A88DDC9FEB2C258A88D /* SettingsWindowController.swift in Sources */,
 				AA261563B50B35EE2B312E27 /* main.swift in Sources */,
 			);
