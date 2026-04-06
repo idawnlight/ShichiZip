@@ -73,6 +73,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         // Register for drag and drop
         tableView.registerForDraggedTypes([.fileURL])
+        tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
+        tableView.setDraggingSourceOperationMask(.copy, forLocal: false)
 
         scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -278,6 +280,47 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
         return 22
+    }
+
+    // MARK: - Drag source (provide file URLs to drag out)
+
+    func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> (any NSPasteboardWriting)? {
+        guard row < items.count else { return nil }
+        return items[row].url as NSURL
+    }
+
+    // MARK: - Drop destination (accept files dragged into this folder)
+
+    func tableView(_ tableView: NSTableView, validateDrop info: any NSDraggingInfo, proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
+        // Accept drops onto the table (not between rows)
+        if dropOperation == .on { return [] }
+        tableView.setDropRow(-1, dropOperation: .on) // highlight whole table
+        return info.draggingSourceOperationMask.contains(.move) ? .move : .copy
+    }
+
+    func tableView(_ tableView: NSTableView, acceptDrop info: any NSDraggingInfo, row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
+        guard let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self]) as? [URL], !urls.isEmpty else { return false }
+
+        let destDir = currentDirectory
+        let fm = FileManager.default
+        let isMove = info.draggingSourceOperationMask.contains(.move)
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            for url in urls {
+                let dest = destDir.appendingPathComponent(url.lastPathComponent)
+                do {
+                    if isMove {
+                        try fm.moveItem(at: url, to: dest)
+                    } else {
+                        try fm.copyItem(at: url, to: dest)
+                    }
+                } catch {
+                    NSLog("[ShichiZip] Drop error: %@", error.localizedDescription)
+                }
+            }
+            DispatchQueue.main.async { self?.refresh() }
+        }
+        return true
     }
 
     // MARK: - Sorting (matches PanelSort.cpp: folders first, natural sort for names)

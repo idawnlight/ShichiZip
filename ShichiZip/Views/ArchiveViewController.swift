@@ -221,6 +221,27 @@ extension ArchiveViewController: NSOutlineViewDataSource {
         }
         return false
     }
+
+    // MARK: - Drag from archive (PanelDrag.cpp: extract to temp, provide file URLs)
+
+    func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> (any NSPasteboardWriting)? {
+        guard let node = item as? ArchiveTreeNode, let archiveItem = node.item, !node.isDirectory else { return nil }
+        guard let doc = document else { return nil }
+
+        // Extract to temp directory
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ShichiZip-drag-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let settings = SZExtractionSettings()
+        settings.overwriteMode = .overwrite
+        try? doc.extractEntries(indices: [archiveItem.index], to: tempDir, progress: nil)
+
+        let extractedFile = tempDir.appendingPathComponent(node.fullPath)
+        if FileManager.default.fileExists(atPath: extractedFile.path) {
+            return extractedFile as NSURL
+        }
+        return nil
+    }
 }
 
 // MARK: - NSOutlineViewDelegate
