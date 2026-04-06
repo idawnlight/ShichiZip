@@ -1,7 +1,7 @@
 import Cocoa
 
 /// Single pane of the file manager — displays file system contents
-class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
+class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
 
     weak var delegate: FileManagerPaneDelegate?
 
@@ -10,7 +10,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var scrollView: NSScrollView!
     private var statusLabel: NSTextField!
 
-    private var currentDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+    private(set) var currentDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+    var currentDirectoryURL: URL { currentDirectory }
     private var items: [FileSystemItem] = []
 
     override func loadView() {
@@ -68,6 +69,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         tableView.target = self
         tableView.doubleAction = #selector(doubleClickRow(_:))
         tableView.menu = buildContextMenu()
+        NSLog("[ShichiZip] File manager pane context menu set with %ld items", tableView.menu?.items.count ?? 0)
 
         // Register for drag and drop
         tableView.registerForDraggedTypes([.fileURL])
@@ -316,24 +318,59 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 }
 
+// MARK: - NSMenuDelegate (auto-select row on right-click)
+
+extension FileManagerPaneController {
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        let clickedRow = tableView.clickedRow
+        if clickedRow >= 0 && !tableView.selectedRowIndexes.contains(clickedRow) {
+            tableView.selectRowIndexes(IndexSet(integer: clickedRow), byExtendingSelection: false)
+        }
+    }
+}
+
 // MARK: - Context Menu
 
 extension FileManagerPaneController {
 
     private func buildContextMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Open", action: #selector(openSelectedItem(_:)), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Open in ShichiZip", action: #selector(openInArchiveViewer(_:)), keyEquivalent: ""))
+        menu.delegate = self  // auto-select row on right-click
+        let items: [(String, Selector)] = [
+            ("Open", #selector(openSelectedItem(_:))),
+            ("Open in ShichiZip", #selector(openInArchiveViewer(_:))),
+        ]
+        for (title, action) in items {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+        }
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Compress...", action: #selector(compressSelected(_:)), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Extract Here", action: #selector(extractHere(_:)), keyEquivalent: ""))
+        for (title, action) in [
+            ("Compress...", #selector(compressSelected(_:))),
+            ("Extract Here", #selector(extractHere(_:))),
+        ] as [(String, Selector)] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+        }
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Rename", action: #selector(renameSelected(_:)), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Delete", action: #selector(deleteSelected(_:)), keyEquivalent: ""))
+        for (title, action) in [
+            ("Rename", #selector(renameSelected(_:))),
+            ("Delete", #selector(deleteSelected(_:))),
+        ] as [(String, Selector)] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+        }
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Create Folder", action: #selector(createFolderFromMenu(_:)), keyEquivalent: ""))
+        let cf = NSMenuItem(title: "Create Folder", action: #selector(createFolderFromMenu(_:)), keyEquivalent: "")
+        cf.target = self
+        menu.addItem(cf)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Properties", action: #selector(showItemProperties(_:)), keyEquivalent: ""))
+        let pr = NSMenuItem(title: "Properties", action: #selector(showItemProperties(_:)), keyEquivalent: "")
+        pr.target = self
+        menu.addItem(pr)
         return menu
     }
 
@@ -449,7 +486,11 @@ extension FileManagerPaneController {
     }
 
     @objc private func showItemProperties(_ sender: Any?) {
-        guard let path = selectedFilePaths().first else { return }
+        NSLog("[ShichiZip] showItemProperties called")
+        guard let path = selectedFilePaths().first else {
+            NSLog("[ShichiZip] no selection for properties")
+            return
+        }
         let url = URL(fileURLWithPath: path)
         let resourceValues = try? url.resourceValues(forKeys: [
             .fileSizeKey, .isDirectoryKey, .contentModificationDateKey,

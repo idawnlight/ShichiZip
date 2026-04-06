@@ -70,6 +70,9 @@ class FileManagerWindowController: NSWindowController {
         guard window?.isKeyWindow == true else { return event }
 
         switch event.keyCode {
+        case 48: // Tab - Switch panes (PanelKey.cpp)
+            switchPanes(nil)
+            return nil
         case 96: // F5 - Copy
             copyFiles(nil)
             return nil
@@ -102,7 +105,7 @@ class FileManagerWindowController: NSWindowController {
     }
 
     @objc func addToArchive(_ sender: Any?) {
-        let activePane = leftPane! // TODO: track active pane
+        let activePane = self.activePane
         let selectedPaths = activePane.selectedFilePaths()
         guard !selectedPaths.isEmpty else { return }
 
@@ -156,7 +159,7 @@ class FileManagerWindowController: NSWindowController {
     }
 
     @objc func extractArchive(_ sender: Any?) {
-        let activePane = leftPane! // TODO: track active pane
+        let activePane = self.activePane
         let selectedPaths = activePane.selectedFilePaths()
         guard let firstPath = selectedPaths.first else { return }
 
@@ -200,7 +203,7 @@ class FileManagerWindowController: NSWindowController {
     }
 
     @objc func testArchive(_ sender: Any?) {
-        let activePane = leftPane!
+        let activePane = self.activePane
         guard let path = activePane.selectedFilePaths().first else { return }
 
         let progressController = ProgressDialogController()
@@ -235,12 +238,105 @@ class FileManagerWindowController: NSWindowController {
         }
     }
 
+    @objc func switchPanes(_ sender: Any?) {
+        guard isDualPane else { return }
+        if window?.firstResponder === leftPane.view || leftPane.view.isDescendant(of: window?.firstResponder as? NSView ?? NSView()) {
+            window?.makeFirstResponder(rightPane.view)
+        } else {
+            window?.makeFirstResponder(leftPane.view)
+        }
+    }
+
+    private var activePane: FileManagerPaneController {
+        if isDualPane,
+           let fr = window?.firstResponder as? NSView,
+           rightPane.view.isDescendant(of: fr) || fr.isDescendant(of: rightPane.view) {
+            return rightPane
+        }
+        return leftPane
+    }
+
+    private var inactivePane: FileManagerPaneController? {
+        guard isDualPane else { return nil }
+        return activePane === leftPane ? rightPane : leftPane
+    }
+
+    // MARK: - Copy/Move (PanelCopy.cpp pattern)
+
     @objc func copyFiles(_ sender: Any?) {
-        // TODO: Implement file copy between panes
+        performFileOperation(move: false)
     }
 
     @objc func moveFiles(_ sender: Any?) {
-        // TODO: Implement file move between panes
+        performFileOperation(move: true)
+    }
+
+    private func performFileOperation(move: Bool) {
+        let pane = activePane
+        let sourcePaths = pane.selectedFilePaths()
+        guard !sourcePaths.isEmpty else { return }
+
+        // Determine destination — other pane if dual, or ask via dialog
+        var destURL: URL
+        if let otherPane = inactivePane {
+            destURL = otherPane.currentDirectoryURL
+        } else {
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.canCreateDirectories = true
+            panel.prompt = move ? "Move" : "Copy"
+            panel.message = "\(move ? "Move" : "Copy") \(sourcePaths.count) item(s) to:"
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            destURL = url
+        }
+
+        let operation = move ? "Moving" : "Copying"
+        let progressController = ProgressDialogController()
+        progressController.operationTitle = "\(operation) \(sourcePaths.count) item(s)..."
+        window?.beginSheet(progressController.window!) { _ in }
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let fm = FileManager.default
+            var errors: [Error] = []
+
+            for (i, sourcePath) in sourcePaths.enumerated() {
+                let sourceURL = URL(fileURLWithPath: sourcePath)
+                let destFile = destURL.appendingPathComponent(sourceURL.lastPathComponent)
+                let fraction = Double(i) / Double(sourcePaths.count)
+
+                DispatchQueue.main.async {
+                    progressController.progressDidUpdate(fraction)
+                    progressController.progressDidUpdateFileName(sourceURL.lastPathComponent)
+                }
+
+                do {
+                    if move {
+                        try fm.moveItem(at: sourceURL, to: destFile)
+                    } else {
+                        try fm.copyItem(at: sourceURL, to: destFile)
+                    }
+                } catch {
+                    errors.append(error)
+                }
+            }
+
+            DispatchQueue.main.async {
+                self?.window?.endSheet(progressController.window!)
+                pane.refresh()
+                self?.inactivePane?.refresh()
+
+                if !errors.isEmpty {
+                    let alert = NSAlert()
+                    alert.messageText = "\(operation) completed with errors"
+                    alert.informativeText = errors.map { $0.localizedDescription }.joined(separator: "\n")
+                    alert.alertStyle = .warning
+                    if let win = self?.window {
+                        alert.beginSheetModal(for: win)
+                    }
+                }
+            }
+        }
     }
 
     @objc func createFolder(_ sender: Any?) {
@@ -263,7 +359,7 @@ class FileManagerWindowController: NSWindowController {
     }
 
     @objc func deleteFiles(_ sender: Any?) {
-        let activePane = leftPane!
+        let activePane = self.activePane
         let paths = activePane.selectedFilePaths()
         guard !paths.isEmpty else { return }
 

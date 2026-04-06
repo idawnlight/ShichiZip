@@ -389,13 +389,25 @@ extension ArchiveViewController {
 
     func buildContextMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Extract Selected...", action: #selector(extractSelected(_:)), keyEquivalent: ""))
+        let extract = NSMenuItem(title: "Extract Selected...", action: #selector(extractSelected(_:)), keyEquivalent: "")
+        extract.target = self
+        menu.addItem(extract)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Select All", action: #selector(selectAll(_:)), keyEquivalent: "a"))
-        menu.addItem(NSMenuItem(title: "Invert Selection", action: #selector(invertSelection(_:)), keyEquivalent: ""))
+        let selAll = NSMenuItem(title: "Select All", action: #selector(performSelectAll(_:)), keyEquivalent: "")
+        selAll.target = self
+        menu.addItem(selAll)
+        let invert = NSMenuItem(title: "Invert Selection", action: #selector(invertSelection(_:)), keyEquivalent: "")
+        invert.target = self
+        menu.addItem(invert)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Properties", action: #selector(showProperties(_:)), keyEquivalent: ""))
+        let props = NSMenuItem(title: "Properties", action: #selector(showProperties(_:)), keyEquivalent: "")
+        props.target = self
+        menu.addItem(props)
         return menu
+    }
+
+    @objc func performSelectAll(_ sender: Any?) {
+        outlineView.selectAll(sender)
     }
 
     @objc func invertSelection(_ sender: Any?) {
@@ -406,8 +418,31 @@ extension ArchiveViewController {
     }
 
     @objc func showProperties(_ sender: Any?) {
+        NSLog("[ShichiZip] showProperties called")
         let selectedRows = outlineView.selectedRowIndexes
-        guard !selectedRows.isEmpty else { return }
+        if selectedRows.isEmpty {
+            // No selection — show archive-level properties
+            guard let doc = document else { return }
+            let alert = NSAlert()
+            alert.messageText = "Archive Properties"
+            let totalSize = doc.entries.reduce(UInt64(0)) { $0 + $1.size }
+            let totalPacked = doc.entries.reduce(UInt64(0)) { $0 + $1.packedSize }
+            let fileCount = doc.entries.filter { !$0.isDirectory }.count
+            let dirCount = doc.entries.filter { $0.isDirectory }.count
+            let sizeStr = ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file)
+            let packedStr = ByteCountFormatter.string(fromByteCount: Int64(totalPacked), countStyle: .file)
+            let ratio = totalSize > 0 ? Double(totalPacked) / Double(totalSize) * 100.0 : 0
+            alert.informativeText = """
+            Format: \(doc.formatName)
+            Files: \(fileCount)
+            Folders: \(dirCount)
+            Size: \(sizeStr)
+            Packed Size: \(packedStr)
+            Ratio: \(String(format: "%.1f%%", ratio))
+            """
+            if let w = view.window { alert.beginSheetModal(for: w) }
+            return
+        }
 
         var totalSize: UInt64 = 0
         var totalPacked: UInt64 = 0
