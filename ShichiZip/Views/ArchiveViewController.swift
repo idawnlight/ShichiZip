@@ -30,12 +30,13 @@ class ArchiveViewController: NSViewController {
         outlineView.rowSizeStyle = .small
         outlineView.style = .fullWidth
 
-        // Columns
+        // Columns — add sort descriptors (matches PanelSort.cpp logic)
         let nameCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
         nameCol.title = "Name"
         nameCol.width = 300
         nameCol.minWidth = 150
-        nameCol.sortDescriptorPrototype = NSSortDescriptor(key: "name", ascending: true, selector: #selector(NSString.localizedStandardCompare(_:)))
+        nameCol.sortDescriptorPrototype = NSSortDescriptor(key: "name", ascending: true,
+            selector: #selector(NSString.localizedStandardCompare(_:)))
         outlineView.addTableColumn(nameCol)
         outlineView.outlineTableColumn = nameCol
 
@@ -43,30 +44,35 @@ class ArchiveViewController: NSViewController {
         sizeCol.title = "Size"
         sizeCol.width = 80
         sizeCol.minWidth = 60
+        sizeCol.sortDescriptorPrototype = NSSortDescriptor(key: "size", ascending: false)
         outlineView.addTableColumn(sizeCol)
 
         let packedCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("packed"))
         packedCol.title = "Packed Size"
         packedCol.width = 80
         packedCol.minWidth = 60
+        packedCol.sortDescriptorPrototype = NSSortDescriptor(key: "packed", ascending: false)
         outlineView.addTableColumn(packedCol)
 
         let modifiedCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("modified"))
         modifiedCol.title = "Modified"
         modifiedCol.width = 140
         modifiedCol.minWidth = 80
+        modifiedCol.sortDescriptorPrototype = NSSortDescriptor(key: "modified", ascending: false)
         outlineView.addTableColumn(modifiedCol)
 
         let methodCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("method"))
         methodCol.title = "Method"
         methodCol.width = 70
         methodCol.minWidth = 50
+        methodCol.sortDescriptorPrototype = NSSortDescriptor(key: "method", ascending: true)
         outlineView.addTableColumn(methodCol)
 
         let crcCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("crc"))
         crcCol.title = "CRC"
         crcCol.width = 80
         crcCol.minWidth = 60
+        crcCol.sortDescriptorPrototype = NSSortDescriptor(key: "crc", ascending: true)
         outlineView.addTableColumn(crcCol)
 
         outlineView.dataSource = self
@@ -74,9 +80,9 @@ class ArchiveViewController: NSViewController {
         outlineView.target = self
         outlineView.doubleAction = #selector(doubleClickRow(_:))
 
-        // Register for drag and drop
         outlineView.registerForDraggedTypes([.fileURL])
         outlineView.setDraggingSourceOperationMask(.copy, forLocal: false)
+        outlineView.menu = buildContextMenu()
 
         scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -323,5 +329,111 @@ extension ArchiveViewController: NSOutlineViewDelegate {
 
     func outlineView(_ outlineView: NSOutlineView, heightOfRowByItem item: Any) -> CGFloat {
         return 22
+    }
+
+    // MARK: - Sorting (matches PanelSort.cpp)
+
+    func outlineView(_ outlineView: NSOutlineView, sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]) {
+        sortTreeNodes(&treeRoot, by: outlineView.sortDescriptors)
+        outlineView.reloadData()
+    }
+
+    private func sortTreeNodes(_ nodes: inout [ArchiveTreeNode], by descriptors: [NSSortDescriptor]) {
+        guard let descriptor = descriptors.first else { return }
+        let key = descriptor.key ?? "name"
+        let ascending = descriptor.ascending
+
+        // PanelSort.cpp: folders always before files
+        nodes.sort { a, b in
+            if a.isDirectory != b.isDirectory { return a.isDirectory }
+
+            let result: ComparisonResult
+            switch key {
+            case "name":
+                result = a.name.localizedStandardCompare(b.name)
+            case "size":
+                let aSize = a.item?.size ?? 0
+                let bSize = b.item?.size ?? 0
+                result = aSize == bSize ? .orderedSame : (aSize < bSize ? .orderedAscending : .orderedDescending)
+            case "packed":
+                let aSize = a.item?.packedSize ?? 0
+                let bSize = b.item?.packedSize ?? 0
+                result = aSize == bSize ? .orderedSame : (aSize < bSize ? .orderedAscending : .orderedDescending)
+            case "modified":
+                let aDate = a.item?.modifiedDate ?? Date.distantPast
+                let bDate = b.item?.modifiedDate ?? Date.distantPast
+                result = aDate.compare(bDate)
+            case "method":
+                result = (a.item?.method ?? "").localizedStandardCompare(b.item?.method ?? "")
+            case "crc":
+                let aCrc = a.item?.crc ?? 0
+                let bCrc = b.item?.crc ?? 0
+                result = aCrc == bCrc ? .orderedSame : (aCrc < bCrc ? .orderedAscending : .orderedDescending)
+            default:
+                result = a.name.localizedStandardCompare(b.name)
+            }
+
+            return ascending ? result == .orderedAscending : result == .orderedDescending
+        }
+
+        // Recursively sort children
+        for node in nodes {
+            sortTreeNodes(&node.children, by: descriptors)
+        }
+    }
+}
+
+// MARK: - Context Menu
+
+extension ArchiveViewController {
+
+    func buildContextMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Extract Selected...", action: #selector(extractSelected(_:)), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Select All", action: #selector(selectAll(_:)), keyEquivalent: "a"))
+        menu.addItem(NSMenuItem(title: "Invert Selection", action: #selector(invertSelection(_:)), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Properties", action: #selector(showProperties(_:)), keyEquivalent: ""))
+        return menu
+    }
+
+    @objc func invertSelection(_ sender: Any?) {
+        let allRows = IndexSet(0..<outlineView.numberOfRows)
+        let selected = outlineView.selectedRowIndexes
+        let inverted = allRows.subtracting(selected)
+        outlineView.selectRowIndexes(inverted, byExtendingSelection: false)
+    }
+
+    @objc func showProperties(_ sender: Any?) {
+        let selectedRows = outlineView.selectedRowIndexes
+        guard !selectedRows.isEmpty else { return }
+
+        var totalSize: UInt64 = 0
+        var totalPacked: UInt64 = 0
+        var fileCount = 0
+        var dirCount = 0
+
+        for row in selectedRows {
+            if let node = outlineView.item(atRow: row) as? ArchiveTreeNode {
+                if node.isDirectory { dirCount += 1 } else { fileCount += 1 }
+                totalSize += node.item?.size ?? 0
+                totalPacked += node.item?.packedSize ?? 0
+            }
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Properties"
+        let sizeStr = ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file)
+        let packedStr = ByteCountFormatter.string(fromByteCount: Int64(totalPacked), countStyle: .file)
+        let ratio = totalSize > 0 ? Double(totalPacked) / Double(totalSize) * 100.0 : 0
+        alert.informativeText = """
+        Files: \(fileCount)
+        Folders: \(dirCount)
+        Size: \(sizeStr)
+        Packed Size: \(packedStr)
+        Ratio: \(String(format: "%.1f%%", ratio))
+        """
+        alert.beginSheetModal(for: view.window!)
     }
 }

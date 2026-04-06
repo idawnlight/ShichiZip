@@ -46,24 +46,28 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         sizeCol.title = "Size"
         sizeCol.width = 80
         sizeCol.minWidth = 50
+        sizeCol.sortDescriptorPrototype = NSSortDescriptor(key: "size", ascending: false)
         tableView.addTableColumn(sizeCol)
 
         let modifiedCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("modified"))
         modifiedCol.title = "Modified"
         modifiedCol.width = 140
         modifiedCol.minWidth = 80
+        modifiedCol.sortDescriptorPrototype = NSSortDescriptor(key: "modified", ascending: false)
         tableView.addTableColumn(modifiedCol)
 
         let createdCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("created"))
         createdCol.title = "Created"
         createdCol.width = 140
         createdCol.minWidth = 80
+        createdCol.sortDescriptorPrototype = NSSortDescriptor(key: "created", ascending: false)
         tableView.addTableColumn(createdCol)
 
         tableView.dataSource = self
         tableView.delegate = self
         tableView.target = self
         tableView.doubleAction = #selector(doubleClickRow(_:))
+        tableView.menu = buildContextMenu()
 
         // Register for drag and drop
         tableView.registerForDraggedTypes([.fileURL])
@@ -272,5 +276,198 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
         return 22
+    }
+
+    // MARK: - Sorting (matches PanelSort.cpp: folders first, natural sort for names)
+
+    func tableView(_ tableView: NSTableView, sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]) {
+        sortItems(by: tableView.sortDescriptors)
+        tableView.reloadData()
+    }
+
+    private func sortItems(by descriptors: [NSSortDescriptor]) {
+        guard let descriptor = descriptors.first else { return }
+        let key = descriptor.key ?? "name"
+        let ascending = descriptor.ascending
+
+        items.sort { a, b in
+            // PanelSort.cpp: folders always before files
+            if a.isDirectory != b.isDirectory { return a.isDirectory }
+
+            let result: ComparisonResult
+            switch key {
+            case "name":
+                result = a.name.localizedStandardCompare(b.name)
+            case "size":
+                result = a.size == b.size ? .orderedSame : (a.size < b.size ? .orderedAscending : .orderedDescending)
+            case "modified":
+                let ad = a.modifiedDate ?? Date.distantPast
+                let bd = b.modifiedDate ?? Date.distantPast
+                result = ad.compare(bd)
+            case "created":
+                let ad = a.createdDate ?? Date.distantPast
+                let bd = b.createdDate ?? Date.distantPast
+                result = ad.compare(bd)
+            default:
+                result = a.name.localizedStandardCompare(b.name)
+            }
+            return ascending ? result == .orderedAscending : result == .orderedDescending
+        }
+    }
+}
+
+// MARK: - Context Menu
+
+extension FileManagerPaneController {
+
+    private func buildContextMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Open", action: #selector(openSelectedItem(_:)), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Open in ShichiZip", action: #selector(openInArchiveViewer(_:)), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Compress...", action: #selector(compressSelected(_:)), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Extract Here", action: #selector(extractHere(_:)), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Rename", action: #selector(renameSelected(_:)), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Delete", action: #selector(deleteSelected(_:)), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Create Folder", action: #selector(createFolderFromMenu(_:)), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Properties", action: #selector(showItemProperties(_:)), keyEquivalent: ""))
+        return menu
+    }
+
+    @objc private func openSelectedItem(_ sender: Any?) {
+        doubleClickRow(nil)
+    }
+
+    @objc private func openInArchiveViewer(_ sender: Any?) {
+        guard let path = selectedFilePaths().first else { return }
+        delegate?.paneDidOpenArchive(path)
+    }
+
+    @objc private func compressSelected(_ sender: Any?) {
+        // Forward to FileManagerWindowController
+        if let wc = view.window?.windowController as? FileManagerWindowController {
+            wc.addToArchive(nil)
+        }
+    }
+
+    @objc private func extractHere(_ sender: Any?) {
+        guard let path = selectedFilePaths().first else { return }
+        guard FileSystemItem.archiveExtensions.contains(
+            (path as NSString).pathExtension.lowercased()) else { return }
+
+        let destURL = currentDirectory
+        let progressController = ProgressDialogController()
+        progressController.operationTitle = "Extracting..."
+        view.window?.beginSheet(progressController.window!) { _ in }
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                let archive = SZArchive()
+                try archive.open(atPath: path)
+                let settings = SZExtractionSettings()
+                settings.overwriteMode = .ask
+                try archive.extract(toPath: destURL.path, settings: settings, progress: progressController)
+                archive.close()
+                DispatchQueue.main.async {
+                    self?.view.window?.endSheet(progressController.window!)
+                    self?.refresh()
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self?.view.window?.endSheet(progressController.window!)
+                    if let win = self?.view.window {
+                        NSAlert(error: error).beginSheetModal(for: win)
+                    }
+                }
+            }
+        }
+    }
+
+    @objc private func renameSelected(_ sender: Any?) {
+        let row = tableView.selectedRow
+        guard row >= 0, row < items.count else { return }
+        let item = items[row]
+
+        let alert = NSAlert()
+        alert.messageText = "Rename"
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        input.stringValue = item.name
+        alert.accessoryView = input
+        alert.addButton(withTitle: "Rename")
+        alert.addButton(withTitle: "Cancel")
+
+        alert.beginSheetModal(for: view.window!) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            let newName = input.stringValue
+            guard !newName.isEmpty, newName != item.name else { return }
+            let newURL = item.url.deletingLastPathComponent().appendingPathComponent(newName)
+            do {
+                try FileManager.default.moveItem(at: item.url, to: newURL)
+                self?.refresh()
+            } catch {
+                if let win = self?.view.window {
+                    NSAlert(error: error).beginSheetModal(for: win)
+                }
+            }
+        }
+    }
+
+    @objc private func deleteSelected(_ sender: Any?) {
+        let paths = selectedFilePaths()
+        guard !paths.isEmpty else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Delete \(paths.count) item(s)?"
+        alert.informativeText = "Items will be moved to Trash."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Move to Trash")
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: view.window!) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            for path in paths {
+                try? FileManager.default.trashItem(at: URL(fileURLWithPath: path), resultingItemURL: nil)
+            }
+            self?.refresh()
+        }
+    }
+
+    @objc private func createFolderFromMenu(_ sender: Any?) {
+        let alert = NSAlert()
+        alert.messageText = "Create Folder"
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        input.placeholderString = "New Folder"
+        alert.accessoryView = input
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: view.window!) { [weak self] response in
+            guard response == .alertFirstButtonReturn, !input.stringValue.isEmpty else { return }
+            self?.createFolder(named: input.stringValue)
+        }
+    }
+
+    @objc private func showItemProperties(_ sender: Any?) {
+        guard let path = selectedFilePaths().first else { return }
+        let url = URL(fileURLWithPath: path)
+        let resourceValues = try? url.resourceValues(forKeys: [
+            .fileSizeKey, .isDirectoryKey, .contentModificationDateKey,
+            .creationDateKey, .fileResourceTypeKey
+        ])
+
+        let alert = NSAlert()
+        alert.messageText = url.lastPathComponent
+        let size = ByteCountFormatter.string(fromByteCount: Int64(resourceValues?.fileSize ?? 0), countStyle: .file)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .long
+        dateFormatter.timeStyle = .medium
+        alert.informativeText = """
+        Type: \(resourceValues?.isDirectory == true ? "Folder" : url.pathExtension.uppercased())
+        Size: \(size)
+        Modified: \(resourceValues?.contentModificationDate.map { dateFormatter.string(from: $0) } ?? "—")
+        Created: \(resourceValues?.creationDate.map { dateFormatter.string(from: $0) } ?? "—")
+        """
+        alert.beginSheetModal(for: view.window!)
     }
 }
