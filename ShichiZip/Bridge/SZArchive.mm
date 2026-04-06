@@ -899,23 +899,24 @@ public:
     }
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSLog(@"[ShichiZip] Benchmark starting...");
+
         // Print callback that forwards to the block
         class SZBenchPrint : public IBenchPrintCallback {
         public:
-            void (^printBlock)(NSString *);
+            void (^_Nonnull printBlock)(NSString *);
             NSMutableString *currentLine;
 
-            SZBenchPrint(void (^block)(NSString *)) : printBlock(block) {
+            SZBenchPrint(void (^_Nonnull block)(NSString *)) : printBlock([block copy]) {
                 currentLine = [NSMutableString string];
             }
             void Print(const char *s) override {
-                [currentLine appendString:[NSString stringWithUTF8String:s]];
+                if (s) [currentLine appendString:[NSString stringWithUTF8String:s]];
             }
             void NewLine() override {
                 NSString *line = [currentLine copy];
-                if (printBlock) {
-                    dispatch_async(dispatch_get_main_queue(), ^{ printBlock(line); });
-                }
+                void (^blk)(NSString *) = printBlock;
+                dispatch_async(dispatch_get_main_queue(), ^{ blk(line); });
                 currentLine = [NSMutableString string];
             }
             HRESULT CheckBreak() override { return S_OK; }
@@ -925,7 +926,9 @@ public:
         CObjectVector<CProperty> props;
 
         UInt32 iters = numIterations > 0 ? numIterations : 1;
+        NSLog(@"[ShichiZip] Calling Bench() with %u iterations", iters);
         HRESULT r = Bench(EXTERNAL_CODECS_LOC_VARS &printCB, NULL, props, iters, false, NULL);
+        NSLog(@"[ShichiZip] Bench() returned 0x%08X", (unsigned)r);
 
         BOOL success = (r == S_OK);
         if (completion) {

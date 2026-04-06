@@ -3,6 +3,8 @@ import Cocoa
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var fileManagerWindowController: FileManagerWindowController?
+    private var benchmarkWindowController: BenchmarkWindowController?
+    private var settingsWindowController: SettingsWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainMenu.setup()
@@ -38,12 +40,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @IBAction func showBenchmark(_ sender: Any?) {
-        let benchmark = BenchmarkWindowController()
-        benchmark.showWindow(self)
+        if benchmarkWindowController == nil {
+            benchmarkWindowController = BenchmarkWindowController()
+        }
+        benchmarkWindowController?.showWindow(self)
     }
 
     @IBAction func showPreferences(_ sender: Any?) {
-        let prefs = SettingsWindowController()
-        prefs.showWindow(self)
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindowController()
+        }
+        settingsWindowController?.showWindow(self)
     }
 }
