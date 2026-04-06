@@ -1,0 +1,7 @@
+build/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+DerivedData/
+*.o
+*.a
+vendor/7zip/CPP/7zip/Bundles/Alone2/b/

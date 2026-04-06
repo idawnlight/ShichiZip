@@ -1,0 +1,495 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1506FF719B49C353449C3276 /* FileSystemItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F199F3D5EFC006C978C935C8 /* FileSystemItem.swift */; };
+		1CE5457C544B20D5DF0D42F3 /* BenchmarkWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */; };
+		1F4FA2F4EBF56D3C51E1ABA5 /* ExtractDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1063FC95805225AC501608 /* ExtractDialogController.swift */; };
+		2754EF55454FEC5CEE4E1E33 /* SZArchive.mm in Sources */ = {isa = PBXBuildFile; fileRef = FC8109FC18679384CCE1FCC9 /* SZArchive.mm */; };
+		27AAAB1352382FE609A3B393 /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */; };
+		3526B672AB9F2CEAFD0E549B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 937563A1E648A0013C4DD0C3 /* Assets.xcassets */; };
+		3EB1A6D4145C14DAED1F6FFF /* ArchiveItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B2D1040171A178E5575D88 /* ArchiveItem.swift */; };
+		7071F3144087AF031874146C /* ArchiveWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C6B7F42F0CAB9D0400D4D03 /* ArchiveWindowController.swift */; };
+		92508A846730EC64177768C0 /* CompressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB37EA2DD031212A342F87 /* CompressDialogController.swift */; };
+		93B0DD5084515EEB7FAFA4BF /* PasswordDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 795844E47B4BEC4837998CC8 /* PasswordDialogController.swift */; };
+		982013070593772CA679F1CB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */; };
+		A5271DCFFCF8EC42BDB15D35 /* ArchiveViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EBA01A2EEDB0976AD5EF4B5 /* ArchiveViewController.swift */; };
+		A6D570941AD9603FF45FB5B7 /* FileManagerPaneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */; };
+		A75F0A88DDC9FEB2C258A88D /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */; };
+		AA261563B50B35EE2B312E27 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15AF94624BC55B258E21F044 /* main.swift */; };
+		B2B8116921C374B976FF9283 /* FileManagerWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */; };
+		D132DCBB7A4D4B8CA31EC38A /* CompressionPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B428A25CBE1D7EDD3520A7A /* CompressionPreset.swift */; };
+		D33844E6931D04F9C12964F0 /* ProgressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */; };
+		F5D35697C677E69E61A6D2E7 /* ArchiveDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerPaneController.swift; sourceTree = "<group>"; };
+		15AF94624BC55B258E21F044 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		3C6B7F42F0CAB9D0400D4D03 /* ArchiveWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveWindowController.swift; sourceTree = "<group>"; };
+		43EB37EA2DD031212A342F87 /* CompressDialogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressDialogController.swift; sourceTree = "<group>"; };
+		4B79A5CCE90FE27ABBE045F6 /* ShichiZip-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ShichiZip-Bridging-Header.h"; sourceTree = "<group>"; };
+		5F58255DCB77AF28307EC7CE /* SZArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZArchive.h; sourceTree = "<group>"; };
+		795844E47B4BEC4837998CC8 /* PasswordDialogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordDialogController.swift; sourceTree = "<group>"; };
+		7EBA01A2EEDB0976AD5EF4B5 /* ArchiveViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveViewController.swift; sourceTree = "<group>"; };
+		80B076D6AC7F0BF7BC2633E8 /* ShichiZip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShichiZip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B428A25CBE1D7EDD3520A7A /* CompressionPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionPreset.swift; sourceTree = "<group>"; };
+		8D97DFC28A8EEEC9BBDB51EA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		937563A1E648A0013C4DD0C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveDocument.swift; sourceTree = "<group>"; };
+		C4B2D1040171A178E5575D88 /* ArchiveItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveItem.swift; sourceTree = "<group>"; };
+		E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressDialogController.swift; sourceTree = "<group>"; };
+		EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchmarkWindowController.swift; sourceTree = "<group>"; };
+		ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenu.swift; sourceTree = "<group>"; };
+		EF1063FC95805225AC501608 /* ExtractDialogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtractDialogController.swift; sourceTree = "<group>"; };
+		F199F3D5EFC006C978C935C8 /* FileSystemItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemItem.swift; sourceTree = "<group>"; };
+		F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerWindowController.swift; sourceTree = "<group>"; };
+		FC8109FC18679384CCE1FCC9 /* SZArchive.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZArchive.mm; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		09F35A679CBF4BEA1C61EF07 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				C4B2D1040171A178E5575D88 /* ArchiveItem.swift */,
+				8B428A25CBE1D7EDD3520A7A /* CompressionPreset.swift */,
+				F199F3D5EFC006C978C935C8 /* FileSystemItem.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		29996A5396E070424DB83AD7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				80B076D6AC7F0BF7BC2633E8 /* ShichiZip.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2A6A5FE2CCB2AAFD021D2FD3 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */,
+				15AF94624BC55B258E21F044 /* main.swift */,
+				ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */,
+				4B79A5CCE90FE27ABBE045F6 /* ShichiZip-Bridging-Header.h */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		3BBB6AB2DFC701D3E6F29EE7 = {
+			isa = PBXGroup;
+			children = (
+				A4749486AD77E7E72133C08F /* ShichiZip */,
+				29996A5396E070424DB83AD7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6E2300E200D81659A69C591D /* Bridge */ = {
+			isa = PBXGroup;
+			children = (
+				5F58255DCB77AF28307EC7CE /* SZArchive.h */,
+				FC8109FC18679384CCE1FCC9 /* SZArchive.mm */,
+			);
+			path = Bridge;
+			sourceTree = "<group>";
+		};
+		7C9CA4B47712C8BE30AD8D61 /* Dialogs */ = {
+			isa = PBXGroup;
+			children = (
+				EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */,
+				43EB37EA2DD031212A342F87 /* CompressDialogController.swift */,
+				EF1063FC95805225AC501608 /* ExtractDialogController.swift */,
+				795844E47B4BEC4837998CC8 /* PasswordDialogController.swift */,
+				E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */,
+				B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */,
+			);
+			path = Dialogs;
+			sourceTree = "<group>";
+		};
+		920955887360C9459EC02194 /* Document */ = {
+			isa = PBXGroup;
+			children = (
+				BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */,
+				3C6B7F42F0CAB9D0400D4D03 /* ArchiveWindowController.swift */,
+			);
+			path = Document;
+			sourceTree = "<group>";
+		};
+		A108ADC8FACC74BDCFBDB97B /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				7EBA01A2EEDB0976AD5EF4B5 /* ArchiveViewController.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A1A2A1E6526CA60B2188B83F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				937563A1E648A0013C4DD0C3 /* Assets.xcassets */,
+				8D97DFC28A8EEEC9BBDB51EA /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		A4749486AD77E7E72133C08F /* ShichiZip */ = {
+			isa = PBXGroup;
+			children = (
+				2A6A5FE2CCB2AAFD021D2FD3 /* App */,
+				6E2300E200D81659A69C591D /* Bridge */,
+				7C9CA4B47712C8BE30AD8D61 /* Dialogs */,
+				920955887360C9459EC02194 /* Document */,
+				BD4F4198B37A084A2EC81072 /* FileManager */,
+				09F35A679CBF4BEA1C61EF07 /* Model */,
+				A1A2A1E6526CA60B2188B83F /* Resources */,
+				A108ADC8FACC74BDCFBDB97B /* Views */,
+			);
+			path = ShichiZip;
+			sourceTree = "<group>";
+		};
+		BD4F4198B37A084A2EC81072 /* FileManager */ = {
+			isa = PBXGroup;
+			children = (
+				05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */,
+				F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */,
+			);
+			path = FileManager;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		570C829AB8D2719FD812DD91 /* ShichiZip */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 65F23D46C202050C5D6D216F /* Build configuration list for PBXNativeTarget "ShichiZip" */;
+			buildPhases = (
+				E08F69A692555982A1F072BE /* Sources */,
+				D37E858B5F5A990AB339A0C8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShichiZip;
+			packageProductDependencies = (
+			);
+			productName = ShichiZip;
+			productReference = 80B076D6AC7F0BF7BC2633E8 /* ShichiZip.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2200CF465CA28D3C3640EF76 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 5E3445C822A1D75CAF0A976E /* Build configuration list for PBXProject "ShichiZip" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3BBB6AB2DFC701D3E6F29EE7;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 29996A5396E070424DB83AD7 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				570C829AB8D2719FD812DD91 /* ShichiZip */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D37E858B5F5A990AB339A0C8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3526B672AB9F2CEAFD0E549B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E08F69A692555982A1F072BE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				982013070593772CA679F1CB /* AppDelegate.swift in Sources */,
+				F5D35697C677E69E61A6D2E7 /* ArchiveDocument.swift in Sources */,
+				3EB1A6D4145C14DAED1F6FFF /* ArchiveItem.swift in Sources */,
+				A5271DCFFCF8EC42BDB15D35 /* ArchiveViewController.swift in Sources */,
+				7071F3144087AF031874146C /* ArchiveWindowController.swift in Sources */,
+				1CE5457C544B20D5DF0D42F3 /* BenchmarkWindowController.swift in Sources */,
+				92508A846730EC64177768C0 /* CompressDialogController.swift in Sources */,
+				D132DCBB7A4D4B8CA31EC38A /* CompressionPreset.swift in Sources */,
+				1F4FA2F4EBF56D3C51E1ABA5 /* ExtractDialogController.swift in Sources */,
+				A6D570941AD9603FF45FB5B7 /* FileManagerPaneController.swift in Sources */,
+				B2B8116921C374B976FF9283 /* FileManagerWindowController.swift in Sources */,
+				1506FF719B49C353449C3276 /* FileSystemItem.swift in Sources */,
+				27AAAB1352382FE609A3B393 /* MainMenu.swift in Sources */,
+				93B0DD5084515EEB7FAFA4BF /* PasswordDialogController.swift in Sources */,
+				D33844E6931D04F9C12964F0 /* ProgressDialogController.swift in Sources */,
+				2754EF55454FEC5CEE4E1E33 /* SZArchive.mm in Sources */,
+				A75F0A88DDC9FEB2C258A88D /* SettingsWindowController.swift in Sources */,
+				AA261563B50B35EE2B312E27 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		48DA5C731B9A3586882E1BFA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++11";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/Resources/ShichiZip.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"NDEBUG=1",
+				);
+				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/vendor/7zip",
+					"$(PROJECT_DIR)/vendor/7zip/CPP",
+					"$(PROJECT_DIR)/vendor/7zip/C",
+				);
+				INFOPLIST_FILE = ShichiZip/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/build/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(inherited)",
+					"-Wno-everything",
+				);
+				OTHER_LDFLAGS = (
+					"-l7zip",
+					"-lpthread",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
+				PRODUCT_NAME = ShichiZip;
+				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
+				SWIFT_VERSION = 5.9;
+				VALID_ARCHS = arm64;
+			};
+			name = Debug;
+		};
+		6B048C053376526FCD0EDDDF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		94BE3AE276063E7BE27CFAB1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++11";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/Resources/ShichiZip.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"NDEBUG=1",
+				);
+				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/vendor/7zip",
+					"$(PROJECT_DIR)/vendor/7zip/CPP",
+					"$(PROJECT_DIR)/vendor/7zip/C",
+				);
+				INFOPLIST_FILE = ShichiZip/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/build/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(inherited)",
+					"-Wno-everything",
+				);
+				OTHER_LDFLAGS = (
+					"-l7zip",
+					"-lpthread",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
+				PRODUCT_NAME = ShichiZip;
+				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
+				SWIFT_VERSION = 5.9;
+				VALID_ARCHS = arm64;
+			};
+			name = Release;
+		};
+		A46773867996A4BE0B95EF8C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5E3445C822A1D75CAF0A976E /* Build configuration list for PBXProject "ShichiZip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A46773867996A4BE0B95EF8C /* Debug */,
+				6B048C053376526FCD0EDDDF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		65F23D46C202050C5D6D216F /* Build configuration list for PBXNativeTarget "ShichiZip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				48DA5C731B9A3586882E1BFA /* Debug */,
+				94BE3AE276063E7BE27CFAB1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2200CF465CA28D3C3640EF76 /* Project object */;
+}
