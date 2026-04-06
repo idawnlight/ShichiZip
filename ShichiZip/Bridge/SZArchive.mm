@@ -111,22 +111,6 @@ static NSDate *ItemDate(IInArchive *ar, UInt32 i, PROPID p) {
 }
 
 // ============================================================
-// Open callback
-// ============================================================
-class SZOpenCallback final : public IArchiveOpenCallback, public ICryptoGetTextPassword, public CMyUnknownImp {
-public:
-    UString Password; bool PasswordIsDefined;
-    SZOpenCallback() : PasswordIsDefined(false) {}
-    Z7_COM_UNKNOWN_IMP_2(IArchiveOpenCallback, ICryptoGetTextPassword)
-    STDMETHOD(SetTotal)(const UInt64*, const UInt64*) override { return S_OK; }
-    STDMETHOD(SetCompleted)(const UInt64*, const UInt64*) override { return S_OK; }
-    STDMETHOD(CryptoGetTextPassword)(BSTR *pw) override {
-        if (!PasswordIsDefined) return E_ABORT;
-        return StringToBstr(Password, pw);
-    }
-};
-
-// ============================================================
 // Extract callback
 // ============================================================
 class SZExtractCallback final : public IArchiveExtractCallback, public ICryptoGetTextPassword, public CMyUnknownImp {
@@ -337,12 +321,45 @@ public:
 @implementation SZArchiveEntry @end
 @implementation SZFormatInfo @end
 
-@interface SZArchive () { CMyComPtr<IInArchive> _archive; int _formatIndex; BOOL _isOpen; NSString *_archivePath; }
+// ============================================================
+// IOpenCallbackUI implementation (matches OpenCallbackConsole pattern)
+// ============================================================
+class SZOpenCallbackUI : public IOpenCallbackUI {
+public:
+    UString Password;
+    bool PasswordIsDefined;
+    __unsafe_unretained id<SZProgressDelegate> Delegate;
+
+    SZOpenCallbackUI() : PasswordIsDefined(false), Delegate(nil) {}
+
+    HRESULT Open_CheckBreak() override { return S_OK; }
+    HRESULT Open_SetTotal(const UInt64 *, const UInt64 *) override { return S_OK; }
+    HRESULT Open_SetCompleted(const UInt64 *, const UInt64 *) override { return S_OK; }
+    HRESULT Open_Finished() override { return S_OK; }
+#ifndef Z7_NO_CRYPTO
+    HRESULT Open_CryptoGetTextPassword(BSTR *password) override {
+        if (!PasswordIsDefined) return E_ABORT;
+        return StringToBstr(Password, password);
+    }
+#endif
+};
+
+@interface SZArchive () {
+    CArchiveLink *_arcLink;  // Use official CArchiveLink instead of raw IInArchive
+    BOOL _isOpen;
+    NSString *_archivePath;
+}
 @end
 
 @implementation SZArchive
-- (instancetype)init { if ((self = [super init])) { _formatIndex = -1; _isOpen = NO; } return self; }
-- (void)dealloc { [self close]; }
+- (instancetype)init {
+    if ((self = [super init])) {
+        _arcLink = new CArchiveLink;
+        _isOpen = NO;
+    }
+    return self;
+}
+- (void)dealloc { [self close]; delete _arcLink; _arcLink = nullptr; }
 
 - (BOOL)openAtPath:(NSString *)path error:(NSError **)error {
     return [self openAtPath:path password:nil error:error];
@@ -353,153 +370,125 @@ public:
     if (!codecs) { if (error) *error = SZMakeError(-1, @"Failed to init codecs"); return NO; }
     _archivePath = [path copy];
 
-    CInFileStream *fss = new CInFileStream;
-    CMyComPtr<IInStream> fs(fss);
-    if (!fss->Open(us2fs(ToU(path)))) { if (error) *error = SZMakeError(-2, @"Cannot open file"); return NO; }
+    // Use CArchiveLink::Open3() — the same code path as real 7-Zip
+    CObjectVector<COpenType> types;  // empty = auto-detect all formats
+    CIntVector excludedFormats;      // empty = don't exclude any
+    CObjectVector<CProperty> props;  // empty = no special properties
 
-    SZOpenCallback *ocs = new SZOpenCallback;
-    CMyComPtr<IArchiveOpenCallback> oc(ocs);
-    if (password) { ocs->PasswordIsDefined = true; ocs->Password = ToU(password); }
+    COpenOptions options;
+    options.codecs = codecs;
+    options.types = &types;
+    options.excludedFormats = &excludedFormats;
+    options.props = &props;
+    options.stdInMode = false;
+    options.stream = NULL;  // CArchiveLink will create its own stream from filePath
+    options.filePath = ToU(path);
 
-    // Read file header for signature-based format detection (like real 7-Zip)
-    Byte header[16];
-    memset(header, 0, sizeof(header));
-    UInt32 headerSize = 0;
-    fs->Read(header, sizeof(header), &headerSize);
-    fs->Seek(0, STREAM_SEEK_SET, nullptr);
-
-    // Get file extension
-    NSString *ext = [[path pathExtension] lowercaseString];
-    UString uExt = ToU(ext);
-
-    // Build format candidate list in priority order:
-    // 1. Extension match + signature match (highest priority)
-    // 2. Signature match only
-    // 3. Extension match only
-    // 4. Everything else
-    std::vector<unsigned> tier1, tier2, tier3, tier4;
-
-    for (unsigned i = 0; i < codecs->Formats.Size(); i++) {
-        const CArcInfoEx &ai = codecs->Formats[i];
-
-        // Check extension match
-        bool extMatch = false;
-        for (unsigned j = 0; j < ai.Exts.Size(); j++) {
-            if (ai.Exts[j].Ext.IsEqualTo_NoCase(uExt)) { extMatch = true; break; }
-        }
-
-        // Check signature match against file header bytes
-        bool sigMatch = false;
-        if (ai.Signatures.Size() > 0) {
-            for (unsigned s = 0; s < ai.Signatures.Size(); s++) {
-                const CByteBuffer &sig = ai.Signatures[s];
-                unsigned offset = ai.SignatureOffset;
-                if (sig.Size() > 0 && sig.Size() + offset <= headerSize) {
-                    if (memcmp(header + offset, sig, sig.Size()) == 0) {
-                        sigMatch = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (extMatch && sigMatch)       tier1.push_back(i);
-        else if (sigMatch)              tier2.push_back(i);
-        else if (extMatch)              tier3.push_back(i);
-        else                            tier4.push_back(i);
+    SZOpenCallbackUI callbackUI;
+    if (password) {
+        callbackUI.PasswordIsDefined = true;
+        callbackUI.Password = ToU(password);
     }
 
-    // Try in priority order
-    std::vector<unsigned> formatOrder;
-    formatOrder.insert(formatOrder.end(), tier1.begin(), tier1.end());
-    formatOrder.insert(formatOrder.end(), tier2.begin(), tier2.end());
-    formatOrder.insert(formatOrder.end(), tier3.begin(), tier3.end());
-    formatOrder.insert(formatOrder.end(), tier4.begin(), tier4.end());
+    HRESULT res = _arcLink->Open3(options, &callbackUI);
 
-    for (unsigned idx = 0; idx < formatOrder.size(); idx++) {
-        unsigned i = formatOrder[idx];
-        CMyComPtr<IInArchive> ar;
-        if (codecs->CreateInArchive(i, ar) != S_OK || !ar) continue;
-        const UInt64 scan = 1 << 23;
-        if (ar->Open(fs, &scan, oc) == S_OK) {
-            _archive = ar; _formatIndex = i; _isOpen = YES; return YES;
-        }
-        ar->Close(); fs->Seek(0, STREAM_SEEK_SET, nullptr);
+    if (res != S_OK) {
+        NSString *desc;
+        if (res == S_FALSE) desc = @"Cannot open archive or unsupported format";
+        else if (res == E_ABORT) desc = @"Operation was cancelled";
+        else desc = [NSString stringWithFormat:@"Failed to open archive (0x%08X)", (unsigned)res];
+        if (error) *error = SZMakeError(res, desc);
+        return NO;
     }
 
-    if (error) *error = SZMakeError(-3, @"Cannot open archive or unsupported format");
-    return NO;
+    _isOpen = YES;
+    return YES;
 }
 
-- (void)close { if (_archive) { _archive->Close(); _archive.Release(); } _isOpen = NO; _formatIndex = -1; }
+- (void)close {
+    if (_isOpen) {
+        _arcLink->Close();
+    }
+    _isOpen = NO;
+}
 
 - (NSString *)formatName {
-    if (!_isOpen || _formatIndex < 0) return nil;
-    CCodecs *c = GetCodecs(); return c ? ToNS(c->Formats[_formatIndex].Name) : nil;
+    if (!_isOpen) return nil;
+    const CArc &arc = _arcLink->Arcs.Back();
+    CCodecs *c = GetCodecs();
+    if (!c || arc.FormatIndex < 0) return nil;
+    return ToNS(c->Formats[arc.FormatIndex].Name);
 }
 
 - (NSUInteger)entryCount {
-    if (!_isOpen || !_archive) return 0;
-    UInt32 n = 0; _archive->GetNumberOfItems(&n); return n;
+    if (!_isOpen) return 0;
+    IInArchive *archive = _arcLink->GetArchive();
+    if (!archive) return 0;
+    UInt32 n = 0; archive->GetNumberOfItems(&n); return n;
 }
 
 - (NSArray<SZArchiveEntry *> *)entries {
-    if (!_isOpen || !_archive) return @[];
-    UInt32 n = 0; _archive->GetNumberOfItems(&n);
+    if (!_isOpen) return @[];
+    IInArchive *archive = _arcLink->GetArchive();
+    if (!archive) return @[];
+    UInt32 n = 0; archive->GetNumberOfItems(&n);
     NSMutableArray *arr = [NSMutableArray arrayWithCapacity:n];
     for (UInt32 i = 0; i < n; i++) {
         SZArchiveEntry *e = [SZArchiveEntry new];
         e.index = i;
-        e.path = ItemStr(_archive, i, kpidPath) ?: @"";
-        e.size = ItemU64(_archive, i, kpidSize);
-        e.packedSize = ItemU64(_archive, i, kpidPackSize);
-        e.crc = (uint32_t)ItemU64(_archive, i, kpidCRC);
-        e.isDirectory = ItemBool(_archive, i, kpidIsDir);
-        e.isEncrypted = ItemBool(_archive, i, kpidEncrypted);
-        e.method = ItemStr(_archive, i, kpidMethod);
-        e.attributes = (uint32_t)ItemU64(_archive, i, kpidAttrib);
-        e.modifiedDate = ItemDate(_archive, i, kpidMTime);
-        e.createdDate = ItemDate(_archive, i, kpidCTime);
-        e.comment = ItemStr(_archive, i, kpidComment);
+        e.path = ItemStr(archive, i, kpidPath) ?: @"";
+        e.size = ItemU64(archive, i, kpidSize);
+        e.packedSize = ItemU64(archive, i, kpidPackSize);
+        e.crc = (uint32_t)ItemU64(archive, i, kpidCRC);
+        e.isDirectory = ItemBool(archive, i, kpidIsDir);
+        e.isEncrypted = ItemBool(archive, i, kpidEncrypted);
+        e.method = ItemStr(archive, i, kpidMethod);
+        e.attributes = (uint32_t)ItemU64(archive, i, kpidAttrib);
+        e.modifiedDate = ItemDate(archive, i, kpidMTime);
+        e.createdDate = ItemDate(archive, i, kpidCTime);
+        e.comment = ItemStr(archive, i, kpidComment);
         [arr addObject:e];
     }
     return arr;
 }
 
 - (BOOL)extractToPath:(NSString *)dest settings:(SZExtractionSettings *)s progress:(id<SZProgressDelegate>)p error:(NSError **)error {
-    if (!_isOpen || !_archive) { if (error) *error = SZMakeError(-4, @"No archive open"); return NO; }
+    if (!_isOpen) { if (error) *error = SZMakeError(-4, @"No archive open"); return NO; }
+    IInArchive *archive = _arcLink->GetArchive();
     NWindows::NFile::NDir::CreateComplexDir(us2fs(ToU(dest)));
     SZExtractCallback *cb = new SZExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(cb);
-    cb->Archive = _archive; cb->DestPath = ToU(dest); cb->Delegate = p;
+    cb->Archive = archive; cb->DestPath = ToU(dest); cb->Delegate = p;
     cb->OverwriteMode = s.overwriteMode;
     if (s.password) { cb->PasswordIsDefined = true; cb->Password = ToU(s.password); }
-    HRESULT r = _archive->Extract(nullptr, (UInt32)(Int32)-1, 0, ec);
+    HRESULT r = archive->Extract(nullptr, (UInt32)(Int32)-1, 0, ec);
     if (r != S_OK) { if (error) *error = SZMakeError(r == E_ABORT ? -5 : -6, r == E_ABORT ? @"Cancelled" : @"Failed"); return NO; }
     return YES;
 }
 
 - (BOOL)extractEntries:(NSArray<NSNumber *> *)indices toPath:(NSString *)dest settings:(SZExtractionSettings *)s progress:(id<SZProgressDelegate>)p error:(NSError **)error {
-    if (!_isOpen || !_archive) { if (error) *error = SZMakeError(-4, @"No archive open"); return NO; }
+    if (!_isOpen) { if (error) *error = SZMakeError(-4, @"No archive open"); return NO; }
+    IInArchive *archive = _arcLink->GetArchive();
     NWindows::NFile::NDir::CreateComplexDir(us2fs(ToU(dest)));
     SZExtractCallback *cb = new SZExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(cb);
-    cb->Archive = _archive; cb->DestPath = ToU(dest); cb->Delegate = p;
+    cb->Archive = archive; cb->DestPath = ToU(dest); cb->Delegate = p;
     cb->OverwriteMode = s.overwriteMode;
     if (s.password) { cb->PasswordIsDefined = true; cb->Password = ToU(s.password); }
     std::vector<UInt32> ia; ia.reserve(indices.count);
     for (NSNumber *n in indices) ia.push_back([n unsignedIntValue]);
-    HRESULT r = _archive->Extract(ia.data(), (UInt32)ia.size(), 0, ec);
+    HRESULT r = archive->Extract(ia.data(), (UInt32)ia.size(), 0, ec);
     if (r != S_OK) { if (error) *error = SZMakeError(r == E_ABORT ? -5 : -6, r == E_ABORT ? @"Cancelled" : @"Failed"); return NO; }
     return YES;
 }
 
 - (BOOL)testWithProgress:(id<SZProgressDelegate>)p error:(NSError **)error {
-    if (!_isOpen || !_archive) { if (error) *error = SZMakeError(-4, @"No archive open"); return NO; }
+    if (!_isOpen) { if (error) *error = SZMakeError(-4, @"No archive open"); return NO; }
+    IInArchive *archive = _arcLink->GetArchive();
     SZExtractCallback *cb = new SZExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(cb);
-    cb->Archive = _archive; cb->Delegate = p; cb->TestMode = true;
-    HRESULT r = _archive->Extract(nullptr, (UInt32)(Int32)-1, 1, ec);
+    cb->Archive = archive; cb->Delegate = p; cb->TestMode = true;
+    HRESULT r = archive->Extract(nullptr, (UInt32)(Int32)-1, 1, ec);
     if (r != S_OK) { if (error) *error = SZMakeError(-7, @"Archive test failed"); return NO; }
     return YES;
 }
