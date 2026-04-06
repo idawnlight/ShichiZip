@@ -118,6 +118,48 @@ static NSDate *ItemDate(IInArchive *ar, UInt32 i, PROPID p) {
 }
 
 // ============================================================
+// Password prompt helper — shows dialog, blocks until answered
+// Safe to call from any thread (avoids deadlock if already on main)
+// ============================================================
+static HRESULT PromptForPassword(UString &outPassword, bool &wasDefined, NSString *context = nil) {
+    __block NSString *result = nil;
+
+    void (^showDialog)(void) = ^{
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.messageText = @"Password Required";
+        alert.informativeText = context
+            ? [NSString stringWithFormat:@"Enter password for \"%@\":", context]
+            : @"This archive is encrypted. Enter password:";
+        alert.alertStyle = NSAlertStyleInformational;
+        [alert addButtonWithTitle:@"OK"];
+        [alert addButtonWithTitle:@"Cancel"];
+
+        NSSecureTextField *input = [[NSSecureTextField alloc] initWithFrame:NSMakeRect(0, 0, 260, 24)];
+        input.placeholderString = @"Password";
+        alert.accessoryView = input;
+        [alert.window setInitialFirstResponder:input];
+
+        NSModalResponse resp = [alert runModal];
+        if (resp == NSAlertFirstButtonReturn) {
+            result = input.stringValue;
+        }
+    };
+
+    if ([NSThread isMainThread]) {
+        showDialog();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), showDialog);
+    }
+
+    if (result && result.length > 0) {
+        outPassword = ToU(result);
+        wasDefined = true;
+        return S_OK;
+    }
+    return E_ABORT;
+}
+
+// ============================================================
 // IFolderArchiveExtractCallback — our UI callback, used by CArchiveExtractCallback
 // This matches the pattern from ExtractCallbackConsole.cpp
 // ============================================================
@@ -135,7 +177,12 @@ public:
     __unsafe_unretained id<SZProgressDelegate> Delegate;
 
     SZFolderExtractCallback() : PasswordIsDefined(false), TotalSize(0),
-        OverwriteMode(SZOverwriteModeAsk), Delegate(nil) {}
+        OverwriteMode(SZOverwriteModeAsk), Delegate(nil),
+        NumErrors(0), PasswordWasWrong(false) {}
+
+    // Error tracking
+    UInt32 NumErrors;
+    bool PasswordWasWrong;
 
     Z7_COM_UNKNOWN_IMP_3(IFolderArchiveExtractCallback, IFolderArchiveExtractCallback2, ICryptoGetTextPassword)
 
@@ -236,10 +283,28 @@ public:
     }
 
     STDMETHOD(MessageError)(const wchar_t *message) override {
+        NumErrors++;
+        if (message) {
+            NSString *msg = ToNS(UString(message));
+            dispatch_async(dispatch_get_main_queue(), ^{
+                NSLog(@"[ShichiZip] Extract error: %@", msg);
+            });
+        }
         return S_OK;
     }
 
     STDMETHOD(SetOperationResult)(Int32 opRes, Int32 encrypted) override {
+        if (opRes != NArchive::NExtract::NOperationResult::kOK) {
+            NumErrors++;
+            if (opRes == NArchive::NExtract::NOperationResult::kWrongPassword ||
+                (encrypted && opRes == NArchive::NExtract::NOperationResult::kCRCError) ||
+                (encrypted && opRes == NArchive::NExtract::NOperationResult::kDataError)) {
+                PasswordWasWrong = true;
+                // Clear cached password so next attempt will prompt again
+                PasswordIsDefined = false;
+                Password.Empty();
+            }
+        }
         return S_OK;
     }
 
@@ -248,15 +313,19 @@ public:
         return S_OK;
     }
 
-    // ICryptoGetTextPassword
+    // ICryptoGetTextPassword (called during extraction when encrypted data is encountered)
     STDMETHOD(CryptoGetTextPassword)(BSTR *pw) override {
-        if (!PasswordIsDefined) return E_ABORT;
+        if (!PasswordIsDefined) {
+            // No password provided — prompt user
+            HRESULT hr = PromptForPassword(Password, PasswordIsDefined);
+            if (hr != S_OK) return hr;
+        }
         return StringToBstr(Password, pw);
     }
 };
 
 // ============================================================
-// IUpdateCallbackUI2 — our UI callback for archive creation
+// IUpdateCallbackUI2 - our UI callback for archive creation
 // Matches pattern from UpdateCallbackConsole.cpp
 // ============================================================
 class SZUpdateCallbackUI :
@@ -378,7 +447,11 @@ public:
     HRESULT Open_Finished() override { return S_OK; }
 #ifndef Z7_NO_CRYPTO
     HRESULT Open_CryptoGetTextPassword(BSTR *password) override {
-        if (!PasswordIsDefined) return E_ABORT;
+        if (!PasswordIsDefined) {
+            // No password provided — prompt user
+            HRESULT hr = PromptForPassword(Password, PasswordIsDefined);
+            if (hr != S_OK) return hr;
+        }
         return StringToBstr(Password, password);
     }
 #endif
@@ -538,6 +611,14 @@ public:
         arc.GetEstmatedPhySize());
 
     HRESULT r = archive->Extract(nullptr, (UInt32)(Int32)-1, 0, ec);
+    if (r == S_OK && faeSpec->PasswordWasWrong) {
+        if (error) *error = SZMakeError(-12, @"Wrong password");
+        return NO;
+    }
+    if (r == S_OK && faeSpec->NumErrors > 0) {
+        if (error) *error = SZMakeError(-13, [NSString stringWithFormat:@"Extraction completed with %u error(s)", faeSpec->NumErrors]);
+        return NO;
+    }
     if (r != S_OK) { if (error) *error = SZMakeError(r == E_ABORT ? -5 : -6, r == E_ABORT ? @"Cancelled" : @"Extraction failed"); return NO; }
     return YES;
 }
@@ -583,6 +664,14 @@ public:
     std::vector<UInt32> ia; ia.reserve(indices.count);
     for (NSNumber *n in indices) ia.push_back([n unsignedIntValue]);
     HRESULT r = archive->Extract(ia.data(), (UInt32)ia.size(), 0, ec);
+    if (r == S_OK && faeSpec->PasswordWasWrong) {
+        if (error) *error = SZMakeError(-12, @"Wrong password");
+        return NO;
+    }
+    if (r == S_OK && faeSpec->NumErrors > 0) {
+        if (error) *error = SZMakeError(-13, [NSString stringWithFormat:@"Extraction completed with %u error(s)", faeSpec->NumErrors]);
+        return NO;
+    }
     if (r != S_OK) { if (error) *error = SZMakeError(r == E_ABORT ? -5 : -6, r == E_ABORT ? @"Cancelled" : @"Extraction failed"); return NO; }
     return YES;
 }
@@ -610,6 +699,14 @@ public:
         arc.GetEstmatedPhySize());
 
     HRESULT r = archive->Extract(nullptr, (UInt32)(Int32)-1, 1 /* test */, ec);
+    if (r == S_OK && faeSpec->PasswordWasWrong) {
+        if (error) *error = SZMakeError(-12, @"Wrong password");
+        return NO;
+    }
+    if (r == S_OK && faeSpec->NumErrors > 0) {
+        if (error) *error = SZMakeError(-13, [NSString stringWithFormat:@"Test completed with %u error(s)", faeSpec->NumErrors]);
+        return NO;
+    }
     if (r != S_OK) { if (error) *error = SZMakeError(-7, @"Archive test failed"); return NO; }
     return YES;
 }
