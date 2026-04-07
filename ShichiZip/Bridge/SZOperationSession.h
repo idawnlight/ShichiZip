@@ -20,6 +20,18 @@ typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationPromptStyle styl
                                                      NSString * _Nullable message,
                                                      NSArray<NSString *> *buttonTitles);
 
+@interface SZOperationSnapshot : NSObject
+
+@property (nonatomic, readonly) double progressFraction;
+@property (nonatomic, copy, readonly) NSString *currentFileName;
+@property (nonatomic, readonly) uint64_t bytesCompleted;
+@property (nonatomic, readonly) uint64_t bytesTotal;
+@property (nonatomic, readonly) BOOL hasReportedProgress;
+@property (nonatomic, readonly, getter=isWaitingForUserInteraction) BOOL waitingForUserInteraction;
+@property (nonatomic, readonly, getter=isCancellationRequested) BOOL cancellationRequested;
+
+@end
+
 @interface SZOperationSession : NSObject
 
 @property (nonatomic, weak, nullable) id<SZProgressDelegate> progressDelegate;
@@ -30,6 +42,7 @@ typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationPromptStyle styl
 @property (nonatomic, copy, readonly) NSString *currentFileName;
 @property (nonatomic, readonly) uint64_t bytesCompleted;
 @property (nonatomic, readonly) uint64_t bytesTotal;
+@property (nonatomic, readonly) BOOL hasReportedProgress;
 @property (nonatomic, readonly, getter=isWaitingForUserInteraction) BOOL waitingForUserInteraction;
 @property (nonatomic, readonly, getter=isCancellationRequested) BOOL cancellationRequested;
 
@@ -39,6 +52,7 @@ typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationPromptStyle styl
 - (BOOL)shouldCancel;
 - (void)requestCancel;
 - (void)prepareForUserInteraction;
+- (SZOperationSnapshot *)snapshot;
 - (BOOL)requestPasswordWithTitle:(NSString *)title
                          message:(nullable NSString *)message
                     initialValue:(nullable NSString *)initialValue

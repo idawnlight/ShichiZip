@@ -14,6 +14,7 @@
 		2754EF55454FEC5CEE4E1E33 /* SZArchive.mm in Sources */ = {isa = PBXBuildFile; fileRef = FC8109FC18679384CCE1FCC9 /* SZArchive.mm */; };
 		27AAAB1352382FE609A3B393 /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */; };
 		3526B672AB9F2CEAFD0E549B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 937563A1E648A0013C4DD0C3 /* Assets.xcassets */; };
+		3E7F80189CAE71DB25200838 /* ArchiveOpenCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5DE17E3065AF193C44FB463 /* ArchiveOpenCoordinator.swift */; };
 		3EB1A6D4145C14DAED1F6FFF /* ArchiveItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B2D1040171A178E5575D88 /* ArchiveItem.swift */; };
 		638B19CD6D0F3AD721A43B9A /* SZBridgeCommon.mm in Sources */ = {isa = PBXBuildFile; fileRef = 103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */; };
 		77648FA14E470C55E65CAD70 /* SZCallbacks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 079C800E6F9E105461CEDF6F /* SZCallbacks.mm */; };
@@ -58,6 +59,7 @@
 		B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveDocument.swift; sourceTree = "<group>"; };
 		C4B2D1040171A178E5575D88 /* ArchiveItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveItem.swift; sourceTree = "<group>"; };
+		D5DE17E3065AF193C44FB463 /* ArchiveOpenCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveOpenCoordinator.swift; sourceTree = "<group>"; };
 		E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressDialogController.swift; sourceTree = "<group>"; };
 		EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchmarkWindowController.swift; sourceTree = "<group>"; };
 		ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenu.swift; sourceTree = "<group>"; };
@@ -180,6 +182,7 @@
 		BD4F4198B37A084A2EC81072 /* FileManager */ = {
 			isa = PBXGroup;
 			children = (
+				D5DE17E3065AF193C44FB463 /* ArchiveOpenCoordinator.swift */,
 				05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */,
 				F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */,
 			);
@@ -256,6 +259,7 @@
 				982013070593772CA679F1CB /* AppDelegate.swift in Sources */,
 				F5D35697C677E69E61A6D2E7 /* ArchiveDocument.swift in Sources */,
 				3EB1A6D4145C14DAED1F6FFF /* ArchiveItem.swift in Sources */,
+				3E7F80189CAE71DB25200838 /* ArchiveOpenCoordinator.swift in Sources */,
 				1CE5457C544B20D5DF0D42F3 /* BenchmarkWindowController.swift in Sources */,
 				92508A846730EC64177768C0 /* CompressDialogController.swift in Sources */,
 				D132DCBB7A4D4B8CA31EC38A /* CompressionPreset.swift in Sources */,

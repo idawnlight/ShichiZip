@@ -3,6 +3,7 @@
 @class SZArchiveEntry;
 @class SZBenchDisplayRow;
 @class SZBenchSnapshot;
+@class SZOperationSession;
 @protocol SZProgressDelegate;
 @protocol SZPasswordDelegate;
 
@@ -154,6 +155,11 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
              progress:(nullable id<SZProgressDelegate>)progress
                  error:(NSError **)error;
 
+/// Open an existing archive for reading with an explicit operation session
+- (BOOL)openAtPath:(NSString *)path
+                     session:(nullable SZOperationSession *)session
+                         error:(NSError **)error;
+
 /// Open with password
 - (BOOL)openAtPath:(NSString *)path
           password:(nullable NSString *)password
@@ -164,6 +170,12 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
              password:(nullable NSString *)password
              progress:(nullable id<SZProgressDelegate>)progress
                  error:(NSError **)error;
+
+/// Open with password and an explicit operation session
+- (BOOL)openAtPath:(NSString *)path
+                    password:(nullable NSString *)password
+                     session:(nullable SZOperationSession *)session
+                         error:(NSError **)error;
 
 /// Close the archive
 - (void)close;

@@ -1169,33 +1169,26 @@ extension FileManagerPaneController {
         let paneHostDirectory = hostDirectory ?? archiveHostDirectory()
         let resolvedDisplayPathPrefix = displayPathPrefix ?? url.path
 
-        let progressController = ProgressDialogController()
-        progressController.operationTitle = "Opening archive..."
-        progressController.beginWaitingMode(fileName: resolvedDisplayPathPrefix)
+        let coordinator = ArchiveOpenCoordinator(displayPath: resolvedDisplayPathPrefix)
+        coordinator.start()
         var preparedResult: PreparedArchiveOpenResult?
-        let showDeadline = Date().addingTimeInterval(ProgressDialogController.deferredPresentationDelay)
-        var progressWasShown = false
 
         DispatchQueue.global(qos: .userInitiated).async {
             let result = self.prepareArchiveOpen(url,
                                                  hostDirectory: paneHostDirectory,
                                                  temporaryDirectory: temporaryDirectory,
                                                  displayPathPrefix: resolvedDisplayPathPrefix,
-                                                 progress: progressController)
+                                                 session: coordinator.session)
             DispatchQueue.main.async {
                 preparedResult = result
             }
         }
 
         while preparedResult == nil {
-            if !progressWasShown && Date() >= showDeadline {
-                progressController.showNowIfNeeded()
-                progressWasShown = true
-            }
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
         }
 
-        progressController.hideIfVisible()
+        coordinator.finish()
 
         guard let preparedResult else {
             let error = paneOperationError("The archive open operation did not finish correctly.")
@@ -1216,10 +1209,10 @@ extension FileManagerPaneController {
                                     hostDirectory: URL,
                                     temporaryDirectory: URL?,
                                     displayPathPrefix: String,
-                                    progress: SZProgressDelegate?) -> PreparedArchiveOpenResult {
+                                    session: SZOperationSession) -> PreparedArchiveOpenResult {
         let archive = SZArchive()
         do {
-            try archive.open(atPath: url.path, progress: progress)
+            try archive.open(atPath: url.path, session: session)
         } catch {
             if szIsUnsupportedArchive(error) {
                 return .unsupportedArchive(error)

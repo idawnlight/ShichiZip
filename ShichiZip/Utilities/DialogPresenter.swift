@@ -44,6 +44,18 @@ func szRunChoiceDialog(title: String,
                                  buttonTitles: buttons)
 }
 
+func szPromptForPasswordSync(title: String,
+                             message: String? = nil,
+                             initialValue: String? = nil) -> String? {
+    var password: NSString?
+    let confirmed = SZDialogPresenter.promptForPassword(withTitle: title,
+                                                        message: message,
+                                                        initialValue: initialValue,
+                                                        password: &password)
+    guard confirmed else { return nil }
+    return password as String?
+}
+
 func szBeginConfirmation(on window: NSWindow,
                          title: String,
                          message: String,

@@ -23,8 +23,80 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     NSString *_currentFileName;
     uint64_t _bytesCompleted;
     uint64_t _bytesTotal;
+    BOOL _hasReportedProgress;
     BOOL _waitingForUserInteraction;
     BOOL _cancellationRequested;
+}
+
+@end
+
+@interface SZOperationSnapshot ()
+
+- (instancetype)initWithProgressFraction:(double)progressFraction
+                         currentFileName:(NSString *)currentFileName
+                          bytesCompleted:(uint64_t)bytesCompleted
+                               bytesTotal:(uint64_t)bytesTotal
+                        hasReportedProgress:(BOOL)hasReportedProgress
+                    waitingForUserInteraction:(BOOL)waitingForUserInteraction
+                      cancellationRequested:(BOOL)cancellationRequested;
+
+@end
+
+@implementation SZOperationSnapshot {
+    double _progressFraction;
+    NSString *_currentFileName;
+    uint64_t _bytesCompleted;
+    uint64_t _bytesTotal;
+    BOOL _hasReportedProgress;
+    BOOL _waitingForUserInteraction;
+    BOOL _cancellationRequested;
+}
+
+- (instancetype)initWithProgressFraction:(double)progressFraction
+                         currentFileName:(NSString *)currentFileName
+                          bytesCompleted:(uint64_t)bytesCompleted
+                               bytesTotal:(uint64_t)bytesTotal
+                        hasReportedProgress:(BOOL)hasReportedProgress
+                    waitingForUserInteraction:(BOOL)waitingForUserInteraction
+                      cancellationRequested:(BOOL)cancellationRequested {
+    if ((self = [super init])) {
+        _progressFraction = progressFraction;
+        _currentFileName = [currentFileName copy] ?: @"";
+        _bytesCompleted = bytesCompleted;
+        _bytesTotal = bytesTotal;
+        _hasReportedProgress = hasReportedProgress;
+        _waitingForUserInteraction = waitingForUserInteraction;
+        _cancellationRequested = cancellationRequested;
+    }
+    return self;
+}
+
+- (double)progressFraction {
+    return _progressFraction;
+}
+
+- (NSString *)currentFileName {
+    return [_currentFileName copy];
+}
+
+- (uint64_t)bytesCompleted {
+    return _bytesCompleted;
+}
+
+- (uint64_t)bytesTotal {
+    return _bytesTotal;
+}
+
+- (BOOL)hasReportedProgress {
+    return _hasReportedProgress;
+}
+
+- (BOOL)isWaitingForUserInteraction {
+    return _waitingForUserInteraction;
+}
+
+- (BOOL)isCancellationRequested {
+    return _cancellationRequested;
 }
 
 @end
@@ -62,6 +134,12 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     }
 }
 
+- (BOOL)hasReportedProgress {
+    @synchronized (self) {
+        return _hasReportedProgress;
+    }
+}
+
 - (BOOL)isWaitingForUserInteraction {
     @synchronized (self) {
         return _waitingForUserInteraction;
@@ -78,6 +156,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     const double clamped = MIN(MAX(fraction, 0.0), 1.0);
     @synchronized (self) {
         _progressFraction = clamped;
+        _hasReportedProgress = YES;
     }
 
     id<SZProgressDelegate> delegate = self.progressDelegate;
@@ -158,6 +237,18 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     SZDispatchSyncOnMain(^{
         [delegate progressPrepareForUserInteraction];
     });
+}
+
+- (SZOperationSnapshot *)snapshot {
+    @synchronized (self) {
+        return [[SZOperationSnapshot alloc] initWithProgressFraction:_progressFraction
+                                                     currentFileName:_currentFileName
+                                                      bytesCompleted:_bytesCompleted
+                                                           bytesTotal:_bytesTotal
+                                                    hasReportedProgress:_hasReportedProgress
+                                                waitingForUserInteraction:_waitingForUserInteraction
+                                                  cancellationRequested:_cancellationRequested];
+    }
 }
 
 - (BOOL)requestPasswordWithTitle:(NSString *)title

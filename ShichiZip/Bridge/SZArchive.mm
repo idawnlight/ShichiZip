@@ -139,18 +139,26 @@
 // MARK: - Open / Close
 
 - (BOOL)openAtPath:(NSString *)path error:(NSError **)error {
-    return [self openAtPath:path password:nil progress:nil error:error];
+    return [self openAtPath:path password:nil session:nil error:error];
 }
 
 - (BOOL)openAtPath:(NSString *)path progress:(id<SZProgressDelegate>)progress error:(NSError **)error {
     return [self openAtPath:path password:nil progress:progress error:error];
 }
 
+- (BOOL)openAtPath:(NSString *)path session:(SZOperationSession *)session error:(NSError **)error {
+    return [self openAtPath:path password:nil session:session error:error];
+}
+
 - (BOOL)openAtPath:(NSString *)path password:(NSString *)password error:(NSError **)error {
-    return [self openAtPath:path password:password progress:nil error:error];
+    return [self openAtPath:path password:password session:nil error:error];
 }
 
 - (BOOL)openAtPath:(NSString *)path password:(NSString *)password progress:(id<SZProgressDelegate>)progress error:(NSError **)error {
+    return [self openAtPath:path password:password session:SZCreateDefaultOperationSession(progress) error:error];
+}
+
+- (BOOL)openAtPath:(NSString *)path password:(NSString *)password session:(SZOperationSession *)session error:(NSError **)error {
     CCodecs *codecs = SZGetCodecs();
     if (!codecs) { if (error) *error = SZMakeError(SZArchiveErrorCodeFailedToInitCodecs, @"Failed to init codecs"); return NO; }
     [self close];
@@ -170,9 +178,9 @@
     options.stream = NULL;
     options.filePath = ToU(path);
 
-    SZOperationSession *session = SZCreateDefaultOperationSession(progress);
+    SZOperationSession *resolvedSession = session ?: SZCreateDefaultOperationSession(nil);
     SZOpenCallbackUI callbackUI;
-    callbackUI.Session = session;
+    callbackUI.Session = resolvedSession;
     if (password) {
         callbackUI.PasswordIsDefined = true;
         callbackUI.Password = ToU(password);
