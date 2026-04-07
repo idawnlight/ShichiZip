@@ -312,12 +312,8 @@ class CompressDialogController: NSViewController {
 
     private func performCompression(settings: SZCompressionSettings, archivePath: String,
                                     sources: [String], windowController: NSWindowController?) {
-        let progressController = ProgressDialogController()
-        progressController.operationTitle = "Compressing..."
-
-        let progressWindow = progressController.window!
-        progressWindow.center()
-        progressWindow.makeKeyAndOrderFront(nil)
+        let coordinator = ArchiveOperationCoordinator(operationTitle: "Compressing...")
+        coordinator.start()
 
         DispatchQueue.global(qos: .userInitiated).async {
             do {
@@ -325,17 +321,17 @@ class CompressDialogController: NSViewController {
                     atPath: archivePath,
                     fromPaths: sources,
                     settings: settings,
-                    progress: progressController
+                    session: coordinator.session
                 )
 
                 DispatchQueue.main.async {
-                    progressWindow.close()
+                    coordinator.finish()
                     windowController?.close()
                     NSWorkspace.shared.selectFile(archivePath, inFileViewerRootedAtPath: "")
                 }
             } catch {
                 DispatchQueue.main.async {
-                    progressWindow.close()
+                    coordinator.finish()
                     windowController?.close()
                     szPresentError(error, for: nil)
                 }

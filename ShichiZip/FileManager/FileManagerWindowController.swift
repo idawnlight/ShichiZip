@@ -169,11 +169,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             self?.window?.endSheet(dialogWindow)
             guard let settings = settings, let archivePath = archivePath else { return }
 
-            let progressController = ProgressDialogController()
-            progressController.operationTitle = "Compressing..."
-
-            let progressWindow = progressController.window!
-            self?.window?.beginSheet(progressWindow) { _ in }
+            guard let self, let parentWindow = self.window else { return }
+            let coordinator = ArchiveOperationCoordinator(operationTitle: "Compressing...",
+                                                         parentWindow: parentWindow)
+            coordinator.start()
 
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
@@ -181,16 +180,16 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                         atPath: archivePath,
                         fromPaths: selectedPaths,
                         settings: settings,
-                        progress: progressController
+                        session: coordinator.session
                     )
                     DispatchQueue.main.async {
-                        self?.window?.endSheet(progressWindow)
+                        coordinator.finish()
                         activePane.refresh()
                     }
                 } catch {
                     DispatchQueue.main.async {
-                        self?.window?.endSheet(progressWindow)
-                        self?.showErrorAlert(error)
+                        coordinator.finish()
+                        self.showErrorAlert(error)
                     }
                 }
             }
@@ -332,22 +331,23 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             guard pane.canCopySelection() else { return }
             guard let destURL = chooseDestinationURL(forMove: false) else { return }
 
-            let progressController = ProgressDialogController()
-            progressController.operationTitle = "Copying selected archive items..."
-            window?.beginSheet(progressController.window!) { _ in }
+            guard let parentWindow = window else { return }
+            let coordinator = ArchiveOperationCoordinator(operationTitle: "Copying selected archive items...",
+                                                         parentWindow: parentWindow)
+            coordinator.start()
 
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 do {
                     try pane.extractSelectedArchiveItems(to: destURL,
-                                                        progress: progressController,
+                                                        session: coordinator.session,
                                                         overwriteMode: .ask)
                     DispatchQueue.main.async {
-                        self?.window?.endSheet(progressController.window!)
+                        coordinator.finish()
                         self?.inactivePane?.refresh()
                     }
                 } catch {
                     DispatchQueue.main.async {
-                        self?.window?.endSheet(progressController.window!)
+                        coordinator.finish()
                         self?.showErrorAlert(error)
                     }
                 }
@@ -362,24 +362,31 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         guard let destURL = chooseDestinationURL(forMove: move) else { return }
 
         let operation = move ? "Moving" : "Copying"
-        let progressController = ProgressDialogController()
-        progressController.operationTitle = "\(operation) \(sourcePaths.count) item(s)..."
-        window?.beginSheet(progressController.window!) { _ in }
+        guard let parentWindow = window else { return }
+        let coordinator = ArchiveOperationCoordinator(operationTitle: "\(operation) \(sourcePaths.count) item(s)...",
+                                                     parentWindow: parentWindow)
+        coordinator.start()
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let fm = FileManager.default
             var skipAll = false
             var overwriteAll = false
+            let session = coordinator.session
 
             for (i, sourcePath) in sourcePaths.enumerated() {
+                if session.shouldCancel() {
+                    DispatchQueue.main.async {
+                        coordinator.finish()
+                    }
+                    return
+                }
+
                 let sourceURL = URL(fileURLWithPath: sourcePath)
                 let destFile = destURL.appendingPathComponent(sourceURL.lastPathComponent)
                 let fraction = Double(i) / Double(sourcePaths.count)
 
-                DispatchQueue.main.async {
-                    progressController.progressDidUpdate(fraction)
-                    progressController.progressDidUpdateFileName(sourceURL.lastPathComponent)
-                }
+                session.reportProgressFraction(fraction)
+                session.reportCurrentFileName(sourceURL.lastPathComponent)
 
                 // Overwrite check (matches COverwriteDialog in 7-Zip)
                 if fm.fileExists(atPath: destFile.path) {
@@ -404,10 +411,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                             Source: \(sourceURL.lastPathComponent)
                             Size: \(ByteCountFormatter.string(fromByteCount: Int64(srcSize), countStyle: .file))  Modified: \(srcDate.map { df.string(from: $0) } ?? "—")
                             """
-                            let choice = szRunChoiceDialog(title: "File already exists",
-                                                           message: message,
-                                                           style: .warning,
-                                                           buttons: ["Replace", "Replace All", "Skip", "Skip All", "Cancel"])
+                            let choice = coordinator.requestChoice(style: .warning,
+                                                                   title: "File already exists",
+                                                                   message: message,
+                                                                   buttonTitles: ["Replace", "Replace All", "Skip", "Skip All", "Cancel"])
                             switch choice {
                             case 0:
                                 break
@@ -422,7 +429,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                             }
                         }
                         if cancelled {
-                            DispatchQueue.main.async { self?.window?.endSheet(progressController.window!) }
+                            DispatchQueue.main.async { coordinator.finish() }
                             return
                         }
                         if shouldSkip { continue }
@@ -456,15 +463,16 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 } catch {
                     // Stop on first error (matches 7-Zip behavior)
                     DispatchQueue.main.async {
-                        self?.window?.endSheet(progressController.window!)
+                        coordinator.finish()
                         self?.showErrorAlert(error)
                     }
                     return
                 }
             }
 
+            session.reportProgressFraction(1.0)
             DispatchQueue.main.async {
-                self?.window?.endSheet(progressController.window!)
+                coordinator.finish()
                 pane.refresh()
                 self?.inactivePane?.refresh()
             }

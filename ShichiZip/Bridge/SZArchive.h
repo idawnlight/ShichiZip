@@ -230,6 +230,13 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
             progress:(nullable id<SZProgressDelegate>)progress
                error:(NSError **)error;
 
+/// Create a new archive from files with an explicit operation session
++ (BOOL)createAtPath:(NSString *)archivePath
+                     fromPaths:(NSArray<NSString *> *)sourcePaths
+                        settings:(SZCompressionSettings *)settings
+                         session:(nullable SZOperationSession *)session
+                             error:(NSError **)error;
+
 /// Get list of supported format infos
 + (NSArray<SZFormatInfo *> *)supportedFormats;
 

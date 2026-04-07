@@ -83,6 +83,16 @@ final class ArchiveOperationCoordinator {
         }
     }
 
+    func requestChoice(style: SZOperationPromptStyle,
+                       title: String,
+                       message: String,
+                       buttonTitles: [String]) -> Int {
+        session.requestChoice(with: style,
+                              title: title,
+                              message: message,
+                              buttonTitles: buttonTitles)
+    }
+
     @objc private func updateFromSession() {
         let snapshot = session.snapshot()
 

@@ -438,6 +438,14 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
 // MARK: - Create
 
 + (BOOL)createAtPath:(NSString *)archivePath fromPaths:(NSArray<NSString *> *)src settings:(SZCompressionSettings *)s progress:(id<SZProgressDelegate>)p error:(NSError **)error {
+        return [self createAtPath:archivePath
+                                        fromPaths:src
+                                         settings:s
+                                            session:SZCreateDefaultOperationSession(p)
+                                                error:error];
+}
+
++ (BOOL)createAtPath:(NSString *)archivePath fromPaths:(NSArray<NSString *> *)src settings:(SZCompressionSettings *)s session:(SZOperationSession *)session error:(NSError **)error {
     CCodecs *codecs = SZGetCodecs();
     if (!codecs) { if (error) *error = SZMakeError(-1, @"Failed to init codecs"); return NO; }
 
@@ -487,16 +495,16 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
         censor.AddItem(NWildcard::k_AbsPath, true, ToU(srcPath), pathProps);
     }
 
-    SZOperationSession *session = SZCreateDefaultOperationSession(p);
+    SZOperationSession *resolvedSession = session ?: SZCreateDefaultOperationSession(nil);
     SZUpdateCallbackUI callbackUI;
-    callbackUI.Session = session;
+    callbackUI.Session = resolvedSession;
     if (s.password && s.encryption != SZEncryptionMethodNone) {
         callbackUI.PasswordIsDefined = true;
         callbackUI.Password = ToU(s.password);
     }
 
     SZOpenCallbackUI openCallbackUI;
-    openCallbackUI.Session = session;
+    openCallbackUI.Session = resolvedSession;
     CUpdateErrorInfo errorInfo;
     CObjectVector<COpenType> types;
 
