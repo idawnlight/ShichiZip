@@ -171,17 +171,27 @@
     for (UInt32 i = 0; i < n; i++) {
         SZArchiveEntry *e = [SZArchiveEntry new];
         e.index = i;
-        // Use CArc::GetItem_Path which handles DefaultName fallback for
-        // formats like gzip where kpidPath may be empty.
-        UString itemPath;
-        if (arc.GetItem_Path(i, itemPath) == S_OK && !itemPath.IsEmpty())
-            e.path = ToNS(itemPath);
-        else
-            e.path = ItemStr(archive, i, kpidPath) ?: @"";
+        CReadArcItem item;
+        const bool hasReadItem = (arc.GetItem(i, item) == S_OK);
+        if (hasReadItem) {
+            e.path = ToNS(item.Path);
+            NSMutableArray<NSString *> *pathParts = [NSMutableArray arrayWithCapacity:item.PathParts.Size()];
+            for (unsigned j = 0; j < item.PathParts.Size(); j++) {
+                [pathParts addObject:ToNS(item.PathParts[j])];
+            }
+            e.pathParts = pathParts;
+        } else {
+            UString itemPath;
+            if (arc.GetItem_Path(i, itemPath) == S_OK && !itemPath.IsEmpty())
+                e.path = ToNS(itemPath);
+            else
+                e.path = ItemStr(archive, i, kpidPath) ?: @"";
+            e.pathParts = @[];
+        }
         e.size = ItemU64(archive, i, kpidSize);
         e.packedSize = ItemU64(archive, i, kpidPackSize);
         e.crc = (uint32_t)ItemU64(archive, i, kpidCRC);
-        e.isDirectory = ItemBool(archive, i, kpidIsDir);
+        e.isDirectory = hasReadItem ? item.IsDir : ItemBool(archive, i, kpidIsDir);
         e.isEncrypted = ItemBool(archive, i, kpidEncrypted);
         e.method = ItemStr(archive, i, kpidMethod);
         e.attributes = (uint32_t)ItemU64(archive, i, kpidAttrib);

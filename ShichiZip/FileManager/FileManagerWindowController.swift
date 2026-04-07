@@ -221,7 +221,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                                                     progress: progressController,
                                                                                     overwriteMode: .ask)
                     } else {
-                        guard let archiveURL = activePane.selectedArchiveFileURL() else {
+                        guard let archiveURL = activePane.selectedArchiveCandidateURL() else {
                             throw NSError(domain: "SZArchiveErrorDomain",
                                           code: -1,
                                           userInfo: [NSLocalizedDescriptionKey: "Select an archive to extract."])
@@ -263,7 +263,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 if activePane.isVirtualLocation {
                     try activePane.testCurrentArchive(progress: progressController)
                 } else {
-                    guard let archiveURL = activePane.selectedArchiveFileURL() else {
+                    guard let archiveURL = activePane.selectedArchiveCandidateURL() else {
                         throw NSError(domain: "SZArchiveErrorDomain",
                                       code: -1,
                                       userInfo: [NSLocalizedDescriptionKey: "Select an archive to test."])

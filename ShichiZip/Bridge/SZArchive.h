@@ -107,6 +107,7 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
 /// Represents a single entry in an archive
 @interface SZArchiveEntry : NSObject
 @property (nonatomic, copy) NSString *path;
+@property (nonatomic, copy) NSArray<NSString *> *pathParts;
 @property (nonatomic) uint64_t size;
 @property (nonatomic) uint64_t packedSize;
 @property (nonatomic, strong, nullable) NSDate *modifiedDate;

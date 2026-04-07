@@ -8,16 +8,9 @@ class FileSystemItem {
     let size: UInt64
     let modifiedDate: Date?
     let createdDate: Date?
-    let isArchive: Bool
 
     private(set) var children: [FileSystemItem]?
     weak var parent: FileSystemItem?
-
-    static let archiveExtensions: Set<String> = [
-        "7z", "zip", "tar", "gz", "bz2", "xz", "rar", "cab", "iso",
-        "dmg", "wim", "lzh", "lzma", "cpio", "rpm", "deb", "arj", "z",
-        "tgz", "tbz2", "txz", "tar.gz", "tar.bz2", "tar.xz", "zst"
-    ]
 
     init(url: URL) {
         self.url = url
@@ -32,7 +25,6 @@ class FileSystemItem {
         self.size = UInt64(resourceValues?.fileSize ?? 0)
         self.modifiedDate = resourceValues?.contentModificationDate
         self.createdDate = resourceValues?.creationDate
-        self.isArchive = Self.archiveExtensions.contains(url.pathExtension.lowercased())
     }
 
     var formattedSize: String {
