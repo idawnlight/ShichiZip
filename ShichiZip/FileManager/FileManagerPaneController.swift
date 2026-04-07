@@ -229,6 +229,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         view.window?.makeFirstResponder(tableView)
     }
 
+    var preferredInitialFirstResponder: NSView {
+        tableView
+    }
+
     var isVirtualLocation: Bool { isInsideArchive }
 
     func canAddSelectedItemsToArchive() -> Bool {

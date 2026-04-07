@@ -27,6 +27,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         setupUI()
         setupToolbar()
         setupMainMenu()
+        self.window?.initialFirstResponder = leftPane.preferredInitialFirstResponder
+        self.window?.makeFirstResponder(leftPane.preferredInitialFirstResponder)
     }
 
     deinit {
