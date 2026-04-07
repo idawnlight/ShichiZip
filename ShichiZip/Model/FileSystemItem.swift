@@ -17,11 +17,19 @@ class FileSystemItem {
         self.name = url.lastPathComponent
 
         let resourceValues = try? url.resourceValues(forKeys: [
-            .isDirectoryKey, .fileSizeKey,
+            .isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey,
             .contentModificationDateKey, .creationDateKey
         ])
 
-        self.isDirectory = resourceValues?.isDirectory ?? false
+        let resolvedDirectoryValue: Bool?
+        if resourceValues?.isSymbolicLink == true {
+            let resolvedURL = url.resolvingSymlinksInPath()
+            resolvedDirectoryValue = try? resolvedURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory
+        } else {
+            resolvedDirectoryValue = nil
+        }
+
+        self.isDirectory = resolvedDirectoryValue ?? resourceValues?.isDirectory ?? false
         self.size = UInt64(resourceValues?.fileSize ?? 0)
         self.modifiedDate = resourceValues?.contentModificationDate
         self.createdDate = resourceValues?.creationDate
@@ -40,7 +48,7 @@ class FileSystemItem {
         let fm = FileManager.default
         guard let contents = try? fm.contentsOfDirectory(
             at: url,
-            includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey, .creationDateKey],
+            includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey, .creationDateKey],
             options: [.skipsHiddenFiles]
         ) else {
             children = []

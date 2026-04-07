@@ -21,6 +21,7 @@ final class ArchiveOperationCoordinator {
         progressController = ProgressDialogController()
         progressController.operationTitle = operationTitle
         progressController.beginWaitingMode(fileName: initialFileName)
+        session.progressDelegate = progressController
 
         self.parentWindow = parentWindow
         self.deferredDisplay = deferredDisplay

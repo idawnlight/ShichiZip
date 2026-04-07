@@ -1,5 +1,7 @@
 #import "SZDialogPresenter.h"
 
+#import "../Bridge/SZArchive.h"
+
 static NSString * const SZShowPasswordPreferenceKey = @"SZShowPasswordInPrompts";
 
 @interface SZPasswordAccessoryController : NSViewController
@@ -120,14 +122,21 @@ static NSString * const SZShowPasswordPreferenceKey = @"SZShowPasswordInPrompts"
 + (void)presentError:(NSError *)error forWindow:(NSWindow *)window {
     NSString *title = error.localizedDescription.length > 0 ? error.localizedDescription : @"Operation Failed";
     NSString *message = [self errorDetailsForError:error];
-    SZModalDialogController *controller = [[SZModalDialogController alloc] initWithStyle:SZDialogStyleCritical
+    SZDialogStyle style = SZDialogStyleCritical;
+    BOOL useDedicatedPopup = NO;
+    if ([error.domain isEqualToString:SZArchiveErrorDomain] && error.code == SZArchiveErrorCodeWrongPassword) {
+        style = SZDialogStyleWarning;
+        useDedicatedPopup = YES;
+    }
+
+    SZModalDialogController *controller = [[SZModalDialogController alloc] initWithStyle:style
                                                                                     title:title
                                                                                   message:message
                                                                              buttonTitles:@[@"OK"]
                                                                             accessoryView:nil
                                                                    preferredFirstResponder:nil
                                                                         cancelButtonIndex:0];
-    if (window) {
+    if (window && !useDedicatedPopup) {
         [controller beginSheetModalForWindow:window completionHandler:^(__unused NSInteger selectedButtonIndex) {
         }];
     } else {

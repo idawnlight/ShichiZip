@@ -77,6 +77,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var archiveDisplayItems: [ArchiveItem] = [] // currently visible items in archive
     private var temporaryDirectories: Set<URL> = []
     private var showsRealFileIcons: Bool { SZSettings.bool(.showRealFileIcons) }
+    private static let archiveLikeExtensions: Set<String> = [
+        "7z", "apk", "ar", "arj", "bz2", "cab", "cpio", "deb", "dmg", "gz", "gzip",
+        "img", "ipa", "iso", "jar", "lz", "lzma", "pkg", "rar", "rpm", "tar", "tbz",
+        "tbz2", "tgz", "txz", "war", "xar", "xz", "z", "zip"
+    ]
     private var showsParentRow: Bool {
         guard SZSettings.bool(.showDots) else {
             return false
@@ -223,13 +228,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         currentDirectory = url
         updatePathField()
 
-        let fm = FileManager.default
         do {
-            let contents = try fm.contentsOfDirectory(
-                at: url,
-                includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey, .creationDateKey],
-                options: [.skipsHiddenFiles]
-            )
+            let contents = try directoryContentsPreservingPresentedPath(for: url)
             items = contents.map { FileSystemItem(url: $0) }
             sortCurrentItems(by: tableView.sortDescriptors)
         } catch {
@@ -238,6 +238,42 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         tableView.reloadData()
         updateStatusBar()
+    }
+
+    private func directoryContentsPreservingPresentedPath(for url: URL) throws -> [URL] {
+        let resourceKeys: Set<URLResourceKey> = [
+            .isDirectoryKey,
+            .isSymbolicLinkKey,
+            .fileSizeKey,
+            .contentModificationDateKey,
+            .creationDateKey,
+        ]
+
+        let fileManager = FileManager.default
+        let resourceValues = try url.resourceValues(forKeys: resourceKeys)
+        let listingURL: URL
+        if resourceValues.isSymbolicLink == true,
+           let resolvedIsDirectory = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
+           resolvedIsDirectory {
+            listingURL = url.resolvingSymlinksInPath()
+        } else {
+            listingURL = url
+        }
+
+        let contents = try fileManager.contentsOfDirectory(
+            at: listingURL,
+            includingPropertiesForKeys: Array(resourceKeys),
+            options: [.skipsHiddenFiles]
+        )
+
+        guard listingURL != url else {
+            return contents
+        }
+
+        return contents.map { childURL in
+            let isDirectory = (try? childURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            return url.appendingPathComponent(childURL.lastPathComponent, isDirectory: isDirectory)
+        }
     }
 
     func refresh() {
@@ -423,8 +459,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                          showError: false) {
                 case .opened:
                     break
-                case .unsupportedArchive:
-                    NSWorkspace.shared.open(fileSystemItem.url)
+                case let .unsupportedArchive(error):
+                    let shouldFallbackExternally = shouldFallbackUnsupportedArchiveExternally(for: fileSystemItem.url)
+                    if shouldFallbackExternally {
+                        if !openExternallyIfPossible(fileSystemItem.url) {
+                            showErrorAlert(error)
+                        }
+                    } else {
+                        showErrorAlert(error)
+                    }
                 case .cancelled:
                     break
                 case let .failed(error):
@@ -658,6 +701,65 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         archiveDisplayItems.removeAll()
     }
 
+    private func preferredExternalApplicationURL(for url: URL) -> URL? {
+        let workspace = NSWorkspace.shared
+        let currentAppURL = Bundle.main.bundleURL.resolvingSymlinksInPath().standardizedFileURL
+
+        if let defaultAppURL = workspace.urlForApplication(toOpen: url)?
+            .resolvingSymlinksInPath()
+            .standardizedFileURL,
+           defaultAppURL != currentAppURL {
+            return defaultAppURL
+        }
+
+        return workspace.urlsForApplications(toOpen: url)
+            .map { $0.resolvingSymlinksInPath().standardizedFileURL }
+            .first { $0 != currentAppURL }
+    }
+
+    private func shouldFallbackUnsupportedArchiveExternally(for url: URL) -> Bool {
+        !isArchiveLikeURL(url)
+    }
+
+    private func isArchiveLikeURL(_ url: URL) -> Bool {
+        let pathExtension = url.pathExtension.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !pathExtension.isEmpty else {
+            return false
+        }
+
+        if Self.archiveLikeExtensions.contains(pathExtension) {
+            return true
+        }
+
+        guard let type = UTType(filenameExtension: pathExtension) else {
+            return false
+        }
+
+        return type.conforms(to: .archive)
+    }
+
+    @discardableResult
+    private func openExternallyIfPossible(_ url: URL,
+                                          preservingTemporaryDirectory temporaryDirectory: URL? = nil) -> Bool {
+        guard let applicationURL = preferredExternalApplicationURL(for: url) else {
+            return false
+        }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        NSWorkspace.shared.open([url], withApplicationAt: applicationURL, configuration: configuration) { [weak self] app, error in
+            guard app == nil else { return }
+
+            if let temporaryDirectory {
+                self?.cleanupTemporaryDirectory(temporaryDirectory)
+            }
+
+            if let error {
+                self?.showErrorAlert(error)
+            }
+        }
+        return true
+    }
+
     private func makeArchiveExtractionSettings(overwriteMode: SZOverwriteMode,
                                                pathMode: SZPathMode) -> SZExtractionSettings {
         let settings = SZExtractionSettings()
@@ -850,7 +952,17 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                      showError: false) {
             case .opened:
                 break
-            case .unsupportedArchive, .cancelled:
+            case let .unsupportedArchive(error):
+                updatePathField()
+                let shouldFallbackExternally = shouldFallbackUnsupportedArchiveExternally(for: url)
+                if shouldFallbackExternally {
+                    if !openExternallyIfPossible(url) {
+                        showErrorAlert(error)
+                    }
+                } else {
+                    showErrorAlert(error)
+                }
+            case .cancelled:
                 updatePathField()
             case let .failed(error):
                 updatePathField()
@@ -918,11 +1030,22 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                      hostDirectory: archiveHostDirectory(),
                                      temporaryDirectory: tempDir,
                                      displayPathPrefix: nestedArchiveDisplayPath(for: item),
-                                     showError: false) {
+                                     showError: false,
+                                     preserveTemporaryDirectoryOnUnsupported: true) {
             case .opened:
                 return
-            case .unsupportedArchive:
-                NSWorkspace.shared.open(extractedFile)
+            case let .unsupportedArchive(error):
+                let shouldFallbackExternally = shouldFallbackUnsupportedArchiveExternally(for: extractedFile)
+                if shouldFallbackExternally {
+                    if !openExternallyIfPossible(extractedFile, preservingTemporaryDirectory: tempDir) {
+                        cleanupTemporaryDirectory(tempDir)
+                        throw error
+                    }
+                } else {
+                    cleanupTemporaryDirectory(tempDir)
+                    throw error
+                }
+                return
             case .cancelled:
                 return
             case let .failed(error):
@@ -1212,6 +1335,7 @@ extension FileManagerPaneController {
                                    temporaryDirectory: URL? = nil,
                                    displayPathPrefix: String? = nil,
                                    showError: Bool = true,
+                                   preserveTemporaryDirectoryOnUnsupported: Bool = false,
                                    replaceCurrentState: Bool = false) -> ArchiveOpenResult {
         let paneHostDirectory = hostDirectory ?? archiveHostDirectory()
         let resolvedDisplayPathPrefix = displayPathPrefix ?? url.path
@@ -1237,6 +1361,7 @@ extension FileManagerPaneController {
 
         return finishArchiveOpen(preparedResult,
                                  temporaryDirectory: temporaryDirectory,
+                                 preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
                                  replaceCurrentState: replaceCurrentState,
                                  showError: showError)
     }
@@ -1270,6 +1395,7 @@ extension FileManagerPaneController {
 
     private func finishArchiveOpen(_ preparedResult: PreparedArchiveOpenResult,
                                    temporaryDirectory: URL?,
+                                   preserveTemporaryDirectoryOnUnsupported: Bool,
                                    replaceCurrentState: Bool,
                                    showError: Bool) -> ArchiveOpenResult {
         let result: ArchiveOpenResult
@@ -1278,7 +1404,9 @@ extension FileManagerPaneController {
             commitPreparedArchive(prepared, replaceCurrentState: replaceCurrentState)
             return .opened
         case let .unsupportedArchive(error):
-            cleanupTemporaryDirectory(temporaryDirectory)
+            if !preserveTemporaryDirectoryOnUnsupported {
+                cleanupTemporaryDirectory(temporaryDirectory)
+            }
             result = .unsupportedArchive(error)
         case .cancelled:
             cleanupTemporaryDirectory(temporaryDirectory)

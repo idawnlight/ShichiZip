@@ -57,6 +57,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
         contentView.addSubview(fileNameLabel)
 
         progressBar = NSProgressIndicator()
+        progressBar.style = .bar
         progressBar.isIndeterminate = false
         progressBar.minValue = 0
         progressBar.maxValue = 1.0
@@ -116,14 +117,13 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     func beginWaitingMode(fileName: String? = nil) {
-        DispatchQueue.main.async { [weak self] in
+        let applyWaitingMode = { [weak self] in
             guard let self else { return }
             self.isWaitingForProgress = true
             self.startTime = nil
             self.lastMetricsUpdateTime = 0
             self.progressBar.stopAnimation(nil)
-            self.progressBar.isIndeterminate = true
-            self.progressBar.startAnimation(nil)
+            self.progressBar.isIndeterminate = false
             self.progressBar.doubleValue = 0
             if let fileName {
                 self.fileNameLabel.stringValue = fileName
@@ -131,6 +131,12 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
             self.bytesLabel.stringValue = ""
             self.speedLabel.stringValue = ""
             self.elapsedLabel.stringValue = ""
+        }
+
+        if Thread.isMainThread {
+            applyWaitingMode()
+        } else {
+            DispatchQueue.main.async(execute: applyWaitingMode)
         }
     }
 
@@ -188,6 +194,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     @objc func progressDidUpdateBytesCompleted(_ completed: UInt64, total: UInt64) {
         if total > 0 {
             ensureDeterminateProgress()
+            progressBar.doubleValue = Double(completed) / Double(total)
         }
         if startTime == nil { startTime = Date() }
 

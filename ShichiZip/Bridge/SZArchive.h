@@ -20,6 +20,7 @@ typedef NS_ERROR_ENUM(SZArchiveErrorDomain, SZArchiveErrorCode) {
     SZArchiveErrorCodeUnsupportedFormat = -8,
     SZArchiveErrorCodeWrongPassword = -12,
     SZArchiveErrorCodePartialFailure = -13,
+    SZArchiveErrorCodeInvalidArchive = -14,
 };
 
 /// Supported archive formats for creation

@@ -7,6 +7,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var benchmarkWindowController: BenchmarkWindowController?
     private var settingsWindowController: SettingsWindowController?
     private var pendingDeferredArchiveOpens = 0
+    private var shouldPresentInitialFileManager = true
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainMenu.setup()
@@ -14,7 +15,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Only show file manager if no documents are being opened
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if self.pendingDeferredArchiveOpens == 0 &&
+            if self.shouldPresentInitialFileManager &&
+               self.pendingDeferredArchiveOpens == 0 &&
                NSDocumentController.shared.documents.isEmpty &&
                NSApp.windows.filter({ $0.isVisible }).isEmpty {
                 self.showFileManager(nil)
@@ -97,6 +99,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func beginDeferredArchiveOpen() {
+        shouldPresentInitialFileManager = false
         pendingDeferredArchiveOpens += 1
     }
 

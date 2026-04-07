@@ -83,6 +83,96 @@
 }
 @end
 
+static BOOL SZOpenErrorFlagsIndicateWrongPassword(UInt32 errorFlags) {
+    return (errorFlags & (kpv_ErrorFlags_EncryptedHeadersError |
+                          kpv_ErrorFlags_DataError |
+                          kpv_ErrorFlags_CrcError)) != 0;
+}
+
+static NSString *SZOpenArchiveFlagDetails(UInt32 errorFlags) {
+    NSMutableArray<NSString *> *messages = [NSMutableArray array];
+
+    const struct {
+        UInt32 flag;
+        const char *message;
+    } flagMessages[] = {
+        { kpv_ErrorFlags_IsNotArc, "Is not archive" },
+        { kpv_ErrorFlags_HeadersError, "Headers Error" },
+        { kpv_ErrorFlags_EncryptedHeadersError, "Headers Error in encrypted archive. Wrong password?" },
+        { kpv_ErrorFlags_UnavailableStart, "Unavailable start of archive" },
+        { kpv_ErrorFlags_UnconfirmedStart, "Unconfirmed start of archive" },
+        { kpv_ErrorFlags_UnexpectedEnd, "Unexpected end of data" },
+        { kpv_ErrorFlags_DataAfterEnd, "Data after end of archive" },
+        { kpv_ErrorFlags_UnsupportedMethod, "Unsupported method" },
+        { kpv_ErrorFlags_UnsupportedFeature, "Unsupported feature" },
+        { kpv_ErrorFlags_DataError, "Data Error" },
+        { kpv_ErrorFlags_CrcError, "CRC Error" },
+    };
+
+    for (size_t index = 0; index < sizeof(flagMessages) / sizeof(flagMessages[0]); index++) {
+        const auto &entry = flagMessages[index];
+        if ((errorFlags & entry.flag) == 0) {
+            continue;
+        }
+        [messages addObject:[NSString stringWithUTF8String:entry.message]];
+    }
+
+    return messages.count > 0 ? [messages componentsJoinedByString:@"\n"] : nil;
+}
+
+static NSString *SZOpenArchiveFailureReason(const CArcErrorInfo &errorInfo) {
+    NSMutableArray<NSString *> *messages = [NSMutableArray array];
+
+    NSString *flagDetails = SZOpenArchiveFlagDetails(errorInfo.GetErrorFlags());
+    if (flagDetails.length > 0) {
+        [messages addObject:flagDetails];
+    }
+
+    NSString *errorMessage = ToNS(errorInfo.ErrorMessage);
+    if (errorMessage.length > 0 && ![messages containsObject:errorMessage]) {
+        [messages addObject:errorMessage];
+    }
+
+    return messages.count > 0 ? [messages componentsJoinedByString:@"\n"] : nil;
+}
+
+static NSError *SZOpenArchiveErrorFromResult(HRESULT result,
+                                             const CArcErrorInfo &errorInfo,
+                                             const SZOpenCallbackUI &callbackUI) {
+    if (result == E_ABORT) {
+        return SZMakeError(SZArchiveErrorCodeUserCancelled, @"Operation was cancelled");
+    }
+
+    if (result != S_FALSE) {
+        return SZMakeError(result,
+                           [NSString stringWithFormat:@"Failed to open archive (0x%08X)", (unsigned)result]);
+    }
+
+    const UInt32 errorFlags = errorInfo.GetErrorFlags();
+    const BOOL hadPasswordContext = callbackUI.PasswordWasAsked || callbackUI.PasswordIsDefined;
+    const BOOL wrongPassword = (hadPasswordContext &&
+                                (errorFlags & (kpv_ErrorFlags_HeadersError |
+                                               kpv_ErrorFlags_EncryptedHeadersError |
+                                               kpv_ErrorFlags_DataError |
+                                               kpv_ErrorFlags_CrcError)) != 0)
+        || (callbackUI.PasswordWasAsked && !errorInfo.ErrorFlags_Defined)
+        || SZOpenErrorFlagsIndicateWrongPassword(errorFlags);
+    if (wrongPassword) {
+        return SZMakeError(SZArchiveErrorCodeWrongPassword,
+                           @"Cannot open encrypted archive. Wrong password?");
+    }
+
+    if (!errorInfo.IsArc_After_NonOpen() && errorInfo.ErrorMessage.IsEmpty()) {
+        return SZMakeDetailedError(SZArchiveErrorCodeUnsupportedArchive,
+                                   @"Cannot open archive or unsupported format",
+                                   SZOpenArchiveFailureReason(errorInfo));
+    }
+
+    return SZMakeDetailedError(SZArchiveErrorCodeInvalidArchive,
+                               @"Cannot open archive",
+                               SZOpenArchiveFailureReason(errorInfo));
+}
+
 @implementation SZArchive
 
 - (void)clearCachedPassword {
@@ -190,22 +280,9 @@
 
     HRESULT res = _arcLink->Open3(options, &callbackUI);
     if (res != S_OK) {
-        NSInteger code;
-        NSString *desc;
-        if (res == S_FALSE && callbackUI.PasswordWasAsked) {
-            code = SZArchiveErrorCodeWrongPassword;
-            desc = @"Cannot open encrypted archive. Wrong password?";
-        } else if (res == S_FALSE) {
-            code = SZArchiveErrorCodeUnsupportedArchive;
-            desc = @"Cannot open archive or unsupported format";
-        } else if (res == E_ABORT) {
-            code = SZArchiveErrorCodeUserCancelled;
-            desc = @"Operation was cancelled";
-        } else {
-            code = res;
-            desc = [NSString stringWithFormat:@"Failed to open archive (0x%08X)", (unsigned)res];
+        if (error) {
+            *error = SZOpenArchiveErrorFromResult(res, _arcLink->NonOpen_ErrorInfo, callbackUI);
         }
-        if (error) *error = SZMakeError(code, desc);
         return NO;
     }
 

@@ -45,6 +45,19 @@ static inline NSError *SZMakeError(NSInteger code, NSString *desc) {
                            userInfo:@{NSLocalizedDescriptionKey: desc}];
 }
 
+static inline NSError *SZMakeDetailedError(NSInteger code, NSString *desc, NSString * _Nullable failureReason) {
+    if (!failureReason || failureReason.length == 0) {
+        return SZMakeError(code, desc);
+    }
+
+    return [NSError errorWithDomain:SZArchiveErrorDomain
+                               code:code
+                           userInfo:@{
+                               NSLocalizedDescriptionKey: desc,
+                               NSLocalizedFailureReasonErrorKey: failureReason,
+                           }];
+}
+
 // ============================================================
 // Codec manager singleton
 // ============================================================
