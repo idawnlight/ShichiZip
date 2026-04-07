@@ -456,6 +456,22 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         try extractArchiveItems(selectedItems,
                                 to: destinationURL,
                                 progress: progress,
+                                session: nil,
+                                overwriteMode: overwriteMode,
+                                pathMode: .currentPaths)
+    }
+
+    func extractSelectedArchiveItems(to destinationURL: URL,
+                                     session: SZOperationSession?,
+                                     overwriteMode: SZOverwriteMode = .ask) throws {
+        let selectedItems = selectedArchiveItems()
+        guard !selectedItems.isEmpty else {
+            throw paneOperationError("Select one or more archive items first.")
+        }
+        try extractArchiveItems(selectedItems,
+                                to: destinationURL,
+                                progress: nil,
+                                session: session,
                                 overwriteMode: overwriteMode,
                                 pathMode: .currentPaths)
     }
@@ -470,6 +486,22 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         try extractArchiveItems(itemsToExtract,
                                 to: destinationURL,
                                 progress: progress,
+                                session: nil,
+                                overwriteMode: overwriteMode,
+                                pathMode: .currentPaths)
+    }
+
+    func extractCurrentSelectionOrDisplayedArchiveItems(to destinationURL: URL,
+                                                        session: SZOperationSession?,
+                                                        overwriteMode: SZOverwriteMode = .ask) throws {
+        let itemsToExtract = archiveItemsForSelectionOrDisplayedItems()
+        guard !itemsToExtract.isEmpty else {
+            throw paneOperationError("There are no archive items to extract.")
+        }
+        try extractArchiveItems(itemsToExtract,
+                                to: destinationURL,
+                                progress: nil,
+                                session: session,
                                 overwriteMode: overwriteMode,
                                 pathMode: .currentPaths)
     }
@@ -479,6 +511,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             throw paneOperationError("No archive is open.")
         }
         try level.archive.test(withProgress: progress)
+    }
+
+    func testCurrentArchive(session: SZOperationSession?) throws {
+        guard let level = archiveStack.last else {
+            throw paneOperationError("No archive is open.")
+        }
+        try level.archive.test(with: session)
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
@@ -661,6 +700,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private func extractArchiveItems(_ itemsToExtract: [ArchiveItem],
                                      to destinationURL: URL,
                                      progress: SZProgressDelegate?,
+                                     session: SZOperationSession?,
                                      overwriteMode: SZOverwriteMode,
                                      pathMode: SZPathMode) throws {
         guard let level = archiveStack.last else {
@@ -673,10 +713,17 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         let settings = makeArchiveExtractionSettings(overwriteMode: overwriteMode, pathMode: pathMode)
-        try level.archive.extractEntries(indices,
-                                         toPath: destinationURL.path,
-                                         settings: settings,
-                                         progress: progress)
+        if let session {
+            try level.archive.extractEntries(indices,
+                                             toPath: destinationURL.path,
+                                             settings: settings,
+                                             session: session)
+        } else {
+            try level.archive.extractEntries(indices,
+                                             toPath: destinationURL.path,
+                                             settings: settings,
+                                             progress: progress)
+        }
     }
 
     private func paneOperationError(_ description: String) -> NSError {
@@ -1169,7 +1216,9 @@ extension FileManagerPaneController {
         let paneHostDirectory = hostDirectory ?? archiveHostDirectory()
         let resolvedDisplayPathPrefix = displayPathPrefix ?? url.path
 
-        let coordinator = ArchiveOpenCoordinator(displayPath: resolvedDisplayPathPrefix)
+        let coordinator = ArchiveOperationCoordinator(operationTitle: "Opening archive...",
+                                 initialFileName: resolvedDisplayPathPrefix,
+                                 deferredDisplay: true)
         coordinator.start()
         var preparedResult: PreparedArchiveOpenResult?
 
@@ -1447,22 +1496,23 @@ extension FileManagerPaneController {
     @objc private func extractHere(_ sender: Any?) {
         if isInsideArchive {
             let destinationURL = archiveHostDirectory()
-            let progressController = ProgressDialogController()
-            progressController.operationTitle = "Extracting..."
-            view.window?.beginSheet(progressController.window!) { _ in }
+            guard let parentWindow = view.window else { return }
+            let coordinator = ArchiveOperationCoordinator(operationTitle: "Extracting...",
+                                                         parentWindow: parentWindow)
+            coordinator.start()
 
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self else { return }
                 do {
                     try self.extractCurrentSelectionOrDisplayedArchiveItems(to: destinationURL,
-                                                                            progress: progressController,
+                                                                            session: coordinator.session,
                                                                             overwriteMode: .ask)
                     DispatchQueue.main.async {
-                        self.view.window?.endSheet(progressController.window!)
+                        coordinator.finish()
                     }
                 } catch {
                     DispatchQueue.main.async {
-                        self.view.window?.endSheet(progressController.window!)
+                        coordinator.finish()
                         self.showErrorAlert(error)
                     }
                 }
@@ -1473,25 +1523,26 @@ extension FileManagerPaneController {
         guard let url = selectedArchiveCandidateURL() else { return }
 
         let destURL = currentDirectory
-        let progressController = ProgressDialogController()
-        progressController.operationTitle = "Extracting..."
-        view.window?.beginSheet(progressController.window!) { _ in }
+        guard let parentWindow = view.window else { return }
+        let coordinator = ArchiveOperationCoordinator(operationTitle: "Extracting...",
+                                                     parentWindow: parentWindow)
+        coordinator.start()
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
                 let archive = SZArchive()
-                try archive.open(atPath: url.path, progress: progressController)
+                try archive.open(atPath: url.path, session: coordinator.session)
                 let settings = SZExtractionSettings()
                 settings.overwriteMode = .ask
-                try archive.extract(toPath: destURL.path, settings: settings, progress: progressController)
+                try archive.extract(toPath: destURL.path, settings: settings, session: coordinator.session)
                 archive.close()
                 DispatchQueue.main.async {
-                    self?.view.window?.endSheet(progressController.window!)
+                    coordinator.finish()
                     self?.refresh()
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self?.view.window?.endSheet(progressController.window!)
+                    coordinator.finish()
                     self?.showErrorAlert(error)
                 }
             }

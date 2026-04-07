@@ -44,6 +44,19 @@ func szRunChoiceDialog(title: String,
                                  buttonTitles: buttons)
 }
 
+func szDialogStyle(for promptStyle: SZOperationPromptStyle) -> SZDialogStyle {
+    switch promptStyle {
+    case .warning:
+        return .warning
+    case .critical:
+        return .critical
+    case .informational:
+        return .informational
+    @unknown default:
+        return .informational
+    }
+}
+
 func szPromptForPasswordSync(title: String,
                              message: String? = nil,
                              initialValue: String? = nil) -> String? {

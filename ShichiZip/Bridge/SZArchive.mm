@@ -340,15 +340,19 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
 // MARK: - Extract
 
 - (BOOL)extractToPath:(NSString *)dest settings:(SZExtractionSettings *)s progress:(id<SZProgressDelegate>)p error:(NSError **)error {
+    return [self extractToPath:dest settings:s session:SZCreateDefaultOperationSession(p) error:error];
+}
+
+- (BOOL)extractToPath:(NSString *)dest settings:(SZExtractionSettings *)s session:(SZOperationSession *)session error:(NSError **)error {
     if (!_isOpen) { if (error) *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open"); return NO; }
     IInArchive *archive = _arcLink->GetArchive();
     const CArc &arc = _arcLink->Arcs.Back();
     NWindows::NFile::NDir::CreateComplexDir(us2fs(ToU(dest)));
 
-    SZOperationSession *session = SZCreateDefaultOperationSession(p);
+    SZOperationSession *resolvedSession = session ?: SZCreateDefaultOperationSession(nil);
     SZFolderExtractCallback *faeSpec = new SZFolderExtractCallback;
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
-    faeSpec->Session = session;
+    faeSpec->Session = resolvedSession;
     faeSpec->OverwriteMode = s.overwriteMode;
     [self configureExtractPasswordForCallback:faeSpec explicitPassword:s.password];
 
@@ -368,15 +372,19 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
 }
 
 - (BOOL)extractEntries:(NSArray<NSNumber *> *)indices toPath:(NSString *)dest settings:(SZExtractionSettings *)s progress:(id<SZProgressDelegate>)p error:(NSError **)error {
+    return [self extractEntries:indices toPath:dest settings:s session:SZCreateDefaultOperationSession(p) error:error];
+}
+
+- (BOOL)extractEntries:(NSArray<NSNumber *> *)indices toPath:(NSString *)dest settings:(SZExtractionSettings *)s session:(SZOperationSession *)session error:(NSError **)error {
     if (!_isOpen) { if (error) *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open"); return NO; }
     IInArchive *archive = _arcLink->GetArchive();
     const CArc &arc = _arcLink->Arcs.Back();
     NWindows::NFile::NDir::CreateComplexDir(us2fs(ToU(dest)));
 
-    SZOperationSession *session = SZCreateDefaultOperationSession(p);
+    SZOperationSession *resolvedSession = session ?: SZCreateDefaultOperationSession(nil);
     SZFolderExtractCallback *faeSpec = new SZFolderExtractCallback;
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
-    faeSpec->Session = session;
+    faeSpec->Session = resolvedSession;
     faeSpec->OverwriteMode = s.overwriteMode;
     [self configureExtractPasswordForCallback:faeSpec explicitPassword:s.password];
 
@@ -398,14 +406,18 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
 }
 
 - (BOOL)testWithProgress:(id<SZProgressDelegate>)p error:(NSError **)error {
+    return [self testWithSession:SZCreateDefaultOperationSession(p) error:error];
+}
+
+- (BOOL)testWithSession:(SZOperationSession *)session error:(NSError **)error {
     if (!_isOpen) { if (error) *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open"); return NO; }
     IInArchive *archive = _arcLink->GetArchive();
     const CArc &arc = _arcLink->Arcs.Back();
 
-    SZOperationSession *session = SZCreateDefaultOperationSession(p);
+    SZOperationSession *resolvedSession = session ?: SZCreateDefaultOperationSession(nil);
     SZFolderExtractCallback *faeSpec = new SZFolderExtractCallback;
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
-    faeSpec->Session = session;
+    faeSpec->Session = resolvedSession;
     [self configureExtractPasswordForCallback:faeSpec explicitPassword:nil];
 
     CArchiveExtractCallback *ecs = new CArchiveExtractCallback;

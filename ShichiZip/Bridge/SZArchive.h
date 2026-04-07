@@ -195,6 +195,12 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
              progress:(nullable id<SZProgressDelegate>)progress
                 error:(NSError **)error;
 
+/// Extract all entries to a destination with an explicit operation session
+- (BOOL)extractToPath:(NSString *)destinationPath
+                         settings:(SZExtractionSettings *)settings
+                            session:(nullable SZOperationSession *)session
+                                error:(NSError **)error;
+
 /// Extract specific entries by index
 - (BOOL)extractEntries:(NSArray<NSNumber *> *)indices
                 toPath:(NSString *)destinationPath
@@ -202,9 +208,20 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
               progress:(nullable id<SZProgressDelegate>)progress
                  error:(NSError **)error;
 
+/// Extract specific entries by index with an explicit operation session
+- (BOOL)extractEntries:(NSArray<NSNumber *> *)indices
+                                toPath:(NSString *)destinationPath
+                            settings:(SZExtractionSettings *)settings
+                             session:(nullable SZOperationSession *)session
+                                 error:(NSError **)error;
+
 /// Test archive integrity
 - (BOOL)testWithProgress:(nullable id<SZProgressDelegate>)progress
                    error:(NSError **)error;
+
+/// Test archive integrity with an explicit operation session
+- (BOOL)testWithSession:(nullable SZOperationSession *)session
+                                    error:(NSError **)error;
 
 /// Create a new archive from files
 + (BOOL)createAtPath:(NSString *)archivePath

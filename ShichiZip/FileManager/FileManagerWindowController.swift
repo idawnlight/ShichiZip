@@ -210,16 +210,16 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         panel.beginSheetModal(for: window!) { [weak self] response in
             guard response == .OK, let destURL = panel.url else { return }
 
-            let progressController = ProgressDialogController()
-            progressController.operationTitle = "Extracting..."
-
-            self?.window?.beginSheet(progressController.window!) { _ in }
+            guard let self, let parentWindow = self.window else { return }
+            let coordinator = ArchiveOperationCoordinator(operationTitle: "Extracting...",
+                                                         parentWindow: parentWindow)
+            coordinator.start()
 
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
                     if activePane.isVirtualLocation {
                         try activePane.extractCurrentSelectionOrDisplayedArchiveItems(to: destURL,
-                                                                                    progress: progressController,
+                                                                                    session: coordinator.session,
                                                                                     overwriteMode: .ask)
                     } else {
                         guard let archiveURL = activePane.selectedArchiveCandidateURL() else {
@@ -228,20 +228,20 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                           userInfo: [NSLocalizedDescriptionKey: "Select an archive to extract."])
                         }
                         let archive = SZArchive()
-                        try archive.open(atPath: archiveURL.path, progress: progressController)
+                        try archive.open(atPath: archiveURL.path, session: coordinator.session)
                         let settings = SZExtractionSettings()
                         try archive.extract(toPath: destURL.path, settings: settings,
-                                           progress: progressController)
+                                           session: coordinator.session)
                         archive.close()
                     }
                     DispatchQueue.main.async {
-                        self?.window?.endSheet(progressController.window!)
+                        coordinator.finish()
                         NSWorkspace.shared.open(destURL)
                     }
                 } catch {
                     DispatchQueue.main.async {
-                        self?.window?.endSheet(progressController.window!)
-                        self?.showErrorAlert(error)
+                        coordinator.finish()
+                        self.showErrorAlert(error)
                     }
                 }
             }
@@ -252,14 +252,15 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         let activePane = self.activePane
         guard activePane.canTestArchiveSelection() else { return }
 
-        let progressController = ProgressDialogController()
-        progressController.operationTitle = "Testing archive..."
-        window?.beginSheet(progressController.window!) { _ in }
+        guard let parentWindow = window else { return }
+        let coordinator = ArchiveOperationCoordinator(operationTitle: "Testing archive...",
+                                                     parentWindow: parentWindow)
+        coordinator.start()
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
                 if activePane.isVirtualLocation {
-                    try activePane.testCurrentArchive(progress: progressController)
+                    try activePane.testCurrentArchive(session: coordinator.session)
                 } else {
                     guard let archiveURL = activePane.selectedArchiveCandidateURL() else {
                         throw NSError(domain: SZArchiveErrorDomain,
@@ -267,19 +268,19 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                       userInfo: [NSLocalizedDescriptionKey: "Select an archive to test."])
                     }
                     let archive = SZArchive()
-                    try archive.open(atPath: archiveURL.path, progress: progressController)
-                    try archive.test(withProgress: progressController)
+                    try archive.open(atPath: archiveURL.path, session: coordinator.session)
+                    try archive.test(with: coordinator.session)
                     archive.close()
                 }
                 DispatchQueue.main.async {
-                    self?.window?.endSheet(progressController.window!)
+                    coordinator.finish()
                     szPresentMessage(title: "Test OK",
                                      message: "No errors found.",
                                      for: self?.window)
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self?.window?.endSheet(progressController.window!)
+                    coordinator.finish()
                     self?.showErrorAlert(error)
                 }
             }
