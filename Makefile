@@ -16,7 +16,8 @@ ARCH = -arch arm64
 CFLAGS_COMMON = $(ARCH) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -O2 -DNDEBUG -D_REENTRANT -D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE_SOURCE -fPIC -Wall -Wextra
 CFLAGS = $(CFLAGS_COMMON) -std=c11
-CXXFLAGS = $(CFLAGS_COMMON) -std=c++11
+CXXFLAGS = $(CFLAGS_COMMON) -std=c++11 -DSHICHIZIP_APPLE_DETECTOR
+OBJCXXFLAGS = $(CFLAGS_COMMON) -std=c++11 -fobjc-arc -DSHICHIZIP_APPLE_DETECTOR
 
 O = build/obj
 LIB_OUT = build/lib
@@ -364,17 +365,24 @@ UI_COMMON_SRCS = \
 ALL_CPP_SRCS = $(COMMON_SRCS) $(WIN_SRCS) $(SEVENZIP_COMMON_SRCS) \
 	$(ARCHIVE_SRCS) $(ARCHIVE_SUB_SRCS) $(COMPRESS_SRCS) $(CRYPTO_SRCS) \
 	$(UI_COMMON_SRCS)
+SHICHIZIP_VENDOR_MM_SRCS = vendor/SZEncodingDetector.mm
 
 # Generate object file paths
 C_OBJS = $(patsubst $(SEVENZ_ROOT)/%.c,$(O)/%.o,$(C_SRCS))
 CPP_OBJS = $(patsubst $(SEVENZ_ROOT)/%.cpp,$(O)/%.o,$(ALL_CPP_SRCS))
-ALL_OBJS = $(C_OBJS) $(CPP_OBJS)
+MM_OBJS = $(patsubst %.mm,$(O)/%.o,$(SHICHIZIP_VENDOR_MM_SRCS))
+ALL_OBJS = $(C_OBJS) $(CPP_OBJS) $(MM_OBJS)
 
-.PHONY: all clean lib
+.PHONY: all clean lib info prepare-7zip
 
 all: lib
 
 lib: $(LIB)
+
+prepare-7zip:
+	@sh vendor/apply_7zip_patches.sh
+
+$(ALL_OBJS): | prepare-7zip
 
 $(LIB): $(ALL_OBJS)
 	@mkdir -p $(LIB_OUT)
@@ -390,6 +398,10 @@ $(O)/%.o: $(SEVENZ_ROOT)/%.c
 $(O)/%.o: $(SEVENZ_ROOT)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(O)/%.o: %.mm
+	@mkdir -p $(dir $@)
+	$(CXX) $(OBJCXXFLAGS) -c -o $@ $<
 
 clean:
 	rm -rf build

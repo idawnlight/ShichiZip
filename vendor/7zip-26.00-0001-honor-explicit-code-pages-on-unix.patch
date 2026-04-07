@@ -1,0 +1,144 @@
+diff --git a/CPP/Common/StringConvert.cpp b/CPP/Common/StringConvert.cpp
+index 79ff9e0..b13f2bd 100644
+--- a/CPP/Common/StringConvert.cpp
++++ b/CPP/Common/StringConvert.cpp
+@@ -5,7 +5,8 @@
+ #include "StringConvert.h"
+ 
+ #ifndef _WIN32
+-// #include <stdio.h>
++#include <iconv.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #endif
+ 
+@@ -259,12 +260,129 @@ static void MultiByteToUnicodeString2_Native(UString &dest, const AString &src)
+ 
+ bool g_ForceToUTF8 = true; // false;
+ 
++static bool TryConvertWithIconv(UString &dest, const AString &src, const char *codePageName)
++{
++  iconv_t cd = iconv_open("UTF-8", codePageName);
++  if (cd == (iconv_t)-1)
++    return false;
++
++  const size_t outSize = (size_t)src.Len() * 4 + 1;
++  AString utf8;
++  char *outBuf = utf8.GetBuf((unsigned)outSize);
++  char *outPtr = outBuf;
++  size_t outLeft = outSize;
++  char *inPtr = (char *)(void *)(const char *)src;
++  size_t inLeft = src.Len();
++
++  bool ok = false;
++  if (iconv(cd, &inPtr, &inLeft, &outPtr, &outLeft) != (size_t)-1 && inLeft == 0)
++  {
++    *outPtr = 0;
++    utf8.ReleaseBuf_SetEnd((unsigned)(outPtr - outBuf));
++    ok = ConvertUTF8ToUnicode(utf8, dest);
++  }
++  else
++    utf8.ReleaseBuf_SetEnd(0);
++
++  iconv_close(cd);
++  return ok;
++}
++
++static bool TryConvertWithAliases(UString &dest, const AString &src,
++    const char * const *aliases, unsigned numAliases)
++{
++  for (unsigned i = 0; i < numAliases; i++)
++    if (TryConvertWithIconv(dest, src, aliases[i]))
++      return true;
++  return false;
++}
++
++static bool TryConvertWithCodePageName(UString &dest, const AString &src, UINT codePage)
++{
++  char temp[32];
++
++  if (codePage >= 1250 && codePage <= 1258)
++  {
++    snprintf(temp, sizeof(temp), "WINDOWS-%u", (unsigned)codePage);
++    if (TryConvertWithIconv(dest, src, temp))
++      return true;
++  }
++
++  snprintf(temp, sizeof(temp), "CP%u", (unsigned)codePage);
++  if (TryConvertWithIconv(dest, src, temp))
++    return true;
++
++  snprintf(temp, sizeof(temp), "MS%u", (unsigned)codePage);
++  return TryConvertWithIconv(dest, src, temp);
++}
++
++static bool TryMultiByteToUnicodeStringWithCodePage(UString &dest, const AString &src, UINT codePage)
++{
++  if (codePage == CP_UTF8 || codePage == CP_ACP || codePage == CP_OEMCP)
++    return false;
++
++  switch (codePage)
++  {
++    case 932:
++    {
++      static const char * const kAliases[] = { "SHIFT_JIS", "CP932" };
++      return TryConvertWithAliases(dest, src, kAliases, 2);
++    }
++    case 936:
++    {
++      static const char * const kAliases[] = { "GB18030", "GBK", "CP936" };
++      return TryConvertWithAliases(dest, src, kAliases, 3);
++    }
++    case 949:
++    {
++      static const char * const kAliases[] = { "EUC-KR", "CP949" };
++      return TryConvertWithAliases(dest, src, kAliases, 2);
++    }
++    case 950:
++    {
++      static const char * const kAliases[] = { "BIG5", "CP950" };
++      return TryConvertWithAliases(dest, src, kAliases, 2);
++    }
++    case 51949:
++    {
++      static const char * const kAliases[] = { "EUC-KR" };
++      return TryConvertWithAliases(dest, src, kAliases, 1);
++    }
++    case 54936:
++    {
++      static const char * const kAliases[] = { "GB18030", "GBK" };
++      return TryConvertWithAliases(dest, src, kAliases, 2);
++    }
++    default:
++      return TryConvertWithCodePageName(dest, src, codePage);
++  }
++}
++
++#if defined(SHICHIZIP_APPLE_DETECTOR) && defined(__APPLE__)
++bool ShichiZip_DetectLegacyEncodingAndConvertToUnicode(UString &dest, const AString &src);
++
++static bool TryAutoDetectLegacyEncoding(UString &dest, const AString &src)
++{
++  if (CheckUTF8_AString(src))
++    return false;
++  return ShichiZip_DetectLegacyEncodingAndConvertToUnicode(dest, src);
++}
++#endif
++
+ void MultiByteToUnicodeString2(UString &dest, const AString &src, UINT codePage)
+ {
+   dest.Empty();
+   if (src.IsEmpty())
+     return;
+ 
++  if (TryMultiByteToUnicodeStringWithCodePage(dest, src, codePage))
++    return;
++
++#if defined(SHICHIZIP_APPLE_DETECTOR) && defined(__APPLE__)
++  if (TryAutoDetectLegacyEncoding(dest, src))
++    return;
++#endif
++
+   if (codePage == CP_UTF8 || g_ForceToUTF8)
+   {
+ #if 1

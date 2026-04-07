@@ -33,6 +33,7 @@ targets:
         OTHER_LDFLAGS:
           - -force_load
           - $(PROJECT_DIR)/build/lib/lib7zip.a
+          - -liconv
           - -lpthread
         SWIFT_VERSION: "5.9"
         MACOSX_DEPLOYMENT_TARGET: "13.0"

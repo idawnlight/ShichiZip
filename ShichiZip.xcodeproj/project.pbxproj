@@ -288,6 +288,7 @@
 				OTHER_LDFLAGS = (
 					"-force_load",
 					"$(PROJECT_DIR)/build/lib/lib7zip.a",
+					"-liconv",
 					"-lpthread",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
@@ -392,6 +393,7 @@
 				OTHER_LDFLAGS = (
 					"-force_load",
 					"$(PROJECT_DIR)/build/lib/lib7zip.a",
+					"-liconv",
 					"-lpthread",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
