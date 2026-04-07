@@ -3,6 +3,9 @@ import Cocoa
 /// Progress dialog shown during extraction/compression operations
 class ProgressDialogController: NSWindowController, SZProgressDelegate {
 
+    private static let metricsUpdateInterval: TimeInterval = 0.3
+    static let deferredPresentationDelay: TimeInterval = 0.5
+
     private var progressBar: NSProgressIndicator!
     private var fileNameLabel: NSTextField!
     private var bytesLabel: NSTextField!
@@ -13,6 +16,8 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     private var startTime: Date?
     private var speedLabel: NSTextField!
     private var elapsedLabel: NSTextField!
+    private var isWaitingForProgress = false
+    private var lastMetricsUpdateTime: TimeInterval = 0
 
     var operationTitle: String = "Working..." {
         didSet {
@@ -110,6 +115,59 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
         ])
     }
 
+    func beginWaitingMode(fileName: String? = nil) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.isWaitingForProgress = true
+            self.startTime = nil
+            self.lastMetricsUpdateTime = 0
+            self.progressBar.stopAnimation(nil)
+            self.progressBar.isIndeterminate = true
+            self.progressBar.startAnimation(nil)
+            self.progressBar.doubleValue = 0
+            if let fileName {
+                self.fileNameLabel.stringValue = fileName
+            }
+            self.bytesLabel.stringValue = ""
+            self.speedLabel.stringValue = ""
+            self.elapsedLabel.stringValue = ""
+        }
+    }
+
+    private func ensureDeterminateProgress() {
+        guard progressBar.isIndeterminate || isWaitingForProgress else { return }
+        progressBar.stopAnimation(nil)
+        progressBar.isIndeterminate = false
+        progressBar.doubleValue = 0
+        isWaitingForProgress = false
+    }
+
+    func showNowIfNeeded() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.sync {
+                self.showNowIfNeeded()
+            }
+            return
+        }
+        guard let window else { return }
+        if !window.isVisible {
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            window.orderFrontRegardless()
+        }
+    }
+
+    func hideIfVisible() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async {
+                self.hideIfVisible()
+            }
+            return
+        }
+        window?.orderOut(nil)
+    }
+
     @objc private func cancelClicked(_ sender: Any?) {
         cancelled = true
         cancelButton.isEnabled = false
@@ -119,6 +177,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     // MARK: - SZProgressDelegate (matches ProgressDialog2.cpp)
 
     @objc func progressDidUpdate(_ fraction: Double) {
+        ensureDeterminateProgress()
         progressBar.doubleValue = fraction
     }
 
@@ -127,7 +186,18 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     @objc func progressDidUpdateBytesCompleted(_ completed: UInt64, total: UInt64) {
+        if total > 0 {
+            ensureDeterminateProgress()
+        }
         if startTime == nil { startTime = Date() }
+
+        let now = Date().timeIntervalSinceReferenceDate
+        let isFinalUpdate = total > 0 && completed >= total
+        if !isFinalUpdate && lastMetricsUpdateTime > 0 &&
+            now - lastMetricsUpdateTime < Self.metricsUpdateInterval {
+            return
+        }
+        lastMetricsUpdateTime = now
 
         let completedStr = ByteCountFormatter.string(fromByteCount: Int64(completed), countStyle: .file)
         let totalStr = ByteCountFormatter.string(fromByteCount: Int64(total), countStyle: .file)
@@ -137,7 +207,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
         // Speed and ETA calculation (like ProgressDialog2.cpp)
         if let start = startTime {
             let elapsed = Date().timeIntervalSince(start)
-            if elapsed > 0.5 {
+            if elapsed > Self.metricsUpdateInterval {
                 let speed = Double(completed) / elapsed
                 let speedStr = ByteCountFormatter.string(fromByteCount: Int64(speed), countStyle: .file)
                 speedLabel.stringValue = "Speed: \(speedStr)/s"
@@ -163,6 +233,10 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
 
     @objc func progressShouldCancel() -> Bool {
         return cancelled
+    }
+
+    @objc func progressPrepareForUserInteraction() {
+        showNowIfNeeded()
     }
 
     @objc func progressDidUpdateSpeed(_ bytesPerSecond: Double) {

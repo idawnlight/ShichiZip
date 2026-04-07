@@ -29,27 +29,17 @@ CCodecs *SZGetCodecs() {
 // ============================================================
 
 HRESULT SZPromptForPassword(UString &outPassword, bool &wasDefined, NSString *context) {
-    __block NSString *result = nil;
+    __block NSString *result = @"";
+    __block BOOL confirmed = NO;
 
     void (^showDialog)(void) = ^{
-        NSAlert *alert = [[NSAlert alloc] init];
-        alert.messageText = @"Password Required";
-        alert.informativeText = context
-            ? [NSString stringWithFormat:@"Enter password for \"%@\":", context]
-            : @"This archive is encrypted. Enter password:";
-        alert.alertStyle = NSAlertStyleInformational;
-        [alert addButtonWithTitle:@"OK"];
-        [alert addButtonWithTitle:@"Cancel"];
-
-        NSSecureTextField *input = [[NSSecureTextField alloc] initWithFrame:NSMakeRect(0, 0, 260, 24)];
-        input.placeholderString = @"Password";
-        alert.accessoryView = input;
-        [alert.window setInitialFirstResponder:input];
-
-        NSModalResponse resp = [alert runModal];
-        if (resp == NSAlertFirstButtonReturn) {
-            result = input.stringValue;
-        }
+        NSString *message = context.length > 0
+            ? [NSString stringWithFormat:@"Enter password for \"%@\".", context]
+            : @"This archive is encrypted. Enter password.";
+        confirmed = [SZDialogPresenter promptForPasswordWithTitle:@"Password Required"
+                                                          message:message
+                                                     initialValue:wasDefined ? ToNS(outPassword) : nil
+                                                          password:&result];
     };
 
     if ([NSThread isMainThread]) {
@@ -58,7 +48,7 @@ HRESULT SZPromptForPassword(UString &outPassword, bool &wasDefined, NSString *co
         dispatch_sync(dispatch_get_main_queue(), showDialog);
     }
 
-    if (result && result.length > 0) {
+    if (confirmed) {
         outPassword = ToU(result);
         wasDefined = true;
         return S_OK;

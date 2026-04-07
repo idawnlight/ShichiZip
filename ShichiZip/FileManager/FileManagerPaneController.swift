@@ -39,6 +39,29 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         case archive(ArchiveItem)
     }
 
+    private enum ArchiveOpenResult {
+        case opened
+        case unsupportedArchive(Error)
+        case cancelled
+        case failed(Error)
+    }
+
+    private struct PreparedArchiveOpen {
+        let hostDirectory: URL
+        let archivePath: String
+        let displayPathPrefix: String
+        let archive: SZArchive
+        let entries: [ArchiveItem]
+        let temporaryDirectory: URL?
+    }
+
+    private enum PreparedArchiveOpenResult {
+        case opened(PreparedArchiveOpen)
+        case unsupportedArchive(Error)
+        case cancelled
+        case failed(Error)
+    }
+
     // Archive navigation state (matches CFolderLink stack in Panel.cpp)
     private struct ArchiveLevel {
         let filesystemDirectory: URL   // directory we were in before opening the archive
@@ -297,8 +320,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
             refresh()
         } catch {
-            let alert = NSAlert(error: error)
-            view.window.map { alert.beginSheetModal(for: $0) }
+            showErrorAlert(error)
         }
     }
 
@@ -396,20 +418,32 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             if fileSystemItem.isDirectory {
                 loadDirectory(fileSystemItem.url)
             } else {
-                if !openArchiveInline(fileSystemItem.url,
-                                      hostDirectory: currentDirectory,
-                                      showError: false) {
+                switch openArchiveInline(fileSystemItem.url,
+                                         hostDirectory: currentDirectory,
+                                         showError: false) {
+                case .opened:
+                    break
+                case .unsupportedArchive:
                     NSWorkspace.shared.open(fileSystemItem.url)
+                case .cancelled:
+                    break
+                case let .failed(error):
+                    showErrorAlert(error)
                 }
             }
         }
     }
 
-    func showArchive(at url: URL) {
+    @discardableResult
+    func showArchive(at url: URL) -> Bool {
         let parentDirectory = url.deletingLastPathComponent()
-        closeAllArchives()
-        loadDirectory(parentDirectory)
-        _ = openArchiveInline(url, hostDirectory: parentDirectory)
+        let result = openArchiveInline(url,
+                                       hostDirectory: parentDirectory,
+                                       replaceCurrentState: true)
+        if case .opened = result {
+            return true
+        }
+        return false
     }
 
     func extractSelectedArchiveItems(to destinationURL: URL,
@@ -646,26 +680,19 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     private func paneOperationError(_ description: String) -> NSError {
-        NSError(domain: "SZArchiveErrorDomain",
+        NSError(domain: SZArchiveErrorDomain,
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: description])
     }
 
     private func showErrorAlert(_ error: Error) {
-        guard let window = view.window else { return }
-        NSAlert(error: error).beginSheetModal(for: window)
+        szPresentError(error, for: view.window)
     }
 
     private func showUnsupportedArchiveOperationAlert(action: String) {
-        let alert = NSAlert()
-        alert.messageText = "\(action) is not available here"
-        alert.informativeText = "This file-manager view can browse archives and extract or copy items out of them, but in-place archive modification is not implemented yet."
-        alert.alertStyle = .informational
-        if let window = view.window {
-            alert.beginSheetModal(for: window)
-        } else {
-            alert.runModal()
-        }
+        szPresentMessage(title: "\(action) is not available here",
+                         message: "This file-manager view can browse archives and extract or copy items out of them, but in-place archive modification is not implemented yet.",
+                         for: view.window)
     }
 
     private func sortCurrentItems(by descriptors: [NSSortDescriptor]) {
@@ -771,10 +798,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             }
 
             closeAllArchives()
-            if !openArchiveInline(url,
-                                  hostDirectory: url.deletingLastPathComponent(),
-                                  showError: false) {
+            switch openArchiveInline(url,
+                                     hostDirectory: url.deletingLastPathComponent(),
+                                     showError: false) {
+            case .opened:
+                break
+            case .unsupportedArchive, .cancelled:
                 updatePathField()
+            case let .failed(error):
+                updatePathField()
+                showErrorAlert(error)
             }
         } else {
             // Path doesn't exist — revert to current
@@ -834,15 +867,20 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 throw paneOperationError("The archive item could not be prepared for opening.")
             }
 
-            if openArchiveInline(extractedFile,
-                                 hostDirectory: archiveHostDirectory(),
-                                 temporaryDirectory: tempDir,
-                                 displayPathPrefix: nestedArchiveDisplayPath(for: item),
-                                 showError: false) {
+            switch openArchiveInline(extractedFile,
+                                     hostDirectory: archiveHostDirectory(),
+                                     temporaryDirectory: tempDir,
+                                     displayPathPrefix: nestedArchiveDisplayPath(for: item),
+                                     showError: false) {
+            case .opened:
                 return
+            case .unsupportedArchive:
+                NSWorkspace.shared.open(extractedFile)
+            case .cancelled:
+                return
+            case let .failed(error):
+                throw error
             }
-
-            NSWorkspace.shared.open(extractedFile)
         } catch {
             showErrorAlert(error)
         }
@@ -1122,41 +1160,139 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 extension FileManagerPaneController {
 
     @discardableResult
-    func openArchiveInline(_ url: URL,
-                           hostDirectory: URL? = nil,
-                           temporaryDirectory: URL? = nil,
-                           displayPathPrefix: String? = nil,
-                           showError: Bool = true) -> Bool {
-        let archive = SZArchive()
-        do {
-            try archive.open(atPath: url.path)
-        } catch {
+    private func openArchiveInline(_ url: URL,
+                                   hostDirectory: URL? = nil,
+                                   temporaryDirectory: URL? = nil,
+                                   displayPathPrefix: String? = nil,
+                                   showError: Bool = true,
+                                   replaceCurrentState: Bool = false) -> ArchiveOpenResult {
+        let paneHostDirectory = hostDirectory ?? archiveHostDirectory()
+        let resolvedDisplayPathPrefix = displayPathPrefix ?? url.path
+
+        let progressController = ProgressDialogController()
+        progressController.operationTitle = "Opening archive..."
+        progressController.beginWaitingMode(fileName: resolvedDisplayPathPrefix)
+        var preparedResult: PreparedArchiveOpenResult?
+        let showDeadline = Date().addingTimeInterval(ProgressDialogController.deferredPresentationDelay)
+        var progressWasShown = false
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.prepareArchiveOpen(url,
+                                                 hostDirectory: paneHostDirectory,
+                                                 temporaryDirectory: temporaryDirectory,
+                                                 displayPathPrefix: resolvedDisplayPathPrefix,
+                                                 progress: progressController)
+            DispatchQueue.main.async {
+                preparedResult = result
+            }
+        }
+
+        while preparedResult == nil {
+            if !progressWasShown && Date() >= showDeadline {
+                progressController.showNowIfNeeded()
+                progressWasShown = true
+            }
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+        }
+
+        progressController.hideIfVisible()
+
+        guard let preparedResult else {
+            let error = paneOperationError("The archive open operation did not finish correctly.")
             cleanupTemporaryDirectory(temporaryDirectory)
             if showError {
                 showErrorAlert(error)
             }
-            return false
+            return .failed(error)
         }
 
-        let paneHostDirectory = hostDirectory ?? archiveHostDirectory()
-        currentDirectory = paneHostDirectory
-        if let temporaryDirectory {
-            registerTemporaryDirectory(temporaryDirectory)
+        return finishArchiveOpen(preparedResult,
+                                 temporaryDirectory: temporaryDirectory,
+                                 replaceCurrentState: replaceCurrentState,
+                                 showError: showError)
+    }
+
+    private func prepareArchiveOpen(_ url: URL,
+                                    hostDirectory: URL,
+                                    temporaryDirectory: URL?,
+                                    displayPathPrefix: String,
+                                    progress: SZProgressDelegate?) -> PreparedArchiveOpenResult {
+        let archive = SZArchive()
+        do {
+            try archive.open(atPath: url.path, progress: progress)
+        } catch {
+            if szIsUnsupportedArchive(error) {
+                return .unsupportedArchive(error)
+            }
+            if szIsUserCancellation(error) {
+                return .cancelled
+            }
+            return .failed(error)
         }
 
         let entries = archive.entries().map { ArchiveItem(from: $0) }
+        return .opened(PreparedArchiveOpen(hostDirectory: hostDirectory,
+                                           archivePath: url.path,
+                                           displayPathPrefix: displayPathPrefix,
+                                           archive: archive,
+                                           entries: entries,
+                                           temporaryDirectory: temporaryDirectory))
+    }
+
+    private func finishArchiveOpen(_ preparedResult: PreparedArchiveOpenResult,
+                                   temporaryDirectory: URL?,
+                                   replaceCurrentState: Bool,
+                                   showError: Bool) -> ArchiveOpenResult {
+        let result: ArchiveOpenResult
+        switch preparedResult {
+        case let .opened(prepared):
+            commitPreparedArchive(prepared, replaceCurrentState: replaceCurrentState)
+            return .opened
+        case let .unsupportedArchive(error):
+            cleanupTemporaryDirectory(temporaryDirectory)
+            result = .unsupportedArchive(error)
+        case .cancelled:
+            cleanupTemporaryDirectory(temporaryDirectory)
+            result = .cancelled
+        case let .failed(error):
+            cleanupTemporaryDirectory(temporaryDirectory)
+            result = .failed(error)
+        }
+
+        if showError {
+            switch result {
+            case let .unsupportedArchive(error), let .failed(error):
+                showErrorAlert(error)
+            case .opened, .cancelled:
+                break
+            }
+        }
+
+        return result
+    }
+
+    private func commitPreparedArchive(_ prepared: PreparedArchiveOpen,
+                                       replaceCurrentState: Bool) {
+        if replaceCurrentState {
+            closeAllArchives()
+        }
+
+        currentDirectory = prepared.hostDirectory
+        if let temporaryDirectory = prepared.temporaryDirectory {
+            registerTemporaryDirectory(temporaryDirectory)
+        }
+
         let level = ArchiveLevel(
-            filesystemDirectory: paneHostDirectory,
-            archivePath: url.path,
-            displayPathPrefix: displayPathPrefix ?? url.path,
-            archive: archive,
-            allEntries: entries,
+            filesystemDirectory: prepared.hostDirectory,
+            archivePath: prepared.archivePath,
+            displayPathPrefix: prepared.displayPathPrefix,
+            archive: prepared.archive,
+            allEntries: prepared.entries,
             currentSubdir: "",
-            temporaryDirectory: temporaryDirectory
+            temporaryDirectory: prepared.temporaryDirectory
         )
         archiveStack.append(level)
         navigateArchiveSubdir("")
-        return true
     }
 
     func navigateArchiveSubdir(_ subdir: String) {
@@ -1351,7 +1487,7 @@ extension FileManagerPaneController {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
                 let archive = SZArchive()
-                try archive.open(atPath: url.path)
+                try archive.open(atPath: url.path, progress: progressController)
                 let settings = SZExtractionSettings()
                 settings.overwriteMode = .ask
                 try archive.extract(toPath: destURL.path, settings: settings, progress: progressController)
@@ -1363,9 +1499,7 @@ extension FileManagerPaneController {
             } catch {
                 DispatchQueue.main.async {
                     self?.view.window?.endSheet(progressController.window!)
-                    if let win = self?.view.window {
-                        NSAlert(error: error).beginSheetModal(for: win)
-                    }
+                    self?.showErrorAlert(error)
                 }
             }
         }
@@ -1381,26 +1515,19 @@ extension FileManagerPaneController {
         guard selectedItems.count == 1 else { return }
         let item = selectedItems[0]
 
-        let alert = NSAlert()
-        alert.messageText = "Rename"
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        input.stringValue = item.name
-        alert.accessoryView = input
-        alert.addButton(withTitle: "Rename")
-        alert.addButton(withTitle: "Cancel")
-
-        alert.beginSheetModal(for: view.window!) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            let newName = input.stringValue
+        guard let window = view.window else { return }
+        szBeginTextInput(on: window,
+                         title: "Rename",
+                         initialValue: item.name,
+                         confirmTitle: "Rename") { [weak self] value in
+            guard let newName = value else { return }
             guard !newName.isEmpty, newName != item.name else { return }
             let newURL = item.url.deletingLastPathComponent().appendingPathComponent(newName)
             do {
                 try FileManager.default.moveItem(at: item.url, to: newURL)
                 self?.refresh()
             } catch {
-                if let win = self?.view.window {
-                    NSAlert(error: error).beginSheetModal(for: win)
-                }
+                self?.showErrorAlert(error)
             }
         }
     }
@@ -1414,14 +1541,12 @@ extension FileManagerPaneController {
         let paths = selectedFilePaths()
         guard !paths.isEmpty else { return }
 
-        let alert = NSAlert()
-        alert.messageText = "Delete \(paths.count) item(s)?"
-        alert.informativeText = "Items will be moved to Trash."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Move to Trash")
-        alert.addButton(withTitle: "Cancel")
-        alert.beginSheetModal(for: view.window!) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
+        guard let window = view.window else { return }
+        szBeginConfirmation(on: window,
+                            title: "Delete \(paths.count) item(s)?",
+                            message: "Items will be moved to Trash.",
+                            confirmTitle: "Move to Trash") { [weak self] confirmed in
+            guard confirmed else { return }
             for path in paths {
                 try? FileManager.default.trashItem(at: URL(fileURLWithPath: path), resultingItemURL: nil)
             }
@@ -1430,16 +1555,13 @@ extension FileManagerPaneController {
     }
 
     @objc private func createFolderFromMenu(_ sender: Any?) {
-        let alert = NSAlert()
-        alert.messageText = "Create Folder"
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
-        input.placeholderString = "New Folder"
-        alert.accessoryView = input
-        alert.addButton(withTitle: "Create")
-        alert.addButton(withTitle: "Cancel")
-        alert.beginSheetModal(for: view.window!) { [weak self] response in
-            guard response == .alertFirstButtonReturn, !input.stringValue.isEmpty else { return }
-            self?.createFolder(named: input.stringValue)
+        guard let window = view.window else { return }
+        szBeginTextInput(on: window,
+                         title: "Create Folder",
+                         placeholder: "New Folder",
+                         confirmTitle: "Create") { [weak self] value in
+            guard let name = value, !name.isEmpty else { return }
+            self?.createFolder(named: name)
         }
     }
 
@@ -1454,23 +1576,21 @@ extension FileManagerPaneController {
                 .creationDateKey, .fileResourceTypeKey
             ])
 
-            let alert = NSAlert()
-            alert.messageText = url.lastPathComponent
             let size = ByteCountFormatter.string(fromByteCount: Int64(resourceValues?.fileSize ?? 0), countStyle: .file)
             let dateFormatter = DateFormatter()
             dateFormatter.dateStyle = .long
             dateFormatter.timeStyle = .medium
-            alert.informativeText = """
+            let details = """
             Type: \(resourceValues?.isDirectory == true ? "Folder" : url.pathExtension.uppercased())
             Size: \(size)
             Modified: \(resourceValues?.contentModificationDate.map { dateFormatter.string(from: $0) } ?? "—")
             Created: \(resourceValues?.creationDate.map { dateFormatter.string(from: $0) } ?? "—")
             """
-            alert.beginSheetModal(for: view.window!)
+            szShowDetailsDialog(title: url.lastPathComponent,
+                                details: details,
+                                for: view.window)
 
         case let .archive(archiveItem):
-            let alert = NSAlert()
-            alert.messageText = archiveItem.name
             let dateFormatter = DateFormatter()
             dateFormatter.dateStyle = .long
             dateFormatter.timeStyle = .medium
@@ -1487,7 +1607,7 @@ extension FileManagerPaneController {
                 typeText = archiveItem.method.isEmpty ? "File in Archive" : archiveItem.method
             }
 
-            alert.informativeText = """
+            let details = """
             Type: \(typeText)
             Path: \(archiveItem.path)
             Size: \(sizeText)
@@ -1497,7 +1617,9 @@ extension FileManagerPaneController {
             Encrypted: \(archiveItem.isEncrypted ? "Yes" : "No")
             CRC: \(archiveItem.crc == 0 ? "—" : String(format: "%08X", archiveItem.crc))
             """
-            alert.beginSheetModal(for: view.window!)
+            szShowDetailsDialog(title: archiveItem.name,
+                                details: details,
+                                for: view.window)
 
         case .parent:
             return

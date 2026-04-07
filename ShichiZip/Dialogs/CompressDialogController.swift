@@ -250,11 +250,10 @@ class CompressDialogController: NSViewController {
         // Password mismatch check (CompressDialog.cpp: IDS_PASSWORD_NOT_MATCH)
         if encryptionPopup.indexOfSelectedItem != 0 {
             if passwordField.stringValue != passwordConfirmField.stringValue {
-                let alert = NSAlert()
-                alert.messageText = "Password Error"
-                alert.informativeText = "Passwords do not match."
-                alert.alertStyle = .warning
-                alert.runModal()
+                szPresentMessage(title: "Password Error",
+                                 message: "Passwords do not match.",
+                                 style: .warning,
+                                 for: view.window)
                 return
             }
         }
@@ -338,9 +337,7 @@ class CompressDialogController: NSViewController {
                 DispatchQueue.main.async {
                     progressWindow.close()
                     windowController?.close()
-                    let alert = NSAlert(error: error)
-                    alert.alertStyle = .critical
-                    alert.runModal()
+                    szPresentError(error, for: nil)
                 }
             }
         }

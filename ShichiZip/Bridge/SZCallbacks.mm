@@ -3,6 +3,103 @@
 #include "SZCallbacks.h"
 
 // ============================================================
+// SZOpenCallbackUI implementation
+// ============================================================
+
+SZOpenCallbackUI::SZOpenCallbackUI() :
+    PasswordIsDefined(false),
+    PasswordWasAsked(false),
+    TotalValue(0),
+    HasTotalValue(false),
+    UsesBytesProgress(false),
+    Delegate(nil) {}
+
+HRESULT SZOpenCallbackUI::Open_CheckBreak() {
+    id<SZProgressDelegate> d = Delegate;
+    if (d && [d progressShouldCancel]) {
+        return E_ABORT;
+    }
+    return S_OK;
+}
+
+HRESULT SZOpenCallbackUI::Open_SetTotal(const UInt64 *numFiles, const UInt64 *numBytes) {
+    if (numBytes && *numBytes > 0) {
+        TotalValue = *numBytes;
+        HasTotalValue = true;
+        UsesBytesProgress = true;
+    } else if (numFiles && *numFiles > 0) {
+        TotalValue = *numFiles;
+        HasTotalValue = true;
+        UsesBytesProgress = false;
+    } else {
+        TotalValue = 0;
+        HasTotalValue = false;
+    }
+
+    id<SZProgressDelegate> d = Delegate;
+    if (d && HasTotalValue) {
+        const UInt64 total = TotalValue;
+        const bool useBytesProgress = UsesBytesProgress;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [d progressDidUpdate:0.0];
+            if (useBytesProgress) {
+                [d progressDidUpdateBytesCompleted:0 total:total];
+            }
+        });
+    }
+
+    return Open_CheckBreak();
+}
+
+HRESULT SZOpenCallbackUI::Open_SetCompleted(const UInt64 *numFiles, const UInt64 *numBytes) {
+    if (!HasTotalValue || TotalValue == 0) {
+        return Open_CheckBreak();
+    }
+
+    UInt64 completed = 0;
+    if (UsesBytesProgress && numBytes) {
+        completed = *numBytes;
+    } else if (!UsesBytesProgress && numFiles) {
+        completed = *numFiles;
+    }
+
+    if (completed > TotalValue) {
+        completed = TotalValue;
+    }
+
+    const UInt64 total = TotalValue;
+    const double fraction = (double)completed / (double)total;
+    const bool useBytesProgress = UsesBytesProgress;
+    id<SZProgressDelegate> d = Delegate;
+    if (d) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [d progressDidUpdate:fraction];
+            if (useBytesProgress) {
+                [d progressDidUpdateBytesCompleted:completed total:total];
+            }
+        });
+    }
+
+    return Open_CheckBreak();
+}
+
+HRESULT SZOpenCallbackUI::Open_Finished() {
+    id<SZProgressDelegate> d = Delegate;
+    if (d && HasTotalValue && TotalValue > 0) {
+        const UInt64 total = TotalValue;
+        const bool useBytesProgress = UsesBytesProgress;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [d progressDidUpdate:1.0];
+            if (useBytesProgress) {
+                [d progressDidUpdateBytesCompleted:total total:total];
+            }
+        });
+    }
+
+    return Open_CheckBreak();
+}
+
+// ============================================================
 // SZFolderExtractCallback implementation
 // ============================================================
 
@@ -49,8 +146,7 @@ Z7_COM7F_IMF(SZFolderExtractCallback::AskOverwrite(
             NSString *newStr = newName ? ToNS(UString(newName)) : @"";
 
             void (^showDialog)(void) = ^{
-                NSAlert *alert = [[NSAlert alloc] init];
-                alert.messageText = @"File already exists";
+                SZPrepareProgressForUserInteraction(Delegate);
                 NSMutableString *info = [NSMutableString string];
                 [info appendFormat:@"Would you like to replace the existing file:\n%@", existStr];
                 if (existSize) {
@@ -64,19 +160,17 @@ Z7_COM7F_IMF(SZFolderExtractCallback::AskOverwrite(
                         [NSByteCountFormatter stringFromByteCount:(long long)*newSize
                                                        countStyle:NSByteCountFormatterCountStyleFile]];
                 }
-                alert.informativeText = info;
-                alert.alertStyle = NSAlertStyleWarning;
-                [alert addButtonWithTitle:@"Yes"];
-                [alert addButtonWithTitle:@"Yes to All"];
-                [alert addButtonWithTitle:@"No"];
-                [alert addButtonWithTitle:@"No to All"];
-                [alert addButtonWithTitle:@"Auto Rename"];
-                NSModalResponse resp = [alert runModal];
-                if (resp == NSAlertFirstButtonReturn) result = NOverwriteAnswer::kYes;
-                else if (resp == NSAlertFirstButtonReturn + 1) result = NOverwriteAnswer::kYesToAll;
-                else if (resp == NSAlertFirstButtonReturn + 2) result = NOverwriteAnswer::kNo;
-                else if (resp == NSAlertFirstButtonReturn + 3) result = NOverwriteAnswer::kNoToAll;
-                else if (resp == NSAlertFirstButtonReturn + 4) result = NOverwriteAnswer::kAutoRename;
+
+                NSInteger choice = [SZDialogPresenter runMessageWithStyle:SZDialogStyleWarning
+                                                                     title:@"File already exists"
+                                                                   message:info
+                                                              buttonTitles:@[@"Yes", @"Yes to All", @"No", @"No to All", @"Auto Rename", @"Cancel"]];
+                if (choice == 0) result = NOverwriteAnswer::kYes;
+                else if (choice == 1) result = NOverwriteAnswer::kYesToAll;
+                else if (choice == 2) result = NOverwriteAnswer::kNo;
+                else if (choice == 3) result = NOverwriteAnswer::kNoToAll;
+                else if (choice == 4) result = NOverwriteAnswer::kAutoRename;
+                else result = NOverwriteAnswer::kCancel;
             };
 
             if ([NSThread isMainThread]) showDialog();
@@ -130,7 +224,9 @@ Z7_COM7F_IMF(SZFolderExtractCallback::ReportExtractResult(Int32 opRes, Int32 enc
 }
 
 Z7_COM7F_IMF(SZFolderExtractCallback::CryptoGetTextPassword(BSTR *pw)) {
+    PasswordWasAsked = true;
     if (!PasswordIsDefined) {
+        SZPrepareProgressForUserInteraction(Delegate);
         HRESULT hr = SZPromptForPassword(Password, PasswordIsDefined);
         if (hr != S_OK) return hr;
     }

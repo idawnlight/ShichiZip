@@ -76,15 +76,56 @@
     CArchiveLink *_arcLink;
     BOOL _isOpen;
     NSString *_archivePath;
+    NSString *_cachedPassword;
+    BOOL _cachedPasswordIsDefined;
 }
 @end
 
 @implementation SZArchive
 
+- (void)clearCachedPassword {
+    _cachedPassword = nil;
+    _cachedPasswordIsDefined = NO;
+}
+
+- (void)storeCachedPassword:(const UString &)password defined:(bool)isDefined {
+    if (isDefined) {
+        _cachedPassword = ToNS(password);
+        _cachedPasswordIsDefined = YES;
+    } else {
+        [self clearCachedPassword];
+    }
+}
+
+- (void)configureExtractPasswordForCallback:(SZFolderExtractCallback *)callback explicitPassword:(NSString *)password {
+    if (password) {
+        callback->PasswordIsDefined = true;
+        callback->Password = ToU(password);
+        return;
+    }
+
+    if (_cachedPasswordIsDefined) {
+        callback->PasswordIsDefined = true;
+        callback->Password = ToU(_cachedPassword ?: @"");
+    }
+}
+
+- (void)updateCachedPasswordFromExtractCallback:(SZFolderExtractCallback *)callback result:(HRESULT)result {
+    if (result == S_OK && callback->PasswordIsDefined) {
+        [self storeCachedPassword:callback->Password defined:true];
+        return;
+    }
+
+    if (callback->PasswordWasWrong || (callback->PasswordWasAsked && !callback->PasswordIsDefined)) {
+        [self clearCachedPassword];
+    }
+}
+
 - (instancetype)init {
     if ((self = [super init])) {
         _arcLink = new CArchiveLink;
         _isOpen = NO;
+        _cachedPasswordIsDefined = NO;
     }
     return self;
 }
@@ -98,12 +139,22 @@
 // MARK: - Open / Close
 
 - (BOOL)openAtPath:(NSString *)path error:(NSError **)error {
-    return [self openAtPath:path password:nil error:error];
+    return [self openAtPath:path password:nil progress:nil error:error];
+}
+
+- (BOOL)openAtPath:(NSString *)path progress:(id<SZProgressDelegate>)progress error:(NSError **)error {
+    return [self openAtPath:path password:nil progress:progress error:error];
 }
 
 - (BOOL)openAtPath:(NSString *)path password:(NSString *)password error:(NSError **)error {
+    return [self openAtPath:path password:password progress:nil error:error];
+}
+
+- (BOOL)openAtPath:(NSString *)path password:(NSString *)password progress:(id<SZProgressDelegate>)progress error:(NSError **)error {
     CCodecs *codecs = SZGetCodecs();
-    if (!codecs) { if (error) *error = SZMakeError(-1, @"Failed to init codecs"); return NO; }
+    if (!codecs) { if (error) *error = SZMakeError(SZArchiveErrorCodeFailedToInitCodecs, @"Failed to init codecs"); return NO; }
+    [self close];
+    [self clearCachedPassword];
     _archivePath = [path copy];
 
     CObjectVector<COpenType> types;
@@ -120,6 +171,7 @@
     options.filePath = ToU(path);
 
     SZOpenCallbackUI callbackUI;
+    callbackUI.Delegate = progress;
     if (password) {
         callbackUI.PasswordIsDefined = true;
         callbackUI.Password = ToU(password);
@@ -127,14 +179,28 @@
 
     HRESULT res = _arcLink->Open3(options, &callbackUI);
     if (res != S_OK) {
+        NSInteger code;
         NSString *desc;
-        if (res == S_FALSE) desc = @"Cannot open archive or unsupported format";
-        else if (res == E_ABORT) desc = @"Operation was cancelled";
-        else desc = [NSString stringWithFormat:@"Failed to open archive (0x%08X)", (unsigned)res];
-        if (error) *error = SZMakeError(res, desc);
+        if (res == S_FALSE && callbackUI.PasswordWasAsked) {
+            code = SZArchiveErrorCodeWrongPassword;
+            desc = @"Cannot open encrypted archive. Wrong password?";
+        } else if (res == S_FALSE) {
+            code = SZArchiveErrorCodeUnsupportedArchive;
+            desc = @"Cannot open archive or unsupported format";
+        } else if (res == E_ABORT) {
+            code = SZArchiveErrorCodeUserCancelled;
+            desc = @"Operation was cancelled";
+        } else {
+            code = res;
+            desc = [NSString stringWithFormat:@"Failed to open archive (0x%08X)", (unsigned)res];
+        }
+        if (error) *error = SZMakeError(code, desc);
         return NO;
     }
 
+    if (callbackUI.PasswordIsDefined) {
+        [self storeCachedPassword:callbackUI.Password defined:true];
+    }
     _isOpen = YES;
     return YES;
 }
@@ -142,6 +208,7 @@
 - (void)close {
     if (_isOpen) _arcLink->Close();
     _isOpen = NO;
+    [self clearCachedPassword];
 }
 
 // MARK: - Properties
@@ -246,15 +313,16 @@ static UStringVector BuildRemovePathParts(NSString *pathPrefixToStrip) {
 
 static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError **error) {
     if (r == S_OK && fae->PasswordWasWrong) {
-        if (error) *error = SZMakeError(-12, @"Wrong password");
+        if (error) *error = SZMakeError(SZArchiveErrorCodeWrongPassword, @"Wrong password");
         return NO;
     }
     if (r == S_OK && fae->NumErrors > 0) {
-        if (error) *error = SZMakeError(-13, [NSString stringWithFormat:@"Completed with %u error(s)", fae->NumErrors]);
+        if (error) *error = SZMakeError(SZArchiveErrorCodePartialFailure, [NSString stringWithFormat:@"Completed with %u error(s)", fae->NumErrors]);
         return NO;
     }
     if (r != S_OK) {
-        if (error) *error = SZMakeError(r == E_ABORT ? -5 : -6, r == E_ABORT ? @"Cancelled" : @"Extraction failed");
+        if (error) *error = SZMakeError(r == E_ABORT ? SZArchiveErrorCodeUserCancelled : SZArchiveErrorCodeExtractionFailed,
+                                        r == E_ABORT ? @"Cancelled" : @"Extraction failed");
         return NO;
     }
     return YES;
@@ -263,7 +331,7 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
 // MARK: - Extract
 
 - (BOOL)extractToPath:(NSString *)dest settings:(SZExtractionSettings *)s progress:(id<SZProgressDelegate>)p error:(NSError **)error {
-    if (!_isOpen) { if (error) *error = SZMakeError(-4, @"No archive open"); return NO; }
+    if (!_isOpen) { if (error) *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open"); return NO; }
     IInArchive *archive = _arcLink->GetArchive();
     const CArc &arc = _arcLink->Arcs.Back();
     NWindows::NFile::NDir::CreateComplexDir(us2fs(ToU(dest)));
@@ -272,7 +340,7 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
     faeSpec->Delegate = p;
     faeSpec->OverwriteMode = s.overwriteMode;
-    if (s.password) { faeSpec->PasswordIsDefined = true; faeSpec->Password = ToU(s.password); }
+    [self configureExtractPasswordForCallback:faeSpec explicitPassword:s.password];
 
     CArchiveExtractCallback *ecs = new CArchiveExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(ecs);
@@ -285,11 +353,12 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
         false, false, us2fs(ToU(dest)), removePathParts, false, arc.GetEstmatedPhySize());
 
     HRESULT r = archive->Extract(nullptr, (UInt32)(Int32)-1, 0, ec);
+    [self updateCachedPasswordFromExtractCallback:faeSpec result:r];
     return CheckExtractResult(faeSpec, r, error);
 }
 
 - (BOOL)extractEntries:(NSArray<NSNumber *> *)indices toPath:(NSString *)dest settings:(SZExtractionSettings *)s progress:(id<SZProgressDelegate>)p error:(NSError **)error {
-    if (!_isOpen) { if (error) *error = SZMakeError(-4, @"No archive open"); return NO; }
+    if (!_isOpen) { if (error) *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open"); return NO; }
     IInArchive *archive = _arcLink->GetArchive();
     const CArc &arc = _arcLink->Arcs.Back();
     NWindows::NFile::NDir::CreateComplexDir(us2fs(ToU(dest)));
@@ -298,7 +367,7 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
     faeSpec->Delegate = p;
     faeSpec->OverwriteMode = s.overwriteMode;
-    if (s.password) { faeSpec->PasswordIsDefined = true; faeSpec->Password = ToU(s.password); }
+    [self configureExtractPasswordForCallback:faeSpec explicitPassword:s.password];
 
     CArchiveExtractCallback *ecs = new CArchiveExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(ecs);
@@ -313,17 +382,19 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
     std::vector<UInt32> ia; ia.reserve(indices.count);
     for (NSNumber *n in indices) ia.push_back([n unsignedIntValue]);
     HRESULT r = archive->Extract(ia.data(), (UInt32)ia.size(), 0, ec);
+    [self updateCachedPasswordFromExtractCallback:faeSpec result:r];
     return CheckExtractResult(faeSpec, r, error);
 }
 
 - (BOOL)testWithProgress:(id<SZProgressDelegate>)p error:(NSError **)error {
-    if (!_isOpen) { if (error) *error = SZMakeError(-4, @"No archive open"); return NO; }
+    if (!_isOpen) { if (error) *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open"); return NO; }
     IInArchive *archive = _arcLink->GetArchive();
     const CArc &arc = _arcLink->Arcs.Back();
 
     SZFolderExtractCallback *faeSpec = new SZFolderExtractCallback;
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
     faeSpec->Delegate = p;
+    [self configureExtractPasswordForCallback:faeSpec explicitPassword:nil];
 
     CArchiveExtractCallback *ecs = new CArchiveExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(ecs);
@@ -336,6 +407,7 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
         false, true, FString(), removePathParts, false, arc.GetEstmatedPhySize());
 
     HRESULT r = archive->Extract(nullptr, (UInt32)(Int32)-1, 1, ec);
+    [self updateCachedPasswordFromExtractCallback:faeSpec result:r];
     return CheckExtractResult(faeSpec, r, error);
 }
 

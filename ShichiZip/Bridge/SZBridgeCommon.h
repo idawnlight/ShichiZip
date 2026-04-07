@@ -7,6 +7,7 @@
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 #import "SZArchive.h"
+#import "../Dialogs/SZDialogPresenter.h"
 
 #define BOOL BOOL_7Z_COMPAT
 #include "CPP/Common/MyWindows.h"

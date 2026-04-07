@@ -121,9 +121,13 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     // MARK: - Actions
 
     /// Navigate the active pane to show an archive's contents
-    func navigateToArchive(_ url: URL) {
-        activePane.showArchive(at: url)
-        window?.makeKeyAndOrderFront(nil)
+    @discardableResult
+    func navigateToArchive(_ url: URL, revealWindow: Bool = true) -> Bool {
+        let opened = activePane.showArchive(at: url)
+        if opened && revealWindow {
+            window?.makeKeyAndOrderFront(nil)
+        }
+        return opened
     }
 
     @objc func toggleDualPane(_ sender: Any?) {
@@ -186,10 +190,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 } catch {
                     DispatchQueue.main.async {
                         self?.window?.endSheet(progressWindow)
-                        let alert = NSAlert(error: error)
-                        if let win = self?.window {
-                            alert.beginSheetModal(for: win)
-                        }
+                        self?.showErrorAlert(error)
                     }
                 }
             }
@@ -222,12 +223,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                                                     overwriteMode: .ask)
                     } else {
                         guard let archiveURL = activePane.selectedArchiveCandidateURL() else {
-                            throw NSError(domain: "SZArchiveErrorDomain",
+                            throw NSError(domain: SZArchiveErrorDomain,
                                           code: -1,
                                           userInfo: [NSLocalizedDescriptionKey: "Select an archive to extract."])
                         }
                         let archive = SZArchive()
-                        try archive.open(atPath: archiveURL.path)
+                        try archive.open(atPath: archiveURL.path, progress: progressController)
                         let settings = SZExtractionSettings()
                         try archive.extract(toPath: destURL.path, settings: settings,
                                            progress: progressController)
@@ -240,10 +241,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 } catch {
                     DispatchQueue.main.async {
                         self?.window?.endSheet(progressController.window!)
-                        let alert = NSAlert(error: error)
-                        if let win = self?.window {
-                            alert.beginSheetModal(for: win)
-                        }
+                        self?.showErrorAlert(error)
                     }
                 }
             }
@@ -264,32 +262,25 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                     try activePane.testCurrentArchive(progress: progressController)
                 } else {
                     guard let archiveURL = activePane.selectedArchiveCandidateURL() else {
-                        throw NSError(domain: "SZArchiveErrorDomain",
+                        throw NSError(domain: SZArchiveErrorDomain,
                                       code: -1,
                                       userInfo: [NSLocalizedDescriptionKey: "Select an archive to test."])
                     }
                     let archive = SZArchive()
-                    try archive.open(atPath: archiveURL.path)
+                    try archive.open(atPath: archiveURL.path, progress: progressController)
                     try archive.test(withProgress: progressController)
                     archive.close()
                 }
                 DispatchQueue.main.async {
                     self?.window?.endSheet(progressController.window!)
-                    let alert = NSAlert()
-                    alert.messageText = "Test OK"
-                    alert.informativeText = "No errors found."
-                    alert.alertStyle = .informational
-                    if let win = self?.window {
-                        alert.beginSheetModal(for: win)
-                    }
+                    szPresentMessage(title: "Test OK",
+                                     message: "No errors found.",
+                                     for: self?.window)
                 }
             } catch {
                 DispatchQueue.main.async {
                     self?.window?.endSheet(progressController.window!)
-                    let alert = NSAlert(error: error)
-                    if let win = self?.window {
-                        alert.beginSheetModal(for: win)
-                    }
+                    self?.showErrorAlert(error)
                 }
             }
         }
@@ -356,9 +347,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 } catch {
                     DispatchQueue.main.async {
                         self?.window?.endSheet(progressController.window!)
-                        if let win = self?.window {
-                            NSAlert(error: error).beginSheetModal(for: win)
-                        }
+                        self?.showErrorAlert(error)
                     }
                 }
             }
@@ -398,8 +387,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                         var shouldSkip = false
                         var cancelled = false
                         DispatchQueue.main.sync {
-                            let alert = NSAlert()
-                            alert.messageText = "File already exists"
                             let srcAttrs = try? fm.attributesOfItem(atPath: sourcePath)
                             let dstAttrs = try? fm.attributesOfItem(atPath: destFile.path)
                             let srcSize = (srcAttrs?[.size] as? UInt64) ?? 0
@@ -409,26 +396,27 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                             let df = DateFormatter()
                             df.dateStyle = .medium; df.timeStyle = .medium
 
-                            alert.informativeText = """
+                            let message = """
                             Destination: \(destFile.lastPathComponent)
                             Size: \(ByteCountFormatter.string(fromByteCount: Int64(dstSize), countStyle: .file))  Modified: \(dstDate.map { df.string(from: $0) } ?? "—")
 
                             Source: \(sourceURL.lastPathComponent)
                             Size: \(ByteCountFormatter.string(fromByteCount: Int64(srcSize), countStyle: .file))  Modified: \(srcDate.map { df.string(from: $0) } ?? "—")
                             """
-                            alert.alertStyle = .warning
-                            alert.addButton(withTitle: "Replace")
-                            alert.addButton(withTitle: "Replace All")
-                            alert.addButton(withTitle: "Skip")
-                            alert.addButton(withTitle: "Skip All")
-                            alert.addButton(withTitle: "Cancel")
-                            let resp = alert.runModal()
-                            // NSAlertFirstButtonReturn = 1000, second = 1001, etc.
-                            switch resp.rawValue {
-                            case 1000: break // Replace this one
-                            case 1001: overwriteAll = true
-                            case 1002: shouldSkip = true
-                            case 1003: skipAll = true; shouldSkip = true
+                            let choice = szRunChoiceDialog(title: "File already exists",
+                                                           message: message,
+                                                           style: .warning,
+                                                           buttons: ["Replace", "Replace All", "Skip", "Skip All", "Cancel"])
+                            switch choice {
+                            case 0:
+                                break
+                            case 1:
+                                overwriteAll = true
+                            case 2:
+                                shouldSkip = true
+                            case 3:
+                                skipAll = true
+                                shouldSkip = true
                             default: cancelled = true
                             }
                         }
@@ -468,9 +456,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                     // Stop on first error (matches 7-Zip behavior)
                     DispatchQueue.main.async {
                         self?.window?.endSheet(progressController.window!)
-                        if let win = self?.window {
-                            NSAlert(error: error).beginSheetModal(for: win)
-                        }
+                        self?.showErrorAlert(error)
                     }
                     return
                 }
@@ -490,20 +476,13 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return
         }
 
-        let alert = NSAlert()
-        alert.messageText = "Create Folder"
-        alert.informativeText = "Enter folder name:"
-
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
-        input.placeholderString = "New Folder"
-        alert.accessoryView = input
-        alert.addButton(withTitle: "Create")
-        alert.addButton(withTitle: "Cancel")
-
-        alert.beginSheetModal(for: window!) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            let name = input.stringValue
-            guard !name.isEmpty else { return }
+        guard let window else { return }
+        szBeginTextInput(on: window,
+                         title: "Create Folder",
+                         message: "Enter folder name.",
+                         placeholder: "New Folder",
+                         confirmTitle: "Create") { [weak self] value in
+            guard let name = value, !name.isEmpty else { return }
             self?.activePane.createFolder(named: name)
         }
     }
@@ -520,15 +499,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         let paths = activePane.selectedFilePaths()
         guard !paths.isEmpty else { return }
 
-        let alert = NSAlert()
-        alert.messageText = "Delete \(paths.count) item(s)?"
-        alert.informativeText = "Items will be moved to Trash."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Move to Trash")
-        alert.addButton(withTitle: "Cancel")
-
-        alert.beginSheetModal(for: window!) { response in
-            guard response == .alertFirstButtonReturn else { return }
+        guard let window else { return }
+        szBeginConfirmation(on: window,
+                            title: "Delete \(paths.count) item(s)?",
+                            message: "Items will be moved to Trash.",
+                            confirmTitle: "Move to Trash") { confirmed in
+            guard confirmed else { return }
             for path in paths {
                 try? FileManager.default.trashItem(at: URL(fileURLWithPath: path), resultingItemURL: nil)
             }
@@ -574,16 +550,14 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         return url
     }
 
+    private func showErrorAlert(_ error: Error) {
+        szPresentError(error, for: window)
+    }
+
     private func showUnsupportedOperationAlert(_ message: String) {
-        let alert = NSAlert()
-        alert.messageText = "Operation Not Available"
-        alert.informativeText = message
-        alert.alertStyle = .informational
-        if let window {
-            alert.beginSheetModal(for: window)
-        } else {
-            alert.runModal()
-        }
+        szPresentMessage(title: "Operation Not Available",
+                         message: message,
+                         for: window)
     }
 }
 

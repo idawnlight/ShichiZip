@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0E083C8C01751D167AA800E1 /* DialogPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E2FF83FA1080A0CA38F27F5 /* DialogPresenter.swift */; };
 		1506FF719B49C353449C3276 /* FileSystemItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F199F3D5EFC006C978C935C8 /* FileSystemItem.swift */; };
 		1CE5457C544B20D5DF0D42F3 /* BenchmarkWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */; };
 		1F4FA2F4EBF56D3C51E1ABA5 /* ExtractDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1063FC95805225AC501608 /* ExtractDialogController.swift */; };
@@ -21,8 +22,10 @@
 		982013070593772CA679F1CB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */; };
 		A6D570941AD9603FF45FB5B7 /* FileManagerPaneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */; };
 		A75F0A88DDC9FEB2C258A88D /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */; };
+		A783E2CAD13FA8016D826804 /* SZModalDialogController.m in Sources */ = {isa = PBXBuildFile; fileRef = 17A1A16D1207F4EA60603172 /* SZModalDialogController.m */; };
 		AA261563B50B35EE2B312E27 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15AF94624BC55B258E21F044 /* main.swift */; };
 		B2B8116921C374B976FF9283 /* FileManagerWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */; };
+		C2AE2F82C129E34E248C85A1 /* SZDialogPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E8962DD7A7A34F21F49446 /* SZDialogPresenter.m */; };
 		D132DCBB7A4D4B8CA31EC38A /* CompressionPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B428A25CBE1D7EDD3520A7A /* CompressionPreset.swift */; };
 		D33844E6931D04F9C12964F0 /* ProgressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */; };
 		F5D35697C677E69E61A6D2E7 /* ArchiveDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */; };
@@ -34,8 +37,12 @@
 		079C800E6F9E105461CEDF6F /* SZCallbacks.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZCallbacks.mm; sourceTree = "<group>"; };
 		103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZBridgeCommon.mm; sourceTree = "<group>"; };
 		15AF94624BC55B258E21F044 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		17A1A16D1207F4EA60603172 /* SZModalDialogController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SZModalDialogController.m; sourceTree = "<group>"; };
+		2E2FF83FA1080A0CA38F27F5 /* DialogPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialogPresenter.swift; sourceTree = "<group>"; };
+		37EC5FDA76CEDC07B700597B /* SZDialogPresenter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZDialogPresenter.h; sourceTree = "<group>"; };
 		43EB37EA2DD031212A342F87 /* CompressDialogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressDialogController.swift; sourceTree = "<group>"; };
 		4B79A5CCE90FE27ABBE045F6 /* ShichiZip-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ShichiZip-Bridging-Header.h"; sourceTree = "<group>"; };
+		59E8962DD7A7A34F21F49446 /* SZDialogPresenter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SZDialogPresenter.m; sourceTree = "<group>"; };
 		5F58255DCB77AF28307EC7CE /* SZArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZArchive.h; sourceTree = "<group>"; };
 		66C60AB7E758ABD0F2751D95 /* SZCallbacks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZCallbacks.h; sourceTree = "<group>"; };
 		78EC0F8B9F4DC1C6D26F42CD /* SZBridgeCommon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZBridgeCommon.h; sourceTree = "<group>"; };
@@ -44,6 +51,7 @@
 		8B428A25CBE1D7EDD3520A7A /* CompressionPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionPreset.swift; sourceTree = "<group>"; };
 		8D97DFC28A8EEEC9BBDB51EA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		937563A1E648A0013C4DD0C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A090218681EBF340986657E6 /* SZModalDialogController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZModalDialogController.h; sourceTree = "<group>"; };
 		B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveDocument.swift; sourceTree = "<group>"; };
 		C4B2D1040171A178E5575D88 /* ArchiveItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveItem.swift; sourceTree = "<group>"; };
@@ -116,6 +124,10 @@
 				795844E47B4BEC4837998CC8 /* PasswordDialogController.swift */,
 				E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */,
 				B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */,
+				37EC5FDA76CEDC07B700597B /* SZDialogPresenter.h */,
+				59E8962DD7A7A34F21F49446 /* SZDialogPresenter.m */,
+				A090218681EBF340986657E6 /* SZModalDialogController.h */,
+				17A1A16D1207F4EA60603172 /* SZModalDialogController.m */,
 			);
 			path = Dialogs;
 			sourceTree = "<group>";
@@ -147,8 +159,17 @@
 				BD4F4198B37A084A2EC81072 /* FileManager */,
 				09F35A679CBF4BEA1C61EF07 /* Model */,
 				A1A2A1E6526CA60B2188B83F /* Resources */,
+				B92097D2D36120A1EF231E0E /* Utilities */,
 			);
 			path = ShichiZip;
+			sourceTree = "<group>";
+		};
+		B92097D2D36120A1EF231E0E /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				2E2FF83FA1080A0CA38F27F5 /* DialogPresenter.swift */,
+			);
+			path = Utilities;
 			sourceTree = "<group>";
 		};
 		BD4F4198B37A084A2EC81072 /* FileManager */ = {
@@ -233,6 +254,7 @@
 				1CE5457C544B20D5DF0D42F3 /* BenchmarkWindowController.swift in Sources */,
 				92508A846730EC64177768C0 /* CompressDialogController.swift in Sources */,
 				D132DCBB7A4D4B8CA31EC38A /* CompressionPreset.swift in Sources */,
+				0E083C8C01751D167AA800E1 /* DialogPresenter.swift in Sources */,
 				1F4FA2F4EBF56D3C51E1ABA5 /* ExtractDialogController.swift in Sources */,
 				A6D570941AD9603FF45FB5B7 /* FileManagerPaneController.swift in Sources */,
 				B2B8116921C374B976FF9283 /* FileManagerWindowController.swift in Sources */,
@@ -243,6 +265,8 @@
 				2754EF55454FEC5CEE4E1E33 /* SZArchive.mm in Sources */,
 				638B19CD6D0F3AD721A43B9A /* SZBridgeCommon.mm in Sources */,
 				77648FA14E470C55E65CAD70 /* SZCallbacks.mm in Sources */,
+				C2AE2F82C129E34E248C85A1 /* SZDialogPresenter.m in Sources */,
+				A783E2CAD13FA8016D826804 /* SZModalDialogController.m in Sources */,
 				A75F0A88DDC9FEB2C258A88D /* SettingsWindowController.swift in Sources */,
 				AA261563B50B35EE2B312E27 /* main.swift in Sources */,
 			);

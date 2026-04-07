@@ -6,15 +6,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var additionalFileManagerWindows: [FileManagerWindowController] = []
     private var benchmarkWindowController: BenchmarkWindowController?
     private var settingsWindowController: SettingsWindowController?
+    private var pendingDeferredArchiveOpens = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainMenu.setup()
         // Delay slightly — if we're opening a file, the document system will handle it
         // Only show file manager if no documents are being opened
         DispatchQueue.main.async { [weak self] in
-            if NSDocumentController.shared.documents.isEmpty &&
+            guard let self else { return }
+            if self.pendingDeferredArchiveOpens == 0 &&
+               NSDocumentController.shared.documents.isEmpty &&
                NSApp.windows.filter({ $0.isVisible }).isEmpty {
-                self?.showFileManager(nil)
+                self.showFileManager(nil)
             }
         }
     }
@@ -35,6 +38,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Handle files dropped onto dock icon
     func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        beginDeferredArchiveOpen()
+        defer { endDeferredArchiveOpen() }
         let urls = filenames.map { URL(fileURLWithPath: $0) }
         openArchiveURLs(urls, preferPrimaryWindow: false)
     }
@@ -74,7 +79,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Open an archive file in the file manager (navigate into it inline)
     func openArchiveInFileManager(_ url: URL) {
         showFileManager(nil)
-        fileManagerWindowController?.navigateToArchive(url)
+        fileManagerWindowController?.navigateToArchive(url, revealWindow: true)
     }
 
     /// Open an archive in a NEW file manager window (for "Open With" from Finder)
@@ -84,8 +89,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.additionalFileManagerWindows.removeAll { $0 === controller }
         }
         additionalFileManagerWindows.append(wc)
-        wc.showWindow(self)
-        wc.navigateToArchive(url)
+        if wc.navigateToArchive(url, revealWindow: false) {
+            wc.showWindow(self)
+        } else {
+            additionalFileManagerWindows.removeAll { $0 === wc }
+        }
+    }
+
+    func beginDeferredArchiveOpen() {
+        pendingDeferredArchiveOpens += 1
+    }
+
+    func endDeferredArchiveOpen() {
+        pendingDeferredArchiveOpens = max(0, pendingDeferredArchiveOpens - 1)
     }
 
     private func openArchiveURLs(_ urls: [URL], preferPrimaryWindow: Bool) {

@@ -8,6 +8,19 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+FOUNDATION_EXPORT NSErrorDomain const SZArchiveErrorDomain;
+
+typedef NS_ERROR_ENUM(SZArchiveErrorDomain, SZArchiveErrorCode) {
+    SZArchiveErrorCodeFailedToInitCodecs = -1,
+    SZArchiveErrorCodeUnsupportedArchive = -2,
+    SZArchiveErrorCodeNoOpenArchive = -4,
+    SZArchiveErrorCodeUserCancelled = -5,
+    SZArchiveErrorCodeExtractionFailed = -6,
+    SZArchiveErrorCodeUnsupportedFormat = -8,
+    SZArchiveErrorCodeWrongPassword = -12,
+    SZArchiveErrorCodePartialFailure = -13,
+};
+
 /// Supported archive formats for creation
 typedef NS_ENUM(NSInteger, SZArchiveFormat) {
     SZArchiveFormat7z = 0,
@@ -95,6 +108,7 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
 - (void)progressDidUpdateBytesCompleted:(uint64_t)completed total:(uint64_t)total;
 - (BOOL)progressShouldCancel;
 @optional
+- (void)progressPrepareForUserInteraction;
 - (void)progressDidUpdateSpeed:(double)bytesPerSecond;
 - (void)progressDidUpdateCompressionRatio:(double)ratio;
 @end
@@ -135,10 +149,21 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
 - (BOOL)openAtPath:(NSString *)path
              error:(NSError **)error;
 
+/// Open an existing archive for reading with progress reporting
+- (BOOL)openAtPath:(NSString *)path
+             progress:(nullable id<SZProgressDelegate>)progress
+                 error:(NSError **)error;
+
 /// Open with password
 - (BOOL)openAtPath:(NSString *)path
           password:(nullable NSString *)password
              error:(NSError **)error;
+
+/// Open with password and progress reporting
+- (BOOL)openAtPath:(NSString *)path
+             password:(nullable NSString *)password
+             progress:(nullable id<SZProgressDelegate>)progress
+                 error:(NSError **)error;
 
 /// Close the archive
 - (void)close;

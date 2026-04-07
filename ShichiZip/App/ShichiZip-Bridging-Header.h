@@ -4,3 +4,5 @@
 //
 
 #import "../Bridge/SZArchive.h"
+#import "../Dialogs/SZModalDialogController.h"
+#import "../Dialogs/SZDialogPresenter.h"

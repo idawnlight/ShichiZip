@@ -7,6 +7,22 @@
 #include "CPP/7zip/UI/Common/UpdateCallback.h"
 #include "CPP/7zip/UI/Common/EnumDirItems.h"
 
+static inline void SZPrepareProgressForUserInteraction(id<SZProgressDelegate> delegate) {
+    if (!delegate || ![delegate respondsToSelector:@selector(progressPrepareForUserInteraction)]) {
+        return;
+    }
+
+    void (^showProgressWindow)(void) = ^{
+        [delegate progressPrepareForUserInteraction];
+    };
+
+    if ([NSThread isMainThread]) {
+        showProgressWindow();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), showProgressWindow);
+    }
+}
+
 // ============================================================
 // IOpenCallbackUI — for CArchiveLink::Open3()
 // ============================================================
@@ -14,16 +30,23 @@ class SZOpenCallbackUI : public IOpenCallbackUI {
 public:
     UString Password;
     bool PasswordIsDefined;
+    bool PasswordWasAsked;
+    UInt64 TotalValue;
+    bool HasTotalValue;
+    bool UsesBytesProgress;
+    __unsafe_unretained id<SZProgressDelegate> Delegate;
 
-    SZOpenCallbackUI() : PasswordIsDefined(false) {}
+    SZOpenCallbackUI();
 
-    HRESULT Open_CheckBreak() override { return S_OK; }
-    HRESULT Open_SetTotal(const UInt64 *, const UInt64 *) override { return S_OK; }
-    HRESULT Open_SetCompleted(const UInt64 *, const UInt64 *) override { return S_OK; }
-    HRESULT Open_Finished() override { return S_OK; }
+    HRESULT Open_CheckBreak() override;
+    HRESULT Open_SetTotal(const UInt64 *, const UInt64 *) override;
+    HRESULT Open_SetCompleted(const UInt64 *, const UInt64 *) override;
+    HRESULT Open_Finished() override;
 #ifndef Z7_NO_CRYPTO
     HRESULT Open_CryptoGetTextPassword(BSTR *password) override {
+        PasswordWasAsked = true;
         if (!PasswordIsDefined) {
+            SZPrepareProgressForUserInteraction(Delegate);
             HRESULT hr = SZPromptForPassword(Password, PasswordIsDefined);
             if (hr != S_OK) return hr;
         }
@@ -44,13 +67,14 @@ class SZFolderExtractCallback final :
 public:
     UString Password;
     bool PasswordIsDefined;
+    bool PasswordWasAsked;
     UInt64 TotalSize;
     SZOverwriteMode OverwriteMode;
     __unsafe_unretained id<SZProgressDelegate> Delegate;
     UInt32 NumErrors;
     bool PasswordWasWrong;
 
-    SZFolderExtractCallback() : PasswordIsDefined(false), TotalSize(0),
+    SZFolderExtractCallback() : PasswordIsDefined(false), PasswordWasAsked(false), TotalSize(0),
         OverwriteMode(SZOverwriteModeAsk), Delegate(nil),
         NumErrors(0), PasswordWasWrong(false) {}
 
