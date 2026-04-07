@@ -9,12 +9,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var tableView: NSTableView!
     private var scrollView: NSScrollView!
     private var statusLabel: NSTextField!
+    private var settingsObserver: NSObjectProtocol?
 
     private(set) var currentDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     var currentDirectoryURL: URL { currentDirectory }
     private var items: [FileSystemItem] = []
 
     private enum PaneItem {
+        case parent
         case filesystem(FileSystemItem)
         case archive(ArchiveItem)
     }
@@ -33,8 +35,20 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var isInsideArchive: Bool { !archiveStack.isEmpty }
     private var archiveDisplayItems: [ArchiveItem] = [] // currently visible items in archive
     private var temporaryDirectories: Set<URL> = []
+    private var showsParentRow: Bool {
+        guard SZSettings.bool(.showDots) else {
+            return false
+        }
+        if isInsideArchive {
+            return true
+        }
+        return currentDirectory.path != currentDirectory.deletingLastPathComponent().path
+    }
 
     deinit {
+        if let settingsObserver {
+            NotificationCenter.default.removeObserver(settingsObserver)
+        }
         closeAllArchives()
         cleanupAllTemporaryDirectories()
     }
@@ -148,6 +162,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             statusLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -2),
             statusLabel.heightAnchor.constraint(equalToConstant: 16),
         ])
+
+        settingsObserver = NotificationCenter.default.addObserver(
+            forName: .szSettingsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleSettingsDidChange(notification)
+        }
 
         self.view = container
         loadDirectory(currentDirectory)
@@ -268,6 +290,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         statusLabel.stringValue = "\(fileCount) files, \(dirCount) folders — \(sizeStr)"
     }
 
+    private func handleSettingsDidChange(_ notification: Notification) {
+        guard let key = notification.userInfo?["key"] as? String,
+              key == SZSettingsKey.showDots.rawValue else {
+            return
+        }
+
+        tableView.reloadData()
+        updateStatusBar()
+    }
+
     func showArchive(at url: URL) {
         let parentDirectory = url.deletingLastPathComponent()
         closeAllArchives()
@@ -327,24 +359,38 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         case #selector(createFolderFromMenu(_:)):
             return canCreateFolderHere()
         case #selector(showItemProperties(_:)):
-            return !selectedPaneItems().isEmpty
+            return !selectedRealPaneItems().isEmpty
         default:
             return true
         }
     }
 
     private func paneItem(at row: Int) -> PaneItem? {
-        if isInsideArchive {
-            guard row >= 0, row < archiveDisplayItems.count else { return nil }
-            return .archive(archiveDisplayItems[row])
+        if showsParentRow && row == 0 {
+            return .parent
         }
 
-        guard row >= 0, row < items.count else { return nil }
-        return .filesystem(items[row])
+        let itemRow = row - (showsParentRow ? 1 : 0)
+        if isInsideArchive {
+            guard itemRow >= 0, itemRow < archiveDisplayItems.count else { return nil }
+            return .archive(archiveDisplayItems[itemRow])
+        }
+
+        guard itemRow >= 0, itemRow < items.count else { return nil }
+        return .filesystem(items[itemRow])
     }
 
     private func selectedPaneItems() -> [PaneItem] {
         tableView.selectedRowIndexes.compactMap { paneItem(at: $0) }
+    }
+
+    private func selectedRealPaneItems() -> [PaneItem] {
+        selectedPaneItems().filter {
+            if case .parent = $0 {
+                return false
+            }
+            return true
+        }
     }
 
     private func selectedFileSystemItems() -> [FileSystemItem] {
@@ -638,6 +684,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         guard let item = paneItem(at: row) else { return }
 
         switch item {
+        case .parent:
+            goUp()
+
         case let .archive(archiveItem):
             if archiveItem.isDirectory {
                 navigateArchiveSubdir(archiveItem.path)
@@ -751,13 +800,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     // MARK: - NSTableViewDataSource
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        return isInsideArchive ? archiveDisplayItems.count : items.count
+        let itemCount = isInsideArchive ? archiveDisplayItems.count : items.count
+        return itemCount + (showsParentRow ? 1 : 0)
     }
 
     // MARK: - NSTableViewDelegate
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard let columnID = tableColumn?.identifier.rawValue else { return nil }
+        guard let paneItem = paneItem(at: row) else { return nil }
 
         // Determine the data source based on mode
         let itemName: String
@@ -767,9 +818,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         let itemIsDir: Bool
         let itemIconPath: String
 
-        if isInsideArchive {
-            guard row < archiveDisplayItems.count else { return nil }
-            let ai = archiveDisplayItems[row]
+        switch paneItem {
+        case .parent:
+            itemName = ".."
+            itemSize = ""
+            itemModified = ""
+            itemCreated = ""
+            itemIsDir = true
+            itemIconPath = ""
+
+        case let .archive(ai):
             itemName = ai.name
             itemSize = ai.isDirectory ? "--" : ByteCountFormatter.string(fromByteCount: Int64(ai.size), countStyle: .file)
             let df = DateFormatter(); df.dateStyle = .medium; df.timeStyle = .short
@@ -777,9 +835,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             itemCreated = ai.createdDate.map { df.string(from: $0) } ?? ""
             itemIsDir = ai.isDirectory
             itemIconPath = ai.isDirectory ? "" : ai.name
-        } else {
-            guard row < items.count else { return nil }
-            let item = items[row]
+
+        case let .filesystem(item):
             itemName = item.name
             itemSize = item.formattedSize
             let df = DateFormatter(); df.dateStyle = .medium; df.timeStyle = .short
@@ -835,7 +892,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         switch columnID {
         case "name":
             cell.textField?.stringValue = itemName
-            if isInsideArchive {
+            if case .parent = paneItem {
+                cell.imageView?.image = NSImage(systemSymbolName: "arrow.up.circle.fill", accessibilityDescription: "Parent")
+                cell.imageView?.contentTintColor = .secondaryLabelColor
+            } else if isInsideArchive {
                 // Archive mode: use SF Symbol for folders, extension-based for files
                 if itemIsDir {
                     cell.imageView?.image = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "Folder")
@@ -876,10 +936,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     // MARK: - Drag source (provide file URLs to drag out)
 
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> (any NSPasteboardWriting)? {
-        if isInsideArchive {
+        guard let paneItem = paneItem(at: row) else { return nil }
+
+        switch paneItem {
+        case .parent:
+            return nil
+
+        case let .archive(ai):
             // Extract to temp folder on demand, then provide temp URL (PanelDrag.cpp pattern)
-            guard row < archiveDisplayItems.count else { return nil }
-            let ai = archiveDisplayItems[row]
             if ai.isDirectory || ai.index < 0 { return nil } // can't drag synthetic dirs
 
             guard let level = archiveStack.last else { return nil }
@@ -900,10 +964,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 return nil
             }
             return nil
-        }
 
-        guard row < items.count else { return nil }
-        return items[row].url as NSURL
+        case let .filesystem(item):
+            return item.url as NSURL
+        }
     }
 
     // MARK: - Drop destination (accept files dragged into this folder)
@@ -1295,7 +1359,7 @@ extension FileManagerPaneController {
     }
 
     @objc private func showItemProperties(_ sender: Any?) {
-        guard let item = selectedPaneItems().first else { return }
+        guard let item = selectedRealPaneItems().first else { return }
 
         switch item {
         case let .filesystem(fileSystemItem):
@@ -1349,6 +1413,9 @@ extension FileManagerPaneController {
             CRC: \(archiveItem.crc == 0 ? "—" : String(format: "%08X", archiveItem.crc))
             """
             alert.beginSheetModal(for: view.window!)
+
+        case .parent:
+            return
         }
     }
 }

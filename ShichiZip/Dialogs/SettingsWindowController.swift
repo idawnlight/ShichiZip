@@ -1,5 +1,9 @@
 import Cocoa
 
+extension Notification.Name {
+    static let szSettingsDidChange = Notification.Name("SZSettingsDidChange")
+}
+
 // MARK: - Settings Keys (maps to Windows 7-Zip registry keys)
 
 enum SZSettingsKey: String {
@@ -29,12 +33,19 @@ enum SZSettingsKey: String {
 struct SZSettings {
     static let defaults = UserDefaults.standard
 
+    private static func postChange(for key: SZSettingsKey) {
+        NotificationCenter.default.post(name: .szSettingsDidChange,
+                                        object: nil,
+                                        userInfo: ["key": key.rawValue])
+    }
+
     static func bool(_ key: SZSettingsKey) -> Bool {
         return defaults.bool(forKey: key.rawValue)
     }
 
     static func set(_ value: Bool, for key: SZSettingsKey) {
         defaults.set(value, forKey: key.rawValue)
+        postChange(for: key)
     }
 
     static func string(_ key: SZSettingsKey) -> String {
@@ -43,6 +54,7 @@ struct SZSettings {
 
     static func set(_ value: String, for key: SZSettingsKey) {
         defaults.set(value, forKey: key.rawValue)
+        postChange(for: key)
     }
 
     static func integer(_ key: SZSettingsKey) -> Int {
@@ -51,6 +63,7 @@ struct SZSettings {
 
     static func set(_ value: Int, for key: SZSettingsKey) {
         defaults.set(value, forKey: key.rawValue)
+        postChange(for: key)
     }
 
     static var memLimitGB: Int {

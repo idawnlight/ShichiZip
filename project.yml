@@ -34,7 +34,6 @@ targets:
           - -force_load
           - $(PROJECT_DIR)/build/lib/lib7zip.a
           - -lpthread
-          - -lc++
         SWIFT_VERSION: "5.9"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

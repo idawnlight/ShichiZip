@@ -289,7 +289,6 @@
 					"-force_load",
 					"$(PROJECT_DIR)/build/lib/lib7zip.a",
 					"-lpthread",
-					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
 				PRODUCT_NAME = ShichiZip;
@@ -394,7 +393,6 @@
 					"-force_load",
 					"$(PROJECT_DIR)/build/lib/lib7zip.a",
 					"-lpthread",
-					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
 				PRODUCT_NAME = ShichiZip;
