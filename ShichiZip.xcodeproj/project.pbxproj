@@ -31,6 +31,7 @@
 		C2AE2F82C129E34E248C85A1 /* SZDialogPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E8962DD7A7A34F21F49446 /* SZDialogPresenter.m */; };
 		D33844E6931D04F9C12964F0 /* ProgressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */; };
 		D49D1ABE0FB54A906B16439D /* SZOperationSessionDefaults.m in Sources */ = {isa = PBXBuildFile; fileRef = CCCBD7802EE988D8182FB615 /* SZOperationSessionDefaults.m */; };
+		E1568B37527443E8A00EFC19 /* FoldersHistoryWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5287B22A45EB2C1D5DDAF5B /* FoldersHistoryWindowController.swift */; };
 		E536B805338610B9325FDE45 /* DeleteTemporaryFilesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FECEA4ECEDC8A862D8490673 /* DeleteTemporaryFilesWindowController.swift */; };
 		EFD6C6263E7F428FB8939A42 /* FileManagerDirectoryListing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF12616F99B5BC0BECF7D3BD /* FileManagerDirectoryListing.swift */; };
 		F5D35697C677E69E61A6D2E7 /* ArchiveDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */; };
@@ -75,6 +76,7 @@
 		ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenu.swift; sourceTree = "<group>"; };
 		EF12616F99B5BC0BECF7D3BD /* FileManagerDirectoryListing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerDirectoryListing.swift; sourceTree = "<group>"; };
 		F199F3D5EFC006C978C935C8 /* FileSystemItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemItem.swift; sourceTree = "<group>"; };
+		F5287B22A45EB2C1D5DDAF5B /* FoldersHistoryWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldersHistoryWindowController.swift; sourceTree = "<group>"; };
 		F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerWindowController.swift; sourceTree = "<group>"; };
 		FC8109FC18679384CCE1FCC9 /* SZArchive.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZArchive.mm; sourceTree = "<group>"; };
 		FECEA4ECEDC8A862D8490673 /* DeleteTemporaryFilesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteTemporaryFilesWindowController.swift; sourceTree = "<group>"; };
@@ -138,6 +140,7 @@
 				EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */,
 				43EB37EA2DD031212A342F87 /* CompressDialogController.swift */,
 				FECEA4ECEDC8A862D8490673 /* DeleteTemporaryFilesWindowController.swift */,
+				F5287B22A45EB2C1D5DDAF5B /* FoldersHistoryWindowController.swift */,
 				E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */,
 				B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */,
 				37EC5FDA76CEDC07B700597B /* SZDialogPresenter.h */,
@@ -290,6 +293,7 @@
 				A386AA53745E51B22EC51125 /* FileManagerTemporaryDirectorySupport.swift in Sources */,
 				B2B8116921C374B976FF9283 /* FileManagerWindowController.swift in Sources */,
 				1506FF719B49C353449C3276 /* FileSystemItem.swift in Sources */,
+				E1568B37527443E8A00EFC19 /* FoldersHistoryWindowController.swift in Sources */,
 				27AAAB1352382FE609A3B393 /* MainMenu.swift in Sources */,
 				D33844E6931D04F9C12964F0 /* ProgressDialogController.swift in Sources */,
 				2754EF55454FEC5CEE4E1E33 /* SZArchive.mm in Sources */,

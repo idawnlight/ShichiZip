@@ -583,6 +583,22 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         recentDirectories
     }
 
+    func setRecentDirectoryHistory(_ entries: [URL]) {
+        var normalizedEntries: [URL] = []
+        var seenPaths = Set<String>()
+
+        for url in entries {
+            let standardizedURL = url.standardizedFileURL
+            guard seenPaths.insert(standardizedURL.path).inserted else { continue }
+            normalizedEntries.append(standardizedURL)
+            if normalizedEntries.count == 20 {
+                break
+            }
+        }
+
+        recentDirectories = normalizedEntries
+    }
+
     func openRecentDirectory(_ url: URL) {
         if isInsideArchive {
             closeAllArchives()

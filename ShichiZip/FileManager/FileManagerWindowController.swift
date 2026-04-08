@@ -180,6 +180,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     private var keyEventMonitor: Any?
     private var viewPreferencesObserver: NSObjectProtocol?
     private var autoRefreshTimer: Timer?
+    private var foldersHistoryWindowController: FoldersHistoryWindowController?
 
     var onWindowWillClose: ((FileManagerWindowController) -> Void)?
 
@@ -673,21 +674,21 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     @objc func showFoldersHistory(_ sender: Any?) {
-        let entries = activePane.recentDirectoryHistory()
-        guard !entries.isEmpty else { return }
+        let pane = activePane
+        let entries = pane.recentDirectoryHistory()
+        guard !entries.isEmpty, let window else { return }
 
-        let historyPicker = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26), pullsDown: false)
-        entries.forEach { historyPicker.addItem(withTitle: $0.path) }
+        let controller = FoldersHistoryWindowController(entries: entries)
+        foldersHistoryWindowController = controller
+        controller.beginSheetModal(for: window) { [weak self, weak pane] result in
+            self?.foldersHistoryWindowController = nil
+            guard let pane, let result else { return }
 
-        let alert = NSAlert()
-        alert.messageText = "Folders History"
-        alert.informativeText = "Choose a recent folder to open in the active pane."
-        alert.accessoryView = historyPicker
-        alert.addButton(withTitle: "Open")
-        alert.addButton(withTitle: "Cancel")
-
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        activePane.openRecentDirectory(entries[historyPicker.indexOfSelectedItem])
+            pane.setRecentDirectoryHistory(result.updatedEntries)
+            if let selectedURL = result.selectedURL {
+                pane.openRecentDirectory(selectedURL)
+            }
+        }
     }
 
     @objc func toggleArchiveToolbar(_ sender: Any?) {
