@@ -43,7 +43,7 @@ final class FileManagerArchiveItemWorkflowService {
               openExternallyIfPossible: (URL, URL) -> Bool) throws {
         let stagedItem = try stage(item: item,
                                    context: context,
-                                   temporaryDirectoryPrefix: "7zO")
+                             temporaryDirectoryPrefix: FileManagerTemporaryDirectorySupport.openArchivePrefix)
         let preferredApplicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(forArchiveItemPath: item.path)
 
         if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(archiveItemPath: item.path) {
@@ -98,7 +98,7 @@ final class FileManagerArchiveItemWorkflowService {
         do {
             return try stage(item: item,
                              context: context,
-                             temporaryDirectoryPrefix: "ShichiZip-drag-").fileURL
+                             temporaryDirectoryPrefix: FileManagerTemporaryDirectorySupport.dragPrefix).fileURL
         } catch {
             return nil
         }
@@ -107,8 +107,7 @@ final class FileManagerArchiveItemWorkflowService {
     private func stage(item: ArchiveItem,
                        context: FileManagerArchiveItemWorkflowContext,
                        temporaryDirectoryPrefix: String) throws -> StagedArchiveItem {
-        let temporaryDirectory = try createTemporaryDirectory(prefix: temporaryDirectoryPrefix,
-                                      currentDirectory: context.hostDirectory)
+        let temporaryDirectory = try createTemporaryDirectory(prefix: temporaryDirectoryPrefix)
 
         do {
             try context.archive.extractEntries([NSNumber(value: item.index)],
@@ -129,14 +128,9 @@ final class FileManagerArchiveItemWorkflowService {
         }
     }
 
-    private func createTemporaryDirectory(prefix: String,
-                                          currentDirectory: URL) throws -> URL {
-        let workDir = SZSettings.resolvedWorkDir(currentDir: currentDirectory)
-        try fileManager.createDirectory(at: workDir, withIntermediateDirectories: true)
-
-        let tempDir = workDir
-            .appendingPathComponent("\(prefix)\(UUID().uuidString)")
-        try fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    private func createTemporaryDirectory(prefix: String) throws -> URL {
+        let tempDir = try FileManagerTemporaryDirectorySupport.makeTemporaryDirectory(prefix: prefix,
+                                                                                      fileManager: fileManager)
         register(tempDir)
         return tempDir
     }

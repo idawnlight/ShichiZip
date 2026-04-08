@@ -5,6 +5,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var fileManagerWindowController: FileManagerWindowController?
     private var additionalFileManagerWindows: [FileManagerWindowController] = []
     private var benchmarkWindowController: BenchmarkWindowController?
+    private var deleteTemporaryFilesWindowController: DeleteTemporaryFilesWindowController?
     private var settingsWindowController: SettingsWindowController?
     private var pendingDeferredArchiveOpens = 0
     private var shouldPresentInitialFileManager = true
@@ -137,6 +138,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             benchmarkWindowController = BenchmarkWindowController()
         }
         benchmarkWindowController?.showWindow(self)
+    }
+
+    @IBAction func showDeleteTemporaryFiles(_ sender: Any?) {
+        if deleteTemporaryFilesWindowController == nil {
+            deleteTemporaryFilesWindowController = DeleteTemporaryFilesWindowController()
+        }
+        deleteTemporaryFilesWindowController?.showWindow(self)
     }
 
     @IBAction func showPreferences(_ sender: Any?) {

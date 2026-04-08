@@ -358,6 +358,11 @@ enum MainMenu {
                 keyEquivalent: "b",
                 modifiers: [.command, .shift],
                 target: NSApp.delegate)
+        toolsMenu.addItem(.separator())
+        addItem(to: toolsMenu,
+                title: "Delete Temporary Files…",
+                action: #selector(AppDelegate.showDeleteTemporaryFiles(_:)),
+                target: NSApp.delegate)
 
         let windowMenu = NSMenu(title: "Window")
         addTopLevelMenu(windowMenu, to: mainMenu)
