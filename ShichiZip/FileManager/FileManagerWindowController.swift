@@ -134,6 +134,26 @@ enum FileManagerViewPreferences {
 /// Dual-pane file manager window replicating 7-Zip File Manager
 class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserInterfaceValidations, NSMenuItemValidation {
 
+    private enum PanePreferences {
+        private static let defaults = UserDefaults.standard
+        private static let dualPaneKey = "FileManager.IsDualPane"
+
+        static var showsDualPane: Bool {
+            bool(forKey: dualPaneKey, defaultValue: false)
+        }
+
+        static func setShowsDualPane(_ value: Bool) {
+            defaults.set(value, forKey: dualPaneKey)
+        }
+
+        private static func bool(forKey key: String, defaultValue: Bool) -> Bool {
+            guard defaults.object(forKey: key) != nil else {
+                return defaultValue
+            }
+            return defaults.bool(forKey: key)
+        }
+    }
+
     private enum ToolbarPreferences {
         private static let defaults = UserDefaults.standard
         private static let archiveToolbarKey = "FileManager.ShowArchiveToolbar"
@@ -176,11 +196,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     private var leftPane: FileManagerPaneController!
     private var rightPane: FileManagerPaneController!
     private var toolbar: NSToolbar!
-    private var isDualPane = false
+    private var isDualPane = PanePreferences.showsDualPane
     private var keyEventMonitor: Any?
     private var viewPreferencesObserver: NSObjectProtocol?
     private var autoRefreshTimer: Timer?
     private var foldersHistoryWindowController: FoldersHistoryWindowController?
+    private var pendingEvenSplitLayout = false
 
     var onWindowWillClose: ((FileManagerWindowController) -> Void)?
 
@@ -217,6 +238,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
+        applyPendingEvenSplitLayoutIfNeeded()
         activePane.focusFileList()
     }
 
@@ -245,6 +267,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         rightPane.delegate = self
 
         splitView.addArrangedSubview(leftPane.view)
+        if isDualPane {
+            splitView.addArrangedSubview(rightPane.view)
+            pendingEvenSplitLayout = true
+        }
 
         contentView.addSubview(splitView)
 
@@ -429,12 +455,46 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     @objc func toggleDualPane(_ sender: Any?) {
+        let wasRightPaneActive = isDualPane && activePane === rightPane
         isDualPane.toggle()
+        PanePreferences.setShowsDualPane(isDualPane)
+
         if isDualPane {
             splitView.addArrangedSubview(rightPane.view)
+            scheduleEvenSplitLayout()
         } else {
             rightPane.view.removeFromSuperview()
+            pendingEvenSplitLayout = false
+            if wasRightPaneActive {
+                leftPane.focusFileList()
+            }
         }
+    }
+
+    private func scheduleEvenSplitLayout() {
+        guard isDualPane else {
+            pendingEvenSplitLayout = false
+            return
+        }
+
+        pendingEvenSplitLayout = true
+        DispatchQueue.main.async { [weak self] in
+            self?.applyPendingEvenSplitLayoutIfNeeded()
+        }
+    }
+
+    private func applyPendingEvenSplitLayoutIfNeeded() {
+        guard pendingEvenSplitLayout, isDualPane else { return }
+        guard splitView.arrangedSubviews.count > 1 else { return }
+
+        window?.contentView?.layoutSubtreeIfNeeded()
+        splitView.layoutSubtreeIfNeeded()
+
+        let availableWidth = splitView.bounds.width - splitView.dividerThickness
+        guard availableWidth > 0 else { return }
+
+        splitView.setPosition(floor(availableWidth / 2.0), ofDividerAt: 0)
+        pendingEvenSplitLayout = false
     }
 
     @objc func addToArchive(_ sender: Any?) {
