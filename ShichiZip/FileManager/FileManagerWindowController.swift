@@ -56,7 +56,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         private static let defaults = UserDefaults.standard
         private static let archiveToolbarKey = "FileManager.ShowArchiveToolbar"
         private static let standardToolbarKey = "FileManager.ShowStandardToolbar"
-        private static let largeButtonsKey = "FileManager.ToolbarLargeButtons"
         private static let showTextKey = "FileManager.ToolbarShowButtonText"
 
         static var showsArchiveToolbar: Bool {
@@ -65,10 +64,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         static var showsStandardToolbar: Bool {
             bool(forKey: standardToolbarKey, defaultValue: true)
-        }
-
-        static var usesLargeButtons: Bool {
-            bool(forKey: largeButtonsKey, defaultValue: true)
         }
 
         static var showsButtonText: Bool {
@@ -81,10 +76,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         static func setShowsStandardToolbar(_ value: Bool) {
             defaults.set(value, forKey: standardToolbarKey)
-        }
-
-        static func setUsesLargeButtons(_ value: Bool) {
-            defaults.set(value, forKey: largeButtonsKey)
         }
 
         static func setShowsButtonText(_ value: Bool) {
@@ -191,10 +182,79 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         let newToolbar = NSToolbar(identifier: "FileManagerToolbar")
         newToolbar.delegate = self
-        newToolbar.displayMode = ToolbarPreferences.showsButtonText ? .iconAndLabel : .iconOnly
-        newToolbar.sizeMode = ToolbarPreferences.usesLargeButtons ? .regular : .small
         toolbar = newToolbar
+        window?.toolbarStyle = .expanded
         window?.toolbar = newToolbar
+        applyToolbarPresentation()
+    }
+
+    private func applyToolbarPresentation() {
+        guard let toolbar else { return }
+        toolbar.displayMode = ToolbarPreferences.showsButtonText ? .iconAndLabel : .iconOnly
+        toolbar.sizeMode = .regular
+        window?.toolbarStyle = .expanded
+        refreshToolbarItemPresentation()
+        toolbar.validateVisibleItems()
+    }
+
+    private func toolbarImage(systemSymbolName name: String,
+                              accessibilityDescription: String) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: accessibilityDescription)
+    }
+
+    private func refreshToolbarItemPresentation() {
+        toolbar?.items.forEach(configureToolbarItem(_:))
+    }
+
+    private func configureToolbarItem(_ item: NSToolbarItem) {
+        item.target = self
+
+        switch item.itemIdentifier {
+        case Self.addItem:
+            item.label = "Add"
+            item.toolTip = "Add files to archive"
+            item.image = toolbarImage(systemSymbolName: "plus.circle", accessibilityDescription: "Add")
+            item.action = #selector(addToArchive(_:))
+
+        case Self.extractItem:
+            item.label = "Extract"
+            item.toolTip = "Extract archive"
+            item.image = toolbarImage(systemSymbolName: "arrow.down.doc", accessibilityDescription: "Extract")
+            item.action = #selector(extractArchive(_:))
+
+        case Self.testItem:
+            item.label = "Test"
+            item.toolTip = "Test archive integrity"
+            item.image = toolbarImage(systemSymbolName: "checkmark.shield", accessibilityDescription: "Test")
+            item.action = #selector(testArchive(_:))
+
+        case Self.copyItem:
+            item.label = "Copy"
+            item.toolTip = "Copy files"
+            item.image = toolbarImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "Copy")
+            item.action = #selector(copyFiles(_:))
+
+        case Self.moveItem:
+            item.label = "Move"
+            item.toolTip = "Move files"
+            item.image = toolbarImage(systemSymbolName: "arrow.right.circle", accessibilityDescription: "Move")
+            item.action = #selector(moveFiles(_:))
+
+        case Self.deleteItem:
+            item.label = "Delete"
+            item.toolTip = "Delete files"
+            item.image = toolbarImage(systemSymbolName: "trash", accessibilityDescription: "Delete")
+            item.action = #selector(deleteFiles(_:))
+
+        case Self.infoItem:
+            item.label = "Info"
+            item.toolTip = "Show item properties"
+            item.image = toolbarImage(systemSymbolName: "info.circle", accessibilityDescription: "Info")
+            item.action = #selector(showProperties(_:))
+
+        default:
+            break
+        }
     }
 
     private func setupMainMenu() {
@@ -519,14 +579,9 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         setupToolbar()
     }
 
-    @objc func toggleLargeToolbarButtons(_ sender: Any?) {
-        ToolbarPreferences.setUsesLargeButtons(!ToolbarPreferences.usesLargeButtons)
-        setupToolbar()
-    }
-
     @objc func toggleToolbarButtonText(_ sender: Any?) {
         ToolbarPreferences.setShowsButtonText(!ToolbarPreferences.showsButtonText)
-        setupToolbar()
+        applyToolbarPresentation()
     }
 
     @objc func openFavoriteSlot(_ sender: Any?) {
@@ -791,7 +846,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return activePane.canShowFoldersHistory()
         case #selector(toggleArchiveToolbar(_:)),
              #selector(toggleStandardToolbar(_:)),
-             #selector(toggleLargeToolbarButtons(_:)),
              #selector(toggleToolbarButtonText(_:)):
             return true
         case #selector(openFavoriteSlot(_:)):
@@ -834,8 +888,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             menuItem.state = ToolbarPreferences.showsArchiveToolbar ? .on : .off
         case #selector(toggleStandardToolbar(_:)):
             menuItem.state = ToolbarPreferences.showsStandardToolbar ? .on : .off
-        case #selector(toggleLargeToolbarButtons(_:)):
-            menuItem.state = ToolbarPreferences.usesLargeButtons ? .on : .off
         case #selector(toggleToolbarButtonText(_:)):
             menuItem.state = ToolbarPreferences.showsButtonText ? .on : .off
         default:
@@ -887,59 +939,11 @@ extension FileManagerWindowController: NSToolbarDelegate {
                  willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         let item = NSToolbarItem(itemIdentifier: itemIdentifier)
 
-        switch itemIdentifier {
-        case Self.addItem:
-            item.label = "Add"
-            item.toolTip = "Add files to archive"
-            item.image = NSImage(systemSymbolName: "plus.circle", accessibilityDescription: "Add")
-            item.target = self
-            item.action = #selector(addToArchive(_:))
-
-        case Self.extractItem:
-            item.label = "Extract"
-            item.toolTip = "Extract archive"
-            item.image = NSImage(systemSymbolName: "arrow.down.doc", accessibilityDescription: "Extract")
-            item.target = self
-            item.action = #selector(extractArchive(_:))
-
-        case Self.testItem:
-            item.label = "Test"
-            item.toolTip = "Test archive integrity"
-            item.image = NSImage(systemSymbolName: "checkmark.shield", accessibilityDescription: "Test")
-            item.target = self
-            item.action = #selector(testArchive(_:))
-
-        case Self.copyItem:
-            item.label = "Copy"
-            item.toolTip = "Copy files"
-            item.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "Copy")
-            item.target = self
-            item.action = #selector(copyFiles(_:))
-
-        case Self.moveItem:
-            item.label = "Move"
-            item.toolTip = "Move files"
-            item.image = NSImage(systemSymbolName: "arrow.right.circle", accessibilityDescription: "Move")
-            item.target = self
-            item.action = #selector(moveFiles(_:))
-
-        case Self.deleteItem:
-            item.label = "Delete"
-            item.toolTip = "Delete files"
-            item.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete")
-            item.target = self
-            item.action = #selector(deleteFiles(_:))
-
-        case Self.infoItem:
-            item.label = "Info"
-            item.toolTip = "Show item properties"
-            item.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: "Info")
-            item.target = self
-            item.action = #selector(showProperties(_:))
-
-        default:
+        guard toolbarAllowedItemIdentifiers(toolbar).contains(itemIdentifier) else {
             return nil
         }
+
+        configureToolbarItem(item)
 
         return item
     }

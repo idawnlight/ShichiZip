@@ -249,9 +249,6 @@ enum MainMenu {
                 action: #selector(FileManagerWindowController.toggleStandardToolbar(_:)))
         toolbarsMenu.addItem(.separator())
         addItem(to: toolbarsMenu,
-                title: "Large Buttons",
-                action: #selector(FileManagerWindowController.toggleLargeToolbarButtons(_:)))
-        addItem(to: toolbarsMenu,
                 title: "Show Buttons Text",
                 action: #selector(FileManagerWindowController.toggleToolbarButtonText(_:)))
         toolbarsMenuItem.submenu = toolbarsMenu
