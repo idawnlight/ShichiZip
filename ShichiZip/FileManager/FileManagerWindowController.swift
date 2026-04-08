@@ -3,6 +3,53 @@ import Cocoa
 /// Dual-pane file manager window replicating 7-Zip File Manager
 class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserInterfaceValidations, NSMenuItemValidation {
 
+    private enum ToolbarPreferences {
+        private static let defaults = UserDefaults.standard
+        private static let archiveToolbarKey = "FileManager.ShowArchiveToolbar"
+        private static let standardToolbarKey = "FileManager.ShowStandardToolbar"
+        private static let largeButtonsKey = "FileManager.ToolbarLargeButtons"
+        private static let showTextKey = "FileManager.ToolbarShowButtonText"
+
+        static var showsArchiveToolbar: Bool {
+            bool(forKey: archiveToolbarKey, defaultValue: true)
+        }
+
+        static var showsStandardToolbar: Bool {
+            bool(forKey: standardToolbarKey, defaultValue: true)
+        }
+
+        static var usesLargeButtons: Bool {
+            bool(forKey: largeButtonsKey, defaultValue: true)
+        }
+
+        static var showsButtonText: Bool {
+            bool(forKey: showTextKey, defaultValue: true)
+        }
+
+        static func setShowsArchiveToolbar(_ value: Bool) {
+            defaults.set(value, forKey: archiveToolbarKey)
+        }
+
+        static func setShowsStandardToolbar(_ value: Bool) {
+            defaults.set(value, forKey: standardToolbarKey)
+        }
+
+        static func setUsesLargeButtons(_ value: Bool) {
+            defaults.set(value, forKey: largeButtonsKey)
+        }
+
+        static func setShowsButtonText(_ value: Bool) {
+            defaults.set(value, forKey: showTextKey)
+        }
+
+        private static func bool(forKey key: String, defaultValue: Bool) -> Bool {
+            guard defaults.object(forKey: key) != nil else {
+                return defaultValue
+            }
+            return defaults.bool(forKey: key)
+        }
+    }
+
     private var splitView: NSSplitView!
     private var leftPane: FileManagerPaneController!
     private var rightPane: FileManagerPaneController!
@@ -77,10 +124,18 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     private func setupToolbar() {
-        toolbar = NSToolbar(identifier: "FileManagerToolbar")
-        toolbar.delegate = self
-        toolbar.displayMode = .iconAndLabel
-        window?.toolbar = toolbar
+        guard ToolbarPreferences.showsArchiveToolbar || ToolbarPreferences.showsStandardToolbar else {
+            toolbar = nil
+            window?.toolbar = nil
+            return
+        }
+
+        let newToolbar = NSToolbar(identifier: "FileManagerToolbar")
+        newToolbar.delegate = self
+        newToolbar.displayMode = ToolbarPreferences.showsButtonText ? .iconAndLabel : .iconOnly
+        newToolbar.sizeMode = ToolbarPreferences.usesLargeButtons ? .regular : .small
+        toolbar = newToolbar
+        window?.toolbar = newToolbar
     }
 
     private func setupMainMenu() {
@@ -309,12 +364,72 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         activePane.sortBySize()
     }
 
+    @objc func sortByType(_ sender: Any?) {
+        activePane.sortByType()
+    }
+
     @objc func sortByModifiedDate(_ sender: Any?) {
         activePane.sortByModifiedDate()
     }
 
     @objc func sortByCreatedDate(_ sender: Any?) {
         activePane.sortByCreatedDate()
+    }
+
+    @objc func openRootFolder(_ sender: Any?) {
+        activePane.openRootFolder()
+    }
+
+    @objc func showFoldersHistory(_ sender: Any?) {
+        let entries = activePane.recentDirectoryHistory()
+        guard !entries.isEmpty else { return }
+
+        let historyPicker = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26), pullsDown: false)
+        entries.forEach { historyPicker.addItem(withTitle: $0.path) }
+
+        let alert = NSAlert()
+        alert.messageText = "Folders History"
+        alert.informativeText = "Choose a recent folder to open in the active pane."
+        alert.accessoryView = historyPicker
+        alert.addButton(withTitle: "Open")
+        alert.addButton(withTitle: "Cancel")
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        activePane.openRecentDirectory(entries[historyPicker.indexOfSelectedItem])
+    }
+
+    @objc func toggleArchiveToolbar(_ sender: Any?) {
+        ToolbarPreferences.setShowsArchiveToolbar(!ToolbarPreferences.showsArchiveToolbar)
+        setupToolbar()
+    }
+
+    @objc func toggleStandardToolbar(_ sender: Any?) {
+        ToolbarPreferences.setShowsStandardToolbar(!ToolbarPreferences.showsStandardToolbar)
+        setupToolbar()
+    }
+
+    @objc func toggleLargeToolbarButtons(_ sender: Any?) {
+        ToolbarPreferences.setUsesLargeButtons(!ToolbarPreferences.usesLargeButtons)
+        setupToolbar()
+    }
+
+    @objc func toggleToolbarButtonText(_ sender: Any?) {
+        ToolbarPreferences.setShowsButtonText(!ToolbarPreferences.showsButtonText)
+        setupToolbar()
+    }
+
+    @objc func openFavoriteSlot(_ sender: Any?) {
+        guard let menuItem = sender as? NSMenuItem,
+              let url = FileManagerFavoriteStore.url(for: menuItem.tag) else {
+            return
+        }
+
+        activePane.openRecentDirectory(url)
+    }
+
+    @objc func saveFavoriteSlot(_ sender: Any?) {
+        guard let menuItem = sender as? NSMenuItem else { return }
+        FileManagerFavoriteStore.set(url: activePane.currentDirectoryURL, for: menuItem.tag)
     }
 
     @objc func switchPanes(_ sender: Any?) {
@@ -551,9 +666,24 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return activePane.canDeselectSelection()
         case #selector(refreshActivePane(_:)),
              #selector(sortByName(_:)),
+             #selector(sortByType(_:)),
              #selector(sortBySize(_:)),
              #selector(sortByModifiedDate(_:)),
              #selector(sortByCreatedDate(_:)):
+            return true
+        case #selector(openRootFolder(_:)):
+            return true
+        case #selector(showFoldersHistory(_:)):
+            return activePane.canShowFoldersHistory()
+        case #selector(toggleArchiveToolbar(_:)),
+             #selector(toggleStandardToolbar(_:)),
+             #selector(toggleLargeToolbarButtons(_:)),
+             #selector(toggleToolbarButtonText(_:)):
+            return true
+        case #selector(openFavoriteSlot(_:)):
+            guard let menuItem = item as? NSMenuItem else { return false }
+            return FileManagerFavoriteStore.url(for: menuItem.tag) != nil
+        case #selector(saveFavoriteSlot(_:)):
             return true
         case #selector(toggleDualPane(_:)):
             return true
@@ -572,12 +702,22 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             menuItem.state = isDualPane ? .on : .off
         case #selector(sortByName(_:)):
             menuItem.state = activePane.primarySortKey == "name" ? .on : .off
+        case #selector(sortByType(_:)):
+            menuItem.state = activePane.primarySortKey == "type" ? .on : .off
         case #selector(sortBySize(_:)):
             menuItem.state = activePane.primarySortKey == "size" ? .on : .off
         case #selector(sortByModifiedDate(_:)):
             menuItem.state = activePane.primarySortKey == "modified" ? .on : .off
         case #selector(sortByCreatedDate(_:)):
             menuItem.state = activePane.primarySortKey == "created" ? .on : .off
+        case #selector(toggleArchiveToolbar(_:)):
+            menuItem.state = ToolbarPreferences.showsArchiveToolbar ? .on : .off
+        case #selector(toggleStandardToolbar(_:)):
+            menuItem.state = ToolbarPreferences.showsStandardToolbar ? .on : .off
+        case #selector(toggleLargeToolbarButtons(_:)):
+            menuItem.state = ToolbarPreferences.usesLargeButtons ? .on : .off
+        case #selector(toggleToolbarButtonText(_:)):
+            menuItem.state = ToolbarPreferences.showsButtonText ? .on : .off
         default:
             menuItem.state = .off
         }
@@ -685,9 +825,20 @@ extension FileManagerWindowController: NSToolbarDelegate {
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.addItem, Self.extractItem, Self.testItem,
-         .space,
-         Self.copyItem, Self.moveItem, Self.deleteItem, Self.infoItem]
+        var identifiers: [NSToolbarItem.Identifier] = []
+
+        if ToolbarPreferences.showsArchiveToolbar {
+            identifiers.append(contentsOf: [Self.addItem, Self.extractItem, Self.testItem])
+        }
+
+        if ToolbarPreferences.showsStandardToolbar {
+            if !identifiers.isEmpty {
+                identifiers.append(.space)
+            }
+            identifiers.append(contentsOf: [Self.copyItem, Self.moveItem, Self.deleteItem, Self.infoItem])
+        }
+
+        return identifiers
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {

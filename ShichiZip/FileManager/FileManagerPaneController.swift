@@ -28,6 +28,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var scrollView: NSScrollView!
     private var statusLabel: NSTextField!
     private var settingsObserver: NSObjectProtocol?
+    private var recentDirectories: [URL] = []
 
     private(set) var currentDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     var currentDirectoryURL: URL { currentDirectory }
@@ -194,6 +195,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     func loadDirectory(_ url: URL) {
         currentDirectory = url
+        recordDirectoryVisit(url)
         updatePathField()
 
         do {
@@ -293,6 +295,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         !tableView.selectedRowIndexes.isEmpty
     }
 
+    func canShowFoldersHistory() -> Bool {
+        !recentDirectories.isEmpty
+    }
+
     func selectedArchiveCandidateURL() -> URL? {
         let selectedItems = selectedFileSystemItems()
         guard selectedItems.count == 1, !selectedItems[0].isDirectory else { return nil }
@@ -317,6 +323,32 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     func extractSelectionHere() {
         extractHere(nil)
+    }
+
+    func openRootFolder() {
+        if isInsideArchive {
+            navigateArchiveSubdir("")
+            return
+        }
+
+        let components = currentDirectory.standardizedFileURL.pathComponents
+        let rootURL: URL
+
+        if components.count >= 3, components[1] == "Volumes" {
+            rootURL = URL(fileURLWithPath: NSString.path(withComponents: Array(components.prefix(3))))
+        } else {
+            rootURL = URL(fileURLWithPath: "/")
+        }
+
+        loadDirectory(rootURL)
+    }
+
+    func recentDirectoryHistory() -> [URL] {
+        recentDirectories
+    }
+
+    func openRecentDirectory(_ url: URL) {
+        loadDirectory(url)
     }
 
     func selectAllItems() {
@@ -359,6 +391,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         applySortDescriptor(columnIdentifier: "size",
                             key: "size",
                             ascending: false)
+    }
+
+    func sortByType() {
+        applySortDescriptor(columnIdentifier: "name",
+                            key: "type",
+                            ascending: true,
+                            selector: #selector(NSString.localizedStandardCompare(_:)))
     }
 
     func sortByModifiedDate() {
@@ -405,6 +444,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             : items.filter { !$0.isDirectory }.reduce(UInt64(0)) { $0 + $1.size }
         let sizeStr = ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file)
         statusLabel.stringValue = "\(fileCount) files, \(dirCount) folders — \(sizeStr)"
+    }
+
+    private func recordDirectoryVisit(_ url: URL) {
+        let standardizedURL = url.standardizedFileURL
+        recentDirectories.removeAll { $0.standardizedFileURL == standardizedURL }
+        recentDirectories.insert(standardizedURL, at: 0)
+        if recentDirectories.count > 20 {
+            recentDirectories.removeSubrange(20..<recentDirectories.count)
+        }
     }
 
     private func applyFileManagerSettings() {
@@ -887,6 +935,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             switch key {
             case "name":
                 result = a.name.localizedStandardCompare(b.name)
+            case "type":
+                let aType = a.url.pathExtension.localizedLowercase
+                let bType = b.url.pathExtension.localizedLowercase
+                let typeResult = aType.localizedStandardCompare(bType)
+                result = typeResult == .orderedSame
+                    ? a.name.localizedStandardCompare(b.name)
+                    : typeResult
             case "size":
                 result = a.size == b.size ? .orderedSame : (a.size < b.size ? .orderedAscending : .orderedDescending)
             case "modified":
@@ -923,6 +978,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             switch key {
             case "name":
                 result = a.name.localizedStandardCompare(b.name)
+            case "type":
+                let aType = a.fileExtension.localizedLowercase
+                let bType = b.fileExtension.localizedLowercase
+                let typeResult = aType.localizedStandardCompare(bType)
+                result = typeResult == .orderedSame
+                    ? a.name.localizedStandardCompare(b.name)
+                    : typeResult
             case "size":
                 result = a.size == b.size ? .orderedSame : (a.size < b.size ? .orderedAscending : .orderedDescending)
             case "modified":
@@ -1377,6 +1439,7 @@ extension FileManagerPaneController {
         }
 
         currentDirectory = prepared.hostDirectory
+        recordDirectoryVisit(prepared.hostDirectory)
         if let temporaryDirectory = prepared.temporaryDirectory {
             archiveItemWorkflowService.register(temporaryDirectory)
         }
