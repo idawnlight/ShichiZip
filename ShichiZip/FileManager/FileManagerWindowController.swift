@@ -5,6 +5,9 @@ extension Notification.Name {
 }
 
 enum FileManagerViewPreferences {
+    private static var fixedFormatFormatterCache: [String: DateFormatter] = [:]
+    private static var styleFormatterCache: [String: DateFormatter] = [:]
+
     enum TimestampDisplayLevel: Int, CaseIterable {
         case day
         case minute
@@ -68,20 +71,28 @@ enum FileManagerViewPreferences {
 
     static func makeDateFormatter(dateStyle: DateFormatter.Style,
                                   timeStyle: DateFormatter.Style) -> DateFormatter {
+        let cacheKey = "\(dateStyle.rawValue)|\(timeStyle.rawValue)|\(usesUTCTimestamps ? 1 : 0)"
+        if let formatter = styleFormatterCache[cacheKey] {
+            return formatter
+        }
+
         let formatter = DateFormatter()
         formatter.dateStyle = dateStyle
         formatter.timeStyle = timeStyle
         formatter.timeZone = usesUTCTimestamps ? TimeZone(secondsFromGMT: 0) : .current
+        styleFormatterCache[cacheKey] = formatter
         return formatter
     }
 
     private static func set(_ value: Bool, forKey key: String) {
         defaults.set(value, forKey: key)
+        resetFormatterCaches()
         NotificationCenter.default.post(name: .fileManagerViewPreferencesDidChange, object: nil)
     }
 
     private static func set(_ value: Int, forKey key: String) {
         defaults.set(value, forKey: key)
+        resetFormatterCaches()
         NotificationCenter.default.post(name: .fileManagerViewPreferencesDidChange, object: nil)
     }
 
@@ -100,12 +111,23 @@ enum FileManagerViewPreferences {
     }
 
     private static func makeFixedFormatFormatter(format: String) -> DateFormatter {
+        let cacheKey = "\(format)|\(usesUTCTimestamps ? 1 : 0)"
+        if let formatter = fixedFormatFormatterCache[cacheKey] {
+            return formatter
+        }
+
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = format
         formatter.timeZone = usesUTCTimestamps ? TimeZone(secondsFromGMT: 0) : .current
+        fixedFormatFormatterCache[cacheKey] = formatter
         return formatter
+    }
+
+    private static func resetFormatterCaches() {
+        fixedFormatFormatterCache.removeAll()
+        styleFormatterCache.removeAll()
     }
 }
 

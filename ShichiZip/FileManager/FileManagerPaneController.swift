@@ -21,6 +21,14 @@ private final class FileManagerTableView: NSTableView {
 /// Single pane of the file manager — displays file system contents
 class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSTextFieldDelegate, NSMenuItemValidation {
 
+    private struct DirectoryEntryFingerprint: Equatable {
+        let path: String
+        let isDirectory: Bool
+        let size: Int
+        let modifiedDate: Date?
+        let createdDate: Date?
+    }
+
     weak var delegate: FileManagerPaneDelegate?
 
     private var pathField: NSTextField!
@@ -29,7 +37,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var statusLabel: NSTextField!
     private var settingsObserver: NSObjectProtocol?
     private var viewPreferencesObserver: NSObjectProtocol?
+    private var liveScrollStartObserver: NSObjectProtocol?
+    private var liveScrollEndObserver: NSObjectProtocol?
     private var recentDirectories: [URL] = []
+    private var isLiveScrolling = false
+    private var pendingAutoRefresh = false
+    private let iconCache = NSCache<NSString, NSImage>()
+    private let iconSize = NSSize(width: 16, height: 16)
+    private var currentDirectoryFingerprint: [DirectoryEntryFingerprint] = []
 
     private(set) var currentDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     var currentDirectoryURL: URL { currentDirectory }
@@ -72,6 +87,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
         if let viewPreferencesObserver {
             NotificationCenter.default.removeObserver(viewPreferencesObserver)
+        }
+        if let liveScrollStartObserver {
+            NotificationCenter.default.removeObserver(liveScrollStartObserver)
+        }
+        if let liveScrollEndObserver {
+            NotificationCenter.default.removeObserver(liveScrollEndObserver)
         }
         closeAllArchives()
         archiveItemWorkflowService.cleanupAll()
@@ -152,6 +173,27 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         scrollView.autohidesScrollers = true
         container.addSubview(scrollView)
 
+        liveScrollStartObserver = NotificationCenter.default.addObserver(
+            forName: NSScrollView.willStartLiveScrollNotification,
+            object: scrollView,
+            queue: .main
+        ) { [weak self] _ in
+            self?.isLiveScrolling = true
+        }
+
+        liveScrollEndObserver = NotificationCenter.default.addObserver(
+            forName: NSScrollView.didEndLiveScrollNotification,
+            object: scrollView,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.isLiveScrolling = false
+
+            guard self.pendingAutoRefresh else { return }
+            self.pendingAutoRefresh = false
+            self.autoRefreshIfPossible()
+        }
+
         // Status bar
         statusLabel = NSTextField(labelWithString: "")
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -230,6 +272,21 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                                        options: fileManagerDirectoryEnumerationOptions())
     }
 
+    private func makeDirectoryFingerprint(from contents: [URL]) -> [DirectoryEntryFingerprint] {
+        contents.map { url in
+            let values = try? url.resourceValues(forKeys: [.isDirectoryKey,
+                                                           .fileSizeKey,
+                                                           .contentModificationDateKey,
+                                                           .creationDateKey])
+            return DirectoryEntryFingerprint(path: url.standardizedFileURL.path,
+                                             isDirectory: values?.isDirectory ?? false,
+                                             size: values?.fileSize ?? 0,
+                                             modifiedDate: values?.contentModificationDate,
+                                             createdDate: values?.creationDate)
+        }
+        .sorted { $0.path < $1.path }
+    }
+
     private func captureFileSystemSelectionState() -> FileSystemSelectionState {
         guard isViewLoaded, !isInsideArchive else {
             return .empty
@@ -283,10 +340,28 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    private func applyDirectoryContents(_ contents: [URL], for url: URL) {
+    private func autoRefreshCurrentDirectoryIfNeeded() {
+        let selectionState = captureFileSystemSelectionState()
+
+        do {
+            let contents = try directoryContents(for: currentDirectory)
+            let fingerprint = makeDirectoryFingerprint(from: contents)
+            guard fingerprint != currentDirectoryFingerprint else { return }
+
+            applyDirectoryContents(contents, for: currentDirectory, fingerprint: fingerprint)
+            restoreFileSystemSelectionState(selectionState)
+        } catch {
+            return
+        }
+    }
+
+    private func applyDirectoryContents(_ contents: [URL],
+                                        for url: URL,
+                                        fingerprint: [DirectoryEntryFingerprint]? = nil) {
         currentDirectory = url
         recordDirectoryVisit(url)
         updatePathField()
+        currentDirectoryFingerprint = fingerprint ?? makeDirectoryFingerprint(from: contents)
         items = contents.map { FileSystemItem(url: $0) }
         sortCurrentItems(by: tableView.sortDescriptors)
         tableView.reloadData()
@@ -304,7 +379,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     func autoRefreshIfPossible() {
         guard isViewLoaded else { return }
         guard !isInsideArchive else { return }
-        reloadCurrentDirectoryPreservingSelection()
+        guard !isLiveScrolling else {
+            pendingAutoRefresh = true
+            return
+        }
+
+        pendingAutoRefresh = false
+        autoRefreshCurrentDirectoryIfNeeded()
     }
 
     func reloadPresentedValues() {
@@ -569,6 +650,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         switch settingsKey {
         case .showDots, .showRealFileIcons, .showGridLines, .singleClickOpen:
+            if settingsKey == .showRealFileIcons {
+                iconCache.removeAllObjects()
+            }
             applyFileManagerSettings()
         case .showHiddenFiles:
             refresh()
@@ -584,33 +668,62 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private func iconImage(for paneItem: PaneItem, isDirectory: Bool, iconPath: String) -> NSImage? {
         switch paneItem {
         case .parent:
-            let image = NSImage(systemSymbolName: "arrow.up.circle.fill", accessibilityDescription: "Parent")
-            image?.isTemplate = true
-            return image
+            return cachedIcon(forKey: "parent") {
+                let image = NSImage(systemSymbolName: "arrow.up.circle.fill", accessibilityDescription: "Parent")
+                image?.isTemplate = true
+                return image
+            }
 
         case .archive:
             guard showsRealFileIcons else {
-                return NSImage(systemSymbolName: isDirectory ? "folder.fill" : "doc.fill",
-                               accessibilityDescription: isDirectory ? "Folder" : "File")
+                return cachedIcon(forKey: isDirectory ? "template:archive:folder" : "template:archive:file") {
+                    NSImage(systemSymbolName: isDirectory ? "folder.fill" : "doc.fill",
+                            accessibilityDescription: isDirectory ? "Folder" : "File")
+                }
             }
 
             if isDirectory {
-                return NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "Folder")
+                return cachedIcon(forKey: "real:archive:folder") {
+                    NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "Folder")
+                }
             }
 
             let ext = (iconPath as NSString).pathExtension
             if let type = UTType(filenameExtension: ext) {
-                return NSWorkspace.shared.icon(for: type)
+                return cachedIcon(forKey: "real:archive:type:\(ext.lowercased())") {
+                    NSWorkspace.shared.icon(for: type)
+                }
             }
-            return NSWorkspace.shared.icon(for: .data)
+            return cachedIcon(forKey: "real:archive:data") {
+                NSWorkspace.shared.icon(for: .data)
+            }
 
         case .filesystem:
             guard showsRealFileIcons else {
-                return NSImage(systemSymbolName: isDirectory ? "folder.fill" : "doc.fill",
-                               accessibilityDescription: isDirectory ? "Folder" : "File")
+                return cachedIcon(forKey: isDirectory ? "template:filesystem:folder" : "template:filesystem:file") {
+                    NSImage(systemSymbolName: isDirectory ? "folder.fill" : "doc.fill",
+                            accessibilityDescription: isDirectory ? "Folder" : "File")
+                }
             }
-            return NSWorkspace.shared.icon(forFile: iconPath)
+            return cachedIcon(forKey: "real:filesystem:\(iconPath)") {
+                NSWorkspace.shared.icon(forFile: iconPath)
+            }
         }
+    }
+
+    private func cachedIcon(forKey key: String, builder: () -> NSImage?) -> NSImage? {
+        if let cachedImage = iconCache.object(forKey: key as NSString) {
+            return cachedImage
+        }
+
+        guard let rawImage = builder() else {
+            return nil
+        }
+
+        let image = (rawImage.copy() as? NSImage) ?? rawImage
+        image.size = iconSize
+        iconCache.setObject(image, forKey: key as NSString)
+        return image
     }
 
     private func activatePaneItem(at row: Int) {
@@ -1335,6 +1448,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             if columnID == "name" {
                 let imageView = NSImageView()
                 imageView.translatesAutoresizingMaskIntoConstraints = false
+                imageView.imageScaling = .scaleProportionallyDown
+                imageView.imageAlignment = .alignCenter
                 cell.addSubview(imageView)
                 cell.imageView = imageView
 
@@ -1370,7 +1485,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                     cell.imageView?.contentTintColor = itemIsDir ? .systemBlue : .secondaryLabelColor
                 }
             }
-            cell.imageView?.image?.size = NSSize(width: 16, height: 16)
+            cell.imageView?.image?.size = iconSize
 
         case "size":
             cell.textField?.stringValue = itemSize
