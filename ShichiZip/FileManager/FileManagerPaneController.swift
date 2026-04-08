@@ -93,6 +93,16 @@ private final class FileManagerTableView: NSTableView {
 /// Single pane of the file manager — displays file system contents
 class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSTextFieldDelegate, NSMenuItemValidation {
 
+    private struct StatusSummary {
+        let fileCount: Int
+        let folderCount: Int
+        let totalSize: UInt64
+
+        var itemCount: Int {
+            fileCount + folderCount
+        }
+    }
+
     private static let listDateColumnFont = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize,
                                                                               weight: .regular)
 
@@ -283,6 +293,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.font = .systemFont(ofSize: 11)
         statusLabel.textColor = .secondaryLabelColor
+        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.maximumNumberOfLines = 1
+        statusLabel.cell?.wraps = false
+        statusLabel.cell?.usesSingleLineMode = true
+        statusLabel.cell?.truncatesLastVisibleLine = true
+        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
         container.addSubview(statusLabel)
 
         NSLayoutConstraint.activate([
@@ -892,14 +909,114 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     private func updateStatusBar() {
-        let archiveItems = archiveDisplayItems
-        let fileCount = (isInsideArchive ? archiveItems.filter { !$0.isDirectory }.count : items.filter { !$0.isDirectory }.count)
-        let dirCount = (isInsideArchive ? archiveItems.filter { $0.isDirectory }.count : items.filter { $0.isDirectory }.count)
-        let totalSize = isInsideArchive
-            ? archiveItems.filter { !$0.isDirectory }.reduce(UInt64(0)) { $0 + $1.size }
-            : items.filter { !$0.isDirectory }.reduce(UInt64(0)) { $0 + $1.size }
-        let sizeStr = ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file)
-        statusLabel.stringValue = "\(fileCount) files, \(dirCount) folders — \(sizeStr)"
+        let displayedSummary: StatusSummary
+        if isInsideArchive {
+            displayedSummary = makeStatusSummary(for: archiveDisplayItems)
+        } else {
+            displayedSummary = makeStatusSummary(for: items)
+        }
+
+        let displayedSummaryText = makeSummaryText(displayedSummary)
+        let selectedItems = selectedRealPaneItems()
+        guard !selectedItems.isEmpty else {
+            statusLabel.stringValue = displayedSummaryText
+            return
+        }
+
+        let selectedSummary = makeStatusSummary(for: selectedItems)
+        var segments = [
+            "\(selectedSummary.itemCount)/\(displayedSummary.itemCount) selected — \(makeSelectedSummaryText(selectedSummary))",
+            "total \(displayedSummaryText)",
+        ]
+
+        statusLabel.stringValue = segments.joined(separator: "  •  ")
+    }
+
+    private func makeStatusSummary(for fileSystemItems: [FileSystemItem]) -> StatusSummary {
+        var fileCount = 0
+        var folderCount = 0
+        var totalSize: UInt64 = 0
+
+        for item in fileSystemItems {
+            if item.isDirectory {
+                folderCount += 1
+            } else {
+                fileCount += 1
+                totalSize += item.size
+            }
+        }
+
+        return StatusSummary(fileCount: fileCount,
+                             folderCount: folderCount,
+                             totalSize: totalSize)
+    }
+
+    private func makeStatusSummary(for archiveItems: [ArchiveItem]) -> StatusSummary {
+        var fileCount = 0
+        var folderCount = 0
+        var totalSize: UInt64 = 0
+
+        for item in archiveItems {
+            if item.isDirectory {
+                folderCount += 1
+            } else {
+                fileCount += 1
+                totalSize += item.size
+            }
+        }
+
+        return StatusSummary(fileCount: fileCount,
+                             folderCount: folderCount,
+                             totalSize: totalSize)
+    }
+
+    private func makeStatusSummary(for paneItems: [PaneItem]) -> StatusSummary {
+        var fileCount = 0
+        var folderCount = 0
+        var totalSize: UInt64 = 0
+
+        for paneItem in paneItems {
+            switch paneItem {
+            case .parent:
+                continue
+            case let .archive(item):
+                if item.isDirectory {
+                    folderCount += 1
+                } else {
+                    fileCount += 1
+                    totalSize += item.size
+                }
+            case let .filesystem(item):
+                if item.isDirectory {
+                    folderCount += 1
+                } else {
+                    fileCount += 1
+                    totalSize += item.size
+                }
+            }
+        }
+
+        return StatusSummary(fileCount: fileCount,
+                             folderCount: folderCount,
+                             totalSize: totalSize)
+    }
+
+    private func makeSummaryText(_ summary: StatusSummary) -> String {
+        let sizeString = ByteCountFormatter.string(fromByteCount: Int64(summary.totalSize), countStyle: .file)
+        return "\(summary.fileCount) \(summary.fileCount == 1 ? "file" : "files"), \(summary.folderCount) \(summary.folderCount == 1 ? "folder" : "folders") — \(sizeString)"
+    }
+
+    private func makeSelectedSummaryText(_ summary: StatusSummary) -> String {
+        let sizeString = ByteCountFormatter.string(fromByteCount: Int64(summary.totalSize), countStyle: .file)
+
+        switch (summary.fileCount, summary.folderCount) {
+        case (_, 0):
+            return "\(summary.fileCount) \(summary.fileCount == 1 ? "file" : "files"), \(sizeString)"
+        case (0, _):
+            return "\(summary.folderCount) \(summary.folderCount == 1 ? "folder" : "folders")"
+        default:
+            return "\(summary.fileCount) \(summary.fileCount == 1 ? "file" : "files"), \(summary.folderCount) \(summary.folderCount == 1 ? "folder" : "folders"), \(sizeString)"
+        }
     }
 
     private func recordDirectoryVisit(_ url: URL) {
@@ -2008,6 +2125,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
+        updateStatusBar()
         delegate?.paneDidBecomeActive(self)
     }
 
