@@ -1,7 +1,7 @@
 import Cocoa
 
 /// Dual-pane file manager window replicating 7-Zip File Manager
-class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserInterfaceValidations {
+class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserInterfaceValidations, NSMenuItemValidation {
 
     private var splitView: NSSplitView!
     private var leftPane: FileManagerPaneController!
@@ -265,6 +265,58 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
     }
 
+    @objc func openSelectedItem(_ sender: Any?) {
+        activePane.openSelection()
+    }
+
+    @objc func goUpOneLevel(_ sender: Any?) {
+        activePane.goUpOneLevel()
+    }
+
+    @objc func renameSelection(_ sender: Any?) {
+        activePane.renameSelection()
+    }
+
+    @objc func showProperties(_ sender: Any?) {
+        activePane.showSelectedItemProperties()
+    }
+
+    @objc func extractHere(_ sender: Any?) {
+        activePane.extractSelectionHere()
+    }
+
+    @objc func refreshActivePane(_ sender: Any?) {
+        activePane.refresh()
+    }
+
+    @objc func selectAllItems(_ sender: Any?) {
+        activePane.selectAllItems()
+    }
+
+    @objc func deselectAllItems(_ sender: Any?) {
+        activePane.deselectAllItems()
+    }
+
+    @objc func invertSelection(_ sender: Any?) {
+        activePane.invertSelection()
+    }
+
+    @objc func sortByName(_ sender: Any?) {
+        activePane.sortByName()
+    }
+
+    @objc func sortBySize(_ sender: Any?) {
+        activePane.sortBySize()
+    }
+
+    @objc func sortByModifiedDate(_ sender: Any?) {
+        activePane.sortByModifiedDate()
+    }
+
+    @objc func sortByCreatedDate(_ sender: Any?) {
+        activePane.sortByCreatedDate()
+    }
+
     @objc func switchPanes(_ sender: Any?) {
         guard isDualPane else { return }
         if activePane === leftPane {
@@ -469,9 +521,13 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
         switch item.action {
+        case #selector(openSelectedItem(_:)):
+            return activePane.canOpenSelection()
         case #selector(addToArchive(_:)):
             return activePane.canAddSelectedItemsToArchive()
         case #selector(extractArchive(_:)):
+            return activePane.canExtractSelectionOrArchive()
+        case #selector(extractHere(_:)):
             return activePane.canExtractSelectionOrArchive()
         case #selector(testArchive(_:)):
             return activePane.canTestArchiveSelection()
@@ -479,15 +535,54 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return activePane.canCopySelection()
         case #selector(moveFiles(_:)):
             return activePane.canMoveSelection()
+        case #selector(renameSelection(_:)):
+            return activePane.canRenameSelection()
         case #selector(createFolder(_:)):
             return activePane.canCreateFolderHere()
         case #selector(deleteFiles(_:)):
             return activePane.canDeleteSelection()
+        case #selector(showProperties(_:)):
+            return activePane.canShowSelectedItemProperties()
+        case #selector(goUpOneLevel(_:)):
+            return activePane.canGoUp()
+        case #selector(selectAllItems(_:)), #selector(invertSelection(_:)):
+            return activePane.canSelectVisibleItems()
+        case #selector(deselectAllItems(_:)):
+            return activePane.canDeselectSelection()
+        case #selector(refreshActivePane(_:)),
+             #selector(sortByName(_:)),
+             #selector(sortBySize(_:)),
+             #selector(sortByModifiedDate(_:)),
+             #selector(sortByCreatedDate(_:)):
+            return true
+        case #selector(toggleDualPane(_:)):
+            return true
         case #selector(switchPanes(_:)):
             return isDualPane
         default:
             return true
         }
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        let isEnabled = validateUserInterfaceItem(menuItem)
+
+        switch menuItem.action {
+        case #selector(toggleDualPane(_:)):
+            menuItem.state = isDualPane ? .on : .off
+        case #selector(sortByName(_:)):
+            menuItem.state = activePane.primarySortKey == "name" ? .on : .off
+        case #selector(sortBySize(_:)):
+            menuItem.state = activePane.primarySortKey == "size" ? .on : .off
+        case #selector(sortByModifiedDate(_:)):
+            menuItem.state = activePane.primarySortKey == "modified" ? .on : .off
+        case #selector(sortByCreatedDate(_:)):
+            menuItem.state = activePane.primarySortKey == "created" ? .on : .off
+        default:
+            menuItem.state = .off
+        }
+
+        return isEnabled
     }
 
     private func chooseDestinationURL(forMove move: Bool) -> URL? {
@@ -527,7 +622,6 @@ extension FileManagerWindowController: NSToolbarDelegate {
     static let moveItem = NSToolbarItem.Identifier("fm_move")
     static let deleteItem = NSToolbarItem.Identifier("fm_delete")
     static let infoItem = NSToolbarItem.Identifier("fm_info")
-    static let splitItem = NSToolbarItem.Identifier("fm_split")
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
                  willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
@@ -556,32 +650,32 @@ extension FileManagerWindowController: NSToolbarDelegate {
             item.action = #selector(testArchive(_:))
 
         case Self.copyItem:
-            item.label = "Copy (F5)"
+            item.label = "Copy"
             item.toolTip = "Copy files"
             item.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "Copy")
             item.target = self
             item.action = #selector(copyFiles(_:))
 
         case Self.moveItem:
-            item.label = "Move (F6)"
+            item.label = "Move"
             item.toolTip = "Move files"
             item.image = NSImage(systemSymbolName: "folder.badge.questionmark", accessibilityDescription: "Move")
             item.target = self
             item.action = #selector(moveFiles(_:))
 
         case Self.deleteItem:
-            item.label = "Delete (F8)"
+            item.label = "Delete"
             item.toolTip = "Delete files"
             item.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete")
             item.target = self
             item.action = #selector(deleteFiles(_:))
 
-        case Self.splitItem:
-            item.label = "Split (F9)"
-            item.toolTip = "Toggle dual pane"
-            item.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "Split")
+        case Self.infoItem:
+            item.label = "Info"
+            item.toolTip = "Show item properties"
+            item.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: "Info")
             item.target = self
-            item.action = #selector(toggleDualPane(_:))
+            item.action = #selector(showProperties(_:))
 
         default:
             return nil
@@ -593,14 +687,12 @@ extension FileManagerWindowController: NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [Self.addItem, Self.extractItem, Self.testItem,
          .space,
-         Self.copyItem, Self.moveItem, Self.deleteItem,
-         .flexibleSpace,
-         Self.splitItem]
+         Self.copyItem, Self.moveItem, Self.deleteItem, Self.infoItem]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [Self.addItem, Self.extractItem, Self.testItem,
-         Self.copyItem, Self.moveItem, Self.deleteItem, Self.splitItem,
+         Self.copyItem, Self.moveItem, Self.deleteItem, Self.infoItem,
          .space, .flexibleSpace]
     }
 }

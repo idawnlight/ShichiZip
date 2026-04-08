@@ -4,96 +4,215 @@ import Cocoa
 enum MainMenu {
 
     static func setup() {
-        let mainMenu = NSMenu()
+    let mainMenu = NSMenu(title: "Main Menu")
 
-        // Application menu
-        let appMenuItem = NSMenuItem()
-        mainMenu.addItem(appMenuItem)
-        let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About ShichiZip", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
-        appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Preferences…", action: #selector(AppDelegate.showPreferences(_:)), keyEquivalent: ",")
-        appMenu.addItem(.separator())
+    let appMenu = NSMenu(title: "ShichiZip")
+    addTopLevelMenu(appMenu, to: mainMenu)
+    addItem(to: appMenu,
+        title: "About ShichiZip",
+        action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
+        target: NSApp)
+    appMenu.addItem(.separator())
+    addItem(to: appMenu,
+        title: "Preferences…",
+        action: #selector(AppDelegate.showPreferences(_:)),
+        keyEquivalent: ",",
+        target: NSApp.delegate)
+    appMenu.addItem(.separator())
 
-        let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
-        let servicesMenu = NSMenu(title: "Services")
-        servicesItem.submenu = servicesMenu
-        NSApp.servicesMenu = servicesMenu
-        appMenu.addItem(servicesItem)
+    let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
+    let servicesMenu = NSMenu(title: "Services")
+    servicesItem.submenu = servicesMenu
+    NSApp.servicesMenu = servicesMenu
+    appMenu.addItem(servicesItem)
 
-        appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Hide ShichiZip", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        let hideOthersItem = appMenu.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
-        hideOthersItem.keyEquivalentModifierMask = [.command, .option]
-        appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
-        appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit ShichiZip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        appMenuItem.submenu = appMenu
+    appMenu.addItem(.separator())
+    addItem(to: appMenu,
+        title: "Hide ShichiZip",
+        action: #selector(NSApplication.hide(_:)),
+        keyEquivalent: "h",
+        target: NSApp)
+    addItem(to: appMenu,
+        title: "Hide Others",
+        action: #selector(NSApplication.hideOtherApplications(_:)),
+        keyEquivalent: "h",
+        modifiers: [.command, .option],
+        target: NSApp)
+    addItem(to: appMenu,
+        title: "Show All",
+        action: #selector(NSApplication.unhideAllApplications(_:)),
+        target: NSApp)
+    appMenu.addItem(.separator())
+    addItem(to: appMenu,
+        title: "Quit ShichiZip",
+        action: #selector(NSApplication.terminate(_:)),
+        keyEquivalent: "q",
+        target: NSApp)
 
-        // File menu
-        let fileMenuItem = NSMenuItem()
-        mainMenu.addItem(fileMenuItem)
-        let fileMenu = NSMenu(title: "File")
-        fileMenu.addItem(withTitle: "Open…", action: #selector(AppDelegate.openArchives(_:)), keyEquivalent: "o")
-        fileMenu.addItem(withTitle: "File Manager", action: #selector(AppDelegate.showFileManager(_:)), keyEquivalent: "f")
-        fileMenu.addItem(.separator())
-        fileMenu.addItem(withTitle: "New Archive…", action: #selector(AppDelegate.newArchive(_:)), keyEquivalent: "n")
-        fileMenu.addItem(.separator())
-        fileMenu.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
-        fileMenuItem.submenu = fileMenu
+    let fileMenu = NSMenu(title: "File")
+    addTopLevelMenu(fileMenu, to: mainMenu)
+    addItem(to: fileMenu,
+        title: "Open",
+        action: #selector(FileManagerWindowController.openSelectedItem(_:)))
+    addItem(to: fileMenu,
+        title: "Open Archive…",
+        action: #selector(AppDelegate.openArchives(_:)),
+        keyEquivalent: "o",
+        target: NSApp.delegate)
+    fileMenu.addItem(.separator())
+    addItem(to: fileMenu,
+        title: "Add",
+        action: #selector(FileManagerWindowController.addToArchive(_:)))
+    addItem(to: fileMenu,
+        title: "Extract…",
+        action: #selector(FileManagerWindowController.extractArchive(_:)))
+    addItem(to: fileMenu,
+        title: "Extract Here",
+        action: #selector(FileManagerWindowController.extractHere(_:)))
+    addItem(to: fileMenu,
+        title: "Test",
+        action: #selector(FileManagerWindowController.testArchive(_:)))
+    fileMenu.addItem(.separator())
+    addItem(to: fileMenu,
+        title: "Rename",
+        action: #selector(FileManagerWindowController.renameSelection(_:)))
+    addItem(to: fileMenu,
+        title: "Copy To…",
+        action: #selector(FileManagerWindowController.copyFiles(_:)))
+    addItem(to: fileMenu,
+        title: "Move To…",
+        action: #selector(FileManagerWindowController.moveFiles(_:)))
+    addItem(to: fileMenu,
+        title: "Delete",
+        action: #selector(FileManagerWindowController.deleteFiles(_:)))
+    fileMenu.addItem(.separator())
+    addItem(to: fileMenu,
+        title: "Properties",
+        action: #selector(FileManagerWindowController.showProperties(_:)))
+    fileMenu.addItem(.separator())
+    addItem(to: fileMenu,
+        title: "Create Folder",
+        action: #selector(FileManagerWindowController.createFolder(_:)))
+    fileMenu.addItem(.separator())
+    addItem(to: fileMenu,
+        title: "Close",
+        action: #selector(NSWindow.performClose(_:)),
+        keyEquivalent: "w")
 
-        // Edit menu
-        let editMenuItem = NSMenuItem()
-        mainMenu.addItem(editMenuItem)
-        let editMenu = NSMenu(title: "Edit")
-        editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        let redoItem = editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
-        redoItem.keyEquivalentModifierMask = [.command, .shift]
-        editMenu.addItem(.separator())
-        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        editMenu.addItem(withTitle: "Delete", action: #selector(NSText.delete(_:)), keyEquivalent: "")
-        editMenu.addItem(.separator())
-        editMenu.addItem(withTitle: "Select All", action: #selector(NSResponder.selectAll(_:)), keyEquivalent: "a")
-        editMenu.addItem(withTitle: "Deselect All", action: #selector(NSTableView.deselectAll(_:)), keyEquivalent: "")
-        editMenuItem.submenu = editMenu
+    let editMenu = NSMenu(title: "Edit")
+    addTopLevelMenu(editMenu, to: mainMenu)
+    addItem(to: editMenu,
+        title: "Select All",
+        action: #selector(FileManagerWindowController.selectAllItems(_:)),
+        keyEquivalent: "a")
+    addItem(to: editMenu,
+        title: "Deselect All",
+        action: #selector(FileManagerWindowController.deselectAllItems(_:)),
+        keyEquivalent: "a",
+        modifiers: [.command, .shift])
+    addItem(to: editMenu,
+        title: "Invert Selection",
+        action: #selector(FileManagerWindowController.invertSelection(_:)))
 
-        // View menu
-        let viewMenuItem = NSMenuItem()
-        mainMenu.addItem(viewMenuItem)
-        let viewMenu = NSMenu(title: "View")
-        viewMenu.addItem(withTitle: "Enter Full Screen", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
-        viewMenu.items.last?.keyEquivalentModifierMask = [.command, .control]
-        viewMenuItem.submenu = viewMenu
+    let viewMenu = NSMenu(title: "View")
+    addTopLevelMenu(viewMenu, to: mainMenu)
+    addItem(to: viewMenu,
+        title: "Up One Level",
+        action: #selector(FileManagerWindowController.goUpOneLevel(_:)))
+    addItem(to: viewMenu,
+        title: "Refresh",
+        action: #selector(FileManagerWindowController.refreshActivePane(_:)),
+        keyEquivalent: "r")
+    viewMenu.addItem(.separator())
+    addItem(to: viewMenu,
+        title: "Sort by Name",
+        action: #selector(FileManagerWindowController.sortByName(_:)))
+    addItem(to: viewMenu,
+        title: "Sort by Size",
+        action: #selector(FileManagerWindowController.sortBySize(_:)))
+    addItem(to: viewMenu,
+        title: "Sort by Modified",
+        action: #selector(FileManagerWindowController.sortByModifiedDate(_:)))
+    addItem(to: viewMenu,
+        title: "Sort by Created",
+        action: #selector(FileManagerWindowController.sortByCreatedDate(_:)))
+    viewMenu.addItem(.separator())
+    addItem(to: viewMenu,
+        title: "2 Panels",
+        action: #selector(FileManagerWindowController.toggleDualPane(_:)))
+    viewMenu.addItem(.separator())
+    addItem(to: viewMenu,
+        title: "Enter Full Screen",
+        action: #selector(NSWindow.toggleFullScreen(_:)),
+        keyEquivalent: "f",
+        modifiers: [.command, .control])
 
-        // Tools menu
-        let toolsMenuItem = NSMenuItem()
-        mainMenu.addItem(toolsMenuItem)
-        let toolsMenu = NSMenu(title: "Tools")
-        toolsMenu.addItem(withTitle: "Benchmark", action: #selector(AppDelegate.showBenchmark(_:)), keyEquivalent: "b")
-        toolsMenu.items.last?.keyEquivalentModifierMask = [.command, .shift]
-        toolsMenuItem.submenu = toolsMenu
+    let toolsMenu = NSMenu(title: "Tools")
+    addTopLevelMenu(toolsMenu, to: mainMenu)
+    addItem(to: toolsMenu,
+        title: "Options…",
+        action: #selector(AppDelegate.showPreferences(_:)),
+        target: NSApp.delegate)
+    toolsMenu.addItem(.separator())
+    addItem(to: toolsMenu,
+        title: "Benchmark",
+        action: #selector(AppDelegate.showBenchmark(_:)),
+        keyEquivalent: "b",
+        modifiers: [.command, .shift],
+        target: NSApp.delegate)
 
-        // Window menu
-        let windowMenuItem = NSMenuItem()
-        mainMenu.addItem(windowMenuItem)
-        let windowMenu = NSMenu(title: "Window")
-        windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-        windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
-        windowMenu.addItem(.separator())
-        windowMenu.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
-        windowMenuItem.submenu = windowMenu
-        NSApp.windowsMenu = windowMenu
+    let windowMenu = NSMenu(title: "Window")
+    addTopLevelMenu(windowMenu, to: mainMenu)
+    addItem(to: windowMenu,
+        title: "File Manager",
+        action: #selector(AppDelegate.showFileManager(_:)),
+        target: NSApp.delegate)
+    windowMenu.addItem(.separator())
+    addItem(to: windowMenu,
+        title: "Minimize",
+        action: #selector(NSWindow.performMiniaturize(_:)),
+        keyEquivalent: "m")
+    addItem(to: windowMenu,
+        title: "Zoom",
+        action: #selector(NSWindow.performZoom(_:)))
+    windowMenu.addItem(.separator())
+    addItem(to: windowMenu,
+        title: "Bring All to Front",
+        action: #selector(NSApplication.arrangeInFront(_:)),
+        target: NSApp)
+    NSApp.windowsMenu = windowMenu
 
-        // Help menu
-        let helpMenuItem = NSMenuItem()
-        mainMenu.addItem(helpMenuItem)
-        let helpMenu = NSMenu(title: "Help")
-        helpMenu.addItem(withTitle: "ShichiZip Help", action: #selector(NSApplication.showHelp(_:)), keyEquivalent: "?")
-        helpMenuItem.submenu = helpMenu
-        NSApp.helpMenu = helpMenu
+    let helpMenu = NSMenu(title: "Help")
+    addTopLevelMenu(helpMenu, to: mainMenu)
+    addItem(to: helpMenu,
+        title: "ShichiZip Help",
+        action: #selector(NSApplication.showHelp(_:)),
+        keyEquivalent: "?",
+        target: NSApp)
+    NSApp.helpMenu = helpMenu
 
-        NSApp.mainMenu = mainMenu
+    NSApp.mainMenu = mainMenu
+    }
+
+    @discardableResult
+    private static func addItem(to menu: NSMenu,
+                title: String,
+                action: Selector?,
+                keyEquivalent: String = "",
+                modifiers: NSEvent.ModifierFlags = [.command],
+                target: AnyObject? = nil) -> NSMenuItem {
+    let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+    item.target = target
+    if !keyEquivalent.isEmpty {
+        item.keyEquivalentModifierMask = modifiers
+    }
+    menu.addItem(item)
+    return item
+    }
+
+    private static func addTopLevelMenu(_ submenu: NSMenu, to mainMenu: NSMenu) {
+    let item = NSMenuItem(title: submenu.title, action: nil, keyEquivalent: "")
+    item.submenu = submenu
+    mainMenu.addItem(item)
     }
 }

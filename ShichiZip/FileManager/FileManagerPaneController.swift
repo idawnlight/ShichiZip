@@ -272,10 +272,109 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return selectedArchiveCandidateURL() != nil
     }
 
+    func canOpenSelection() -> Bool {
+        !selectedPaneItems().isEmpty
+    }
+
+    func canShowSelectedItemProperties() -> Bool {
+        !selectedRealPaneItems().isEmpty
+    }
+
+    func canGoUp() -> Bool {
+        isInsideArchive || currentDirectory.path != currentDirectory.deletingLastPathComponent().path
+    }
+
+    func canSelectVisibleItems() -> Bool {
+        let firstSelectableRow = showsParentRow ? 1 : 0
+        return numberOfRows(in: tableView) > firstSelectableRow
+    }
+
+    func canDeselectSelection() -> Bool {
+        !tableView.selectedRowIndexes.isEmpty
+    }
+
     func selectedArchiveCandidateURL() -> URL? {
         let selectedItems = selectedFileSystemItems()
         guard selectedItems.count == 1, !selectedItems[0].isDirectory else { return nil }
         return selectedItems[0].url
+    }
+
+    func openSelection() {
+        openSelectedItem(nil)
+    }
+
+    func goUpOneLevel() {
+        goUp()
+    }
+
+    func renameSelection() {
+        renameSelected(nil)
+    }
+
+    func showSelectedItemProperties() {
+        showItemProperties(nil)
+    }
+
+    func extractSelectionHere() {
+        extractHere(nil)
+    }
+
+    func selectAllItems() {
+        let rowCount = numberOfRows(in: tableView)
+        let firstSelectableRow = showsParentRow ? 1 : 0
+        guard rowCount > firstSelectableRow else {
+            tableView.deselectAll(nil)
+            return
+        }
+
+        tableView.selectRowIndexes(IndexSet(integersIn: firstSelectableRow..<rowCount),
+                                   byExtendingSelection: false)
+    }
+
+    func deselectAllItems() {
+        tableView.deselectAll(nil)
+    }
+
+    func invertSelection() {
+        let rowCount = numberOfRows(in: tableView)
+        let firstSelectableRow = showsParentRow ? 1 : 0
+        guard rowCount > firstSelectableRow else { return }
+
+        let currentSelection = tableView.selectedRowIndexes
+        var inverseSelection = IndexSet()
+        for row in firstSelectableRow..<rowCount where !currentSelection.contains(row) {
+            inverseSelection.insert(row)
+        }
+        tableView.selectRowIndexes(inverseSelection, byExtendingSelection: false)
+    }
+
+    func sortByName() {
+        applySortDescriptor(columnIdentifier: "name",
+                            key: "name",
+                            ascending: true,
+                            selector: #selector(NSString.localizedStandardCompare(_:)))
+    }
+
+    func sortBySize() {
+        applySortDescriptor(columnIdentifier: "size",
+                            key: "size",
+                            ascending: false)
+    }
+
+    func sortByModifiedDate() {
+        applySortDescriptor(columnIdentifier: "modified",
+                            key: "modified",
+                            ascending: false)
+    }
+
+    func sortByCreatedDate() {
+        applySortDescriptor(columnIdentifier: "created",
+                            key: "created",
+                            ascending: false)
+    }
+
+    var primarySortKey: String? {
+        tableView.sortDescriptors.first?.key
     }
 
     func selectedFilePaths() -> [String] {
@@ -695,6 +794,21 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             normalized.removeLast()
         }
         return normalized
+    }
+
+    private func applySortDescriptor(columnIdentifier: String,
+                                     key: String,
+                                     ascending: Bool,
+                                     selector: Selector? = nil) {
+        let descriptor = NSSortDescriptor(key: key,
+                                          ascending: ascending,
+                                          selector: selector)
+        tableView.sortDescriptors = [descriptor]
+        if let column = tableView.tableColumns.first(where: { $0.identifier.rawValue == columnIdentifier }) {
+            tableView.highlightedTableColumn = column
+        }
+        sortCurrentItems(by: tableView.sortDescriptors)
+        tableView.reloadData()
     }
 
     private func extractArchiveItems(_ itemsToExtract: [ArchiveItem],
