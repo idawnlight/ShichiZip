@@ -113,21 +113,7 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func appVersionString() -> String? {
-        let shortVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let buildVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        switch (shortVersion, buildVersion) {
-        case let (.some(shortVersion), .some(buildVersion)) where !shortVersion.isEmpty && !buildVersion.isEmpty && shortVersion != buildVersion:
-            return "\(shortVersion) (\(buildVersion))"
-        case let (.some(shortVersion), _) where !shortVersion.isEmpty:
-            return shortVersion
-        case let (_, .some(buildVersion)) where !buildVersion.isEmpty:
-            return buildVersion
-        default:
-            return nil
-        }
+        AppBuildInfo.displayVersion()
     }
 
     private func benchmarkSystemSummary() -> String {

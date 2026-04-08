@@ -153,4 +153,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settingsWindowController?.showWindow(self)
     }
+
+    @IBAction func showAbout(_ sender: Any?) {
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+            ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String
+            ?? "ShichiZip"
+        let details = AppBuildInfo.bundled7ZipLicense() ?? "7-Zip license text is unavailable."
+        let summary = AppBuildInfo.aboutSummary()
+        let parentWindow = NSApp.keyWindow ?? NSApp.mainWindow
+
+        szShowDetailsDialog(title: "About \(appName)",
+                            summary: summary,
+                            details: details,
+                            detailsHeight: 320,
+                            for: parentWindow)
+    }
 }

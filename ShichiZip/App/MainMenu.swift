@@ -352,8 +352,8 @@ enum MainMenu {
         addTopLevelMenu(appMenu, to: mainMenu)
         addItem(to: appMenu,
                 title: "About ShichiZip",
-                action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
-                target: NSApp)
+                action: #selector(AppDelegate.showAbout(_:)),
+                target: NSApp.delegate)
         appMenu.addItem(.separator())
         addItem(to: appMenu,
                 title: "Preferences…",

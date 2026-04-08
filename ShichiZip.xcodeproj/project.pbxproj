@@ -21,6 +21,7 @@
 		7EE100FF37A26DA3FA69134C /* FileManagerExternalOpenRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F07428E479FD64D8594CBD8 /* FileManagerExternalOpenRouter.swift */; };
 		92508A846730EC64177768C0 /* CompressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB37EA2DD031212A342F87 /* CompressDialogController.swift */; };
 		95020B695CD4B8B7EA2C94E5 /* ArchiveOperationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1797F83BAF1E2349FCC716 /* ArchiveOperationCoordinator.swift */; };
+		96CADD8337309780C30D05B7 /* AppBuildInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC377A7A1121F0ED50658A6B /* AppBuildInfo.swift */; };
 		982013070593772CA679F1CB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */; };
 		A386AA53745E51B22EC51125 /* FileManagerTemporaryDirectorySupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21E05B9DDAEF0F17D9CF282 /* FileManagerTemporaryDirectorySupport.swift */; };
 		A6D570941AD9603FF45FB5B7 /* FileManagerPaneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */; };
@@ -65,6 +66,7 @@
 		937563A1E648A0013C4DD0C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A090218681EBF340986657E6 /* SZModalDialogController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZModalDialogController.h; sourceTree = "<group>"; };
 		AA43642E44A71EF577FDA9A1 /* SZOperationSessionDefaults.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZOperationSessionDefaults.h; sourceTree = "<group>"; };
+		AC377A7A1121F0ED50658A6B /* AppBuildInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBuildInfo.swift; sourceTree = "<group>"; };
 		B7E9365E10448902B8CE7660 /* FileManagerArchiveItemWorkflowService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerArchiveItemWorkflowService.swift; sourceTree = "<group>"; };
 		B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveDocument.swift; sourceTree = "<group>"; };
@@ -186,6 +188,7 @@
 		B92097D2D36120A1EF231E0E /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				AC377A7A1121F0ED50658A6B /* AppBuildInfo.swift */,
 				44B46B23B616057C7E76AFC3 /* ArchiveOperationRunner.swift */,
 				2E2FF83FA1080A0CA38F27F5 /* DialogPresenter.swift */,
 				AA43642E44A71EF577FDA9A1 /* SZOperationSessionDefaults.h */,
@@ -218,6 +221,7 @@
 			buildPhases = (
 				E08F69A692555982A1F072BE /* Sources */,
 				D37E858B5F5A990AB339A0C8 /* Resources */,
+				807B4DC42912EBCC6372573E /* Generate Build Metadata */,
 			);
 			buildRules = (
 			);
@@ -271,11 +275,34 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		807B4DC42912EBCC6372573E /* Generate Build Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Metadata";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/vendor/7zip/DOC/License.txt\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\n\nset_plist_value() {\n  local key=\"$1\"\n  local value=\"$2\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${info_plist}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${info_plist}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${info_plist}\"\n  fi\n}\n\nset_plist_value \"CFBundleVersion\" \"${commit_count}\"\nset_plist_value \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		E08F69A692555982A1F072BE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				96CADD8337309780C30D05B7 /* AppBuildInfo.swift in Sources */,
 				982013070593772CA679F1CB /* AppDelegate.swift in Sources */,
 				F5D35697C677E69E61A6D2E7 /* ArchiveDocument.swift in Sources */,
 				3EB1A6D4145C14DAED1F6FFF /* ArchiveItem.swift in Sources */,
@@ -321,6 +348,7 @@
 				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = ShichiZip/Resources/ShichiZip.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"NDEBUG=1",
@@ -341,6 +369,7 @@
 					"$(PROJECT_DIR)/build/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(inherited)",
 					"-Wno-everything",
@@ -351,7 +380,7 @@
 					"-liconv",
 					"-lpthread",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip;
 				PRODUCT_NAME = ShichiZip;
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
@@ -426,6 +455,7 @@
 				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = ShichiZip/Resources/ShichiZip.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"NDEBUG=1",
@@ -446,6 +476,7 @@
 					"$(PROJECT_DIR)/build/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(inherited)",
 					"-Wno-everything",
@@ -456,7 +487,7 @@
 					"-liconv",
 					"-lpthread",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.shichizip.ShichiZip;
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip;
 				PRODUCT_NAME = ShichiZip;
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";

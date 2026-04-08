@@ -131,10 +131,11 @@ func szBeginTextInput(on window: NSWindow,
 func szShowDetailsDialog(title: String,
                          summary: String? = nil,
                          details: String,
+                         detailsHeight: CGFloat = 220,
                          style: SZDialogStyle = .informational,
                          for window: NSWindow?) {
     let present = {
-        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 380, height: 220))
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 380, height: detailsHeight))
         textView.string = details
         textView.isEditable = false
         textView.isSelectable = true
@@ -142,11 +143,11 @@ func szShowDetailsDialog(title: String,
         textView.textContainerInset = NSSize(width: 0, height: 4)
         textView.font = .systemFont(ofSize: 12)
 
-        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 380, height: 220))
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 380, height: detailsHeight))
         scrollView.hasVerticalScroller = true
         scrollView.borderType = .bezelBorder
         scrollView.documentView = textView
-        scrollView.heightAnchor.constraint(equalToConstant: 220).isActive = true
+        scrollView.heightAnchor.constraint(equalToConstant: detailsHeight).isActive = true
 
         let controller = SZModalDialogController(style: style,
                                                  title: title,
