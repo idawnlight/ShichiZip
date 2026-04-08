@@ -28,6 +28,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var scrollView: NSScrollView!
     private var statusLabel: NSTextField!
     private var settingsObserver: NSObjectProtocol?
+    private var viewPreferencesObserver: NSObjectProtocol?
     private var recentDirectories: [URL] = []
 
     private(set) var currentDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
@@ -68,6 +69,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     deinit {
         if let settingsObserver {
             NotificationCenter.default.removeObserver(settingsObserver)
+        }
+        if let viewPreferencesObserver {
+            NotificationCenter.default.removeObserver(viewPreferencesObserver)
         }
         closeAllArchives()
         archiveItemWorkflowService.cleanupAll()
@@ -185,6 +189,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             self?.handleSettingsDidChange(notification)
         }
 
+        viewPreferencesObserver = NotificationCenter.default.addObserver(
+            forName: .fileManagerViewPreferencesDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.reloadPresentedValues()
+        }
+
         applyFileManagerSettings()
 
         self.view = container
@@ -227,6 +239,18 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         } else {
             loadDirectory(currentDirectory)
         }
+    }
+
+    func autoRefreshIfPossible() {
+        guard isViewLoaded else { return }
+        guard !isInsideArchive else { return }
+        loadDirectory(currentDirectory)
+    }
+
+    func reloadPresentedValues() {
+        guard isViewLoaded else { return }
+        tableView.reloadData()
+        updateStatusBar()
     }
 
     func focusFileList() {
@@ -1198,9 +1222,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         guard let columnID = tableColumn?.identifier.rawValue else { return nil }
         guard let paneItem = paneItem(at: row) else { return nil }
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .short
+        let dateFormatter = FileManagerViewPreferences.makeDateFormatter(dateStyle: .medium,
+                                        timeStyle: .short)
 
         let itemName: String
         let itemSize: String
@@ -1749,9 +1772,8 @@ extension FileManagerPaneController {
             ])
 
             let size = ByteCountFormatter.string(fromByteCount: Int64(resourceValues?.fileSize ?? 0), countStyle: .file)
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .long
-            dateFormatter.timeStyle = .medium
+            let dateFormatter = FileManagerViewPreferences.makeDateFormatter(dateStyle: .long,
+                                                                             timeStyle: .medium)
             let details = """
             Type: \(resourceValues?.isDirectory == true ? "Folder" : url.pathExtension.uppercased())
             Size: \(size)
@@ -1763,9 +1785,8 @@ extension FileManagerPaneController {
                                 for: view.window)
 
         case let .archive(archiveItem):
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .long
-            dateFormatter.timeStyle = .medium
+            let dateFormatter = FileManagerViewPreferences.makeDateFormatter(dateStyle: .long,
+                                                                             timeStyle: .medium)
             let sizeText = archiveItem.isDirectory
                 ? "—"
                 : ByteCountFormatter.string(fromByteCount: Int64(archiveItem.size), countStyle: .file)

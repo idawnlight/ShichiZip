@@ -230,9 +230,12 @@ enum MainMenu {
 
         let timeMenuItem = NSMenuItem(title: "Time", action: nil, keyEquivalent: "")
         let timeMenu = NSMenu(title: "Time")
-        let localTimeItem = addDisabledItem(to: timeMenu, title: "Local Time")
-        localTimeItem.state = .on
-        addDisabledItem(to: timeMenu, title: "UTC")
+        addItem(to: timeMenu,
+                title: "Local Time",
+                action: #selector(FileManagerWindowController.showLocalTimestamps(_:)))
+        addItem(to: timeMenu,
+                title: "UTC",
+                action: #selector(FileManagerWindowController.showUTCTimestamps(_:)))
         timeMenuItem.submenu = timeMenu
         viewMenu.addItem(timeMenuItem)
 
@@ -267,7 +270,9 @@ enum MainMenu {
                 title: "Refresh",
                 action: #selector(FileManagerWindowController.refreshActivePane(_:)),
                 keyEquivalent: "r")
-        addDisabledItem(to: viewMenu, title: "Auto Refresh")
+        addItem(to: viewMenu,
+                title: "Auto Refresh",
+                action: #selector(FileManagerWindowController.toggleAutoRefresh(_:)))
         viewMenu.addItem(.separator())
         addItem(to: viewMenu,
                 title: "Enter Full Screen",

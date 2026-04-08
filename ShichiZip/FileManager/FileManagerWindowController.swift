@@ -1,5 +1,54 @@
 import Cocoa
 
+extension Notification.Name {
+    static let fileManagerViewPreferencesDidChange = Notification.Name("FileManagerViewPreferencesDidChange")
+}
+
+enum FileManagerViewPreferences {
+    private static let defaults = UserDefaults.standard
+    private static let timestampUTCKey = "FileManager.TimestampUTC"
+    private static let autoRefreshKey = "FileManager.AutoRefresh"
+
+    static var usesUTCTimestamps: Bool {
+        bool(forKey: timestampUTCKey, defaultValue: false)
+    }
+
+    static var autoRefreshEnabled: Bool {
+        bool(forKey: autoRefreshKey, defaultValue: false)
+    }
+
+    static func setUsesUTCTimestamps(_ value: Bool) {
+        set(value, forKey: timestampUTCKey)
+    }
+
+    static func setAutoRefreshEnabled(_ value: Bool) {
+        set(value, forKey: autoRefreshKey)
+    }
+
+    static func makeDateFormatter(dateStyle: DateFormatter.Style,
+                                  timeStyle: DateFormatter.Style) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = dateStyle
+        formatter.timeStyle = timeStyle
+        if usesUTCTimestamps {
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        }
+        return formatter
+    }
+
+    private static func set(_ value: Bool, forKey key: String) {
+        defaults.set(value, forKey: key)
+        NotificationCenter.default.post(name: .fileManagerViewPreferencesDidChange, object: nil)
+    }
+
+    private static func bool(forKey key: String, defaultValue: Bool) -> Bool {
+        guard defaults.object(forKey: key) != nil else {
+            return defaultValue
+        }
+        return defaults.bool(forKey: key)
+    }
+}
+
 /// Dual-pane file manager window replicating 7-Zip File Manager
 class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserInterfaceValidations, NSMenuItemValidation {
 
@@ -56,6 +105,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     private var toolbar: NSToolbar!
     private var isDualPane = false
     private var keyEventMonitor: Any?
+    private var viewPreferencesObserver: NSObjectProtocol?
+    private var autoRefreshTimer: Timer?
 
     var onWindowWillClose: ((FileManagerWindowController) -> Void)?
 
@@ -74,6 +125,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         setupUI()
         setupToolbar()
         setupMainMenu()
+        observeViewPreferences()
+        configureAutoRefreshTimer()
         self.window?.initialFirstResponder = leftPane.preferredInitialFirstResponder
         self.window?.makeFirstResponder(leftPane.preferredInitialFirstResponder)
     }
@@ -82,6 +135,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         if let keyEventMonitor {
             NSEvent.removeMonitor(keyEventMonitor)
         }
+        if let viewPreferencesObserver {
+            NotificationCenter.default.removeObserver(viewPreferencesObserver)
+        }
+        autoRefreshTimer?.invalidate()
     }
 
     override func showWindow(_ sender: Any?) {
@@ -94,6 +151,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             NSEvent.removeMonitor(keyEventMonitor)
             self.keyEventMonitor = nil
         }
+        autoRefreshTimer?.invalidate()
+        autoRefreshTimer = nil
         onWindowWillClose?(self)
     }
 
@@ -143,6 +202,46 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         // We'll handle key events for F-key shortcuts
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             return self?.handleKeyEvent(event) ?? event
+        }
+    }
+
+    private func observeViewPreferences() {
+        viewPreferencesObserver = NotificationCenter.default.addObserver(
+            forName: .fileManagerViewPreferencesDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleViewPreferencesDidChange()
+        }
+    }
+
+    private func handleViewPreferencesDidChange() {
+        configureAutoRefreshTimer()
+        leftPane.reloadPresentedValues()
+        rightPane.reloadPresentedValues()
+        if FileManagerViewPreferences.autoRefreshEnabled {
+            performAutoRefreshTick()
+        }
+    }
+
+    private func configureAutoRefreshTimer() {
+        autoRefreshTimer?.invalidate()
+        autoRefreshTimer = nil
+
+        guard FileManagerViewPreferences.autoRefreshEnabled else { return }
+
+        let timer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
+            self?.performAutoRefreshTick()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        autoRefreshTimer = timer
+    }
+
+    private func performAutoRefreshTick() {
+        guard window?.isVisible == true else { return }
+        leftPane.autoRefreshIfPossible()
+        if isDualPane {
+            rightPane.autoRefreshIfPossible()
         }
     }
 
@@ -376,6 +475,18 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         activePane.sortByCreatedDate()
     }
 
+    @objc func showLocalTimestamps(_ sender: Any?) {
+        FileManagerViewPreferences.setUsesUTCTimestamps(false)
+    }
+
+    @objc func showUTCTimestamps(_ sender: Any?) {
+        FileManagerViewPreferences.setUsesUTCTimestamps(true)
+    }
+
+    @objc func toggleAutoRefresh(_ sender: Any?) {
+        FileManagerViewPreferences.setAutoRefreshEnabled(!FileManagerViewPreferences.autoRefreshEnabled)
+    }
+
     @objc func openRootFolder(_ sender: Any?) {
         activePane.openRootFolder()
     }
@@ -531,9 +642,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                 let dstSize = (dstAttrs?[.size] as? UInt64) ?? 0
                                 let srcDate = srcAttrs?[.modificationDate] as? Date
                                 let dstDate = dstAttrs?[.modificationDate] as? Date
-                                let dateFormatter = DateFormatter()
-                                dateFormatter.dateStyle = .medium
-                                dateFormatter.timeStyle = .medium
+                                let dateFormatter = FileManagerViewPreferences.makeDateFormatter(dateStyle: .medium,
+                                                                                                 timeStyle: .medium)
 
                                 let message = """
                                 Destination: \(destFile.lastPathComponent)
@@ -671,6 +781,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
              #selector(sortByModifiedDate(_:)),
              #selector(sortByCreatedDate(_:)):
             return true
+        case #selector(showLocalTimestamps(_:)),
+             #selector(showUTCTimestamps(_:)),
+             #selector(toggleAutoRefresh(_:)):
+            return true
         case #selector(openRootFolder(_:)):
             return true
         case #selector(showFoldersHistory(_:)):
@@ -710,6 +824,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             menuItem.state = activePane.primarySortKey == "modified" ? .on : .off
         case #selector(sortByCreatedDate(_:)):
             menuItem.state = activePane.primarySortKey == "created" ? .on : .off
+        case #selector(showLocalTimestamps(_:)):
+            menuItem.state = FileManagerViewPreferences.usesUTCTimestamps ? .off : .on
+        case #selector(showUTCTimestamps(_:)):
+            menuItem.state = FileManagerViewPreferences.usesUTCTimestamps ? .on : .off
+        case #selector(toggleAutoRefresh(_:)):
+            menuItem.state = FileManagerViewPreferences.autoRefreshEnabled ? .on : .off
         case #selector(toggleArchiveToolbar(_:)):
             menuItem.state = ToolbarPreferences.showsArchiveToolbar ? .on : .off
         case #selector(toggleStandardToolbar(_:)):
