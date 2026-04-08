@@ -219,7 +219,7 @@
        preferredFirstResponder:(NSView *)preferredFirstResponder
             cancelButtonIndex:(NSInteger)cancelButtonIndex {
     NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 440, 200)
-                                                   styleMask:NSWindowStyleMaskTitled
+                                                                                                     styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskFullSizeContentView)
                                                      backing:NSBackingStoreBuffered
                                                        defer:NO];
     if ((self = [super initWithWindow:window])) {
