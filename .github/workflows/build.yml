@@ -17,7 +17,7 @@ permissions:
 jobs:
   macos-build:
     name: macOS Build
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 45
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
