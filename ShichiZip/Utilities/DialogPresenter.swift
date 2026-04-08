@@ -20,18 +20,35 @@ func szIsUnsupportedArchive(_ error: Error) -> Bool {
 
 func szPresentError(_ error: Error, for window: NSWindow?) {
     guard !szIsUserCancellation(error) else { return }
-    SZDialogPresenter.presentError(error as NSError, for: window)
+
+    let present = {
+        SZDialogPresenter.presentError(error as NSError, for: window)
+    }
+
+    if Thread.isMainThread {
+        present()
+    } else {
+        DispatchQueue.main.async(execute: present)
+    }
 }
 
 func szPresentMessage(title: String,
                       message: String = "",
                       style: SZDialogStyle = .informational,
                       for window: NSWindow?) {
-    SZDialogPresenter.presentMessage(with: style,
-                                     title: title,
-                                     message: message,
-                                     buttonTitle: "OK",
-                                     for: window)
+    let present = {
+        SZDialogPresenter.presentMessage(with: style,
+                                         title: title,
+                                         message: message,
+                                         buttonTitle: "OK",
+                                         for: window)
+    }
+
+    if Thread.isMainThread {
+        present()
+    } else {
+        DispatchQueue.main.async(execute: present)
+    }
 }
 
 func szRunChoiceDialog(title: String,
@@ -116,30 +133,39 @@ func szShowDetailsDialog(title: String,
                          details: String,
                          style: SZDialogStyle = .informational,
                          for window: NSWindow?) {
-    let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 380, height: 220))
-    textView.string = details
-    textView.isEditable = false
-    textView.isSelectable = true
-    textView.drawsBackground = false
-    textView.textContainerInset = NSSize(width: 0, height: 4)
-    textView.font = .systemFont(ofSize: 12)
+    let present = {
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 380, height: 220))
+        textView.string = details
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 0, height: 4)
+        textView.font = .systemFont(ofSize: 12)
 
-    let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 380, height: 220))
-    scrollView.hasVerticalScroller = true
-    scrollView.borderType = .bezelBorder
-    scrollView.documentView = textView
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 380, height: 220))
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .bezelBorder
+        scrollView.documentView = textView
+        scrollView.heightAnchor.constraint(equalToConstant: 220).isActive = true
 
-    let controller = SZModalDialogController(style: style,
-                                             title: title,
-                                             message: summary,
-                                             buttonTitles: ["OK"],
-                                             accessoryView: scrollView,
-                                             preferredFirstResponder: nil,
-                                             cancelButtonIndex: 0)
+        let controller = SZModalDialogController(style: style,
+                                                 title: title,
+                                                 message: summary,
+                                                 buttonTitles: ["OK"],
+                                                 accessoryView: scrollView,
+                                                 preferredFirstResponder: nil,
+                                                 cancelButtonIndex: 0)
 
-    if let window {
-        controller.beginSheetModal(for: window) { _ in }
+        if let window {
+            controller.beginSheetModal(for: window) { _ in }
+        } else {
+            _ = controller.runModal()
+        }
+    }
+
+    if Thread.isMainThread {
+        present()
     } else {
-        _ = controller.runModal()
+        DispatchQueue.main.async(execute: present)
     }
 }

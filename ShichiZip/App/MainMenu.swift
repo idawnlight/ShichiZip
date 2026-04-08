@@ -63,6 +63,199 @@ enum FileManagerFavoriteStore {
     }
 }
 
+enum FileManagerMenuFactory {
+    private enum TargetKind {
+          case windowController
+          case appDelegate
+    }
+
+    private struct Shortcut {
+          let keyEquivalent: String
+          let modifiers: NSEvent.ModifierFlags
+
+          init(_ keyEquivalent: String,
+                 modifiers: NSEvent.ModifierFlags = [.command]) {
+                self.keyEquivalent = keyEquivalent
+                self.modifiers = modifiers
+          }
+    }
+
+    private indirect enum Node {
+          case item(title: String,
+                        action: Selector,
+                        shortcut: Shortcut? = nil,
+                        target: TargetKind = .windowController)
+          case submenu(title: String, children: [Node])
+          case separator
+    }
+
+    static func makeFileMenu(appTarget: AnyObject?) -> NSMenu {
+          let menu = NSMenu(title: "File")
+          populate(menu,
+                     with: fileMenuNodes,
+                     windowTarget: nil,
+                     appTarget: appTarget)
+          return menu
+    }
+
+    static func makeContextMenu(windowTarget: AnyObject?) -> NSMenu {
+          let menu = NSMenu(title: "File")
+          populate(menu,
+                     with: contextMenuNodes,
+                     windowTarget: windowTarget,
+                     appTarget: nil)
+          return menu
+    }
+
+    private static let openNodes: [Node] = [
+          .item(title: "Open",
+                  action: #selector(FileManagerWindowController.openSelectedItem(_:))),
+          .item(title: "Open Inside",
+                  action: #selector(FileManagerWindowController.openSelectedItemInside(_:))),
+          .item(title: "Open Inside *",
+                  action: #selector(FileManagerWindowController.openSelectedItemInsideWildcard(_:))),
+          .item(title: "Open Inside #",
+                  action: #selector(FileManagerWindowController.openSelectedItemInsideParser(_:))),
+          .item(title: "Open Outside",
+                  action: #selector(FileManagerWindowController.openSelectedItemOutside(_:))),
+    ]
+
+    private static let hashNodes: [Node] = [
+          .item(title: "*",
+                  action: #selector(FileManagerWindowController.showAllHashes(_:))),
+          .item(title: "CRC-32",
+                  action: #selector(FileManagerWindowController.showCRC32Hash(_:))),
+          .item(title: "CRC-64",
+                  action: #selector(FileManagerWindowController.showCRC64Hash(_:))),
+          .item(title: "XXH64",
+                  action: #selector(FileManagerWindowController.showXXH64Hash(_:))),
+          .item(title: "MD5",
+                  action: #selector(FileManagerWindowController.showMD5Hash(_:))),
+          .item(title: "SHA-1",
+                  action: #selector(FileManagerWindowController.showSHA1Hash(_:))),
+          .item(title: "SHA-256",
+                  action: #selector(FileManagerWindowController.showSHA256Hash(_:))),
+          .item(title: "SHA-384",
+                  action: #selector(FileManagerWindowController.showSHA384Hash(_:))),
+          .item(title: "SHA-512",
+                  action: #selector(FileManagerWindowController.showSHA512Hash(_:))),
+          .item(title: "SHA3-256",
+                  action: #selector(FileManagerWindowController.showSHA3256Hash(_:))),
+          .item(title: "BLAKE2sp",
+                  action: #selector(FileManagerWindowController.showBLAKE2spHash(_:))),
+    ]
+
+    private static var fileMenuNodes: [Node] {
+          openNodes + [
+                .item(title: "Open Archive…",
+                        action: #selector(AppDelegate.openArchives(_:)),
+                        shortcut: Shortcut("o"),
+                        target: .appDelegate),
+                .separator,
+                .item(title: "Add",
+                        action: #selector(FileManagerWindowController.addToArchive(_:))),
+                .item(title: "Extract…",
+                        action: #selector(FileManagerWindowController.extractArchive(_:))),
+                .item(title: "Extract Here",
+                        action: #selector(FileManagerWindowController.extractHere(_:))),
+                .item(title: "Test",
+                        action: #selector(FileManagerWindowController.testArchive(_:))),
+                .separator,
+                .item(title: "Rename",
+                        action: #selector(FileManagerWindowController.renameSelection(_:))),
+                .item(title: "Copy To…",
+                        action: #selector(FileManagerWindowController.copyFiles(_:))),
+                .item(title: "Move To…",
+                        action: #selector(FileManagerWindowController.moveFiles(_:))),
+                .item(title: "Delete",
+                        action: #selector(FileManagerWindowController.deleteFiles(_:))),
+                .separator,
+                .item(title: "Properties",
+                        action: #selector(FileManagerWindowController.showProperties(_:))),
+                .submenu(title: "CRC", children: hashNodes),
+                .separator,
+                .item(title: "Create Folder",
+                        action: #selector(FileManagerWindowController.createFolder(_:))),
+                .item(title: "Create File",
+                        action: #selector(FileManagerWindowController.createFile(_:))),
+                .separator,
+                .item(title: "Close",
+                        action: #selector(NSWindow.performClose(_:)),
+                        shortcut: Shortcut("w")),
+          ]
+    }
+
+    private static var contextMenuNodes: [Node] {
+          openNodes + [
+                .separator,
+                .item(title: "Compress…",
+                        action: #selector(FileManagerWindowController.addToArchive(_:))),
+                .item(title: "Extract…",
+                        action: #selector(FileManagerWindowController.extractArchive(_:))),
+                .item(title: "Extract Here",
+                        action: #selector(FileManagerWindowController.extractHere(_:))),
+                .item(title: "Test",
+                        action: #selector(FileManagerWindowController.testArchive(_:))),
+                .separator,
+                .item(title: "Rename",
+                        action: #selector(FileManagerWindowController.renameSelection(_:))),
+                .item(title: "Copy To…",
+                        action: #selector(FileManagerWindowController.copyFiles(_:))),
+                .item(title: "Move To…",
+                        action: #selector(FileManagerWindowController.moveFiles(_:))),
+                .item(title: "Delete",
+                        action: #selector(FileManagerWindowController.deleteFiles(_:))),
+                .separator,
+                .submenu(title: "CRC", children: hashNodes),
+                .separator,
+                .item(title: "Create Folder",
+                        action: #selector(FileManagerWindowController.createFolder(_:))),
+                .item(title: "Create File",
+                        action: #selector(FileManagerWindowController.createFile(_:))),
+                .separator,
+                .item(title: "Properties",
+                        action: #selector(FileManagerWindowController.showProperties(_:))),
+          ]
+    }
+
+    private static func populate(_ menu: NSMenu,
+                                           with nodes: [Node],
+                                           windowTarget: AnyObject?,
+                                           appTarget: AnyObject?) {
+          for node in nodes {
+                switch node {
+                case let .item(title, action, shortcut, targetKind):
+                    let item = NSMenuItem(title: title,
+                                                  action: action,
+                                                  keyEquivalent: shortcut?.keyEquivalent ?? "")
+                    if let shortcut {
+                          item.keyEquivalentModifierMask = shortcut.modifiers
+                    }
+                    switch targetKind {
+                    case .windowController:
+                          item.target = windowTarget
+                    case .appDelegate:
+                          item.target = appTarget
+                    }
+                    menu.addItem(item)
+
+                case let .submenu(title, children):
+                    let submenu = NSMenu(title: title)
+                    populate(submenu,
+                                 with: children,
+                                 windowTarget: windowTarget,
+                                 appTarget: appTarget)
+                    let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+                    item.submenu = submenu
+                    menu.addItem(item)
+
+                case .separator:
+                    menu.addItem(.separator())
+                }
+          }
+    }
+}
+
 private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
         var timeMenuItem: NSMenuItem?
 
@@ -198,55 +391,8 @@ enum MainMenu {
                 keyEquivalent: "q",
                 target: NSApp)
 
-        let fileMenu = NSMenu(title: "File")
+        let fileMenu = FileManagerMenuFactory.makeFileMenu(appTarget: NSApp.delegate as AnyObject?)
         addTopLevelMenu(fileMenu, to: mainMenu)
-        addItem(to: fileMenu,
-                title: "Open",
-                action: #selector(FileManagerWindowController.openSelectedItem(_:)))
-        addItem(to: fileMenu,
-                title: "Open Archive…",
-                action: #selector(AppDelegate.openArchives(_:)),
-                keyEquivalent: "o",
-                target: NSApp.delegate)
-        fileMenu.addItem(.separator())
-        addItem(to: fileMenu,
-                title: "Add",
-                action: #selector(FileManagerWindowController.addToArchive(_:)))
-        addItem(to: fileMenu,
-                title: "Extract…",
-                action: #selector(FileManagerWindowController.extractArchive(_:)))
-        addItem(to: fileMenu,
-                title: "Extract Here",
-                action: #selector(FileManagerWindowController.extractHere(_:)))
-        addItem(to: fileMenu,
-                title: "Test",
-                action: #selector(FileManagerWindowController.testArchive(_:)))
-        fileMenu.addItem(.separator())
-        addItem(to: fileMenu,
-                title: "Rename",
-                action: #selector(FileManagerWindowController.renameSelection(_:)))
-        addItem(to: fileMenu,
-                title: "Copy To…",
-                action: #selector(FileManagerWindowController.copyFiles(_:)))
-        addItem(to: fileMenu,
-                title: "Move To…",
-                action: #selector(FileManagerWindowController.moveFiles(_:)))
-        addItem(to: fileMenu,
-                title: "Delete",
-                action: #selector(FileManagerWindowController.deleteFiles(_:)))
-        fileMenu.addItem(.separator())
-        addItem(to: fileMenu,
-                title: "Properties",
-                action: #selector(FileManagerWindowController.showProperties(_:)))
-        fileMenu.addItem(.separator())
-        addItem(to: fileMenu,
-                title: "Create Folder",
-                action: #selector(FileManagerWindowController.createFolder(_:)))
-        fileMenu.addItem(.separator())
-        addItem(to: fileMenu,
-                title: "Close",
-                action: #selector(NSWindow.performClose(_:)),
-                keyEquivalent: "w")
 
         let editMenu = NSMenu(title: "Edit")
         addTopLevelMenu(editMenu, to: mainMenu)

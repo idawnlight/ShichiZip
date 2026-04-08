@@ -13,6 +13,7 @@
 #include "CPP/7zip/UI/Common/SetProperties.h"
 #include "CPP/7zip/UI/Common/Bench.h"
 #include "CPP/7zip/UI/Common/HashCalc.h"
+#include "CPP/7zip/UI/Common/OpenArchive.h"
 #include "CPP/Common/Wildcard.h"
 #include "CPP/Windows/ErrorMsg.h"
 #include "7zVersion.h"
@@ -232,7 +233,7 @@ static NSError *SZOpenArchiveErrorFromResult(HRESULT result,
 // MARK: - Open / Close
 
 - (BOOL)openAtPath:(NSString *)path error:(NSError **)error {
-    return [self openAtPath:path password:nil session:nil error:error];
+    return [self openAtPath:path openType:nil password:nil session:nil error:error];
 }
 
 - (BOOL)openAtPath:(NSString *)path progress:(id<SZProgressDelegate>)progress error:(NSError **)error {
@@ -240,7 +241,11 @@ static NSError *SZOpenArchiveErrorFromResult(HRESULT result,
 }
 
 - (BOOL)openAtPath:(NSString *)path session:(SZOperationSession *)session error:(NSError **)error {
-    return [self openAtPath:path password:nil session:session error:error];
+    return [self openAtPath:path openType:nil session:session error:error];
+}
+
+- (BOOL)openAtPath:(NSString *)path openType:(NSString *)openType session:(SZOperationSession *)session error:(NSError **)error {
+    return [self openAtPath:path openType:openType password:nil session:session error:error];
 }
 
 - (BOOL)openAtPath:(NSString *)path password:(NSString *)password error:(NSError **)error {
@@ -252,6 +257,10 @@ static NSError *SZOpenArchiveErrorFromResult(HRESULT result,
 }
 
 - (BOOL)openAtPath:(NSString *)path password:(NSString *)password session:(SZOperationSession *)session error:(NSError **)error {
+    return [self openAtPath:path openType:nil password:password session:session error:error];
+}
+
+- (BOOL)openAtPath:(NSString *)path openType:(NSString *)openType password:(NSString *)password session:(SZOperationSession *)session error:(NSError **)error {
     CCodecs *codecs = SZGetCodecs();
     if (!codecs) { if (error) *error = SZMakeError(SZArchiveErrorCodeFailedToInitCodecs, @"Failed to init codecs"); return NO; }
     [self close];
@@ -259,6 +268,13 @@ static NSError *SZOpenArchiveErrorFromResult(HRESULT result,
     _archivePath = [path copy];
 
     CObjectVector<COpenType> types;
+    if (openType.length > 0 && !ParseOpenTypes(*codecs, ToU(openType), types)) {
+        if (error) {
+            *error = SZMakeError(SZArchiveErrorCodeUnsupportedFormat,
+                                 [NSString stringWithFormat:@"Invalid archive open type: %@", openType]);
+        }
+        return NO;
+    }
     CIntVector excludedFormats;
     CObjectVector<CProperty> props;
 
@@ -621,14 +637,23 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
 // MARK: - Hash
 
 + (NSDictionary<NSString*,NSString*> *)calculateHashForPath:(NSString *)path error:(NSError **)error {
+    return [self calculateHashForPath:path session:nil error:error];
+}
+
++ (NSDictionary<NSString*,NSString*> *)calculateHashForPath:(NSString *)path session:(SZOperationSession *)session error:(NSError **)error {
     CCodecs *codecs = SZGetCodecs();
     if (!codecs) { if (error) *error = SZMakeError(-1, @"Failed to init codecs"); return nil; }
 
     CHashOptions options;
     options.Methods.Add(UString(L"CRC32"));
     options.Methods.Add(UString(L"CRC64"));
-    options.Methods.Add(UString(L"SHA256"));
+    options.Methods.Add(UString(L"XXH64"));
+    options.Methods.Add(UString(L"MD5"));
     options.Methods.Add(UString(L"SHA1"));
+    options.Methods.Add(UString(L"SHA256"));
+    options.Methods.Add(UString(L"SHA384"));
+    options.Methods.Add(UString(L"SHA512"));
+    options.Methods.Add(UString(L"SHA3-256"));
     options.Methods.Add(UString(L"BLAKE2sp"));
 
     NWildcard::CCensor censor;
@@ -638,23 +663,53 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
 
     class HashCB : public IHashCallbackUI {
     public:
+        __unsafe_unretained SZOperationSession *session;
         NSMutableDictionary *results;
         UString failureDescription;
         UString failureReason;
         HRESULT failureResult;
+        UInt64 totalSize;
 
-        HashCB(): results([NSMutableDictionary dictionary]), failureResult(S_OK) {}
+        HashCB(SZOperationSession *resolvedSession):
+            session(resolvedSession),
+            results([NSMutableDictionary dictionary]),
+            failureResult(S_OK),
+            totalSize(0) {}
 
         bool HasFailure() const { return failureResult != S_OK; }
 
-        HRESULT StartScanning() override { return S_OK; }
-        HRESULT FinishScanning(const CDirItemsStat &) override { return S_OK; }
-        HRESULT SetNumFiles(UInt64) override { return S_OK; }
-        HRESULT SetTotal(UInt64) override { return S_OK; }
-        HRESULT SetCompleted(const UInt64 *) override { return S_OK; }
-        HRESULT CheckBreak() override { return S_OK; }
-        HRESULT BeforeFirstFile(const CHashBundle &) override { return S_OK; }
-        HRESULT GetStream(const wchar_t *, bool) override { return S_OK; }
+        HRESULT StartScanning() override { return CheckBreak(); }
+        HRESULT FinishScanning(const CDirItemsStat &) override { return CheckBreak(); }
+        HRESULT SetNumFiles(UInt64) override { return CheckBreak(); }
+        HRESULT SetTotal(UInt64 size) override {
+            totalSize = size;
+            if (session && size > 0) {
+                [session reportProgressFraction:0.0];
+                [session reportBytesCompleted:0 total:size];
+            }
+            return CheckBreak();
+        }
+        HRESULT SetCompleted(const UInt64 *completed) override {
+            if (session && completed && totalSize > 0) {
+                UInt64 value = *completed;
+                if (value > totalSize) {
+                    value = totalSize;
+                }
+                [session reportProgressFraction:(double)value / (double)totalSize];
+                [session reportBytesCompleted:value total:totalSize];
+            }
+            return CheckBreak();
+        }
+        HRESULT CheckBreak() override {
+            return (session && [session shouldCancel]) ? E_ABORT : S_OK;
+        }
+        HRESULT BeforeFirstFile(const CHashBundle &) override { return CheckBreak(); }
+        HRESULT GetStream(const wchar_t *name, bool) override {
+            if (session && name) {
+                [session reportCurrentFileName:ToNS(UString(name))];
+            }
+            return CheckBreak();
+        }
         HRESULT OpenFileError(const FString &path, DWORD errorCode) override {
             RecordFailure(L"Unable to open file for hashing.", path, errorCode);
             return S_FALSE;
@@ -668,12 +723,23 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
             }
             return S_OK;
         }
-        HRESULT AfterLastFile(CHashBundle &) override { return S_OK; }
+        HRESULT AfterLastFile(CHashBundle &) override {
+            if (session && totalSize > 0) {
+                [session reportProgressFraction:1.0];
+                [session reportBytesCompleted:totalSize total:totalSize];
+            }
+            return CheckBreak();
+        }
         HRESULT ScanError(const FString &path, DWORD errorCode) override {
             RecordFailure(L"Unable to scan file for hashing.", path, errorCode);
             return S_FALSE;
         }
-        HRESULT ScanProgress(const CDirItemsStat &, const FString &, bool) override { return S_OK; }
+        HRESULT ScanProgress(const CDirItemsStat &, const FString &path, bool) override {
+            if (session && !path.IsEmpty()) {
+                [session reportCurrentFileName:ToNS(fs2us(path))];
+            }
+            return CheckBreak();
+        }
 
     private:
         void RecordFailure(const wchar_t *description, const FString &path, DWORD errorCode) {
@@ -693,7 +759,7 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
         }
     };
 
-    HashCB cb;
+    HashCB cb(session);
     AString errorInfo;
     HRESULT r = HashCalc(EXTERNAL_CODECS_LOC_VARS censor, options, errorInfo, &cb);
 

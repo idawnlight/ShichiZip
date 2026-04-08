@@ -161,6 +161,12 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
                      session:(nullable SZOperationSession *)session
                          error:(NSError **)error;
 
+/// Open an existing archive for reading with an explicit 7-Zip open type
+- (BOOL)openAtPath:(NSString *)path
+                    openType:(nullable NSString *)openType
+                     session:(nullable SZOperationSession *)session
+                         error:(NSError **)error;
+
 /// Open with password
 - (BOOL)openAtPath:(NSString *)path
           password:(nullable NSString *)password
@@ -244,6 +250,11 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
 /// Calculate hash of files — returns dict of algorithmName → hexDigest
 + (nullable NSDictionary<NSString *, NSString *> *)calculateHashForPath:(NSString *)path
                                                                  error:(NSError **)error;
+
+/// Calculate hash of files with an explicit operation session
++ (nullable NSDictionary<NSString *, NSString *> *)calculateHashForPath:(NSString *)path
+                                                                                                                             session:(nullable SZOperationSession *)session
+                                                                                                                                 error:(NSError **)error;
 
 /// Get the underlying 7-Zip core version string.
 + (NSString *)sevenZipVersionString;

@@ -1,3 +1,4 @@
+import AppKit
 import Darwin
 import Foundation
 
@@ -7,7 +8,56 @@ struct FileManagerArchiveItemWorkflowContext {
     let displayPathPrefix: String
 }
 
+enum FileManagerArchiveItemOpenStrategy {
+    case automatic
+    case forceInternal(FileManagerArchiveOpenMode)
+    case forceExternal
+}
+
 final class FileManagerArchiveItemWorkflowService {
+    private final class TemporaryDirectoryCleanupObserver {
+        private weak var owner: FileManagerArchiveItemWorkflowService?
+        private let applicationProcessIdentifier: pid_t
+        let temporaryDirectory: URL
+        private var observer: NSObjectProtocol?
+
+        init(owner: FileManagerArchiveItemWorkflowService,
+             application: NSRunningApplication,
+             temporaryDirectory: URL) {
+            self.owner = owner
+            self.applicationProcessIdentifier = application.processIdentifier
+            self.temporaryDirectory = temporaryDirectory.standardizedFileURL
+            self.observer = NSWorkspace.shared.notificationCenter.addObserver(
+                forName: NSWorkspace.didTerminateApplicationNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                self?.handleTermination(notification)
+            }
+        }
+
+        deinit {
+            invalidate()
+        }
+
+        private func handleTermination(_ notification: Notification) {
+            guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  application.processIdentifier == applicationProcessIdentifier else {
+                return
+            }
+
+            owner?.cleanup(temporaryDirectory)
+            owner?.removeCleanupObserver(self)
+        }
+
+        func invalidate() {
+            if let observer {
+                NSWorkspace.shared.notificationCenter.removeObserver(observer)
+                self.observer = nil
+            }
+        }
+    }
+
     private struct StagedArchiveItem {
         let temporaryDirectory: URL
         let fileURL: URL
@@ -16,6 +66,8 @@ final class FileManagerArchiveItemWorkflowService {
     private let fileManager: FileManager
     private let temporaryDirectoriesLock = NSLock()
     private var temporaryDirectories: Set<URL> = []
+    private let cleanupObserversLock = NSLock()
+    private var cleanupObservers: [ObjectIdentifier: TemporaryDirectoryCleanupObserver] = [:]
 
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
@@ -31,14 +83,26 @@ final class FileManagerArchiveItemWorkflowService {
     }
 
     func cleanupAll() {
+        invalidateCleanupObservers()
         for url in trackedTemporaryDirectories() {
             _ = cleanupIfPossible(url)
         }
     }
 
+    func scheduleCleanup(_ url: URL,
+                         when application: NSRunningApplication) {
+        let observer = TemporaryDirectoryCleanupObserver(owner: self,
+                                                         application: application,
+                                                         temporaryDirectory: url)
+        cleanupObserversLock.lock()
+        cleanupObservers[ObjectIdentifier(observer)] = observer
+        cleanupObserversLock.unlock()
+    }
+
     func open(_ item: ArchiveItem,
               context: FileManagerArchiveItemWorkflowContext,
-              openArchiveInline: (URL, URL, String, URL) -> FileManagerArchiveOpenResult,
+              strategy: FileManagerArchiveItemOpenStrategy = .automatic,
+              openArchiveInline: (URL, URL, String, URL, FileManagerArchiveOpenMode) -> FileManagerArchiveOpenResult,
               openExternally: (URL, URL, URL) -> Bool,
               openExternallyIfPossible: (URL, URL) -> Bool) throws {
         let stagedItem = try stage(item: item,
@@ -46,48 +110,81 @@ final class FileManagerArchiveItemWorkflowService {
                              temporaryDirectoryPrefix: FileManagerTemporaryDirectorySupport.openArchivePrefix)
         let preferredApplicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(forArchiveItemPath: item.path)
 
-        if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(archiveItemPath: item.path) {
-            guard let preferredApplicationURL else {
-                cleanup(stagedItem.temporaryDirectory)
-                throw unavailableExternalOpenError(for: item.name)
+        switch strategy {
+        case .automatic:
+            if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(archiveItemPath: item.path) {
+                guard let preferredApplicationURL else {
+                    cleanup(stagedItem.temporaryDirectory)
+                    throw unavailableExternalOpenError(for: item.name)
+                }
+
+                _ = openExternally(stagedItem.fileURL,
+                                   preferredApplicationURL,
+                                   stagedItem.temporaryDirectory)
+                return
             }
 
-            _ = openExternally(stagedItem.fileURL,
-                               preferredApplicationURL,
-                               stagedItem.temporaryDirectory)
-            return
-        }
+            switch openArchiveInline(stagedItem.fileURL,
+                                     stagedItem.temporaryDirectory,
+                                     nestedDisplayPath(for: item,
+                                                       displayPathPrefix: context.displayPathPrefix),
+                                     context.hostDirectory,
+                                     .defaultBehavior) {
+            case .opened:
+                return
 
-        switch openArchiveInline(stagedItem.fileURL,
-                                 stagedItem.temporaryDirectory,
-                                 nestedDisplayPath(for: item,
-                                                   displayPathPrefix: context.displayPathPrefix),
-                                 context.hostDirectory) {
-        case .opened:
-            return
-
-        case let .unsupportedArchive(error):
-            let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: stagedItem.fileURL)
-            if shouldFallbackExternally {
-                if let preferredApplicationURL {
-                    _ = openExternally(stagedItem.fileURL,
-                                       preferredApplicationURL,
-                                       stagedItem.temporaryDirectory)
-                } else if !openExternallyIfPossible(stagedItem.fileURL,
-                                                    stagedItem.temporaryDirectory) {
+            case let .unsupportedArchive(error):
+                let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: stagedItem.fileURL)
+                if shouldFallbackExternally {
+                    if let preferredApplicationURL {
+                        _ = openExternally(stagedItem.fileURL,
+                                           preferredApplicationURL,
+                                           stagedItem.temporaryDirectory)
+                    } else if !openExternallyIfPossible(stagedItem.fileURL,
+                                                        stagedItem.temporaryDirectory) {
+                        cleanup(stagedItem.temporaryDirectory)
+                        throw error
+                    }
+                } else {
                     cleanup(stagedItem.temporaryDirectory)
                     throw error
                 }
-            } else {
-                cleanup(stagedItem.temporaryDirectory)
+
+            case .cancelled:
+                return
+
+            case let .failed(error):
                 throw error
             }
 
-        case .cancelled:
-            return
+        case let .forceInternal(openMode):
+            switch openArchiveInline(stagedItem.fileURL,
+                                     stagedItem.temporaryDirectory,
+                                     nestedDisplayPath(for: item,
+                                                       displayPathPrefix: context.displayPathPrefix),
+                                     context.hostDirectory,
+                                     openMode) {
+            case .opened, .cancelled:
+                return
+            case let .unsupportedArchive(error), let .failed(error):
+                throw error
+            }
 
-        case let .failed(error):
-            throw error
+        case .forceExternal:
+            if let preferredApplicationURL {
+                _ = openExternally(stagedItem.fileURL,
+                                   preferredApplicationURL,
+                                   stagedItem.temporaryDirectory)
+                return
+            }
+
+            if openExternallyIfPossible(stagedItem.fileURL,
+                                        stagedItem.temporaryDirectory) {
+                return
+            }
+
+            cleanup(stagedItem.temporaryDirectory)
+            throw unavailableExternalOpenError(for: item.name)
         }
     }
 
@@ -208,12 +305,14 @@ final class FileManagerArchiveItemWorkflowService {
         let standardizedURL = url.standardizedFileURL
 
         if !fileManager.fileExists(atPath: standardizedURL.path) {
+            removeCleanupObservers(for: standardizedURL)
             forgetTemporaryDirectory(standardizedURL)
             return true
         }
 
         do {
             try fileManager.removeItem(at: standardizedURL)
+            removeCleanupObservers(for: standardizedURL)
             forgetTemporaryDirectory(standardizedURL)
             return true
         } catch {
@@ -270,6 +369,39 @@ final class FileManagerArchiveItemWorkflowService {
         let urls = Array(temporaryDirectories)
         temporaryDirectoriesLock.unlock()
         return urls
+    }
+
+    private func removeCleanupObserver(_ observer: TemporaryDirectoryCleanupObserver) {
+        cleanupObserversLock.lock()
+        cleanupObservers.removeValue(forKey: ObjectIdentifier(observer))
+        cleanupObserversLock.unlock()
+        observer.invalidate()
+    }
+
+    private func removeCleanupObservers(for temporaryDirectory: URL) {
+        let standardizedURL = temporaryDirectory.standardizedFileURL
+
+        cleanupObserversLock.lock()
+        let matching = cleanupObservers.filter { $0.value.temporaryDirectory == standardizedURL }
+        for key in matching.keys {
+            cleanupObservers.removeValue(forKey: key)
+        }
+        cleanupObserversLock.unlock()
+
+        for observer in matching.values {
+            observer.invalidate()
+        }
+    }
+
+    private func invalidateCleanupObservers() {
+        cleanupObserversLock.lock()
+        let observers = Array(cleanupObservers.values)
+        cleanupObservers.removeAll()
+        cleanupObserversLock.unlock()
+
+        for observer in observers {
+            observer.invalidate()
+        }
     }
 
     private func moveItemPreservingMetadata(from sourceURL: URL,

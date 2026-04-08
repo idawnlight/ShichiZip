@@ -131,6 +131,96 @@ enum FileManagerViewPreferences {
     }
 }
 
+private enum FileManagerHashAlgorithm {
+    case all
+    case crc32
+    case crc64
+    case xxh64
+    case md5
+    case sha1
+    case sha256
+    case sha384
+    case sha512
+    case sha3256
+    case blake2sp
+
+    private static let orderedAlgorithms: [FileManagerHashAlgorithm] = [
+        .crc32,
+        .crc64,
+        .xxh64,
+        .md5,
+        .sha1,
+        .sha256,
+        .sha384,
+        .sha512,
+        .sha3256,
+        .blake2sp,
+    ]
+
+    var displayedAlgorithms: [FileManagerHashAlgorithm] {
+        switch self {
+        case .all:
+            return Self.orderedAlgorithms
+        default:
+            return [self]
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .all:
+            return "*"
+        case .crc32:
+            return "CRC-32"
+        case .crc64:
+            return "CRC-64"
+        case .xxh64:
+            return "XXH64"
+        case .md5:
+            return "MD5"
+        case .sha1:
+            return "SHA-1"
+        case .sha256:
+            return "SHA-256"
+        case .sha384:
+            return "SHA-384"
+        case .sha512:
+            return "SHA-512"
+        case .sha3256:
+            return "SHA3-256"
+        case .blake2sp:
+            return "BLAKE2sp"
+        }
+    }
+
+    var bridgeName: String {
+        switch self {
+        case .all:
+            return "*"
+        case .crc32:
+            return "CRC32"
+        case .crc64:
+            return "CRC64"
+        case .xxh64:
+            return "XXH64"
+        case .md5:
+            return "MD5"
+        case .sha1:
+            return "SHA1"
+        case .sha256:
+            return "SHA256"
+        case .sha384:
+            return "SHA384"
+        case .sha512:
+            return "SHA512"
+        case .sha3256:
+            return "SHA3-256"
+        case .blake2sp:
+            return "BLAKE2sp"
+        }
+    }
+}
+
 /// Dual-pane file manager window replicating 7-Zip File Manager
 class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserInterfaceValidations, NSMenuItemValidation {
 
@@ -627,6 +717,22 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         activePane.openSelection()
     }
 
+    @objc func openSelectedItemInside(_ sender: Any?) {
+        activePane.openSelectionInside(.defaultBehavior)
+    }
+
+    @objc func openSelectedItemInsideWildcard(_ sender: Any?) {
+        activePane.openSelectionInside(.wildcard)
+    }
+
+    @objc func openSelectedItemInsideParser(_ sender: Any?) {
+        activePane.openSelectionInside(.parser)
+    }
+
+    @objc func openSelectedItemOutside(_ sender: Any?) {
+        activePane.openSelectionOutside()
+    }
+
     @objc func goUpOneLevel(_ sender: Any?) {
         activePane.goUpOneLevel()
     }
@@ -645,6 +751,50 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     @objc func refreshActivePane(_ sender: Any?) {
         activePane.refresh()
+    }
+
+    @objc func showCRC32Hash(_ sender: Any?) {
+        presentSelectionHash(.crc32)
+    }
+
+    @objc func showAllHashes(_ sender: Any?) {
+        presentSelectionHash(.all)
+    }
+
+    @objc func showCRC64Hash(_ sender: Any?) {
+        presentSelectionHash(.crc64)
+    }
+
+    @objc func showXXH64Hash(_ sender: Any?) {
+        presentSelectionHash(.xxh64)
+    }
+
+    @objc func showMD5Hash(_ sender: Any?) {
+        presentSelectionHash(.md5)
+    }
+
+    @objc func showSHA1Hash(_ sender: Any?) {
+        presentSelectionHash(.sha1)
+    }
+
+    @objc func showSHA256Hash(_ sender: Any?) {
+        presentSelectionHash(.sha256)
+    }
+
+    @objc func showSHA384Hash(_ sender: Any?) {
+        presentSelectionHash(.sha384)
+    }
+
+    @objc func showSHA512Hash(_ sender: Any?) {
+        presentSelectionHash(.sha512)
+    }
+
+    @objc func showSHA3256Hash(_ sender: Any?) {
+        presentSelectionHash(.sha3256)
+    }
+
+    @objc func showBLAKE2spHash(_ sender: Any?) {
+        presentSelectionHash(.blake2sp)
     }
 
     private func firstResponderSupportsTextEditingAction(_ action: Selector) -> Bool {
@@ -956,6 +1106,23 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
     }
 
+    @objc func createFile(_ sender: Any?) {
+        guard activePane.canCreateFileHere() else {
+            showUnsupportedOperationAlert("Creating files inside an open archive is not implemented yet.")
+            return
+        }
+
+        guard let window else { return }
+        szBeginTextInput(on: window,
+                         title: "Create File",
+                         message: "Enter file name.",
+                         placeholder: "New File.txt",
+                         confirmTitle: "Create") { [weak self] value in
+            guard let name = value, !name.isEmpty else { return }
+            self?.activePane.createFile(named: name)
+        }
+    }
+
     @objc func deleteFiles(_ sender: Any?) {
         let activePane = self.activePane
         guard activePane.canDeleteSelection() else {
@@ -981,10 +1148,52 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
     }
 
+    private func presentSelectionHash(_ algorithm: FileManagerHashAlgorithm) {
+        guard let item = activePane.selectedSingleFileSystemFile() else { return }
+
+        let itemName = item.name
+        let itemPath = item.url.path
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let hashValues = try await ArchiveOperationRunner.run(operationTitle: "Calculating checksum...",
+                                                                     initialFileName: itemPath,
+                                                                     parentWindow: self.window,
+                                                                     deferredDisplay: true) { session in
+                    try SZArchive.calculateHash(forPath: itemPath, session: session)
+                }
+                let details = self.hashDetails(for: algorithm, hashValues: hashValues)
+                szShowDetailsDialog(title: itemName,
+                                    summary: itemPath,
+                                    details: details,
+                                    for: self.window)
+            } catch {
+                self.showErrorAlert(error)
+            }
+        }
+    }
+
+    private func hashDetails(for algorithm: FileManagerHashAlgorithm,
+                             hashValues: [String: String]) -> String {
+        algorithm.displayedAlgorithms
+            .map { currentAlgorithm in
+                let value = hashValues[currentAlgorithm.bridgeName] ?? "unavailable"
+                return "\(currentAlgorithm.title): \(value)"
+            }
+            .joined(separator: "\n")
+    }
+
     func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
         switch item.action {
         case #selector(openSelectedItem(_:)):
             return activePane.canOpenSelection()
+        case #selector(openSelectedItemInside(_:)),
+             #selector(openSelectedItemInsideWildcard(_:)),
+             #selector(openSelectedItemInsideParser(_:)):
+            return activePane.canOpenSelectionInside()
+        case #selector(openSelectedItemOutside(_:)):
+            return activePane.canOpenSelectionOutside()
         case #selector(addToArchive(_:)):
             return activePane.canAddSelectedItemsToArchive()
         case #selector(extractArchive(_:)):
@@ -1001,10 +1210,24 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return activePane.canRenameSelection()
         case #selector(createFolder(_:)):
             return activePane.canCreateFolderHere()
+        case #selector(createFile(_:)):
+            return activePane.canCreateFileHere()
         case #selector(deleteFiles(_:)):
             return activePane.canDeleteSelection()
         case #selector(showProperties(_:)):
             return activePane.canShowSelectedItemProperties()
+        case #selector(showCRC32Hash(_:)),
+               #selector(showAllHashes(_:)),
+             #selector(showCRC64Hash(_:)),
+               #selector(showXXH64Hash(_:)),
+               #selector(showMD5Hash(_:)),
+             #selector(showSHA1Hash(_:)),
+             #selector(showSHA256Hash(_:)),
+               #selector(showSHA384Hash(_:)),
+               #selector(showSHA512Hash(_:)),
+               #selector(showSHA3256Hash(_:)),
+             #selector(showBLAKE2spHash(_:)):
+            return activePane.canCalculateSelectionHashes()
         case #selector(goUpOneLevel(_:)):
             return activePane.canGoUp()
         case #selector(selectAllItems(_:)):

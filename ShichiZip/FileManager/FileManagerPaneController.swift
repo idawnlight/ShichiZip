@@ -518,6 +518,31 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         !selectedPaneItems().isEmpty
     }
 
+    func canOpenSelectionInside() -> Bool {
+        selectedRealPaneItems().count == 1
+    }
+
+    func canOpenSelectionOutside() -> Bool {
+        guard let item = selectedSingleRealPaneItem() else { return false }
+
+        switch item {
+        case .parent:
+            return false
+        case .filesystem:
+            return true
+        case let .archive(archiveItem):
+            return !archiveItem.isDirectory
+        }
+    }
+
+    func canCreateFileHere() -> Bool {
+        !isInsideArchive
+    }
+
+    func canCalculateSelectionHashes() -> Bool {
+        selectedSingleFileSystemFile() != nil
+    }
+
     func canShowSelectedItemProperties() -> Bool {
         !selectedRealPaneItems().isEmpty
     }
@@ -547,6 +572,77 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     func openSelection() {
         openSelectedItem(nil)
+    }
+
+    func openSelectionInside(_ openMode: FileManagerArchiveOpenMode) {
+        guard let item = selectedSingleRealPaneItem() else { return }
+
+        switch item {
+        case .parent:
+            return
+        case let .filesystem(fileSystemItem):
+            if fileSystemItem.isDirectory {
+                loadDirectory(fileSystemItem.url)
+            } else {
+                _ = openArchiveInline(fileSystemItem.url,
+                                      hostDirectory: currentDirectory,
+                                      openMode: openMode)
+            }
+
+        case let .archive(archiveItem):
+            if archiveItem.isDirectory {
+                navigateArchiveSubdir(archiveItem.pathParts.joined(separator: "/"))
+            } else {
+                openItemInArchive(archiveItem, strategy: .forceInternal(openMode))
+            }
+        }
+    }
+
+    func openSelectionOutside() {
+        guard let item = selectedSingleRealPaneItem() else { return }
+
+        switch item {
+        case .parent:
+            return
+        case let .filesystem(fileSystemItem):
+            if fileSystemItem.isDirectory {
+                _ = NSWorkspace.shared.open(fileSystemItem.url)
+                return
+            }
+
+            if !openExternallyIfPossible(fileSystemItem.url) {
+                showErrorAlert(unavailableExternalOpenError(for: fileSystemItem.name))
+            }
+
+        case let .archive(archiveItem):
+            guard !archiveItem.isDirectory,
+                  let context = currentArchiveItemWorkflowContext() else { return }
+
+            do {
+                try archiveItemWorkflowService.open(archiveItem,
+                                                    context: context,
+                                                    strategy: .forceExternal,
+                                                    openArchiveInline: { [self] url, temporaryDirectory, displayPathPrefix, hostDirectory, openMode in
+                                                        openArchiveInline(url,
+                                                                          hostDirectory: hostDirectory,
+                                                                          temporaryDirectory: temporaryDirectory,
+                                                                          displayPathPrefix: displayPathPrefix,
+                                                                          openMode: openMode,
+                                                                          showError: false)
+                                                    },
+                                                    openExternally: { [self] url, applicationURL, temporaryDirectory in
+                                                        openExternally(url,
+                                                                       withApplicationAt: applicationURL,
+                                                                       preservingTemporaryDirectory: temporaryDirectory)
+                                                    },
+                                                    openExternallyIfPossible: { [self] url, temporaryDirectory in
+                                                        openExternallyIfPossible(url,
+                                                                                 preservingTemporaryDirectory: temporaryDirectory)
+                                                    })
+            } catch {
+                showErrorAlert(error)
+            }
+        }
     }
 
     func goUpOneLevel() {
@@ -692,6 +788,36 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         } catch {
             showErrorAlert(error)
         }
+    }
+
+    func createFile(named name: String) {
+        guard !isInsideArchive else {
+            showUnsupportedArchiveOperationAlert(action: "Creating files")
+            return
+        }
+
+        let url = currentDirectory.appendingPathComponent(name)
+        if FileManager.default.fileExists(atPath: url.path) {
+            showErrorAlert(NSError(domain: NSCocoaErrorDomain,
+                                   code: NSFileWriteFileExistsError,
+                                   userInfo: [
+                                       NSFilePathErrorKey: url.path,
+                                       NSLocalizedDescriptionKey: "A file named \"\(name)\" already exists."
+                                   ]))
+            return
+        }
+
+        if FileManager.default.createFile(atPath: url.path, contents: Data()) {
+            refresh()
+            return
+        }
+
+        showErrorAlert(NSError(domain: NSCocoaErrorDomain,
+                               code: NSFileWriteUnknownError,
+                               userInfo: [
+                                   NSFilePathErrorKey: url.path,
+                                   NSLocalizedDescriptionKey: "Unable to create \"\(name)\"."
+                               ]))
     }
 
     private func updateStatusBar() {
@@ -864,9 +990,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     @discardableResult
     func showArchive(at url: URL) -> Bool {
+        showArchive(at: url, openMode: .defaultBehavior)
+    }
+
+    @discardableResult
+    func showArchive(at url: URL,
+                     openMode: FileManagerArchiveOpenMode) -> Bool {
         let parentDirectory = url.deletingLastPathComponent()
         let result = openArchiveInline(url,
                                        hostDirectory: parentDirectory,
+                                       openMode: openMode,
                                        replaceCurrentState: true)
         if case .opened = result {
             return true
@@ -999,11 +1132,23 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
+    private func selectedSingleRealPaneItem() -> PaneItem? {
+        let items = selectedRealPaneItems()
+        guard items.count == 1 else { return nil }
+        return items[0]
+    }
+
     private func selectedFileSystemItems() -> [FileSystemItem] {
         selectedPaneItems().compactMap {
             guard case let .filesystem(item) = $0 else { return nil }
             return item
         }
+    }
+
+    func selectedSingleFileSystemFile() -> FileSystemItem? {
+        let items = selectedFileSystemItems()
+        guard items.count == 1, !items[0].isDirectory else { return nil }
+        return items[0]
     }
 
     private func selectedArchiveItems() -> [ArchiveItem] {
@@ -1075,17 +1220,42 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                 preservingTemporaryDirectory temporaryDirectory: URL? = nil) -> Bool {
         let configuration = NSWorkspace.OpenConfiguration()
         NSWorkspace.shared.open([url], withApplicationAt: applicationURL, configuration: configuration) { [weak self] app, error in
-            guard app == nil else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
 
-            if let temporaryDirectory {
-                self?.archiveItemWorkflowService.cleanup(temporaryDirectory)
-            }
+                if let app {
+                    if let temporaryDirectory {
+                        self.archiveItemWorkflowService.scheduleCleanup(temporaryDirectory,
+                                                                        when: app)
+                    }
+                    return
+                }
 
-            if let error {
-                self?.showErrorAlert(error)
+                if let temporaryDirectory {
+                    self.archiveItemWorkflowService.cleanup(temporaryDirectory)
+                }
+
+                if let error, !self.shouldSuppressExternalOpenError(error) {
+                    self.showErrorAlert(error)
+                }
             }
         }
         return true
+    }
+
+    private func shouldSuppressExternalOpenError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain,
+           nsError.code == NSUserCancelledError {
+            return true
+        }
+
+          if nsError.domain == NSOSStatusErrorDomain,
+              nsError.code == -128 {
+            return true
+        }
+
+        return false
     }
 
     private func makeArchiveExtractionSettings(overwriteMode: SZOverwriteMode,
@@ -1403,22 +1573,31 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         activatePaneItem(at: row)
     }
 
-    /// Open Inside (PanelItemOpen.cpp): try the extracted item as an archive first,
-    /// then fall back to the system app.
-    private func openItemInArchive(_ item: ArchiveItem) {
+    private func openItemInArchive(_ item: ArchiveItem,
+                                   strategy: FileManagerArchiveItemOpenStrategy = .automatic) {
         guard item.index >= 0,
               let context = currentArchiveItemWorkflowContext() else { return }
+
+        let preserveTemporaryDirectoryOnUnsupported: Bool
+        switch strategy {
+        case .automatic:
+            preserveTemporaryDirectoryOnUnsupported = true
+        case .forceInternal, .forceExternal:
+            preserveTemporaryDirectoryOnUnsupported = false
+        }
 
         do {
             try archiveItemWorkflowService.open(item,
                                                 context: context,
-                                                openArchiveInline: { [self] url, temporaryDirectory, displayPathPrefix, hostDirectory in
+                                                strategy: strategy,
+                                                openArchiveInline: { [self] url, temporaryDirectory, displayPathPrefix, hostDirectory, openMode in
                                                     openArchiveInline(url,
                                                                       hostDirectory: hostDirectory,
                                                                       temporaryDirectory: temporaryDirectory,
                                                                       displayPathPrefix: displayPathPrefix,
+                                                                      openMode: openMode,
                                                                       showError: false,
-                                                                      preserveTemporaryDirectoryOnUnsupported: true)
+                                                                      preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported)
                                                 },
                                                 openExternally: { [self] url, applicationURL, temporaryDirectory in
                                                     openExternally(url,
@@ -1946,6 +2125,7 @@ extension FileManagerPaneController {
                                    hostDirectory: URL? = nil,
                                    temporaryDirectory: URL? = nil,
                                    displayPathPrefix: String? = nil,
+                                   openMode: FileManagerArchiveOpenMode = .defaultBehavior,
                                    showError: Bool = true,
                                    preserveTemporaryDirectoryOnUnsupported: Bool = false,
                                    replaceCurrentState: Bool = false) -> FileManagerArchiveOpenResult {
@@ -1955,7 +2135,8 @@ extension FileManagerPaneController {
         let preparedResult = FileManagerArchiveOpenService.openSynchronously(url: url,
                                                                              hostDirectory: paneHostDirectory,
                                                                              temporaryDirectory: temporaryDirectory,
-                                                                             displayPathPrefix: resolvedDisplayPathPrefix)
+                                                                             displayPathPrefix: resolvedDisplayPathPrefix,
+                                                                             openMode: openMode)
 
         return finishArchiveOpen(preparedResult,
                                  temporaryDirectory: temporaryDirectory,
@@ -2112,44 +2293,8 @@ extension FileManagerPaneController {
 extension FileManagerPaneController {
 
     private func buildContextMenu() -> NSMenu {
-        let menu = NSMenu()
-        menu.delegate = self  // auto-select row on right-click
-        let items: [(String, Selector)] = [
-            ("Open", #selector(openSelectedItem(_:))),
-            ("Open in ShichiZip", #selector(openInArchiveViewer(_:))),
-        ]
-        for (title, action) in items {
-            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-            item.target = self
-            menu.addItem(item)
-        }
-        menu.addItem(.separator())
-        for (title, action) in [
-            ("Compress...", #selector(compressSelected(_:))),
-            ("Extract...", #selector(extractSelected(_:))),
-            ("Extract Here", #selector(extractHere(_:))),
-        ] as [(String, Selector)] {
-            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-            item.target = self
-            menu.addItem(item)
-        }
-        menu.addItem(.separator())
-        for (title, action) in [
-            ("Rename", #selector(renameSelected(_:))),
-            ("Delete", #selector(deleteSelected(_:))),
-        ] as [(String, Selector)] {
-            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-            item.target = self
-            menu.addItem(item)
-        }
-        menu.addItem(.separator())
-        let cf = NSMenuItem(title: "Create Folder", action: #selector(createFolderFromMenu(_:)), keyEquivalent: "")
-        cf.target = self
-        menu.addItem(cf)
-        menu.addItem(.separator())
-        let pr = NSMenuItem(title: "Properties", action: #selector(showItemProperties(_:)), keyEquivalent: "")
-        pr.target = self
-        menu.addItem(pr)
+        let menu = FileManagerMenuFactory.makeContextMenu(windowTarget: nil)
+        menu.delegate = self
         return menu
     }
 
