@@ -194,25 +194,31 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     // MARK: - Navigation
 
     func loadDirectory(_ url: URL) {
-        currentDirectory = url
-        recordDirectoryVisit(url)
-        updatePathField()
-
         do {
-            let contents = try FileManagerDirectoryListing.contentsPreservingPresentedPath(for: url,
-                                                                                          options: fileManagerDirectoryEnumerationOptions())
-            items = contents.map { FileSystemItem(url: $0) }
-            sortCurrentItems(by: tableView.sortDescriptors)
+            let contents = try directoryContents(for: url)
+            applyDirectoryContents(contents, for: url)
         } catch {
-            items = []
+            return
         }
-
-        tableView.reloadData()
-        updateStatusBar()
     }
 
     private func fileManagerDirectoryEnumerationOptions() -> FileManager.DirectoryEnumerationOptions {
         SZSettings.bool(.showHiddenFiles) ? [] : [.skipsHiddenFiles]
+    }
+
+    private func directoryContents(for url: URL) throws -> [URL] {
+        try FileManagerDirectoryListing.contentsPreservingPresentedPath(for: url,
+                                                                       options: fileManagerDirectoryEnumerationOptions())
+    }
+
+    private func applyDirectoryContents(_ contents: [URL], for url: URL) {
+        currentDirectory = url
+        recordDirectoryVisit(url)
+        updatePathField()
+        items = contents.map { FileSystemItem(url: $0) }
+        sortCurrentItems(by: tableView.sortDescriptors)
+        tableView.reloadData()
+        updateStatusBar()
     }
 
     func refresh() {
@@ -898,6 +904,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         paneOperationError("No application is available to open \"\(itemName)\".")
     }
 
+    private func invalidAddressBarPathError(for path: String) -> NSError {
+        NSError(domain: NSCocoaErrorDomain,
+                code: NSFileNoSuchFileError,
+                userInfo: [
+                    NSFilePathErrorKey: path,
+                    NSLocalizedDescriptionKey: "The path \"\(path)\" does not exist."
+                ])
+    }
+
     private func showErrorAlert(_ error: Error) {
         szPresentError(error, for: view.window)
     }
@@ -1005,7 +1020,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     // MARK: - Actions
 
     @objc private func pathFieldSubmitted(_ sender: NSTextField) {
-        let path = sender.stringValue
+        let path = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         if path.isEmpty { return }
 
         // Expand ~ to home directory
@@ -1014,9 +1029,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         var isDir: ObjCBool = false
         if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
-            // Exit any current archive first
-            closeAllArchives()
-            loadDirectory(url)
+            do {
+                let contents = try directoryContents(for: url)
+                closeAllArchives()
+                applyDirectoryContents(contents, for: url)
+            } catch {
+                updatePathField()
+                showErrorAlert(error)
+            }
         } else if FileManager.default.fileExists(atPath: url.path) {
             if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(url) {
                 updatePathField()
@@ -1029,6 +1049,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
             if isInsideArchive && !canOpenArchive(at: url) {
                 updatePathField()
+                if !openExternallyIfPossible(url) {
+                    showErrorAlert(unavailableExternalOpenError(for: url.lastPathComponent))
+                }
                 view.window?.makeFirstResponder(tableView)
                 return
             }
@@ -1056,8 +1079,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 showErrorAlert(error)
             }
         } else {
-            // Path doesn't exist — revert to current
             updatePathField()
+            showErrorAlert(invalidAddressBarPathError(for: path))
         }
         // Resign focus back to table
         view.window?.makeFirstResponder(tableView)
