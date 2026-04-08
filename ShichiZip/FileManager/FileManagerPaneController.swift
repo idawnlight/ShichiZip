@@ -52,7 +52,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var archiveStack: [ArchiveLevel] = []
     private var isInsideArchive: Bool { !archiveStack.isEmpty }
     private var archiveDisplayItems: [ArchiveItem] = []
-    private var temporaryDirectories: Set<URL> = []
+    private let archiveItemWorkflowService = FileManagerArchiveItemWorkflowService()
     private var showsRealFileIcons: Bool { SZSettings.bool(.showRealFileIcons) }
     private var showsParentRow: Bool {
         guard SZSettings.bool(.showDots) else {
@@ -69,7 +69,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             NotificationCenter.default.removeObserver(settingsObserver)
         }
         closeAllArchives()
-        cleanupAllTemporaryDirectories()
+        archiveItemWorkflowService.cleanupAll()
     }
 
     override func loadView() {
@@ -588,8 +588,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         archiveStack.last?.filesystemDirectory ?? currentDirectory
     }
 
-    private func nestedArchiveDisplayPath(for item: ArchiveItem) -> String {
-        currentArchiveDisplayPathPrefix() + "/" + item.pathParts.joined(separator: "/")
+    private func currentArchiveItemWorkflowContext() -> FileManagerArchiveItemWorkflowContext? {
+        guard let level = archiveStack.last else { return nil }
+
+        return FileManagerArchiveItemWorkflowContext(archive: level.archive,
+                                                    hostDirectory: archiveHostDirectory(),
+                                                    displayPathPrefix: currentArchiveDisplayPathPrefix())
     }
 
     private func canOpenArchive(at url: URL) -> Bool {
@@ -603,34 +607,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    private func registerTemporaryDirectory(_ url: URL) {
-        temporaryDirectories.insert(url)
-    }
-
-    private func cleanupTemporaryDirectory(_ url: URL?) {
-        guard let url else { return }
-        temporaryDirectories.remove(url)
-        try? FileManager.default.removeItem(at: url)
-    }
-
-    private func cleanupAllTemporaryDirectories() {
-        for url in temporaryDirectories {
-            try? FileManager.default.removeItem(at: url)
-        }
-        temporaryDirectories.removeAll()
-    }
-
-    private func createTemporaryDirectory(prefix: String) throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(prefix)\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        registerTemporaryDirectory(tempDir)
-        return tempDir
-    }
-
     private func closeArchiveLevel(_ level: ArchiveLevel) {
         level.archive.close()
-        cleanupTemporaryDirectory(level.temporaryDirectory)
+        archiveItemWorkflowService.cleanup(level.temporaryDirectory)
     }
 
     private func closeAllArchives() {
@@ -661,7 +640,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             guard app == nil else { return }
 
             if let temporaryDirectory {
-                self?.cleanupTemporaryDirectory(temporaryDirectory)
+                self?.archiveItemWorkflowService.cleanup(temporaryDirectory)
             }
 
             if let error {
@@ -669,6 +648,53 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             }
         }
         return true
+    }
+
+    private func makeArchiveExtractionSettings(overwriteMode: SZOverwriteMode,
+                                               pathMode: SZPathMode) -> SZExtractionSettings {
+        let settings = SZExtractionSettings()
+        settings.overwriteMode = overwriteMode
+        settings.pathMode = pathMode
+        if pathMode == .currentPaths,
+           let level = archiveStack.last,
+           !level.currentSubdir.isEmpty {
+            settings.pathPrefixToStrip = level.currentSubdir
+        }
+        return settings
+    }
+
+    private func archiveEntryIndices(for selectedItems: [ArchiveItem]) -> [NSNumber] {
+        guard let level = archiveStack.last else { return [] }
+
+        var indices = Set<Int>()
+
+        for item in selectedItems {
+            if item.index >= 0 {
+                indices.insert(item.index)
+            }
+
+            if item.isDirectory || item.index < 0 {
+                let directoryPath = normalizeArchivePath(item.path)
+                let prefix = directoryPath.isEmpty ? "" : directoryPath + "/"
+
+                for entry in level.allEntries where entry.index >= 0 {
+                    let entryPath = normalizeArchivePath(entry.path)
+                    if entryPath == directoryPath || (!prefix.isEmpty && entryPath.hasPrefix(prefix)) {
+                        indices.insert(entry.index)
+                    }
+                }
+            }
+        }
+
+        return indices.sorted().map { NSNumber(value: $0) }
+    }
+
+    private func normalizeArchivePath(_ path: String) -> String {
+        var normalized = path
+        while normalized.hasSuffix("/") {
+            normalized.removeLast()
+        }
+        return normalized
     }
 
     private func extractArchiveItems(_ itemsToExtract: [ArchiveItem],
@@ -681,15 +707,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             throw paneOperationError("No archive is open.")
         }
 
-        let indices = FileManagerArchiveExtractionService.archiveEntryIndices(for: itemsToExtract,
-                                                                             in: level.allEntries)
+        let indices = archiveEntryIndices(for: itemsToExtract)
         guard !indices.isEmpty else {
             throw paneOperationError("The selected archive items cannot be extracted.")
         }
 
-        let settings = FileManagerArchiveExtractionService.extractionSettings(overwriteMode: overwriteMode,
-                                                                             pathMode: pathMode,
-                                                                             currentSubdir: level.currentSubdir)
+        let settings = makeArchiveExtractionSettings(overwriteMode: overwriteMode, pathMode: pathMode)
         if let session {
             try level.archive.extractEntries(indices,
                                              toPath: destinationURL.path,
@@ -725,9 +748,81 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func sortCurrentItems(by descriptors: [NSSortDescriptor]) {
         if isInsideArchive {
-            FileManagerItemSorter.sort(&archiveDisplayItems, by: descriptors)
+            sortArchiveItems(by: descriptors)
         } else {
-            FileManagerItemSorter.sort(&items, by: descriptors)
+            sortFileSystemItems(by: descriptors)
+        }
+    }
+
+    private func sortFileSystemItems(by descriptors: [NSSortDescriptor]) {
+        guard let descriptor = descriptors.first else {
+            items.sort { a, b in
+                if a.isDirectory != b.isDirectory { return a.isDirectory }
+                return a.name.localizedStandardCompare(b.name) == .orderedAscending
+            }
+            return
+        }
+
+        let key = descriptor.key ?? "name"
+        let ascending = descriptor.ascending
+
+        items.sort { a, b in
+            if a.isDirectory != b.isDirectory { return a.isDirectory }
+
+            let result: ComparisonResult
+            switch key {
+            case "name":
+                result = a.name.localizedStandardCompare(b.name)
+            case "size":
+                result = a.size == b.size ? .orderedSame : (a.size < b.size ? .orderedAscending : .orderedDescending)
+            case "modified":
+                let ad = a.modifiedDate ?? Date.distantPast
+                let bd = b.modifiedDate ?? Date.distantPast
+                result = ad.compare(bd)
+            case "created":
+                let ad = a.createdDate ?? Date.distantPast
+                let bd = b.createdDate ?? Date.distantPast
+                result = ad.compare(bd)
+            default:
+                result = a.name.localizedStandardCompare(b.name)
+            }
+            return ascending ? result == .orderedAscending : result == .orderedDescending
+        }
+    }
+
+    private func sortArchiveItems(by descriptors: [NSSortDescriptor]) {
+        guard let descriptor = descriptors.first else {
+            archiveDisplayItems.sort { a, b in
+                if a.isDirectory != b.isDirectory { return a.isDirectory }
+                return a.name.localizedStandardCompare(b.name) == .orderedAscending
+            }
+            return
+        }
+
+        let key = descriptor.key ?? "name"
+        let ascending = descriptor.ascending
+
+        archiveDisplayItems.sort { a, b in
+            if a.isDirectory != b.isDirectory { return a.isDirectory }
+
+            let result: ComparisonResult
+            switch key {
+            case "name":
+                result = a.name.localizedStandardCompare(b.name)
+            case "size":
+                result = a.size == b.size ? .orderedSame : (a.size < b.size ? .orderedAscending : .orderedDescending)
+            case "modified":
+                let ad = a.modifiedDate ?? Date.distantPast
+                let bd = b.modifiedDate ?? Date.distantPast
+                result = ad.compare(bd)
+            case "created":
+                let ad = a.createdDate ?? Date.distantPast
+                let bd = b.createdDate ?? Date.distantPast
+                result = ad.compare(bd)
+            default:
+                result = a.name.localizedStandardCompare(b.name)
+            }
+            return ascending ? result == .orderedAscending : result == .orderedDescending
         }
     }
 
@@ -827,66 +922,29 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     /// Open Inside (PanelItemOpen.cpp): try the extracted item as an archive first,
     /// then fall back to the system app.
     private func openItemInArchive(_ item: ArchiveItem) {
-        guard let level = archiveStack.last, item.index >= 0 else { return }
+        guard item.index >= 0,
+              let context = currentArchiveItemWorkflowContext() else { return }
+
         do {
-            let tempDir = try createTemporaryDirectory(prefix: "7zO")
-            let settings = FileManagerArchiveExtractionService.extractionSettings(overwriteMode: .overwrite,
-                                                                                 pathMode: .fullPaths,
-                                                                                 currentSubdir: level.currentSubdir)
-            try level.archive.extractEntries([NSNumber(value: item.index)],
-                                             toPath: tempDir.path,
-                                             settings: settings,
-                                             progress: nil)
-
-            let extractedFile = tempDir.appendingPathComponent(item.path)
-            guard FileManager.default.fileExists(atPath: extractedFile.path) else {
-                cleanupTemporaryDirectory(tempDir)
-                throw paneOperationError("The archive item could not be prepared for opening.")
-            }
-
-            let preferredArchiveItemApplicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(forArchiveItemPath: item.path)
-
-            if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(archiveItemPath: item.path) {
-                if let preferredArchiveItemApplicationURL {
-                    _ = openExternally(extractedFile,
-                                       withApplicationAt: preferredArchiveItemApplicationURL,
-                                       preservingTemporaryDirectory: tempDir)
-                } else {
-                    cleanupTemporaryDirectory(tempDir)
-                    throw unavailableExternalOpenError(for: item.name)
-                }
-                return
-            }
-
-            switch openArchiveInline(extractedFile,
-                                     hostDirectory: archiveHostDirectory(),
-                                     temporaryDirectory: tempDir,
-                                     displayPathPrefix: nestedArchiveDisplayPath(for: item),
-                                     showError: false,
-                                     preserveTemporaryDirectoryOnUnsupported: true) {
-            case .opened:
-                return
-            case let .unsupportedArchive(error):
-                let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: extractedFile)
-                if shouldFallbackExternally {
-                    if let preferredArchiveItemApplicationURL {
-                        _ = openExternally(extractedFile,
-                                           withApplicationAt: preferredArchiveItemApplicationURL,
-                                           preservingTemporaryDirectory: tempDir)
-                    } else if !openExternallyIfPossible(extractedFile, preservingTemporaryDirectory: tempDir) {
-                        cleanupTemporaryDirectory(tempDir)
-                        throw error
-                    }
-                } else {
-                    cleanupTemporaryDirectory(tempDir)
-                    throw error
-                }
-                return
-            case .cancelled:
-                return
-            case let .failed(error):
-                throw error
-            }
+            try archiveItemWorkflowService.open(item,
+                                                context: context,
+                                                openArchiveInline: { [self] url, temporaryDirectory, displayPathPrefix, hostDirectory in
+                                                    openArchiveInline(url,
+                                                                      hostDirectory: hostDirectory,
+                                                                      temporaryDirectory: temporaryDirectory,
+                                                                      displayPathPrefix: displayPathPrefix,
+                                                                      showError: false,
+                                                                      preserveTemporaryDirectoryOnUnsupported: true)
+                                                },
+                                                openExternally: { [self] url, applicationURL, temporaryDirectory in
+                                                    openExternally(url,
+                                                                   withApplicationAt: applicationURL,
+                                                                   preservingTemporaryDirectory: temporaryDirectory)
+                                                },
+                                                openExternallyIfPossible: { [self] url, temporaryDirectory in
+                                                    openExternallyIfPossible(url,
+                                                                             preservingTemporaryDirectory: temporaryDirectory)
+                                                })
         } catch {
             showErrorAlert(error)
         }
@@ -1062,28 +1120,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return nil
 
         case let .archive(ai):
-            if ai.isDirectory || ai.index < 0 { return nil }
-
-            guard let level = archiveStack.last else { return nil }
-            do {
-                let tempDir = try createTemporaryDirectory(prefix: "ShichiZip-drag-")
-                let settings = FileManagerArchiveExtractionService.extractionSettings(overwriteMode: .overwrite,
-                                                                                     pathMode: .fullPaths,
-                                                                                     currentSubdir: level.currentSubdir)
-                try level.archive.extractEntries([NSNumber(value: ai.index)],
-                                                 toPath: tempDir.path,
-                                                 settings: settings,
-                                                 progress: nil)
-
-                let extractedFile = tempDir.appendingPathComponent(ai.path)
-                if FileManager.default.fileExists(atPath: extractedFile.path) {
-                    return extractedFile as NSURL
-                }
-                cleanupTemporaryDirectory(tempDir)
-            } catch {
+            guard let context = currentArchiveItemWorkflowContext(),
+                  let extractedFile = archiveItemWorkflowService.dragURL(for: ai, context: context) else {
                 return nil
             }
-            return nil
+
+            return extractedFile as NSURL
 
         case let .filesystem(item):
             return item.url as NSURL
@@ -1191,14 +1233,14 @@ extension FileManagerPaneController {
             return .opened
         case let .unsupportedArchive(error):
             if !preserveTemporaryDirectoryOnUnsupported {
-                cleanupTemporaryDirectory(temporaryDirectory)
+                archiveItemWorkflowService.cleanup(temporaryDirectory)
             }
             result = .unsupportedArchive(error)
         case .cancelled:
-            cleanupTemporaryDirectory(temporaryDirectory)
+            archiveItemWorkflowService.cleanup(temporaryDirectory)
             result = .cancelled
         case let .failed(error):
-            cleanupTemporaryDirectory(temporaryDirectory)
+            archiveItemWorkflowService.cleanup(temporaryDirectory)
             result = .failed(error)
         }
 
@@ -1222,7 +1264,7 @@ extension FileManagerPaneController {
 
         currentDirectory = prepared.hostDirectory
         if let temporaryDirectory = prepared.temporaryDirectory {
-            registerTemporaryDirectory(temporaryDirectory)
+            archiveItemWorkflowService.register(temporaryDirectory)
         }
 
         let level = ArchiveLevel(

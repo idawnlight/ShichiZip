@@ -15,14 +15,13 @@
 		3526B672AB9F2CEAFD0E549B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 937563A1E648A0013C4DD0C3 /* Assets.xcassets */; };
 		3EB1A6D4145C14DAED1F6FFF /* ArchiveItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B2D1040171A178E5575D88 /* ArchiveItem.swift */; };
 		586E8349FFE035506C922697 /* FileManagerArchiveOpenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F978AA77CB7237708162BD /* FileManagerArchiveOpenService.swift */; };
+		5C20141C7403D014630B77AA /* FileManagerArchiveItemWorkflowService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E9365E10448902B8CE7660 /* FileManagerArchiveItemWorkflowService.swift */; };
 		638B19CD6D0F3AD721A43B9A /* SZBridgeCommon.mm in Sources */ = {isa = PBXBuildFile; fileRef = 103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */; };
 		77648FA14E470C55E65CAD70 /* SZCallbacks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 079C800E6F9E105461CEDF6F /* SZCallbacks.mm */; };
-		797188C956EE906BA0964B1C /* FileManagerItemSorter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBAEF6C203B3A8F6FB3BE20D /* FileManagerItemSorter.swift */; };
 		7EE100FF37A26DA3FA69134C /* FileManagerExternalOpenRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F07428E479FD64D8594CBD8 /* FileManagerExternalOpenRouter.swift */; };
 		92508A846730EC64177768C0 /* CompressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB37EA2DD031212A342F87 /* CompressDialogController.swift */; };
 		95020B695CD4B8B7EA2C94E5 /* ArchiveOperationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1797F83BAF1E2349FCC716 /* ArchiveOperationCoordinator.swift */; };
 		982013070593772CA679F1CB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */; };
-		A2682254FCC6A6ED388CA820 /* FileManagerArchiveExtractionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA778BB751EA415EE8297236 /* FileManagerArchiveExtractionService.swift */; };
 		A6D570941AD9603FF45FB5B7 /* FileManagerPaneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */; };
 		A75F0A88DDC9FEB2C258A88D /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */; };
 		A783E2CAD13FA8016D826804 /* SZModalDialogController.m in Sources */ = {isa = PBXBuildFile; fileRef = 17A1A16D1207F4EA60603172 /* SZModalDialogController.m */; };
@@ -63,14 +62,13 @@
 		937563A1E648A0013C4DD0C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A090218681EBF340986657E6 /* SZModalDialogController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZModalDialogController.h; sourceTree = "<group>"; };
 		AA43642E44A71EF577FDA9A1 /* SZOperationSessionDefaults.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZOperationSessionDefaults.h; sourceTree = "<group>"; };
+		B7E9365E10448902B8CE7660 /* FileManagerArchiveItemWorkflowService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerArchiveItemWorkflowService.swift; sourceTree = "<group>"; };
 		B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveDocument.swift; sourceTree = "<group>"; };
 		C4B2D1040171A178E5575D88 /* ArchiveItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveItem.swift; sourceTree = "<group>"; };
-		CA778BB751EA415EE8297236 /* FileManagerArchiveExtractionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerArchiveExtractionService.swift; sourceTree = "<group>"; };
 		CCCBD7802EE988D8182FB615 /* SZOperationSessionDefaults.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SZOperationSessionDefaults.m; sourceTree = "<group>"; };
 		E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressDialogController.swift; sourceTree = "<group>"; };
 		EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchmarkWindowController.swift; sourceTree = "<group>"; };
-		EBAEF6C203B3A8F6FB3BE20D /* FileManagerItemSorter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerItemSorter.swift; sourceTree = "<group>"; };
 		ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenu.swift; sourceTree = "<group>"; };
 		EF12616F99B5BC0BECF7D3BD /* FileManagerDirectoryListing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerDirectoryListing.swift; sourceTree = "<group>"; };
 		F199F3D5EFC006C978C935C8 /* FileSystemItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemItem.swift; sourceTree = "<group>"; };
@@ -192,11 +190,10 @@
 			isa = PBXGroup;
 			children = (
 				3D1797F83BAF1E2349FCC716 /* ArchiveOperationCoordinator.swift */,
-				CA778BB751EA415EE8297236 /* FileManagerArchiveExtractionService.swift */,
+				B7E9365E10448902B8CE7660 /* FileManagerArchiveItemWorkflowService.swift */,
 				73F978AA77CB7237708162BD /* FileManagerArchiveOpenService.swift */,
 				EF12616F99B5BC0BECF7D3BD /* FileManagerDirectoryListing.swift */,
 				1F07428E479FD64D8594CBD8 /* FileManagerExternalOpenRouter.swift */,
-				EBAEF6C203B3A8F6FB3BE20D /* FileManagerItemSorter.swift */,
 				05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */,
 				F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */,
 			);
@@ -278,11 +275,10 @@
 				1CE5457C544B20D5DF0D42F3 /* BenchmarkWindowController.swift in Sources */,
 				92508A846730EC64177768C0 /* CompressDialogController.swift in Sources */,
 				0E083C8C01751D167AA800E1 /* DialogPresenter.swift in Sources */,
-				A2682254FCC6A6ED388CA820 /* FileManagerArchiveExtractionService.swift in Sources */,
+				5C20141C7403D014630B77AA /* FileManagerArchiveItemWorkflowService.swift in Sources */,
 				586E8349FFE035506C922697 /* FileManagerArchiveOpenService.swift in Sources */,
 				EFD6C6263E7F428FB8939A42 /* FileManagerDirectoryListing.swift in Sources */,
 				7EE100FF37A26DA3FA69134C /* FileManagerExternalOpenRouter.swift in Sources */,
-				797188C956EE906BA0964B1C /* FileManagerItemSorter.swift in Sources */,
 				A6D570941AD9603FF45FB5B7 /* FileManagerPaneController.swift in Sources */,
 				B2B8116921C374B976FF9283 /* FileManagerWindowController.swift in Sources */,
 				1506FF719B49C353449C3276 /* FileSystemItem.swift in Sources */,
