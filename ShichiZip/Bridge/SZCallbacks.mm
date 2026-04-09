@@ -53,6 +53,24 @@ static NSString *SZBuildMemoryLimitFailureReason(uint32_t requiredGB,
     return [lines componentsJoinedByString:@"\n"];
 }
 
+static NSString *SZFormatFileTime(const FILETIME *ft) {
+    if (!ft) return nil;
+    // FILETIME is 100-nanosecond intervals since 1601-01-01.
+    // NSDate reference is 2001-01-01. Difference is 12622780800 seconds.
+    const int64_t ticks = ((int64_t)ft->dwHighDateTime << 32) | ft->dwLowDateTime;
+    if (ticks <= 0) return nil;
+    const NSTimeInterval seconds = (NSTimeInterval)ticks / 10000000.0 - 11644473600.0;
+    NSDate *date = [NSDate dateWithTimeIntervalSince1970:seconds];
+    static NSDateFormatter *formatter;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        formatter = [[NSDateFormatter alloc] init];
+        formatter.dateStyle = NSDateFormatterMediumStyle;
+        formatter.timeStyle = NSDateFormatterMediumStyle;
+    });
+    return [formatter stringFromDate:date];
+}
+
 // ============================================================
 // Extract error message builder (mirrors ExtractCallback.cpp SetExtractErrorMessage)
 // ============================================================
@@ -247,11 +265,19 @@ Z7_COM7F_IMF(SZFolderExtractCallback::AskOverwrite(
                     [NSByteCountFormatter stringFromByteCount:(long long)*existSize
                                                    countStyle:NSByteCountFormatterCountStyleFile]];
             }
+            NSString *existDateStr = SZFormatFileTime(existTime);
+            if (existDateStr) {
+                [info appendFormat:@"\nModified: %@", existDateStr];
+            }
             [info appendFormat:@"\n\nwith this one from the archive:\n%@", newStr];
             if (newSize) {
                 [info appendFormat:@"\nSize: %@",
                     [NSByteCountFormatter stringFromByteCount:(long long)*newSize
                                                    countStyle:NSByteCountFormatterCountStyleFile]];
+            }
+            NSString *newDateStr = SZFormatFileTime(newTime);
+            if (newDateStr) {
+                [info appendFormat:@"\nModified: %@", newDateStr];
             }
 
             NSInteger choice = Session
