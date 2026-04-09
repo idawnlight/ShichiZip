@@ -109,6 +109,9 @@ final class ArchiveOperationCoordinator {
             progressController.progressDidUpdateBytesCompleted(snapshot.bytesCompleted,
                                                               total: snapshot.bytesTotal)
         }
+        if snapshot.filesCompleted > 0 {
+            progressController.progressDidUpdateFilesCompleted(snapshot.filesCompleted)
+        }
     }
 
     private func prepareForPromptIfNeeded() {

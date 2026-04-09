@@ -26,6 +26,7 @@ typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationPromptStyle styl
 @property (nonatomic, copy, readonly) NSString *currentFileName;
 @property (nonatomic, readonly) uint64_t bytesCompleted;
 @property (nonatomic, readonly) uint64_t bytesTotal;
+@property (nonatomic, readonly) uint64_t filesCompleted;
 @property (nonatomic, readonly) BOOL hasReportedProgress;
 @property (nonatomic, readonly, getter=isWaitingForUserInteraction) BOOL waitingForUserInteraction;
 @property (nonatomic, readonly, getter=isCancellationRequested) BOOL cancellationRequested;
@@ -42,6 +43,7 @@ typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationPromptStyle styl
 @property (nonatomic, copy, readonly) NSString *currentFileName;
 @property (nonatomic, readonly) uint64_t bytesCompleted;
 @property (nonatomic, readonly) uint64_t bytesTotal;
+@property (nonatomic, readonly) uint64_t filesCompleted;
 @property (nonatomic, readonly) BOOL hasReportedProgress;
 @property (nonatomic, readonly, getter=isWaitingForUserInteraction) BOOL waitingForUserInteraction;
 @property (nonatomic, readonly, getter=isCancellationRequested) BOOL cancellationRequested;
@@ -49,6 +51,7 @@ typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationPromptStyle styl
 - (void)reportProgressFraction:(double)fraction;
 - (void)reportCurrentFileName:(NSString *)fileName;
 - (void)reportBytesCompleted:(uint64_t)completed total:(uint64_t)total;
+- (void)reportFilesCompleted:(uint64_t)count;
 - (BOOL)shouldCancel;
 - (void)requestCancel;
 - (void)prepareForUserInteraction;

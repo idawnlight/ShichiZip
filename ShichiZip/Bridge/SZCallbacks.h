@@ -82,8 +82,10 @@ public:
     SZOverwriteMode OverwriteMode;
     __unsafe_unretained SZOperationSession *Session;
     UInt32 NumErrors;
+    UInt32 NumFilesCompleted;
     bool PasswordWasWrong;
     bool TestMode;
+    bool IsFolder;
     bool RememberMemoryDecision;
     bool SkipMemoryArchive;
     UString ArchivePath;
@@ -92,8 +94,8 @@ public:
 
     SZFolderExtractCallback() : PasswordIsDefined(false), PasswordWasAsked(false), TotalSize(0),
         OverwriteMode(SZOverwriteModeAsk), Session(nil),
-        NumErrors(0), PasswordWasWrong(false),
-        TestMode(false), RememberMemoryDecision(false), SkipMemoryArchive(false) {}
+        NumErrors(0), NumFilesCompleted(0), PasswordWasWrong(false),
+        TestMode(false), IsFolder(false), RememberMemoryDecision(false), SkipMemoryArchive(false) {}
 
     Z7_COM_UNKNOWN_IMP_4(IFolderArchiveExtractCallback, IFolderArchiveExtractCallback2, ICryptoGetTextPassword, IArchiveRequestMemoryUseCallback)
 

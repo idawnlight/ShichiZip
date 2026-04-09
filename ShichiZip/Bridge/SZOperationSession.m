@@ -23,6 +23,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     NSString *_currentFileName;
     uint64_t _bytesCompleted;
     uint64_t _bytesTotal;
+    uint64_t _filesCompleted;
     BOOL _hasReportedProgress;
     BOOL _waitingForUserInteraction;
     BOOL _cancellationRequested;
@@ -36,6 +37,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
                          currentFileName:(NSString *)currentFileName
                           bytesCompleted:(uint64_t)bytesCompleted
                                bytesTotal:(uint64_t)bytesTotal
+                          filesCompleted:(uint64_t)filesCompleted
                         hasReportedProgress:(BOOL)hasReportedProgress
                     waitingForUserInteraction:(BOOL)waitingForUserInteraction
                       cancellationRequested:(BOOL)cancellationRequested;
@@ -47,6 +49,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     NSString *_currentFileName;
     uint64_t _bytesCompleted;
     uint64_t _bytesTotal;
+    uint64_t _filesCompleted;
     BOOL _hasReportedProgress;
     BOOL _waitingForUserInteraction;
     BOOL _cancellationRequested;
@@ -56,6 +59,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
                          currentFileName:(NSString *)currentFileName
                           bytesCompleted:(uint64_t)bytesCompleted
                                bytesTotal:(uint64_t)bytesTotal
+                          filesCompleted:(uint64_t)filesCompleted
                         hasReportedProgress:(BOOL)hasReportedProgress
                     waitingForUserInteraction:(BOOL)waitingForUserInteraction
                       cancellationRequested:(BOOL)cancellationRequested {
@@ -64,6 +68,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
         _currentFileName = [currentFileName copy] ?: @"";
         _bytesCompleted = bytesCompleted;
         _bytesTotal = bytesTotal;
+        _filesCompleted = filesCompleted;
         _hasReportedProgress = hasReportedProgress;
         _waitingForUserInteraction = waitingForUserInteraction;
         _cancellationRequested = cancellationRequested;
@@ -85,6 +90,10 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 
 - (uint64_t)bytesTotal {
     return _bytesTotal;
+}
+
+- (uint64_t)filesCompleted {
+    return _filesCompleted;
 }
 
 - (BOOL)hasReportedProgress {
@@ -131,6 +140,12 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 - (uint64_t)bytesTotal {
     @synchronized (self) {
         return _bytesTotal;
+    }
+}
+
+- (uint64_t)filesCompleted {
+    @synchronized (self) {
+        return _filesCompleted;
     }
 }
 
@@ -201,6 +216,12 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     });
 }
 
+- (void)reportFilesCompleted:(uint64_t)count {
+    @synchronized (self) {
+        _filesCompleted = count;
+    }
+}
+
 - (BOOL)shouldCancel {
     if (self.cancellationRequested) {
         return YES;
@@ -251,6 +272,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
                                                      currentFileName:_currentFileName
                                                       bytesCompleted:_bytesCompleted
                                                            bytesTotal:_bytesTotal
+                                                      filesCompleted:_filesCompleted
                                                     hasReportedProgress:_hasReportedProgress
                                                 waitingForUserInteraction:_waitingForUserInteraction
                                                   cancellationRequested:_cancellationRequested];

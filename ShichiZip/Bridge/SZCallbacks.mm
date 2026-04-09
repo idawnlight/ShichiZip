@@ -277,6 +277,7 @@ Z7_COM7F_IMF(SZFolderExtractCallback::AskOverwrite(
 
 Z7_COM7F_IMF(SZFolderExtractCallback::PrepareOperation(const wchar_t *name, Int32 isFolder, Int32 askExtractMode, const UInt64 *position)) {
     CurrentFilePath.Empty();
+    IsFolder = (isFolder != 0);
     if (name) {
         CurrentFilePath = name;
         SZOperationSession *session = Session;
@@ -312,6 +313,13 @@ Z7_COM7F_IMF(SZFolderExtractCallback::SetOperationResult(Int32 opRes, Int32 encr
             PasswordWasWrong = true;
             PasswordIsDefined = false;
             Password.Empty();
+        }
+    }
+    if (!IsFolder) {
+        NumFilesCompleted++;
+        SZOperationSession *session = Session;
+        if (session) {
+            [session reportFilesCompleted:NumFilesCompleted];
         }
     }
     CurrentFilePath.Empty();

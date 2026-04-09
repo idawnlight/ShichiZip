@@ -272,6 +272,13 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
         return cancelled
     }
 
+    func progressDidUpdateFilesCompleted(_ count: UInt64) {
+        if speedLabel.stringValue.isEmpty || speedLabel.stringValue.hasSuffix("processed") {
+            let suffix = count == 1 ? "file" : "files"
+            speedLabel.stringValue = "\(count) \(suffix) processed"
+        }
+    }
+
     @objc func progressPrepareForUserInteraction() {
         showNowIfNeeded()
     }
