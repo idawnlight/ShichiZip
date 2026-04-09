@@ -95,6 +95,22 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
     SZPathModeAbsolutePaths
 };
 
+/// Three-state boolean used for archive metadata settings.
+typedef NS_ENUM(NSInteger, SZCompressionBoolSetting) {
+    SZCompressionBoolSettingNotDefined = -1,
+    SZCompressionBoolSettingOff = 0,
+    SZCompressionBoolSettingOn = 1,
+};
+
+/// Time precision for stored archive timestamps.
+typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
+    SZCompressionTimePrecisionAutomatic = -1,
+    SZCompressionTimePrecisionWindows = 0,
+    SZCompressionTimePrecisionUnix = 1,
+    SZCompressionTimePrecisionDOS = 2,
+    SZCompressionTimePrecisionLinux = 3,
+};
+
 /// Compression settings for archive creation
 @interface SZCompressionSettings : NSObject
 @property (nonatomic) SZArchiveFormat format;
@@ -116,6 +132,16 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
 @property (nonatomic) BOOL createSFX;
 @property (nonatomic) BOOL openSharedFiles;
 @property (nonatomic) BOOL deleteAfterCompression;
+@property (nonatomic) SZCompressionBoolSetting storeSymbolicLinks;
+@property (nonatomic) SZCompressionBoolSetting storeHardLinks;
+@property (nonatomic) SZCompressionBoolSetting storeAlternateDataStreams;
+@property (nonatomic) SZCompressionBoolSetting storeFileSecurity;
+@property (nonatomic) SZCompressionBoolSetting preserveSourceAccessTime;
+@property (nonatomic) SZCompressionBoolSetting storeModificationTime;
+@property (nonatomic) SZCompressionBoolSetting storeCreationTime;
+@property (nonatomic) SZCompressionBoolSetting storeAccessTime;
+@property (nonatomic) SZCompressionBoolSetting setArchiveTimeToLatestFile;
+@property (nonatomic) SZCompressionTimePrecision timePrecision;
 @end
 
 /// Extraction settings
@@ -166,6 +192,27 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
 @property (nonatomic, copy) NSString *name;
 @property (nonatomic, copy) NSArray<NSString *> *extensions;
 @property (nonatomic) BOOL canWrite;
+@property (nonatomic) BOOL supportsSymbolicLinks;
+@property (nonatomic) BOOL supportsHardLinks;
+@property (nonatomic) BOOL supportsAlternateDataStreams;
+@property (nonatomic) BOOL supportsFileSecurity;
+@property (nonatomic) BOOL supportsModificationTime;
+@property (nonatomic) BOOL supportsCreationTime;
+@property (nonatomic) BOOL supportsAccessTime;
+@property (nonatomic) BOOL defaultsModificationTime;
+@property (nonatomic) BOOL defaultsCreationTime;
+@property (nonatomic) BOOL defaultsAccessTime;
+@property (nonatomic) BOOL keepsName;
+@property (nonatomic) uint32_t supportedTimePrecisionMask;
+@property (nonatomic) SZCompressionTimePrecision defaultTimePrecision;
+@end
+
+/// Compression memory estimate for the current add-dialog settings.
+@interface SZCompressionResourceInfo : NSObject
+@property (nonatomic) BOOL compressionMemoryIsDefined;
+@property (nonatomic) uint64_t compressionMemory;
+@property (nonatomic) BOOL decompressionMemoryIsDefined;
+@property (nonatomic) uint64_t decompressionMemory;
 @end
 
 /// Main archive interface — wraps 7-Zip C++ core
@@ -270,6 +317,9 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
 
 /// Get list of supported format infos
 + (NSArray<SZFormatInfo *> *)supportedFormats;
+
+/// Get estimated compression and decompression memory usage for archive creation settings.
++ (SZCompressionResourceInfo *)compressionResourceEstimateForSettings:(SZCompressionSettings *)settings;
 
 /// Calculate hash of files — returns dict of algorithmName → hexDigest
 + (nullable NSDictionary<NSString *, NSString *> *)calculateHashForPath:(NSString *)path

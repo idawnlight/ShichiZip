@@ -14,10 +14,12 @@
 #include "CPP/7zip/UI/Common/Bench.h"
 #include "CPP/7zip/UI/Common/HashCalc.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
+#include "CPP/7zip/Common/MethodProps.h"
 #include "CPP/Common/MyString.h"
 #include "CPP/Common/StringToInt.h"
 #include "CPP/Common/Wildcard.h"
 #include "CPP/Windows/ErrorMsg.h"
+#include "CPP/Windows/System.h"
 #include "7zVersion.h"
 
 #include <atomic>
@@ -38,6 +40,16 @@
         _solidMode = YES;
         _openSharedFiles = NO;
         _deleteAfterCompression = NO;
+        _storeSymbolicLinks = SZCompressionBoolSettingNotDefined;
+        _storeHardLinks = SZCompressionBoolSettingNotDefined;
+        _storeAlternateDataStreams = SZCompressionBoolSettingNotDefined;
+        _storeFileSecurity = SZCompressionBoolSettingNotDefined;
+        _preserveSourceAccessTime = SZCompressionBoolSettingNotDefined;
+        _storeModificationTime = SZCompressionBoolSettingNotDefined;
+        _storeCreationTime = SZCompressionBoolSettingNotDefined;
+        _storeAccessTime = SZCompressionBoolSettingNotDefined;
+        _setArchiveTimeToLatestFile = SZCompressionBoolSettingNotDefined;
+        _timePrecision = SZCompressionTimePrecisionAutomatic;
     }
     return self;
 }
@@ -55,6 +67,7 @@
 
 @implementation SZArchiveEntry @end
 @implementation SZFormatInfo @end
+@implementation SZCompressionResourceInfo @end
 @implementation SZBenchDisplayRow
 - (instancetype)init {
     if ((self = [super init])) {
@@ -79,6 +92,460 @@
     return self;
 }
 @end
+
+namespace {
+
+enum SZCompressionEstimateMethodID {
+    kSZCompressionEstimateCopy,
+    kSZCompressionEstimateLZMA,
+    kSZCompressionEstimateLZMA2,
+    kSZCompressionEstimatePPMd,
+    kSZCompressionEstimateBZip2,
+    kSZCompressionEstimateDeflate,
+    kSZCompressionEstimateDeflate64,
+    kSZCompressionEstimatePPMdZip,
+    kSZCompressionEstimateGnu,
+    kSZCompressionEstimatePosix,
+};
+
+static const UInt32 kSZCompressionEstimateLzmaMaxDictSize = (UInt32)15 << 28;
+
+struct SZCompressionEstimateRamInfo {
+    bool IsDefined;
+    UInt64 UsageAuto;
+};
+
+static bool SZCompressionEstimateFormatSupportsFilters(SZArchiveFormat format) {
+    return format == SZArchiveFormat7z;
+}
+
+static bool SZCompressionEstimateFormatSupportsThreads(SZArchiveFormat format) {
+    switch (format) {
+        case SZArchiveFormat7z:
+        case SZArchiveFormatZip:
+        case SZArchiveFormatBZip2:
+        case SZArchiveFormatXz:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool SZCompressionEstimateFormatSupportsMemoryUse(SZArchiveFormat format) {
+    switch (format) {
+        case SZArchiveFormat7z:
+        case SZArchiveFormatZip:
+        case SZArchiveFormatGZip:
+        case SZArchiveFormatBZip2:
+        case SZArchiveFormatXz:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool SZCompressionEstimateIsZipFormat(SZArchiveFormat format) {
+    return format == SZArchiveFormatZip;
+}
+
+static bool SZCompressionEstimateIsXzFormat(SZArchiveFormat format) {
+    return format == SZArchiveFormatXz;
+}
+
+static UInt32 SZCompressionEstimateLevel(SZCompressionSettings *settings) {
+    const NSInteger level = settings.level;
+    return level < 0 ? 5u : (UInt32)level;
+}
+
+static int SZCompressionEstimateMethodID(SZCompressionSettings *settings) {
+    NSString *methodName = settings.methodName ? settings.methodName.lowercaseString : @"";
+    if (methodName.length > 0) {
+        if ([methodName isEqualToString:@"copy"]) {
+            return kSZCompressionEstimateCopy;
+        }
+        if ([methodName isEqualToString:@"lzma"]) {
+            return kSZCompressionEstimateLZMA;
+        }
+        if ([methodName isEqualToString:@"lzma2"]) {
+            return kSZCompressionEstimateLZMA2;
+        }
+        if ([methodName isEqualToString:@"ppmd"]) {
+            return settings.format == SZArchiveFormatZip ? kSZCompressionEstimatePPMdZip : kSZCompressionEstimatePPMd;
+        }
+        if ([methodName isEqualToString:@"bzip2"]) {
+            return kSZCompressionEstimateBZip2;
+        }
+        if ([methodName isEqualToString:@"deflate"]) {
+            return kSZCompressionEstimateDeflate;
+        }
+        if ([methodName isEqualToString:@"deflate64"]) {
+            return kSZCompressionEstimateDeflate64;
+        }
+        if ([methodName isEqualToString:@"gnu"]) {
+            return kSZCompressionEstimateGnu;
+        }
+        if ([methodName isEqualToString:@"posix"]) {
+            return kSZCompressionEstimatePosix;
+        }
+    }
+
+    switch (settings.format) {
+        case SZArchiveFormatGZip:
+            return kSZCompressionEstimateDeflate;
+        case SZArchiveFormatBZip2:
+            return kSZCompressionEstimateBZip2;
+        case SZArchiveFormatXz:
+            return kSZCompressionEstimateLZMA2;
+        default:
+            break;
+    }
+
+    switch (settings.method) {
+        case SZCompressionMethodLZMA:
+            return kSZCompressionEstimateLZMA;
+        case SZCompressionMethodLZMA2:
+            return kSZCompressionEstimateLZMA2;
+        case SZCompressionMethodPPMd:
+            return settings.format == SZArchiveFormatZip ? kSZCompressionEstimatePPMdZip : kSZCompressionEstimatePPMd;
+        case SZCompressionMethodBZip2:
+            return kSZCompressionEstimateBZip2;
+        case SZCompressionMethodDeflate:
+            return kSZCompressionEstimateDeflate;
+        case SZCompressionMethodDeflate64:
+            return kSZCompressionEstimateDeflate64;
+        case SZCompressionMethodCopy:
+            return kSZCompressionEstimateCopy;
+    }
+
+    return -1;
+}
+
+static SZCompressionEstimateRamInfo SZCompressionEstimateGetRamInfo() {
+    size_t size = (size_t)sizeof(size_t) << 29;
+    const bool isDefined = NWindows::NSystem::GetRamSize(size);
+
+    if (sizeof(size_t) * 8 == 32) {
+        const UInt32 limit2 = (UInt32)7 << 28;
+        if (size > limit2) {
+            size = limit2;
+        }
+    }
+
+    const size_t kMinUseSize = (size_t)1 << 26;
+    if (size < kMinUseSize) {
+        size = kMinUseSize;
+    }
+
+    SZCompressionEstimateRamInfo info;
+    info.IsDefined = isDefined;
+    info.UsageAuto = Calc_From_Val_Percents(size, 80);
+    return info;
+}
+
+static void SZCompressionEstimateGetCpuThreadCounts(UInt32 &numCPUs,
+                                                    UInt32 &numHardwareThreads) {
+    numCPUs = 1;
+    numHardwareThreads = 1;
+
+    NWindows::NSystem::CProcessAffinity threadsInfo;
+    threadsInfo.InitST();
+
+#ifdef _WIN32
+#ifndef Z7_ST
+    threadsInfo.Get_and_return_NumProcessThreads_and_SysThreads(numCPUs, numHardwareThreads);
+#endif
+#else
+    if (threadsInfo.Get()) {
+        numCPUs = threadsInfo.GetNumProcessThreads();
+        numHardwareThreads = threadsInfo.GetNumSystemThreads();
+    } else {
+        numCPUs = NWindows::NSystem::GetNumberOfProcessors();
+        numHardwareThreads = numCPUs;
+    }
+
+    if (numCPUs == 0) {
+        numCPUs = 1;
+    }
+    if (numHardwareThreads < numCPUs) {
+        numHardwareThreads = numCPUs;
+    }
+#endif
+}
+
+static UInt64 SZCompressionEstimateAutoDictionary(int methodID, UInt32 level) {
+    switch (methodID) {
+        case kSZCompressionEstimateLZMA:
+        case kSZCompressionEstimateLZMA2:
+            return level <= 4
+                ? (UInt64)1 << (level * 2 + 16)
+                : level <= sizeof(size_t) / 2 + 4
+                    ? (UInt64)1 << (level + 20)
+                    : (UInt64)1 << (sizeof(size_t) / 2 + 24);
+
+        case kSZCompressionEstimatePPMd:
+        case kSZCompressionEstimatePPMdZip:
+            return (UInt64)1 << (level + 19);
+
+        case kSZCompressionEstimateDeflate:
+            return (UInt64)1 << 15;
+
+        case kSZCompressionEstimateDeflate64:
+            return (UInt64)1 << 16;
+
+        case kSZCompressionEstimateBZip2:
+            if (level >= 5) {
+                return (UInt64)900 << 10;
+            }
+            if (level >= 3) {
+                return (UInt64)500 << 10;
+            }
+            return (UInt64)100 << 10;
+
+        case kSZCompressionEstimateCopy:
+            return 0;
+
+        default:
+            return (UInt64)-1;
+    }
+}
+
+static UInt64 SZCompressionEstimateDictionary(SZCompressionSettings *settings,
+                                              int methodID,
+                                              UInt32 level) {
+    if (settings.dictionarySize > 0) {
+        return settings.dictionarySize;
+    }
+    return SZCompressionEstimateAutoDictionary(methodID, level);
+}
+
+static UInt64 SZCompressionEstimateMemoryUsage_Threads_Dict_DecompMem(SZArchiveFormat format,
+                                                                      int methodID,
+                                                                      UInt32 level,
+                                                                      UInt32 numThreads,
+                                                                      UInt64 dict64,
+                                                                      UInt64 &decompressMemory) {
+                                                                    decompressMemory = (UInt64)-1;
+
+    if (level == 0) {
+        decompressMemory = (UInt64)1 << 20;
+        return decompressMemory;
+    }
+
+    UInt64 size = 0;
+    if (SZCompressionEstimateFormatSupportsFilters(format) && level >= 9) {
+        size += (12 << 20) * 2 + (5 << 20);
+    }
+
+    UInt32 numMainZipThreads = 1;
+    if (SZCompressionEstimateIsZipFormat(format)) {
+        UInt32 numSubThreads = 1;
+        if (methodID == kSZCompressionEstimateLZMA && numThreads > 1 && level >= 5) {
+            numSubThreads = 2;
+        }
+        numMainZipThreads = numThreads / numSubThreads;
+        if (numMainZipThreads > 1) {
+            size += (UInt64)numMainZipThreads * ((size_t)sizeof(size_t) << 23);
+        } else {
+            numMainZipThreads = 1;
+        }
+    }
+
+    if (dict64 == (UInt64)-1) {
+        return (UInt64)-1;
+    }
+
+    switch (methodID) {
+        case kSZCompressionEstimateLZMA:
+        case kSZCompressionEstimateLZMA2: {
+            const UInt32 dict = (dict64 >= kSZCompressionEstimateLzmaMaxDictSize
+                ? kSZCompressionEstimateLzmaMaxDictSize
+                : (UInt32)dict64);
+
+            UInt32 hashSize = dict - 1;
+            hashSize |= (hashSize >> 1);
+            hashSize |= (hashSize >> 2);
+            hashSize |= (hashSize >> 4);
+            hashSize |= (hashSize >> 8);
+            hashSize >>= 1;
+            if (hashSize >= (1 << 24)) {
+                hashSize >>= 1;
+            }
+            hashSize |= (1 << 16) - 1;
+            if (level < 5) {
+                hashSize |= (256 << 10) - 1;
+            }
+            hashSize++;
+
+            UInt64 size1 = (UInt64)hashSize * 4;
+            size1 += (UInt64)dict * 4;
+            if (level >= 5) {
+                size1 += (UInt64)dict * 4;
+            }
+            size1 += (2 << 20);
+
+            UInt32 numThreads1 = 1;
+            if (numThreads > 1 && level >= 5) {
+                size1 += (2 << 20) + (4 << 20);
+                numThreads1 = 2;
+            }
+
+            UInt32 numBlockThreads = numThreads / numThreads1;
+            UInt64 chunkSize = 0;
+            if (methodID == kSZCompressionEstimateLZMA2 && numBlockThreads != 1) {
+                chunkSize = (UInt64)dict << 2;
+                const UInt32 kMinSize = (UInt32)1 << 20;
+                const UInt32 kMaxSize = (UInt32)1 << 28;
+                if (chunkSize < kMinSize) {
+                    chunkSize = kMinSize;
+                }
+                if (chunkSize > kMaxSize) {
+                    chunkSize = kMaxSize;
+                }
+                if (chunkSize < dict) {
+                    chunkSize = dict;
+                }
+                chunkSize += (kMinSize - 1);
+                chunkSize &= ~(UInt64)(kMinSize - 1);
+            }
+
+            if (chunkSize == 0) {
+                const UInt32 kBlockSizeMax = (UInt32)0 - (UInt32)(1 << 16);
+                UInt64 blockSize = (UInt64)dict + (1 << 16)
+                    + (numThreads1 > 1 ? (1 << 20) : 0);
+                blockSize += (blockSize >> (blockSize < ((UInt32)1 << 30) ? 1 : 2));
+                if (blockSize >= kBlockSizeMax) {
+                    blockSize = kBlockSizeMax;
+                }
+                size += numBlockThreads * (size1 + blockSize);
+            } else {
+                size += numBlockThreads * (size1 + chunkSize);
+                const UInt32 numPackChunks = numBlockThreads + (numBlockThreads / 8) + 1;
+                if (chunkSize < ((UInt32)1 << 26)) {
+                    numBlockThreads++;
+                }
+                if (chunkSize < ((UInt32)1 << 24)) {
+                    numBlockThreads++;
+                }
+                if (chunkSize < ((UInt32)1 << 22)) {
+                    numBlockThreads++;
+                }
+                size += numPackChunks * chunkSize;
+            }
+
+            decompressMemory = dict + (2 << 20);
+            return size;
+        }
+
+        case kSZCompressionEstimatePPMd:
+            decompressMemory = dict64 + (2 << 20);
+            return size + decompressMemory;
+
+        case kSZCompressionEstimateDeflate:
+        case kSZCompressionEstimateDeflate64: {
+            UInt64 size1 = 3 << 20;
+            size1 += (1 << 20);
+            size += size1 * numMainZipThreads;
+            decompressMemory = (2 << 20);
+            return size;
+        }
+
+        case kSZCompressionEstimateBZip2:
+            decompressMemory = (7 << 20);
+            return size + ((UInt64)10 << 20) * numThreads;
+
+        case kSZCompressionEstimatePPMdZip:
+            decompressMemory = dict64 + (2 << 20);
+            return size + (UInt64)decompressMemory * numThreads;
+
+        default:
+            return (UInt64)-1;
+    }
+}
+
+static UInt32 SZCompressionEstimateAutoThreads(SZCompressionSettings *settings,
+                                               int methodID,
+                                               UInt32 level,
+                                               UInt64 dict64,
+                                               const SZCompressionEstimateRamInfo &ramInfo) {
+    if (!SZCompressionEstimateFormatSupportsThreads(settings.format)) {
+        return 1;
+    }
+
+    UInt32 numCPUs = 1;
+    UInt32 numHardwareThreads = 1;
+    SZCompressionEstimateGetCpuThreadCounts(numCPUs, numHardwareThreads);
+
+    UInt32 numAlgoThreadsMax = numHardwareThreads * 2;
+    if (SZCompressionEstimateIsZipFormat(settings.format)) {
+        numAlgoThreadsMax = 8 << (sizeof(size_t) / 2);
+    } else if (SZCompressionEstimateIsXzFormat(settings.format)) {
+        numAlgoThreadsMax = 256 * 2;
+    } else {
+        switch (methodID) {
+            case kSZCompressionEstimateLZMA:
+                numAlgoThreadsMax = 2;
+                break;
+            case kSZCompressionEstimateLZMA2:
+                numAlgoThreadsMax = 256 * 2;
+                break;
+            case kSZCompressionEstimateBZip2:
+                numAlgoThreadsMax = 64;
+                break;
+            case kSZCompressionEstimateCopy:
+            case kSZCompressionEstimatePPMd:
+            case kSZCompressionEstimateDeflate:
+            case kSZCompressionEstimateDeflate64:
+            case kSZCompressionEstimatePPMdZip:
+                numAlgoThreadsMax = 1;
+                break;
+            default:
+                break;
+        }
+    }
+
+    UInt32 autoThreads = numCPUs;
+    if (autoThreads > numAlgoThreadsMax) {
+        autoThreads = numAlgoThreadsMax;
+    }
+
+    if (ramInfo.IsDefined && autoThreads > 1) {
+        if (SZCompressionEstimateIsZipFormat(settings.format)) {
+            for (; autoThreads > 1; autoThreads--) {
+                UInt64 decompressMemory;
+                const UInt64 usage = SZCompressionEstimateMemoryUsage_Threads_Dict_DecompMem(settings.format,
+                                                                                            methodID,
+                                                                                            level,
+                                                                                            autoThreads,
+                                                                                            dict64,
+                                                                                            decompressMemory);
+                if (usage <= ramInfo.UsageAuto) {
+                    break;
+                }
+            }
+        } else if (methodID == kSZCompressionEstimateLZMA2) {
+            const UInt32 numThreads1 = (level >= 5 ? 2 : 1);
+            UInt32 numBlockThreads = autoThreads / numThreads1;
+            for (; numBlockThreads > 1; numBlockThreads--) {
+                autoThreads = numBlockThreads * numThreads1;
+                UInt64 decompressMemory;
+                const UInt64 usage = SZCompressionEstimateMemoryUsage_Threads_Dict_DecompMem(settings.format,
+                                                                                            methodID,
+                                                                                            level,
+                                                                                            autoThreads,
+                                                                                            dict64,
+                                                                                            decompressMemory);
+                if (usage <= ramInfo.UsageAuto) {
+                    break;
+                }
+            }
+            autoThreads = numBlockThreads * numThreads1;
+        }
+    }
+
+    return autoThreads;
+}
+
+} // namespace
 
 // ============================================================
 // SZArchive — main class
@@ -184,6 +651,46 @@ static NSError *SZOpenArchiveErrorFromResult(HRESULT result,
 }
 
 @implementation SZArchive
+
++ (SZCompressionResourceInfo *)compressionResourceEstimateForSettings:(SZCompressionSettings *)settings {
+    SZCompressionResourceInfo *info = [SZCompressionResourceInfo new];
+    if (!settings || !SZCompressionEstimateFormatSupportsMemoryUse(settings.format)) {
+        return info;
+    }
+
+    const int methodID = SZCompressionEstimateMethodID(settings);
+    if (methodID < 0) {
+        return info;
+    }
+
+    const UInt32 level = SZCompressionEstimateLevel(settings);
+    const UInt64 dict64 = SZCompressionEstimateDictionary(settings, methodID, level);
+    const SZCompressionEstimateRamInfo ramInfo = SZCompressionEstimateGetRamInfo();
+
+    UInt32 numThreads = settings.numThreads;
+    if (!SZCompressionEstimateFormatSupportsThreads(settings.format)) {
+        numThreads = 1;
+    } else if (numThreads == 0) {
+        numThreads = SZCompressionEstimateAutoThreads(settings, methodID, level, dict64, ramInfo);
+    }
+
+    UInt64 decompressionMemory;
+    const UInt64 compressionMemory = SZCompressionEstimateMemoryUsage_Threads_Dict_DecompMem(settings.format,
+                                                                                              methodID,
+                                                                                              level,
+                                                                                              numThreads,
+                                                                                              dict64,
+                                                                                              decompressionMemory);
+    if (compressionMemory != (UInt64)-1) {
+        info.compressionMemoryIsDefined = YES;
+        info.compressionMemory = compressionMemory;
+    }
+    if (decompressionMemory != (UInt64)-1) {
+        info.decompressionMemoryIsDefined = YES;
+        info.decompressionMemory = decompressionMemory;
+    }
+    return info;
+}
 
 - (void)clearCachedPassword {
     _cachedPassword = nil;
@@ -639,6 +1146,21 @@ static void SZAddCompressionPropertySize(CObjectVector<CProperty> &properties,
     SZAddCompressionProperty(properties, name, text);
 }
 
+static void SZAddCompressionPropertyBool(CObjectVector<CProperty> &properties,
+                                         const wchar_t *name,
+                                         bool value) {
+    SZAddCompressionProperty(properties, name, UString(value ? L"on" : L"off"));
+}
+
+static CBoolPair SZCompressionBoolPair(SZCompressionBoolSetting setting) {
+    CBoolPair pair;
+    if (setting != SZCompressionBoolSettingNotDefined) {
+        pair.Def = true;
+        pair.Val = (setting == SZCompressionBoolSettingOn);
+    }
+    return pair;
+}
+
 static void SZSplitOptionsToStrings(const UString &src, UStringVector &strings) {
     SplitString(src, strings);
     FOR_VECTOR (i, strings)
@@ -777,6 +1299,16 @@ static bool SZParseVolumeSizes(const UString &text, CRecordVector<UInt64> &value
     options.OpenShareForWrite = s.openSharedFiles;
     options.DeleteAfterCompressing = s.deleteAfterCompression;
     options.SfxMode = s.createSFX;
+    options.SymLinks = SZCompressionBoolPair(s.storeSymbolicLinks);
+    options.HardLinks = SZCompressionBoolPair(s.storeHardLinks);
+    options.AltStreams = SZCompressionBoolPair(s.storeAlternateDataStreams);
+    options.NtSecurity = SZCompressionBoolPair(s.storeFileSecurity);
+    if (s.preserveSourceAccessTime != SZCompressionBoolSettingNotDefined) {
+        options.PreserveATime = (s.preserveSourceAccessTime == SZCompressionBoolSettingOn);
+    }
+    if (s.setArchiveTimeToLatestFile != SZCompressionBoolSettingNotDefined) {
+        options.SetArcMTime = (s.setArchiveTimeToLatestFile == SZCompressionBoolSettingOn);
+    }
 
     UString fmtName;
     for (const char *c = fmts[fi]; *c; c++) fmtName += (wchar_t)(unsigned char)*c;
@@ -854,6 +1386,27 @@ static bool SZParseVolumeSizes(const UString &text, CRecordVector<UInt64> &value
         options.MethodMode.Properties.Add(p2);
     }
 
+    if (s.storeModificationTime != SZCompressionBoolSettingNotDefined) {
+        SZAddCompressionPropertyBool(options.MethodMode.Properties,
+                                     L"tm",
+                                     s.storeModificationTime == SZCompressionBoolSettingOn);
+    }
+    if (s.storeCreationTime != SZCompressionBoolSettingNotDefined) {
+        SZAddCompressionPropertyBool(options.MethodMode.Properties,
+                                     L"tc",
+                                     s.storeCreationTime == SZCompressionBoolSettingOn);
+    }
+    if (s.storeAccessTime != SZCompressionBoolSettingNotDefined) {
+        SZAddCompressionPropertyBool(options.MethodMode.Properties,
+                                     L"ta",
+                                     s.storeAccessTime == SZCompressionBoolSettingOn);
+    }
+    if (s.timePrecision != SZCompressionTimePrecisionAutomatic) {
+        SZAddCompressionPropertyUInt32(options.MethodMode.Properties,
+                                       L"tp",
+                                       (UInt32)s.timePrecision);
+    }
+
     if (optionStrings.Size() > 0) {
         SZParseAndAddCompressionProperties(options.MethodMode.Properties, optionStrings);
     }
@@ -910,7 +1463,37 @@ static bool SZParseVolumeSizes(const UString &text, CRecordVector<UInt64> &value
         SZFormatInfo *info = [SZFormatInfo new]; info.name = ToNS(ai.Name);
         NSMutableArray *exts = [NSMutableArray array];
         for (unsigned j = 0; j < ai.Exts.Size(); j++) [exts addObject:ToNS(ai.Exts[j].Ext)];
-        info.extensions = exts; info.canWrite = ai.UpdateEnabled; [arr addObject:info];
+        info.extensions = exts;
+        info.canWrite = ai.UpdateEnabled;
+        info.supportsSymbolicLinks = ai.Flags_SymLinks();
+        info.supportsHardLinks = ai.Flags_HardLinks();
+        info.supportsAlternateDataStreams = ai.Flags_AltStreams();
+        info.supportsFileSecurity = ai.Flags_NtSecurity();
+        info.supportsModificationTime = ai.Flags_MTime();
+        info.supportsCreationTime = ai.Flags_CTime();
+        info.supportsAccessTime = ai.Flags_ATime();
+        info.defaultsModificationTime = ai.Flags_MTime_Default();
+        info.defaultsCreationTime = ai.Flags_CTime_Default();
+        info.defaultsAccessTime = ai.Flags_ATime_Default();
+        info.keepsName = ai.Flags_KeepName();
+
+        UInt32 defaultTimePrecision = ai.Get_DefaultTimePrec();
+        if (ai.Is_GZip()) {
+            defaultTimePrecision = (UInt32)SZCompressionTimePrecisionUnix;
+        }
+
+        UInt32 supportedTimePrecisionMask = ai.Get_TimePrecFlags();
+        if (defaultTimePrecision < 32) {
+            supportedTimePrecisionMask |= ((UInt32)1 << defaultTimePrecision);
+        }
+        info.supportedTimePrecisionMask = supportedTimePrecisionMask;
+        if (defaultTimePrecision <= (UInt32)SZCompressionTimePrecisionLinux) {
+            info.defaultTimePrecision = (SZCompressionTimePrecision)defaultTimePrecision;
+        } else {
+            info.defaultTimePrecision = SZCompressionTimePrecisionAutomatic;
+        }
+
+        [arr addObject:info];
     }
     return arr;
 }

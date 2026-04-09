@@ -5,7 +5,7 @@ struct CompressDialogResult {
     let archiveURL: URL
 }
 
-final class CompressDialogController: NSObject, NSTextFieldDelegate {
+final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxDelegate {
 
     private struct Option<Value: Equatable>: Equatable {
         let title: String
@@ -33,6 +33,54 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
         let supportsThreads: Bool
         let encryptionOptions: [Option<SZEncryptionMethod>]
         let supportsEncryptFileNames: Bool
+    }
+
+    private struct AdvancedBoolPairState: Equatable {
+        var isSet: Bool
+        var value: Bool
+    }
+
+    private struct AdvancedTimePrecisionState: Equatable {
+        var isSet: Bool
+        var value: SZCompressionTimePrecision
+    }
+
+    private struct AdvancedOptionsState: Equatable {
+        var storeSymbolicLinks: Bool
+        var storeHardLinks: Bool
+        var storeAlternateDataStreams: Bool
+        var storeFileSecurity: Bool
+        var preserveSourceAccessTime: Bool
+        var storeModificationTime: AdvancedBoolPairState
+        var storeCreationTime: AdvancedBoolPairState
+        var storeAccessTime: AdvancedBoolPairState
+        var setArchiveTimeToLatestFile: AdvancedBoolPairState
+        var timePrecision: AdvancedTimePrecisionState
+    }
+
+    private struct AdvancedOptionsCapabilities {
+        var supportsSymbolicLinks: Bool
+        var supportsHardLinks: Bool
+        var supportsAlternateDataStreams: Bool
+        var supportsFileSecurity: Bool
+        var supportsModificationTime: Bool
+        var supportsCreationTime: Bool
+        var supportsAccessTime: Bool
+        var defaultModificationTime: Bool
+        var defaultCreationTime: Bool
+        var defaultAccessTime: Bool
+        var keepsName: Bool
+        var supportedTimePrecisions: [SZCompressionTimePrecision]
+        var defaultTimePrecision: SZCompressionTimePrecision
+
+        var hasMetadataControls: Bool {
+            supportsSymbolicLinks || supportsHardLinks || supportsAlternateDataStreams || supportsFileSecurity
+        }
+    }
+
+    private struct CompressionResourceEstimate {
+        let compressionMemory: UInt64?
+        let decompressionMemory: UInt64?
     }
 
     private enum ArchivePathHistory {
@@ -64,6 +112,21 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
         private static let deleteAfterKey = "FileManager.CompressDeleteAfter"
         private static let encryptNamesKey = "FileManager.CompressEncryptNames"
         private static let showPasswordKey = "FileManager.CompressShowPassword"
+        private static let storeSymbolicLinksKey = "FileManager.CompressStoreSymbolicLinks"
+        private static let storeHardLinksKey = "FileManager.CompressStoreHardLinks"
+        private static let storeAlternateDataStreamsKey = "FileManager.CompressStoreAlternateDataStreams"
+        private static let storeFileSecurityKey = "FileManager.CompressStoreFileSecurity"
+        private static let preserveSourceAccessTimeKey = "FileManager.CompressPreserveSourceAccessTime"
+        private static let storeModificationTimeKey = "FileManager.CompressStoreModificationTime"
+        private static let storeModificationTimeSetKey = "FileManager.CompressStoreModificationTimeSet"
+        private static let storeCreationTimeKey = "FileManager.CompressStoreCreationTime"
+        private static let storeCreationTimeSetKey = "FileManager.CompressStoreCreationTimeSet"
+        private static let storeAccessTimeKey = "FileManager.CompressStoreAccessTime"
+        private static let storeAccessTimeSetKey = "FileManager.CompressStoreAccessTimeSet"
+        private static let setArchiveTimeToLatestFileKey = "FileManager.CompressSetArchiveTimeToLatestFile"
+        private static let setArchiveTimeToLatestFileSetKey = "FileManager.CompressSetArchiveTimeToLatestFileSet"
+        private static let timePrecisionKey = "FileManager.CompressTimePrecision"
+        private static let timePrecisionSetKey = "FileManager.CompressTimePrecisionSet"
 
         static func format(defaultValue: String,
                            allowedValues: [String]) -> String {
@@ -104,6 +167,119 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
 
         static func showPassword() -> Bool {
             defaults.bool(forKey: showPasswordKey)
+        }
+
+        static func hasStoredAdvancedOptions() -> Bool {
+            let keys = [
+                storeSymbolicLinksKey,
+                storeHardLinksKey,
+                storeAlternateDataStreamsKey,
+                storeFileSecurityKey,
+                preserveSourceAccessTimeKey,
+                storeModificationTimeKey,
+                storeModificationTimeSetKey,
+                storeCreationTimeKey,
+                storeCreationTimeSetKey,
+                storeAccessTimeKey,
+                storeAccessTimeSetKey,
+                setArchiveTimeToLatestFileKey,
+                setArchiveTimeToLatestFileSetKey,
+                timePrecisionKey,
+                timePrecisionSetKey,
+            ]
+            return keys.contains { defaults.object(forKey: $0) != nil }
+        }
+
+        private static func bool(forKey key: String,
+                                 defaultValue: Bool) -> Bool {
+            guard defaults.object(forKey: key) != nil else {
+                return defaultValue
+            }
+            return defaults.bool(forKey: key)
+        }
+
+        private static func advancedBoolPairState(valueKey: String,
+                                                  setKey: String,
+                                                  defaultValue: Bool) -> AdvancedBoolPairState {
+            let storedValueExists = defaults.object(forKey: valueKey) != nil
+            let value = bool(forKey: valueKey, defaultValue: defaultValue)
+
+            let isSet: Bool
+            if defaults.object(forKey: setKey) != nil {
+                isSet = defaults.bool(forKey: setKey)
+            } else if storedValueExists {
+                isSet = (value != defaultValue)
+            } else {
+                isSet = false
+            }
+
+            return AdvancedBoolPairState(isSet: isSet,
+                                         value: isSet ? value : defaultValue)
+        }
+
+        private static func advancedTimePrecisionState(defaults fallbackState: AdvancedTimePrecisionState) -> AdvancedTimePrecisionState {
+            let rawTimePrecision = defaults.object(forKey: timePrecisionKey) as? Int
+            let value = rawTimePrecision
+                .flatMap(SZCompressionTimePrecision.init(rawValue:))
+                ?? fallbackState.value
+
+            let isSet: Bool
+            if defaults.object(forKey: timePrecisionSetKey) != nil {
+                isSet = defaults.bool(forKey: timePrecisionSetKey)
+            } else if rawTimePrecision != nil {
+                isSet = (value.rawValue != fallbackState.value.rawValue)
+            } else {
+                isSet = false
+            }
+
+            return AdvancedTimePrecisionState(isSet: isSet,
+                                              value: isSet ? value : fallbackState.value)
+        }
+
+        static func advancedOptions(defaults fallbackState: AdvancedOptionsState) -> AdvancedOptionsState {
+            return AdvancedOptionsState(
+                storeSymbolicLinks: bool(forKey: storeSymbolicLinksKey,
+                                         defaultValue: fallbackState.storeSymbolicLinks),
+                storeHardLinks: bool(forKey: storeHardLinksKey,
+                                     defaultValue: fallbackState.storeHardLinks),
+                storeAlternateDataStreams: bool(forKey: storeAlternateDataStreamsKey,
+                                                defaultValue: fallbackState.storeAlternateDataStreams),
+                storeFileSecurity: bool(forKey: storeFileSecurityKey,
+                                        defaultValue: fallbackState.storeFileSecurity),
+                preserveSourceAccessTime: bool(forKey: preserveSourceAccessTimeKey,
+                                               defaultValue: fallbackState.preserveSourceAccessTime),
+                storeModificationTime: advancedBoolPairState(valueKey: storeModificationTimeKey,
+                                                             setKey: storeModificationTimeSetKey,
+                                                             defaultValue: fallbackState.storeModificationTime.value),
+                storeCreationTime: advancedBoolPairState(valueKey: storeCreationTimeKey,
+                                                         setKey: storeCreationTimeSetKey,
+                                                         defaultValue: fallbackState.storeCreationTime.value),
+                storeAccessTime: advancedBoolPairState(valueKey: storeAccessTimeKey,
+                                                       setKey: storeAccessTimeSetKey,
+                                                       defaultValue: fallbackState.storeAccessTime.value),
+                setArchiveTimeToLatestFile: advancedBoolPairState(valueKey: setArchiveTimeToLatestFileKey,
+                                                                  setKey: setArchiveTimeToLatestFileSetKey,
+                                                                  defaultValue: fallbackState.setArchiveTimeToLatestFile.value),
+                timePrecision: advancedTimePrecisionState(defaults: fallbackState.timePrecision)
+            )
+        }
+
+        static func recordAdvancedOptions(_ state: AdvancedOptionsState) {
+            defaults.set(state.storeSymbolicLinks, forKey: storeSymbolicLinksKey)
+            defaults.set(state.storeHardLinks, forKey: storeHardLinksKey)
+            defaults.set(state.storeAlternateDataStreams, forKey: storeAlternateDataStreamsKey)
+            defaults.set(state.storeFileSecurity, forKey: storeFileSecurityKey)
+            defaults.set(state.preserveSourceAccessTime, forKey: preserveSourceAccessTimeKey)
+            defaults.set(state.storeModificationTime.value, forKey: storeModificationTimeKey)
+            defaults.set(state.storeModificationTime.isSet, forKey: storeModificationTimeSetKey)
+            defaults.set(state.storeCreationTime.value, forKey: storeCreationTimeKey)
+            defaults.set(state.storeCreationTime.isSet, forKey: storeCreationTimeSetKey)
+            defaults.set(state.storeAccessTime.value, forKey: storeAccessTimeKey)
+            defaults.set(state.storeAccessTime.isSet, forKey: storeAccessTimeSetKey)
+            defaults.set(state.setArchiveTimeToLatestFile.value, forKey: setArchiveTimeToLatestFileKey)
+            defaults.set(state.setArchiveTimeToLatestFile.isSet, forKey: setArchiveTimeToLatestFileSetKey)
+            defaults.set(state.timePrecision.value.rawValue, forKey: timePrecisionKey)
+            defaults.set(state.timePrecision.isSet, forKey: timePrecisionSetKey)
         }
 
         static func record(format: String,
@@ -198,7 +374,25 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
         }
     }
 
+    private final class ActionHandler: NSObject {
+        private let handler: () -> Void
+
+        init(handler: @escaping () -> Void) {
+            self.handler = handler
+        }
+
+        @objc func invoke(_ sender: Any?) {
+            handler()
+        }
+    }
+
     private static let knownArchiveExtensions: Set<String> = ["7z", "zip", "tar", "gz", "gzip", "bz2", "bzip2", "xz", "wim", "zst", "zstd"]
+    private static let knownTimePrecisionValues: [SZCompressionTimePrecision] = [
+        SZCompressionTimePrecision(rawValue: 0)!,
+        SZCompressionTimePrecision(rawValue: 1)!,
+        SZCompressionTimePrecision(rawValue: 2)!,
+        SZCompressionTimePrecision(rawValue: 3)!,
+    ]
     private static let formLabelWidth: CGFloat = 126
     private static let leftColumnWidth: CGFloat = 320
     private static let rightColumnWidth: CGFloat = 364
@@ -347,7 +541,9 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
     private let baseDirectory: URL
     private let messageText: String?
     private let suggestedBaseName: String
+    private let supportedFormatInfoByName: [String: SZFormatInfo]
     private let availableFormats: [FormatOption]
+    private let hasStoredAdvancedPreferences: Bool
 
     private var archivePathPicker: ArchivePathPicker?
     private weak var currentDialogWindow: NSWindow?
@@ -369,23 +565,48 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
     private weak var deleteAfterCheckbox: NSButton?
     private weak var dictionaryLabel: NSTextField?
     private weak var wordLabel: NSTextField?
+    private weak var threadInfoLabel: NSTextField?
+    private weak var compressionMemoryLabel: NSTextField?
+    private weak var decompressionMemoryLabel: NSTextField?
+    private weak var compressionMemoryRow: NSView?
+    private weak var decompressionMemoryRow: NSView?
     private weak var securePasswordField: NSSecureTextField?
     private weak var plainPasswordField: NSTextField?
     private weak var secureConfirmPasswordField: NSSecureTextField?
     private weak var plainConfirmPasswordField: NSTextField?
     private weak var showPasswordCheckbox: NSButton?
+    private weak var advancedOptionsSummaryLabel: NSTextField?
+    private var advancedOptionsState = AdvancedOptionsState(storeSymbolicLinks: false,
+                                                            storeHardLinks: false,
+                                                            storeAlternateDataStreams: false,
+                                                            storeFileSecurity: false,
+                                                            preserveSourceAccessTime: false,
+                                                            storeModificationTime: AdvancedBoolPairState(isSet: false,
+                                                                                                         value: true),
+                                                            storeCreationTime: AdvancedBoolPairState(isSet: false,
+                                                                                                     value: false),
+                                                            storeAccessTime: AdvancedBoolPairState(isSet: false,
+                                                                                                   value: false),
+                                                            setArchiveTimeToLatestFile: AdvancedBoolPairState(isSet: false,
+                                                                                                              value: false),
+                                                            timePrecision: AdvancedTimePrecisionState(isSet: false,
+                                                                                                      value: SZCompressionTimePrecision(rawValue: -1)!))
+    private var advancedOptionsWereCustomized = false
 
     init(sourceURLs: [URL],
          baseDirectory: URL? = nil,
          message: String? = nil) {
         let normalizedSourceURLs = sourceURLs.map { $0.standardizedFileURL }
         let resolvedBaseDirectory = (baseDirectory ?? Self.suggestedBaseDirectory(for: normalizedSourceURLs)).standardizedFileURL
+        let supportedFormatInfoByName = Self.makeSupportedFormatInfoByName()
 
         self.sourceURLs = normalizedSourceURLs
         self.baseDirectory = resolvedBaseDirectory
         self.suggestedBaseName = Self.suggestedArchiveBaseName(for: normalizedSourceURLs,
                                                                baseDirectory: resolvedBaseDirectory)
-        self.availableFormats = Self.makeAvailableFormats()
+        self.supportedFormatInfoByName = supportedFormatInfoByName
+        self.availableFormats = Self.makeAvailableFormats(supportedFormatInfoByName: supportedFormatInfoByName)
+        self.hasStoredAdvancedPreferences = DialogPreferences.hasStoredAdvancedOptions()
         self.messageText = message ?? Self.defaultMessage(for: normalizedSourceURLs,
                                                           baseDirectory: resolvedBaseDirectory)
 
@@ -422,6 +643,11 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
         var selectedPassword = ""
         var selectedConfirmation = ""
         var selectedEncryption = defaultEncryption(for: selectedFormatName)
+        var advancedOptions = DialogPreferences.advancedOptions(
+            defaults: defaultAdvancedOptionsState(for: formatOption(named: selectedFormatName) ?? availableFormats[0],
+                                                 methodName: selectedMethodName)
+        )
+        var advancedOptionsCustomized = hasStoredAdvancedPreferences
 
         while true {
             let archivePathField = NSComboBox(frame: NSRect(x: 0, y: 0, width: 360, height: 26))
@@ -444,14 +670,22 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
             formatPopup.action = #selector(formatChanged(_:))
 
             let levelPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+            levelPopup.target = self
+            levelPopup.action = #selector(compressionSettingsChanged(_:))
             let methodPopup = NSPopUpButton(frame: .zero, pullsDown: false)
             methodPopup.target = self
             methodPopup.action = #selector(methodChanged(_:))
             let dictionaryPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+            dictionaryPopup.target = self
+            dictionaryPopup.action = #selector(compressionSettingsChanged(_:))
             let wordPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+            wordPopup.target = self
+            wordPopup.action = #selector(compressionSettingsChanged(_:))
 
             let solidPopup = NSPopUpButton(frame: .zero, pullsDown: false)
             Self.solidOptions.forEach { solidPopup.addItem(withTitle: $0.title) }
+            solidPopup.target = self
+            solidPopup.action = #selector(compressionSettingsChanged(_:))
 
             let threadField = NSComboBox(frame: NSRect(x: 0, y: 0, width: 140, height: 26))
             threadField.usesDataSource = false
@@ -459,6 +693,24 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
             threadField.isEditable = true
             threadField.addItems(withObjectValues: ["Auto"] + Self.threadChoices())
             threadField.stringValue = selectedThreadText
+            threadField.target = self
+            threadField.action = #selector(compressionSettingsChanged(_:))
+            threadField.delegate = self
+
+            let threadInfoLabel = makeInfoLabel(minWidth: 52)
+            let threadControl = NSStackView(views: [threadField, threadInfoLabel])
+            threadControl.orientation = .horizontal
+            threadControl.alignment = .centerY
+            threadControl.spacing = 6
+
+            let compressionMemoryLabel = makeInfoLabel(minWidth: 132)
+            let decompressionMemoryLabel = makeInfoLabel(minWidth: 132)
+            let compressionMemoryRow = makeFormRow(label: "Compressing memory:",
+                                                   control: compressionMemoryLabel,
+                                                   labelWidth: 152)
+            let decompressionMemoryRow = makeFormRow(label: "Decompressing memory:",
+                                                     control: decompressionMemoryLabel,
+                                                     labelWidth: 152)
 
             let splitVolumesField = NSComboBox(frame: NSRect(x: 0, y: 0, width: 180, height: 26))
             splitVolumesField.usesDataSource = false
@@ -487,6 +739,27 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
             openSharedCheckbox.state = openSharedFiles ? .on : .off
             let deleteAfterCheckbox = NSButton(checkboxWithTitle: "Delete files after compression", target: nil, action: nil)
             deleteAfterCheckbox.state = deleteAfterCompression ? .on : .off
+
+            let advancedOptionsButton = NSButton(title: "Options",
+                                                 target: self,
+                                                 action: #selector(showAdvancedOptions(_:)))
+            advancedOptionsButton.bezelStyle = .rounded
+            advancedOptionsButton.setContentHuggingPriority(.required, for: .horizontal)
+            advancedOptionsButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+            let advancedOptionsSummaryLabel = NSTextField(labelWithString: "")
+            advancedOptionsSummaryLabel.font = .systemFont(ofSize: 11)
+            advancedOptionsSummaryLabel.textColor = .secondaryLabelColor
+            advancedOptionsSummaryLabel.lineBreakMode = .byTruncatingTail
+            advancedOptionsSummaryLabel.cell?.wraps = false
+            advancedOptionsSummaryLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            advancedOptionsSummaryLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+            let advancedOptionsRow = NSStackView(views: [advancedOptionsButton, advancedOptionsSummaryLabel])
+            advancedOptionsRow.orientation = .horizontal
+            advancedOptionsRow.alignment = .centerY
+            advancedOptionsRow.spacing = 8
+            advancedOptionsRow.distribution = .fill
 
             let encryptionPopup = NSPopUpButton(frame: .zero, pullsDown: false)
 
@@ -539,7 +812,9 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
                 makeFormRow(labelField: dictionaryLabel, control: dictionaryPopup),
                 makeFormRow(labelField: wordLabel, control: wordPopup),
                 makeFormRow(label: "Solid block size:", control: solidPopup),
-                makeFormRow(label: "CPU threads:", control: threadField),
+                makeFormRow(label: "CPU threads:", control: threadControl),
+                compressionMemoryRow,
+                decompressionMemoryRow,
                 makeFormRow(label: "Split to volumes:", control: splitVolumesField),
                 makeFormRow(label: "Parameters:", control: parametersField),
             ])
@@ -547,6 +822,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
             let optionsColumn = makeTitledSection(title: "Options", rows: [
                 openSharedCheckbox,
                 deleteAfterCheckbox,
+                advancedOptionsRow,
             ])
 
             let encryptionColumn = makeTitledSection(title: "Encryption", rows: [
@@ -608,11 +884,19 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
             self.deleteAfterCheckbox = deleteAfterCheckbox
             self.dictionaryLabel = dictionaryLabel
             self.wordLabel = wordLabel
+            self.threadInfoLabel = threadInfoLabel
+            self.compressionMemoryLabel = compressionMemoryLabel
+            self.decompressionMemoryLabel = decompressionMemoryLabel
+            self.compressionMemoryRow = compressionMemoryRow
+            self.decompressionMemoryRow = decompressionMemoryRow
             self.securePasswordField = securePasswordField
             self.plainPasswordField = plainPasswordField
             self.secureConfirmPasswordField = secureConfirmPasswordField
             self.plainConfirmPasswordField = plainConfirmPasswordField
             self.showPasswordCheckbox = showPasswordCheckbox
+            self.advancedOptionsSummaryLabel = advancedOptionsSummaryLabel
+            self.advancedOptionsState = advancedOptions
+            self.advancedOptionsWereCustomized = advancedOptionsCustomized
 
             reloadFormatDependentControls(preferredLevel: selectedLevel,
                                           preferredMethodName: selectedMethodName,
@@ -653,11 +937,17 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
                 self.deleteAfterCheckbox = nil
                 self.dictionaryLabel = nil
                 self.wordLabel = nil
+                self.threadInfoLabel = nil
+                self.compressionMemoryLabel = nil
+                self.decompressionMemoryLabel = nil
+                self.compressionMemoryRow = nil
+                self.decompressionMemoryRow = nil
                 self.securePasswordField = nil
                 self.plainPasswordField = nil
                 self.secureConfirmPasswordField = nil
                 self.plainConfirmPasswordField = nil
                 self.showPasswordCheckbox = nil
+                self.advancedOptionsSummaryLabel = nil
             }
 
             guard controller.runModal() == 1 else {
@@ -684,6 +974,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
             encryptNames = encryptNamesCheckbox.state == .on
             openSharedFiles = openSharedCheckbox.state == .on
             deleteAfterCompression = deleteAfterCheckbox.state == .on
+            advancedOptions = advancedOptionsState
+            advancedOptionsCustomized = advancedOptionsWereCustomized
 
             do {
                 let result = try buildResult(archivePath: selectedArchivePath,
@@ -703,7 +995,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
                                              confirmation: selectedConfirmation,
                                              encryptNames: encryptNames,
                                              openSharedFiles: openSharedFiles,
-                                             deleteAfterCompression: deleteAfterCompression)
+                                             deleteAfterCompression: deleteAfterCompression,
+                                             advancedOptions: advancedOptions)
                 ArchivePathHistory.record(result.archiveURL.path)
                 DialogPreferences.record(format: selectedFormatName,
                                          updateMode: selectedUpdateMode,
@@ -712,6 +1005,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
                                          deleteAfterCompression: deleteAfterCompression,
                                          encryptNames: encryptNames,
                                          showPassword: showPassword)
+                DialogPreferences.recordAdvancedOptions(advancedOptions)
                 return result
             } catch {
                 szPresentError(error, for: parentWindow)
@@ -746,6 +1040,14 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
                                       preferredDictionarySize: preferredDictionarySize,
                                       preferredWordSize: preferredWordSize,
                                       preferredEncryption: preferredEncryption)
+
+        if !advancedOptionsWereCustomized,
+           !hasStoredAdvancedPreferences,
+           let format = selectedFormatOption() {
+            advancedOptionsState = defaultAdvancedOptionsState(for: format,
+                                                              methodName: selectedMethodOption()?.methodName)
+            refreshAdvancedOptionsSummary()
+        }
     }
 
     @objc private func methodChanged(_ sender: Any?) {
@@ -753,12 +1055,342 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
         let preferredWordSize = selectedWordOption()?.value
         reloadMethodDependentControls(preferredDictionarySize: preferredDictionarySize,
                                       preferredWordSize: preferredWordSize)
+
+        if !advancedOptionsWereCustomized,
+           !hasStoredAdvancedPreferences,
+           let format = selectedFormatOption() {
+            advancedOptionsState = defaultAdvancedOptionsState(for: format,
+                                                              methodName: selectedMethodOption()?.methodName)
+            refreshAdvancedOptionsSummary()
+        }
     }
 
     @objc private func showPasswordToggled(_ sender: Any?) {
         syncPasswordFields()
         updatePasswordVisibilityUI(moveFocus: true)
         refreshOptionAvailability()
+    }
+
+    @objc private func compressionSettingsChanged(_ sender: Any?) {
+        refreshOptionAvailability()
+    }
+
+    @objc private func showAdvancedOptions(_ sender: Any?) {
+        guard let format = selectedFormatOption() else {
+            return
+        }
+
+        let initialState = effectiveAdvancedOptions(for: format,
+                                                    method: selectedMethodOption(),
+                                                    baseState: advancedOptionsState).state
+        guard let updatedState = runAdvancedOptionsModal(for: format,
+                                                         method: selectedMethodOption(),
+                                                         initialState: initialState) else {
+            return
+        }
+
+        advancedOptionsState = updatedState
+        advancedOptionsWereCustomized = true
+        refreshAdvancedOptionsSummary()
+    }
+
+    private func runAdvancedOptionsModal(for format: FormatOption,
+                                         method: MethodOption?,
+                                         initialState: AdvancedOptionsState) -> AdvancedOptionsState? {
+        let baseCapabilities = baseAdvancedOptionsCapabilities(for: format,
+                                                               methodName: method?.methodName)
+        let effectiveInitialState = effectiveAdvancedOptions(for: format,
+                                                             method: method,
+                                                             baseState: initialState).state
+        let timePrecisionOptions = makeTimePrecisionOptions(for: baseCapabilities)
+
+        let setColumnWidth: CGFloat = 34
+
+        func makeSetCheckbox() -> NSButton {
+            let checkbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+            checkbox.setContentHuggingPriority(.required, for: .horizontal)
+            checkbox.setContentCompressionResistancePriority(.required, for: .horizontal)
+            checkbox.controlSize = .small
+            return checkbox
+        }
+
+        func makeColonLabel() -> NSTextField {
+            let label = NSTextField(labelWithString: ":")
+            label.textColor = .secondaryLabelColor
+            label.alignment = .center
+            label.widthAnchor.constraint(equalToConstant: 6).isActive = true
+            return label
+        }
+
+        func makeSetColumn(setCheckbox: NSButton,
+                           colonLabel: NSTextField) -> NSStackView {
+            let column = NSStackView(views: [setCheckbox, colonLabel])
+            column.orientation = .horizontal
+            column.alignment = .centerY
+            column.spacing = 4
+            column.widthAnchor.constraint(equalToConstant: setColumnWidth).isActive = true
+            return column
+        }
+
+        func makeBoolPairRow(title: String,
+                             state: AdvancedBoolPairState) -> (setCheckbox: NSButton, colonLabel: NSTextField, setColumn: NSStackView, valueCheckbox: NSButton, row: NSStackView) {
+            let setCheckbox = makeSetCheckbox()
+            setCheckbox.state = state.isSet ? .on : .off
+
+            let colonLabel = makeColonLabel()
+            let setColumn = makeSetColumn(setCheckbox: setCheckbox,
+                                          colonLabel: colonLabel)
+
+            let valueCheckbox = NSButton(checkboxWithTitle: title,
+                                         target: nil,
+                                         action: nil)
+            valueCheckbox.state = state.value ? .on : .off
+
+            let row = NSStackView(views: [setColumn, valueCheckbox])
+            row.orientation = .horizontal
+            row.alignment = .centerY
+            row.spacing = 6
+            return (setCheckbox, colonLabel, setColumn, valueCheckbox, row)
+        }
+
+        func selectTimePrecision(_ precision: SZCompressionTimePrecision) {
+            if let selectedIndex = timePrecisionOptions.firstIndex(where: { $0.value.rawValue == precision.rawValue }) {
+                timePrecisionPopup.selectItem(at: selectedIndex)
+            } else if !timePrecisionOptions.isEmpty {
+                timePrecisionPopup.selectItem(at: 0)
+            }
+        }
+
+        func currentSelectedTimePrecision() -> SZCompressionTimePrecision {
+            guard !timePrecisionOptions.isEmpty else {
+                return baseCapabilities.defaultTimePrecision
+            }
+
+            let selectedIndex = max(0, timePrecisionPopup.indexOfSelectedItem)
+            guard timePrecisionOptions.indices.contains(selectedIndex) else {
+                return timePrecisionOptions[0].value
+            }
+            return timePrecisionOptions[selectedIndex].value
+        }
+
+        let symbolicLinksCheckbox = NSButton(checkboxWithTitle: "Store symbolic links",
+                                             target: nil,
+                                             action: nil)
+        symbolicLinksCheckbox.state = effectiveInitialState.storeSymbolicLinks ? .on : .off
+
+        let hardLinksCheckbox = NSButton(checkboxWithTitle: "Store hard links",
+                                         target: nil,
+                                         action: nil)
+        hardLinksCheckbox.state = effectiveInitialState.storeHardLinks ? .on : .off
+
+        let alternateDataStreamsCheckbox = NSButton(checkboxWithTitle: "Store alternate data streams",
+                                                    target: nil,
+                                                    action: nil)
+        alternateDataStreamsCheckbox.state = effectiveInitialState.storeAlternateDataStreams ? .on : .off
+
+        let fileSecurityCheckbox = NSButton(checkboxWithTitle: "Store file security",
+                                            target: nil,
+                                            action: nil)
+        fileSecurityCheckbox.state = effectiveInitialState.storeFileSecurity ? .on : .off
+
+        let preserveAccessTimeCheckbox = NSButton(checkboxWithTitle: "Do not change source files last access time",
+                                                  target: nil,
+                                                  action: nil)
+        preserveAccessTimeCheckbox.state = effectiveInitialState.preserveSourceAccessTime ? .on : .off
+
+        let timePrecisionSetCheckbox = makeSetCheckbox()
+        timePrecisionSetCheckbox.state = effectiveInitialState.timePrecision.isSet ? .on : .off
+        let timePrecisionColonLabel = makeColonLabel()
+        let timePrecisionSetColumn = makeSetColumn(setCheckbox: timePrecisionSetCheckbox,
+                               colonLabel: timePrecisionColonLabel)
+
+        let timePrecisionLabel = NSTextField(labelWithString: "Timestamp precision:")
+        timePrecisionLabel.textColor = .labelColor
+
+        let timePrecisionPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        populate(timePrecisionPopup, with: timePrecisionOptions.map(\.title))
+        selectTimePrecision(effectiveInitialState.timePrecision.value)
+        timePrecisionPopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
+
+        let timePrecisionContent = NSStackView(views: [timePrecisionLabel, timePrecisionPopup])
+        timePrecisionContent.orientation = .horizontal
+        timePrecisionContent.alignment = .centerY
+        timePrecisionContent.spacing = 8
+
+        let timePrecisionRow = NSStackView(views: [timePrecisionSetColumn, timePrecisionContent])
+        timePrecisionRow.orientation = .horizontal
+        timePrecisionRow.alignment = .centerY
+        timePrecisionRow.spacing = 6
+
+        let modificationTimeRow = makeBoolPairRow(title: "Store modification time",
+                                                  state: effectiveInitialState.storeModificationTime)
+        let creationTimeRow = makeBoolPairRow(title: "Store creation time",
+                                              state: effectiveInitialState.storeCreationTime)
+        let accessTimeRow = makeBoolPairRow(title: "Store last access time",
+                                            state: effectiveInitialState.storeAccessTime)
+        let archiveTimeRow = makeBoolPairRow(title: "Set archive time to latest file time",
+                                             state: effectiveInitialState.setArchiveTimeToLatestFile)
+
+        let typeLabel = NSTextField(labelWithString: optionsTypeDescription(for: format,
+                                                                            method: method))
+        typeLabel.font = .systemFont(ofSize: 12)
+        typeLabel.textColor = .secondaryLabelColor
+
+        let metadataSection = makeTitledSection(title: "NTFS", rows: [
+            symbolicLinksCheckbox,
+            hardLinksCheckbox,
+            alternateDataStreamsCheckbox,
+            fileSecurityCheckbox,
+        ])
+
+        let timeSection = makeTitledSection(title: "Time", rows: [
+            timePrecisionRow,
+            modificationTimeRow.row,
+            creationTimeRow.row,
+            accessTimeRow.row,
+            archiveTimeRow.row,
+            preserveAccessTimeCheckbox,
+        ])
+
+        let contentStack = NSStackView(views: [typeLabel, metadataSection, timeSection])
+        contentStack.orientation = .vertical
+        contentStack.alignment = .leading
+        contentStack.spacing = 12
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let wrapper = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 320))
+        wrapper.translatesAutoresizingMaskIntoConstraints = false
+        wrapper.addSubview(contentStack)
+
+        NSLayoutConstraint.activate([
+            wrapper.widthAnchor.constraint(equalToConstant: 520),
+            contentStack.topAnchor.constraint(equalTo: wrapper.topAnchor),
+            contentStack.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+            contentStack.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+            contentStack.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+        ])
+
+        func configureSimpleCheckbox(_ checkbox: NSButton,
+                                     supported: Bool) {
+            checkbox.isHidden = !supported
+            checkbox.isEnabled = supported
+        }
+
+        func configureBoolPairRow(_ row: (setCheckbox: NSButton, colonLabel: NSTextField, setColumn: NSStackView, valueCheckbox: NSButton, row: NSStackView),
+                                  supported: Bool,
+                                  defaultValue: Bool,
+                                  showSetCheckbox: Bool) {
+            row.row.isHidden = !supported
+            row.valueCheckbox.isHidden = !supported
+            row.setCheckbox.isHidden = !supported || !showSetCheckbox
+            row.colonLabel.isHidden = row.setCheckbox.isHidden
+
+            guard supported else {
+                return
+            }
+
+            if row.setCheckbox.state != .on {
+                row.valueCheckbox.state = defaultValue ? .on : .off
+            }
+            row.valueCheckbox.isEnabled = (row.setCheckbox.state == .on)
+        }
+
+        let refreshControls = {
+            if !timePrecisionOptions.isEmpty,
+               timePrecisionSetCheckbox.state != .on {
+                selectTimePrecision(baseCapabilities.defaultTimePrecision)
+            }
+
+            let selectedTimePrecision = currentSelectedTimePrecision()
+            let capabilities = self.adjustedAdvancedOptionsCapabilities(baseCapabilities,
+                                                                        timePrecision: selectedTimePrecision,
+                                                                        format: format,
+                                                                        methodName: method?.methodName)
+
+            configureSimpleCheckbox(symbolicLinksCheckbox,
+                                    supported: capabilities.supportsSymbolicLinks)
+            configureSimpleCheckbox(hardLinksCheckbox,
+                                    supported: capabilities.supportsHardLinks)
+            configureSimpleCheckbox(alternateDataStreamsCheckbox,
+                                    supported: capabilities.supportsAlternateDataStreams)
+            configureSimpleCheckbox(fileSecurityCheckbox,
+                                    supported: capabilities.supportsFileSecurity)
+
+            metadataSection.isHidden = !capabilities.hasMetadataControls
+
+            let showPrecisionRow = !timePrecisionOptions.isEmpty
+            timePrecisionRow.isHidden = !showPrecisionRow
+            let showPrecisionSetCheckbox = timePrecisionSetCheckbox.state == .on || timePrecisionOptions.count > 1
+            timePrecisionSetCheckbox.isHidden = !showPrecisionSetCheckbox
+            timePrecisionColonLabel.isHidden = timePrecisionSetCheckbox.isHidden
+            timePrecisionSetCheckbox.isEnabled = timePrecisionOptions.count > 1 || timePrecisionSetCheckbox.state == .on
+            timePrecisionPopup.isEnabled = timePrecisionSetCheckbox.state == .on && timePrecisionOptions.count > 1
+
+            configureBoolPairRow(modificationTimeRow,
+                                 supported: capabilities.supportsModificationTime,
+                                 defaultValue: capabilities.defaultModificationTime,
+                                 showSetCheckbox: capabilities.keepsName || modificationTimeRow.setCheckbox.state == .on)
+            configureBoolPairRow(creationTimeRow,
+                                 supported: capabilities.supportsCreationTime,
+                                 defaultValue: capabilities.defaultCreationTime,
+                                 showSetCheckbox: true)
+            configureBoolPairRow(accessTimeRow,
+                                 supported: capabilities.supportsAccessTime,
+                                 defaultValue: capabilities.defaultAccessTime,
+                                 showSetCheckbox: true)
+            configureBoolPairRow(archiveTimeRow,
+                                 supported: true,
+                                 defaultValue: false,
+                                 showSetCheckbox: true)
+        }
+
+        let refreshHandler = ActionHandler(handler: refreshControls)
+        let refreshControlsList: [NSControl] = [
+            timePrecisionSetCheckbox,
+            modificationTimeRow.setCheckbox,
+            creationTimeRow.setCheckbox,
+            accessTimeRow.setCheckbox,
+            archiveTimeRow.setCheckbox,
+        ]
+        refreshControlsList.forEach {
+            $0.target = refreshHandler
+            $0.action = #selector(ActionHandler.invoke(_:))
+        }
+        timePrecisionPopup.target = refreshHandler
+        timePrecisionPopup.action = #selector(ActionHandler.invoke(_:))
+        refreshControls()
+
+        let controller = SZModalDialogController(style: .informational,
+                                                 title: "Options",
+                                                 message: nil,
+                                                 buttonTitles: ["Cancel", "OK"],
+                                                 accessoryView: wrapper,
+                                                 preferredFirstResponder: nil,
+                                                 cancelButtonIndex: 0)
+        guard controller.runModal() == 1 else {
+            return nil
+        }
+
+        let updatedState = AdvancedOptionsState(
+            storeSymbolicLinks: symbolicLinksCheckbox.state == .on,
+            storeHardLinks: hardLinksCheckbox.state == .on,
+            storeAlternateDataStreams: alternateDataStreamsCheckbox.state == .on,
+            storeFileSecurity: fileSecurityCheckbox.state == .on,
+            preserveSourceAccessTime: preserveAccessTimeCheckbox.state == .on,
+            storeModificationTime: AdvancedBoolPairState(isSet: modificationTimeRow.setCheckbox.state == .on,
+                                                         value: modificationTimeRow.valueCheckbox.state == .on),
+            storeCreationTime: AdvancedBoolPairState(isSet: creationTimeRow.setCheckbox.state == .on,
+                                                     value: creationTimeRow.valueCheckbox.state == .on),
+            storeAccessTime: AdvancedBoolPairState(isSet: accessTimeRow.setCheckbox.state == .on,
+                                                   value: accessTimeRow.valueCheckbox.state == .on),
+            setArchiveTimeToLatestFile: AdvancedBoolPairState(isSet: archiveTimeRow.setCheckbox.state == .on,
+                                                              value: archiveTimeRow.valueCheckbox.state == .on),
+            timePrecision: AdvancedTimePrecisionState(isSet: timePrecisionSetCheckbox.state == .on,
+                                                      value: currentSelectedTimePrecision())
+        )
+        return effectiveAdvancedOptions(for: format,
+                                        method: method,
+                                        baseState: updatedState).state
     }
 
     private func reloadFormatDependentControls(preferredLevel: SZCompressionLevel?,
@@ -874,6 +1506,32 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
         if !canEncryptNames {
             encryptNamesCheckbox?.state = .off
         }
+
+        refreshCompressionResourceSummary()
+        refreshAdvancedOptionsSummary()
+    }
+
+    private func refreshCompressionResourceSummary() {
+        guard let format = selectedFormatOption() else {
+            threadInfoLabel?.stringValue = ""
+            compressionMemoryRow?.isHidden = true
+            decompressionMemoryRow?.isHidden = true
+            return
+        }
+
+        threadInfoLabel?.stringValue = Self.cpuThreadSummary(forThreadedFormat: format.supportsThreads)
+        threadInfoLabel?.isHidden = !format.supportsThreads
+
+        let estimate = compressionResourceEstimate(for: format,
+                                                   method: selectedMethodOption(),
+                                                   level: selectedLevelOption()?.value ?? defaultLevel(for: format.codecName),
+                                                   dictionarySize: selectedDictionaryOption()?.value ?? 0,
+                                                   threadText: threadField?.stringValue)
+        let showsMemoryUsage = estimate.compressionMemory != nil || estimate.decompressionMemory != nil
+        compressionMemoryRow?.isHidden = !showsMemoryUsage
+        decompressionMemoryRow?.isHidden = !showsMemoryUsage
+        compressionMemoryLabel?.stringValue = estimate.compressionMemory.map(Self.memoryUsageText(for:)) ?? "?"
+        decompressionMemoryLabel?.stringValue = estimate.decompressionMemory.map(Self.memoryUsageText(for:)) ?? "?"
     }
 
     private func buildResult(archivePath: String,
@@ -893,7 +1551,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
                              confirmation: String,
                              encryptNames: Bool,
                              openSharedFiles: Bool,
-                             deleteAfterCompression: Bool) throws -> CompressDialogResult {
+                             deleteAfterCompression: Bool,
+                             advancedOptions: AdvancedOptionsState) throws -> CompressDialogResult {
         let archiveURL = try resolveArchiveURL(from: archivePath, format: format)
         let threadCount = try parseThreadCount(threadText)
         let normalizedPassword = try validatePassword(password,
@@ -923,6 +1582,13 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
 
         settings.openSharedFiles = openSharedFiles
         settings.deleteAfterCompression = deleteAfterCompression
+
+        let effectiveAdvancedOptions = effectiveAdvancedOptions(for: format,
+                                                                method: method,
+                                                                baseState: advancedOptions)
+        applyAdvancedOptions(effectiveAdvancedOptions.state,
+                             capabilities: effectiveAdvancedOptions.capabilities,
+                             to: settings)
 
         return CompressDialogResult(settings: settings, archiveURL: archiveURL)
     }
@@ -1252,21 +1918,50 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
 
     private func makeFormRow(label: String,
                              control: NSView) -> NSView {
-        makeFormRow(labelField: NSTextField(labelWithString: label), control: control)
+        makeFormRow(labelField: NSTextField(labelWithString: label),
+                    control: control,
+                    labelWidth: Self.formLabelWidth)
+    }
+
+    private func makeFormRow(label: String,
+                             control: NSView,
+                             labelWidth: CGFloat) -> NSView {
+        makeFormRow(labelField: NSTextField(labelWithString: label),
+                    control: control,
+                    labelWidth: labelWidth)
     }
 
     private func makeFormRow(labelField: NSTextField,
                              control: NSView) -> NSView {
+        makeFormRow(labelField: labelField,
+                    control: control,
+                    labelWidth: Self.formLabelWidth)
+    }
+
+    private func makeFormRow(labelField: NSTextField,
+                             control: NSView,
+                             labelWidth: CGFloat) -> NSView {
         labelField.alignment = .right
         labelField.font = .systemFont(ofSize: 12)
         labelField.setContentHuggingPriority(.required, for: .horizontal)
-        labelField.widthAnchor.constraint(equalToConstant: Self.formLabelWidth).isActive = true
+        labelField.widthAnchor.constraint(equalToConstant: labelWidth).isActive = true
 
         let stack = NSStackView(views: [labelField, control])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 8
         return stack
+    }
+
+    private func makeInfoLabel(minWidth: CGFloat) -> NSTextField {
+        let label = NSTextField(labelWithString: "")
+        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        label.textColor = .secondaryLabelColor
+        label.lineBreakMode = .byTruncatingTail
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        label.widthAnchor.constraint(greaterThanOrEqualToConstant: minWidth).isActive = true
+        return label
     }
 
     private func makeColumn(rows: [NSView]) -> NSStackView {
@@ -1312,6 +2007,305 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
         return section
     }
 
+    private func refreshAdvancedOptionsSummary() {
+        guard let summaryLabel = advancedOptionsSummaryLabel,
+              let format = selectedFormatOption() else {
+            advancedOptionsSummaryLabel?.stringValue = ""
+            return
+        }
+
+        let effectiveOptions = effectiveAdvancedOptions(for: format,
+                                                        method: selectedMethodOption(),
+                                                        baseState: advancedOptionsState)
+        summaryLabel.stringValue = advancedOptionsSummary(for: effectiveOptions.state,
+                                                          capabilities: effectiveOptions.capabilities)
+    }
+
+    private func advancedOptionsSummary(for state: AdvancedOptionsState,
+                                        capabilities: AdvancedOptionsCapabilities) -> String {
+        var parts: [String] = []
+
+        if state.timePrecision.isSet {
+            parts.append("tp\(state.timePrecision.value.rawValue)")
+        }
+
+        appendBoolPairSummary("tm",
+                              state: state.storeModificationTime,
+                              to: &parts)
+        appendBoolPairSummary("tc",
+                              state: state.storeCreationTime,
+                              to: &parts)
+        appendBoolPairSummary("ta",
+                              state: state.storeAccessTime,
+                              to: &parts)
+        appendBoolPairSummary("-stl",
+                              state: state.setArchiveTimeToLatestFile,
+                              to: &parts)
+
+        if capabilities.supportsSymbolicLinks && state.storeSymbolicLinks {
+            parts.append("SL")
+        }
+        if capabilities.supportsHardLinks && state.storeHardLinks {
+            parts.append("HL")
+        }
+        if capabilities.supportsAlternateDataStreams && state.storeAlternateDataStreams {
+            parts.append("AS")
+        }
+        if capabilities.supportsFileSecurity && state.storeFileSecurity {
+            parts.append("Sec")
+        }
+
+        return parts.joined(separator: " ")
+    }
+
+    private func appendBoolPairSummary(_ name: String,
+                                       state: AdvancedBoolPairState,
+                                       to parts: inout [String]) {
+        guard state.isSet else {
+            return
+        }
+        parts.append(state.value ? name : "\(name)-")
+    }
+
+    private func defaultAdvancedOptionsState(for format: FormatOption,
+                                             methodName: String?) -> AdvancedOptionsState {
+        let capabilities = baseAdvancedOptionsCapabilities(for: format,
+                                                           methodName: methodName)
+        return AdvancedOptionsState(storeSymbolicLinks: false,
+                                    storeHardLinks: false,
+                                    storeAlternateDataStreams: false,
+                                    storeFileSecurity: false,
+                                    preserveSourceAccessTime: false,
+                                    storeModificationTime: AdvancedBoolPairState(isSet: false,
+                                                                                 value: capabilities.supportsModificationTime && capabilities.defaultModificationTime),
+                                    storeCreationTime: AdvancedBoolPairState(isSet: false,
+                                                                             value: capabilities.supportsCreationTime && capabilities.defaultCreationTime),
+                                    storeAccessTime: AdvancedBoolPairState(isSet: false,
+                                                                           value: capabilities.supportsAccessTime && capabilities.defaultAccessTime),
+                                    setArchiveTimeToLatestFile: AdvancedBoolPairState(isSet: false,
+                                                                                      value: false),
+                                    timePrecision: AdvancedTimePrecisionState(isSet: false,
+                                                                              value: capabilities.defaultTimePrecision))
+    }
+
+    private func baseAdvancedOptionsCapabilities(for format: FormatOption,
+                                                 methodName: String?) -> AdvancedOptionsCapabilities {
+        let info = supportedFormatInfoByName[format.codecName.lowercased()]
+                let supportedTimePrecisions = Self.knownTimePrecisionValues.filter { value in
+            guard let info,
+                  value.rawValue >= 0 else {
+                return false
+            }
+            let bit = UInt32(value.rawValue)
+            return (info.supportedTimePrecisionMask & (UInt32(1) << bit)) != 0
+        }
+
+        var defaultTimePrecision = info?.defaultTimePrecision ?? SZCompressionTimePrecision(rawValue: -1)!
+        if (defaultTimePrecision.rawValue < 0
+            || !supportedTimePrecisions.contains(where: { $0.rawValue == defaultTimePrecision.rawValue })),
+           let firstSupportedTimePrecision = supportedTimePrecisions.first {
+            defaultTimePrecision = firstSupportedTimePrecision
+        }
+
+        var capabilities = AdvancedOptionsCapabilities(
+            supportsSymbolicLinks: info?.supportsSymbolicLinks ?? false,
+            supportsHardLinks: info?.supportsHardLinks ?? false,
+            supportsAlternateDataStreams: info?.supportsAlternateDataStreams ?? false,
+            supportsFileSecurity: info?.supportsFileSecurity ?? false,
+            supportsModificationTime: info?.supportsModificationTime ?? true,
+            supportsCreationTime: info?.supportsCreationTime ?? false,
+            supportsAccessTime: info?.supportsAccessTime ?? false,
+            defaultModificationTime: info?.defaultsModificationTime ?? true,
+            defaultCreationTime: info?.defaultsCreationTime ?? false,
+            defaultAccessTime: info?.defaultsAccessTime ?? false,
+            keepsName: info?.keepsName ?? false,
+            supportedTimePrecisions: supportedTimePrecisions,
+            defaultTimePrecision: defaultTimePrecision
+        )
+
+        if format.codecName.caseInsensitiveCompare("tar") == .orderedSame {
+            capabilities.supportsCreationTime = false
+            capabilities.defaultCreationTime = false
+            let isPosix = methodName?.caseInsensitiveCompare("POSIX") == .orderedSame
+            capabilities.supportsAccessTime = capabilities.supportsAccessTime && isPosix
+            capabilities.defaultAccessTime = capabilities.defaultAccessTime && isPosix
+        }
+
+        return capabilities
+    }
+
+    private func adjustedAdvancedOptionsCapabilities(_ capabilities: AdvancedOptionsCapabilities,
+                                                     timePrecision: SZCompressionTimePrecision,
+                                                     format: FormatOption,
+                                                     methodName: String?) -> AdvancedOptionsCapabilities {
+        var adjustedCapabilities = capabilities
+        let effectiveTimePrecision = timePrecision.rawValue < 0 ? capabilities.defaultTimePrecision : timePrecision
+
+        if format.codecName.caseInsensitiveCompare("zip") == .orderedSame,
+           effectiveTimePrecision.rawValue != 0 {
+            adjustedCapabilities.supportsCreationTime = false
+            adjustedCapabilities.defaultCreationTime = false
+            adjustedCapabilities.supportsAccessTime = false
+            adjustedCapabilities.defaultAccessTime = false
+        }
+
+        if format.codecName.caseInsensitiveCompare("tar") == .orderedSame {
+            adjustedCapabilities.supportsCreationTime = false
+            adjustedCapabilities.defaultCreationTime = false
+            let isPosix = methodName?.caseInsensitiveCompare("POSIX") == .orderedSame
+            adjustedCapabilities.supportsAccessTime = adjustedCapabilities.supportsAccessTime && isPosix
+            adjustedCapabilities.defaultAccessTime = adjustedCapabilities.defaultAccessTime && isPosix
+        }
+
+        return adjustedCapabilities
+    }
+
+    private func effectiveAdvancedOptions(for format: FormatOption,
+                                          method: MethodOption?,
+                                          baseState: AdvancedOptionsState) -> (state: AdvancedOptionsState, capabilities: AdvancedOptionsCapabilities) {
+        let baseCapabilities = baseAdvancedOptionsCapabilities(for: format,
+                                                               methodName: method?.methodName)
+        var state = baseState
+        if baseCapabilities.supportedTimePrecisions.isEmpty {
+            state.timePrecision = AdvancedTimePrecisionState(isSet: false,
+                                                             value: SZCompressionTimePrecision(rawValue: -1)!)
+        } else if !baseCapabilities.supportedTimePrecisions.contains(where: { $0.rawValue == state.timePrecision.value.rawValue }) {
+            state.timePrecision = AdvancedTimePrecisionState(isSet: false,
+                                                             value: baseCapabilities.defaultTimePrecision)
+        }
+
+        let capabilities = adjustedAdvancedOptionsCapabilities(baseCapabilities,
+                                                               timePrecision: state.timePrecision.value,
+                                                               format: format,
+                                                               methodName: method?.methodName)
+
+        return (state, capabilities)
+    }
+
+    private func makeTimePrecisionOptions(for capabilities: AdvancedOptionsCapabilities) -> [Option<SZCompressionTimePrecision>] {
+        capabilities.supportedTimePrecisions.map {
+            Option(title: timePrecisionTitle(for: $0), value: $0)
+        }
+    }
+
+    private func timePrecisionTitle(for precision: SZCompressionTimePrecision) -> String {
+        switch precision.rawValue {
+        case 0:
+            return "100 ns : Windows"
+        case 1:
+            return "1 sec : Unix"
+        case 2:
+            return "2 sec : DOS"
+        case 3:
+            return "1 ns : Linux"
+        default:
+            return "Automatic"
+        }
+    }
+
+    private func optionsTypeDescription(for format: FormatOption,
+                                        method: MethodOption?) -> String {
+        var description = "Type: \(format.title)"
+        if format.codecName.caseInsensitiveCompare("tar") == .orderedSame,
+           let methodName = method?.methodName,
+           !methodName.isEmpty {
+            description += ": \(methodName)"
+        }
+        return description
+    }
+
+    private func compressionBool1Setting(for value: Bool,
+                                         supported: Bool) -> SZCompressionBoolSetting {
+        guard supported, value else {
+            return SZCompressionBoolSetting(rawValue: -1)!
+        }
+        return SZCompressionBoolSetting(rawValue: 1)!
+    }
+
+    private func compressionBoolPairSetting(for state: AdvancedBoolPairState,
+                                            supported: Bool) -> SZCompressionBoolSetting {
+        guard supported, state.isSet else {
+            return SZCompressionBoolSetting(rawValue: -1)!
+        }
+        return SZCompressionBoolSetting(rawValue: state.value ? 1 : 0)!
+    }
+
+    private func applyAdvancedOptions(_ state: AdvancedOptionsState,
+                                      capabilities: AdvancedOptionsCapabilities,
+                                      to settings: SZCompressionSettings) {
+        settings.storeSymbolicLinks = compressionBool1Setting(for: state.storeSymbolicLinks,
+                                                              supported: capabilities.supportsSymbolicLinks)
+        settings.storeHardLinks = compressionBool1Setting(for: state.storeHardLinks,
+                                                          supported: capabilities.supportsHardLinks)
+        settings.storeAlternateDataStreams = compressionBool1Setting(for: state.storeAlternateDataStreams,
+                                                                     supported: capabilities.supportsAlternateDataStreams)
+        settings.storeFileSecurity = compressionBool1Setting(for: state.storeFileSecurity,
+                                                             supported: capabilities.supportsFileSecurity)
+        settings.preserveSourceAccessTime = compressionBool1Setting(for: state.preserveSourceAccessTime,
+                                                                    supported: true)
+        settings.storeModificationTime = compressionBoolPairSetting(for: state.storeModificationTime,
+                                                                    supported: capabilities.supportsModificationTime)
+        settings.storeCreationTime = compressionBoolPairSetting(for: state.storeCreationTime,
+                                                                supported: capabilities.supportsCreationTime)
+        settings.storeAccessTime = compressionBoolPairSetting(for: state.storeAccessTime,
+                                                              supported: capabilities.supportsAccessTime)
+        settings.setArchiveTimeToLatestFile = compressionBoolPairSetting(for: state.setArchiveTimeToLatestFile,
+                                                                         supported: true)
+        settings.timePrecision = capabilities.supportedTimePrecisions.isEmpty || !state.timePrecision.isSet
+            ? SZCompressionTimePrecision(rawValue: -1)!
+            : state.timePrecision.value
+    }
+
+    private func compressionResourceEstimate(for format: FormatOption,
+                                             method: MethodOption?,
+                                             level: SZCompressionLevel,
+                                             dictionarySize: UInt64,
+                                             threadText: String?) -> CompressionResourceEstimate {
+        let settings = SZCompressionSettings()
+        settings.format = format.format
+        settings.level = level
+        settings.method = method?.enumValue ?? .LZMA2
+        settings.methodName = method?.methodName
+        settings.dictionarySize = dictionarySize
+
+        if let threadText,
+           let explicitThreadCount = try? parseThreadCount(threadText),
+           explicitThreadCount > 0 {
+            settings.numThreads = explicitThreadCount
+        } else {
+            settings.numThreads = 0
+        }
+
+        let estimate = SZArchive.compressionResourceEstimate(for: settings)
+        return CompressionResourceEstimate(
+            compressionMemory: estimate.compressionMemoryIsDefined ? estimate.compressionMemory : nil,
+            decompressionMemory: estimate.decompressionMemoryIsDefined ? estimate.decompressionMemory : nil
+        )
+    }
+
+    private static func cpuThreadCounts() -> (available: Int, total: Int) {
+        let processInfo = ProcessInfo.processInfo
+        return (available: max(1, processInfo.activeProcessorCount),
+                total: max(1, processInfo.processorCount))
+    }
+
+    private static func cpuThreadSummary(forThreadedFormat isThreaded: Bool) -> String {
+        guard isThreaded else {
+            return ""
+        }
+
+        let counts = cpuThreadCounts()
+        if counts.available == counts.total {
+            return "/ \(counts.total)"
+        }
+        return "/ \(counts.available) / \(counts.total)"
+    }
+
+    private static func memoryUsageText(for bytes: UInt64) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(min(bytes, UInt64(Int64.max))),
+                                  countStyle: .memory)
+    }
+
     private func makePasswordContainer(secureField: NSSecureTextField,
                                        plainField: NSTextField) -> NSView {
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
@@ -1337,9 +2331,15 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
         return container
     }
 
-    private static func makeAvailableFormats() -> [FormatOption] {
+    private static func makeSupportedFormatInfoByName() -> [String: SZFormatInfo] {
+        SZArchive.supportedFormats().reduce(into: [:]) { partialResult, info in
+            partialResult[info.name.lowercased()] = info
+        }
+    }
+
+    private static func makeAvailableFormats(supportedFormatInfoByName: [String: SZFormatInfo]) -> [FormatOption] {
         let supportedNames = Set(
-            SZArchive.supportedFormats()
+            supportedFormatInfoByName.values
                 .filter(\.canWrite)
                 .map { $0.name.lowercased() }
         )
@@ -1439,8 +2439,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate {
     }
 
     private static func threadChoices() -> [String] {
-        let processorCount = max(1, ProcessInfo.processInfo.activeProcessorCount)
-        let upperBound = max(processorCount, 16)
+        let processorCount = max(1, ProcessInfo.processInfo.processorCount)
+        let upperBound = min(max(processorCount * 2, 16), 1 << 14)
         return (1...upperBound).map(String.init)
     }
 }
