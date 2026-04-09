@@ -45,19 +45,9 @@ struct ArchiveItem {
         return String(name[name.index(after: dotIndex)...])
     }
 
-    /// Compression ratio as a percentage
-    var compressionRatio: Double {
-        guard size > 0 else { return 0 }
-        return Double(packedSize) / Double(size) * 100.0
-    }
-
     /// Human-readable size string
     var formattedSize: String {
         ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
-    }
-
-    var formattedPackedSize: String {
-        ByteCountFormatter.string(fromByteCount: Int64(packedSize), countStyle: .file)
     }
 
     static func duplicateRootPrefixToStrip(for items: [ArchiveItem],

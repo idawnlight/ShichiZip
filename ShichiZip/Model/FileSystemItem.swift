@@ -9,9 +9,6 @@ class FileSystemItem {
     let modifiedDate: Date?
     let createdDate: Date?
 
-    private(set) var children: [FileSystemItem]?
-    weak var parent: FileSystemItem?
-
     init(url: URL) {
         self.url = url
         self.name = url.lastPathComponent
@@ -38,38 +35,5 @@ class FileSystemItem {
     var formattedSize: String {
         if isDirectory { return "--" }
         return ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
-    }
-
-    /// Load children (lazy)
-    func loadChildren() {
-        guard isDirectory else { return }
-        guard children == nil else { return }
-
-        let fm = FileManager.default
-        guard let contents = try? fm.contentsOfDirectory(
-            at: url,
-            includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey, .creationDateKey],
-            options: SZSettings.bool(.showHiddenFiles) ? [] : [.skipsHiddenFiles]
-        ) else {
-            children = []
-            return
-        }
-
-        children = contents.map { childURL in
-            let item = FileSystemItem(url: childURL)
-            item.parent = self
-            return item
-        }.sorted { a, b in
-            if a.isDirectory != b.isDirectory {
-                return a.isDirectory
-            }
-            return a.name.localizedStandardCompare(b.name) == .orderedAscending
-        }
-    }
-
-    /// Reload children
-    func reloadChildren() {
-        children = nil
-        loadChildren()
     }
 }
