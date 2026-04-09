@@ -50,6 +50,7 @@
 		D33844E6931D04F9C12964F0 /* ProgressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */; };
 		D49D1ABE0FB54A906B16439D /* SZOperationSessionDefaults.m in Sources */ = {isa = PBXBuildFile; fileRef = CCCBD7802EE988D8182FB615 /* SZOperationSessionDefaults.m */; };
 		E1568B37527443E8A00EFC19 /* FoldersHistoryWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5287B22A45EB2C1D5DDAF5B /* FoldersHistoryWindowController.swift */; };
+		E519278C982B2E456EB05C70 /* SZArchive+Benchmark.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5F0BD3119D294173A9C87820 /* SZArchive+Benchmark.mm */; };
 		E536B805338610B9325FDE45 /* DeleteTemporaryFilesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FECEA4ECEDC8A862D8490673 /* DeleteTemporaryFilesWindowController.swift */; };
 		E9865828DA3922DAB799958A /* ShichiZipOpenInShichiZipAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9887C73E191CC8096CA816E7 /* ShichiZipOpenInShichiZipAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		EEC9FF565AB0CFBC22265E27 /* SmartQuickExtractAction-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D8FE357C90F014620315B33 /* SmartQuickExtractAction-Info.plist */; };
@@ -117,6 +118,7 @@
 		4B79A5CCE90FE27ABBE045F6 /* ShichiZip-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ShichiZip-Bridging-Header.h"; sourceTree = "<group>"; };
 		59E8962DD7A7A34F21F49446 /* SZDialogPresenter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SZDialogPresenter.m; sourceTree = "<group>"; };
 		5A18E8BB4528A1AB4DD349EB /* ShowInFileManagerAction-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "ShowInFileManagerAction-Info.plist"; sourceTree = "<group>"; };
+		5F0BD3119D294173A9C87820 /* SZArchive+Benchmark.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = "SZArchive+Benchmark.mm"; sourceTree = "<group>"; };
 		5F58255DCB77AF28307EC7CE /* SZArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZArchive.h; sourceTree = "<group>"; };
 		65D6A1A6EF0AE7CB104B909C /* SZSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SZSettings.swift; sourceTree = "<group>"; };
 		66C60AB7E758ABD0F2751D95 /* SZCallbacks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZCallbacks.h; sourceTree = "<group>"; };
@@ -220,6 +222,7 @@
 			children = (
 				5F58255DCB77AF28307EC7CE /* SZArchive.h */,
 				FC8109FC18679384CCE1FCC9 /* SZArchive.mm */,
+				5F0BD3119D294173A9C87820 /* SZArchive+Benchmark.mm */,
 				78EC0F8B9F4DC1C6D26F42CD /* SZBridgeCommon.h */,
 				103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */,
 				66C60AB7E758ABD0F2751D95 /* SZCallbacks.h */,
@@ -522,6 +525,7 @@
 				D33844E6931D04F9C12964F0 /* ProgressDialogController.swift in Sources */,
 				A815E7061443DE855ED1278E /* QuickActionCore.swift in Sources */,
 				34D1F242A66E0994C0F50FCD /* QuickActionTransport.swift in Sources */,
+				E519278C982B2E456EB05C70 /* SZArchive+Benchmark.mm in Sources */,
 				2754EF55454FEC5CEE4E1E33 /* SZArchive.mm in Sources */,
 				638B19CD6D0F3AD721A43B9A /* SZBridgeCommon.mm in Sources */,
 				77648FA14E470C55E65CAD70 /* SZCallbacks.mm in Sources */,
