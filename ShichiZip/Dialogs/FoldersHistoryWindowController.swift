@@ -16,66 +16,57 @@ private final class FoldersHistoryTableView: NSTableView {
     }
 }
 
-final class FoldersHistoryWindowController: NSWindowController, NSWindowDelegate, NSTableViewDataSource, NSTableViewDelegate {
+final class FoldersHistoryWindowController: NSObject, NSTableViewDataSource, NSTableViewDelegate {
     struct Result {
         let selectedURL: URL?
         let updatedEntries: [URL]
     }
 
+    private enum ButtonIndex {
+        static let cancel = 0
+        static let open = 1
+    }
+
     private var entries: [URL]
-    private weak var parentWindow: NSWindow?
+    private var dialogController: SZModalDialogController?
     private var completionHandler: ((Result?) -> Void)?
     private var hasCompleted = false
 
+    private let accessoryView = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 320))
     private var tableView: FoldersHistoryTableView!
     private var statusLabel: NSTextField!
     private var deleteButton: NSButton!
     private var clearButton: NSButton!
-    private var openButton: NSButton!
 
     init(entries: [URL]) {
         let standardizedEntries = entries.map(\.standardizedFileURL)
         self.entries = standardizedEntries
 
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 620, height: 360),
-                              styleMask: [.titled, .closable],
-                              backing: .buffered,
-                              defer: false)
-        window.title = "Folders History"
-        window.minSize = NSSize(width: 520, height: 280)
-
-        super.init(window: window)
-
-        window.delegate = self
+        super.init()
         setupUI()
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
     }
 
     func beginSheetModal(for window: NSWindow,
                          completionHandler: @escaping (Result?) -> Void) {
-        guard let sheetWindow = self.window else {
-            completionHandler(nil)
-            return
-        }
-
-        self.parentWindow = window
         self.completionHandler = completionHandler
         hasCompleted = false
 
         updateControls()
         tableView.reloadData()
         tableView.selectRowIndexes(entries.isEmpty ? [] : IndexSet(integer: 0), byExtendingSelection: false)
-        window.beginSheet(sheetWindow) { _ in }
-        sheetWindow.makeFirstResponder(tableView)
-    }
 
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        cancel(nil)
-        return false
+        let controller = SZModalDialogController(style: .informational,
+                                                 title: "Folders History",
+                                                 message: nil,
+                                                 buttonTitles: ["Cancel", "Open"],
+                                                 accessoryView: accessoryView,
+                                                 preferredFirstResponder: tableView,
+                                                 cancelButtonIndex: ButtonIndex.cancel)
+        dialogController = controller
+        controller.setButtonEnabled(selectedEntry() != nil, at: ButtonIndex.open)
+        controller.beginSheetModal(for: window) { [weak self] buttonIndex in
+            self?.complete(buttonIndex: buttonIndex)
+        }
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int {
@@ -119,12 +110,11 @@ final class FoldersHistoryWindowController: NSWindowController, NSWindowDelegate
 
     @objc private func openSelection(_ sender: Any?) {
         guard !entries.isEmpty else { return }
-        finish(with: Result(selectedURL: selectedEntry(),
-                            updatedEntries: entries))
+        dialogController?.finish(withButtonIndex: ButtonIndex.open)
     }
 
     @objc private func cancel(_ sender: Any?) {
-        finish(with: nil)
+        dialogController?.finish(withButtonIndex: ButtonIndex.cancel)
     }
 
     @objc private func deleteSelection(_ sender: Any?) {
@@ -158,14 +148,12 @@ final class FoldersHistoryWindowController: NSWindowController, NSWindowDelegate
     }
 
     private func setupUI() {
-        guard let contentView = window?.contentView else { return }
-
         let rootStack = NSStackView()
         rootStack.translatesAutoresizingMaskIntoConstraints = false
         rootStack.orientation = .vertical
         rootStack.alignment = .leading
         rootStack.spacing = 12
-        contentView.addSubview(rootStack)
+        accessoryView.addSubview(rootStack)
 
         let controlsRow = NSStackView()
         controlsRow.orientation = .horizontal
@@ -184,6 +172,7 @@ final class FoldersHistoryWindowController: NSWindowController, NSWindowDelegate
         scrollView.hasVerticalScroller = true
         scrollView.borderType = .bezelBorder
         scrollView.autohidesScrollers = true
+        scrollView.heightAnchor.constraint(equalToConstant: 220).isActive = true
 
         tableView = FoldersHistoryTableView()
         tableView.delegate = self
@@ -209,32 +198,12 @@ final class FoldersHistoryWindowController: NSWindowController, NSWindowDelegate
         statusLabel.textColor = .secondaryLabelColor
         rootStack.addArrangedSubview(statusLabel)
 
-        let buttonsRow = NSStackView()
-        buttonsRow.orientation = .horizontal
-        buttonsRow.alignment = .centerY
-        buttonsRow.spacing = 8
-
-        let spacer = NSView()
-        spacer.translatesAutoresizingMaskIntoConstraints = false
-        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        buttonsRow.addArrangedSubview(spacer)
-
-        let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancel(_:)))
-        cancelButton.keyEquivalent = "\u{1b}"
-        openButton = NSButton(title: "Open", target: self, action: #selector(openSelection(_:)))
-        openButton.keyEquivalent = "\r"
-
-        buttonsRow.addArrangedSubview(cancelButton)
-        buttonsRow.addArrangedSubview(openButton)
-        rootStack.addArrangedSubview(buttonsRow)
-
         NSLayoutConstraint.activate([
-            rootStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
-            rootStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            rootStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            rootStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16),
-            scrollView.widthAnchor.constraint(greaterThanOrEqualToConstant: 420),
-            scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 220),
+            rootStack.topAnchor.constraint(equalTo: accessoryView.topAnchor),
+            rootStack.leadingAnchor.constraint(equalTo: accessoryView.leadingAnchor),
+            rootStack.trailingAnchor.constraint(equalTo: accessoryView.trailingAnchor),
+            rootStack.bottomAnchor.constraint(equalTo: accessoryView.bottomAnchor),
+            scrollView.widthAnchor.constraint(equalToConstant: 520),
         ])
     }
 
@@ -248,25 +217,26 @@ final class FoldersHistoryWindowController: NSWindowController, NSWindowDelegate
         let hasSelection = selectedEntry() != nil
         deleteButton?.isEnabled = hasSelection
         clearButton?.isEnabled = !entries.isEmpty
-        openButton?.isEnabled = hasSelection
+        dialogController?.setButtonEnabled(hasSelection, at: ButtonIndex.open)
 
         let itemLabel = entries.count == 1 ? "folder" : "folders"
         statusLabel?.stringValue = "\(entries.count) \(itemLabel)"
     }
 
-    private func finish(with result: Result?) {
+    private func complete(buttonIndex: Int) {
         guard !hasCompleted else { return }
         hasCompleted = true
+        dialogController = nil
 
         let completionHandler = self.completionHandler
         self.completionHandler = nil
 
-        if let sheetWindow = window, let parentWindow {
-            parentWindow.endSheet(sheetWindow)
-        } else {
-            close()
+        guard buttonIndex == ButtonIndex.open, !entries.isEmpty else {
+            completionHandler?(nil)
+            return
         }
 
-        completionHandler?(result)
+        completionHandler?(Result(selectedURL: selectedEntry(),
+                                  updatedEntries: entries))
     }
 }

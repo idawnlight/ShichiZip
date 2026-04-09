@@ -26,6 +26,10 @@ typedef void (^SZModalDialogCompletionHandler)(NSInteger selectedButtonIndex);
 - (void)beginSheetModalForWindow:(NSWindow *)window
                completionHandler:(SZModalDialogCompletionHandler)completionHandler;
 
+- (void)finishWithButtonIndex:(NSInteger)buttonIndex;
+
+- (void)setButtonEnabled:(BOOL)enabled atIndex:(NSInteger)index;
+
 - (NSInteger)runModal;
 
 @end

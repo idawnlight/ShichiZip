@@ -12,6 +12,7 @@
                       action:(SEL)action;
 
 @property (nonatomic, readonly) NSView *preferredFirstResponderView;
+@property (nonatomic, copy, readonly) NSArray<NSButton *> *dialogButtons;
 
 @end
 
@@ -32,6 +33,7 @@
     NSArray<NSString *> *_buttonTitles;
     NSView *_accessoryView;
     NSView *_preferredFirstResponderView;
+    NSArray<NSButton *> *_dialogButtons;
     __weak id _target;
     SEL _action;
 }
@@ -100,6 +102,7 @@
 - (void)loadView {
     NSView *container = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 440, 200)];
     container.translatesAutoresizingMaskIntoConstraints = NO;
+    const BOOL hasMessage = _dialogMessage.length > 0;
 
     NSImageView *iconView = [[NSImageView alloc] initWithFrame:NSZeroRect];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -124,19 +127,20 @@
     titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     titleLabel.maximumNumberOfLines = 0;
 
-    NSTextField *messageLabel = [NSTextField wrappingLabelWithString:_dialogMessage ?: @""];
-    messageLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    messageLabel.font = [NSFont systemFontOfSize:12];
-    messageLabel.textColor = NSColor.secondaryLabelColor;
-    messageLabel.maximumNumberOfLines = 0;
-
     NSStackView *textStack = [[NSStackView alloc] init];
     textStack.translatesAutoresizingMaskIntoConstraints = NO;
     textStack.orientation = NSUserInterfaceLayoutOrientationVertical;
     textStack.alignment = NSLayoutAttributeLeading;
-    textStack.spacing = 6;
+    textStack.spacing = hasMessage ? 6 : 0;
     [textStack addArrangedSubview:titleLabel];
-    [textStack addArrangedSubview:messageLabel];
+    if (hasMessage) {
+        NSTextField *messageLabel = [NSTextField wrappingLabelWithString:_dialogMessage];
+        messageLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        messageLabel.font = [NSFont systemFontOfSize:12];
+        messageLabel.textColor = NSColor.secondaryLabelColor;
+        messageLabel.maximumNumberOfLines = 0;
+        [textStack addArrangedSubview:messageLabel];
+    }
     [container addSubview:textStack];
 
     NSView *accessoryContainer = [[NSView alloc] initWithFrame:NSZeroRect];
@@ -161,6 +165,8 @@
     buttonStack.alignment = NSLayoutAttributeCenterY;
     [container addSubview:buttonStack];
 
+    NSMutableArray<NSButton *> *buttons = [NSMutableArray arrayWithCapacity:_buttonTitles.count];
+
     for (NSInteger index = 0; index < (NSInteger)_buttonTitles.count; index++) {
         NSString *title = _buttonTitles[(NSUInteger)index];
         NSButton *button = [NSButton buttonWithTitle:title target:_target action:_action];
@@ -173,7 +179,10 @@
             button.keyEquivalent = @"\e";
         }
         [buttonStack addArrangedSubview:button];
+        [buttons addObject:button];
     }
+
+    _dialogButtons = [buttons copy];
 
     NSLayoutConstraint *accessoryHeight = [accessoryContainer.heightAnchor constraintGreaterThanOrEqualToConstant:_accessoryView ? 1 : 0];
     accessoryHeight.priority = _accessoryView ? NSLayoutPriorityRequired : NSLayoutPriorityDefaultLow;
@@ -190,7 +199,7 @@
         [textStack.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:14],
         [textStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-20],
 
-        [accessoryContainer.topAnchor constraintEqualToAnchor:textStack.bottomAnchor constant:_accessoryView ? 16 : 0],
+        [accessoryContainer.topAnchor constraintEqualToAnchor:textStack.bottomAnchor constant:_accessoryView ? (hasMessage ? 16 : 10) : 0],
         [accessoryContainer.leadingAnchor constraintEqualToAnchor:textStack.leadingAnchor],
         [accessoryContainer.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-20],
         accessoryHeight,
@@ -271,6 +280,14 @@
         [self.window close];
         self.selfRetainer = nil;
     }
+}
+
+- (void)setButtonEnabled:(BOOL)enabled atIndex:(NSInteger)index {
+    if (index < 0 || index >= (NSInteger)self.contentController.dialogButtons.count) {
+        return;
+    }
+
+    self.contentController.dialogButtons[(NSUInteger)index].enabled = enabled;
 }
 
 - (void)beginSheetModalForWindow:(NSWindow *)window
