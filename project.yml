@@ -25,19 +25,19 @@ targets:
           sfx_dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx"
 
           set_plist_value() {
-            local key="$1"
-            local value="$2"
+            local plist_path="$1"
+            local key="$2"
+            local value="$3"
 
-            if /usr/libexec/PlistBuddy -c "Print :${key}" "${info_plist}" >/dev/null 2>&1; then
-              /usr/libexec/PlistBuddy -c "Set :${key} ${value}" "${info_plist}"
+            if /usr/libexec/PlistBuddy -c "Print :${key}" "${plist_path}" >/dev/null 2>&1; then
+              /usr/libexec/PlistBuddy -c "Set :${key} ${value}" "${plist_path}"
             else
-              /usr/libexec/PlistBuddy -c "Add :${key} string ${value}" "${info_plist}"
+              /usr/libexec/PlistBuddy -c "Add :${key} string ${value}" "${plist_path}"
             fi
           }
 
-          set_plist_value "CFBundleVersion" "${commit_count}"
-          set_plist_value "ShichiZipGitCommitCount" "${commit_count}"
-          set_plist_value "ShichiZipGitShortHash" "${short_hash}"
+          set_plist_value "${info_plist}" "ShichiZipGitCommitCount" "${commit_count}"
+          set_plist_value "${info_plist}" "ShichiZipGitShortHash" "${short_hash}"
 
           mkdir -p "$(dirname "${license_dest}")"
           cp "${license_source}" "${license_dest}"
@@ -49,6 +49,14 @@ targets:
       - path: ShichiZip
         excludes:
           - "**/*.entitlements"
+          - "QuickActions/Extensions/**"
+    dependencies:
+      - target: ShichiZipShowInFileManagerAction
+        embed: true
+      - target: ShichiZipOpenInShichiZipAction
+        embed: true
+      - target: ShichiZipSmartQuickExtractAction
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip
@@ -85,3 +93,63 @@ targets:
           - "-Wno-everything"  # 7-Zip headers generate many warnings
         CLANG_WARN_DOCUMENTATION_COMMENTS: false
         GCC_WARN_INHIBIT_ALL_WARNINGS: true
+
+  ShichiZipShowInFileManagerAction:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ShichiZip/QuickActions
+        excludes:
+          - "Resources/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.ShowInFileManagerAction
+        PRODUCT_NAME: ShichiZipShowInFileManagerAction
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: ShichiZip/QuickActions/Resources/ShowInFileManagerAction-Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        GENERATE_INFOPLIST_FILE: false
+        APPLICATION_EXTENSION_API_ONLY: true
+
+  ShichiZipOpenInShichiZipAction:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ShichiZip/QuickActions
+        excludes:
+          - "Resources/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.OpenInShichiZipAction
+        PRODUCT_NAME: ShichiZipOpenInShichiZipAction
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: ShichiZip/QuickActions/Resources/OpenInShichiZipAction-Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        GENERATE_INFOPLIST_FILE: false
+        APPLICATION_EXTENSION_API_ONLY: true
+
+  ShichiZipSmartQuickExtractAction:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ShichiZip/QuickActions
+        excludes:
+          - "Resources/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.SmartQuickExtractAction
+        PRODUCT_NAME: ShichiZipSmartQuickExtractAction
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: ShichiZip/QuickActions/Resources/SmartQuickExtractAction-Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        GENERATE_INFOPLIST_FILE: false
+        APPLICATION_EXTENSION_API_ONLY: true

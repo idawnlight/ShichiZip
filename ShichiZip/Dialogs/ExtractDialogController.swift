@@ -9,6 +9,12 @@ struct ExtractDialogResult {
     let eliminateDuplicates: Bool
 }
 
+struct ExtractQuickActionDefaults {
+    let overwriteMode: SZOverwriteMode
+    let preserveNtSecurityInfo: Bool
+    let eliminateDuplicates: Bool
+}
+
 final class ExtractDialogController: NSObject {
 
     private struct ModeOption<Value: Equatable> {
@@ -590,5 +596,13 @@ final class ExtractDialogController: NSObject {
         let label = NSTextField(labelWithString: title)
         label.font = .systemFont(ofSize: 12, weight: .medium)
         return label
+    }
+}
+
+extension ExtractDialogController {
+    static func quickActionDefaults() -> ExtractQuickActionDefaults {
+        ExtractQuickActionDefaults(overwriteMode: DialogPreferences.overwriteMode(defaultValue: .ask),
+                                   preserveNtSecurityInfo: DialogPreferences.preserveNtSecurityInfo(),
+                                   eliminateDuplicates: DialogPreferences.eliminateDuplicates())
     }
 }

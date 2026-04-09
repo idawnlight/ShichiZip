@@ -629,6 +629,69 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         return opened
     }
 
+    @discardableResult
+    func revealFileSystemItems(_ urls: [URL], revealWindow: Bool = true) -> Bool {
+        let standardizedURLs = urls.map(\.standardizedFileURL)
+        guard !standardizedURLs.isEmpty else { return false }
+
+        let parentDirectory = standardizedURLs[0].deletingLastPathComponent().standardizedFileURL
+        let targetPane: FileManagerPaneController
+        if !leftPane.isVirtualLocation,
+           leftPane.currentDirectoryURL.standardizedFileURL == parentDirectory {
+            targetPane = leftPane
+        } else if isDualPane,
+                  !rightPane.isVirtualLocation,
+                  rightPane.currentDirectoryURL.standardizedFileURL == parentDirectory {
+            targetPane = rightPane
+        } else {
+            targetPane = activePane
+        }
+
+        let revealed = targetPane.revealFileSystemItemURLs(standardizedURLs)
+        if revealed && revealWindow {
+            window?.makeKeyAndOrderFront(nil)
+        }
+        return revealed
+    }
+
+    @discardableResult
+    func openFileSystemItem(_ url: URL, revealWindow: Bool = true) -> Bool {
+        let standardizedURL = url.standardizedFileURL
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory) else {
+            return false
+        }
+
+        let targetPane: FileManagerPaneController
+        if isDirectory.boolValue,
+           !leftPane.isVirtualLocation,
+           leftPane.currentDirectoryURL.standardizedFileURL == standardizedURL {
+            targetPane = leftPane
+        } else if isDirectory.boolValue,
+                  isDualPane,
+                  !rightPane.isVirtualLocation,
+                  rightPane.currentDirectoryURL.standardizedFileURL == standardizedURL {
+            targetPane = rightPane
+        } else if !isDirectory.boolValue,
+                  !leftPane.isVirtualLocation,
+                  leftPane.currentDirectoryURL.standardizedFileURL == standardizedURL.deletingLastPathComponent().standardizedFileURL {
+            targetPane = leftPane
+        } else if !isDirectory.boolValue,
+                  isDualPane,
+                  !rightPane.isVirtualLocation,
+                  rightPane.currentDirectoryURL.standardizedFileURL == standardizedURL.deletingLastPathComponent().standardizedFileURL {
+            targetPane = rightPane
+        } else {
+            targetPane = activePane
+        }
+
+        let opened = targetPane.openFileSystemItemURL(standardizedURL)
+        if opened && revealWindow {
+            window?.makeKeyAndOrderFront(nil)
+        }
+        return opened
+    }
+
     @objc func toggleDualPane(_ sender: Any?) {
         let wasRightPaneActive = isDualPane && activePane === rightPane
         isDualPane.toggle()

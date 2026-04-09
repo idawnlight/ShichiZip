@@ -870,6 +870,72 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         selectedFileSystemItems().map { $0.url.standardizedFileURL }
     }
 
+    @discardableResult
+    func revealFileSystemItemURLs(_ urls: [URL]) -> Bool {
+        let standardizedURLs = urls.map(\.standardizedFileURL)
+        guard !standardizedURLs.isEmpty else { return false }
+
+        let parentDirectory = standardizedURLs[0].deletingLastPathComponent().standardizedFileURL
+        guard standardizedURLs.allSatisfy({ $0.deletingLastPathComponent().standardizedFileURL == parentDirectory }) else {
+            return false
+        }
+
+        if isInsideArchive {
+            closeAllArchives()
+        }
+
+        loadDirectory(parentDirectory)
+
+        let selectedPaths = Set(standardizedURLs.map(\.path))
+        let baseRow = showsParentRow ? 1 : 0
+        let selectedRows = IndexSet(items.enumerated().compactMap { index, item in
+            selectedPaths.contains(item.url.standardizedFileURL.path) ? baseRow + index : nil
+        })
+        guard !selectedRows.isEmpty else { return false }
+
+        tableView.selectRowIndexes(selectedRows, byExtendingSelection: false)
+        if let firstRow = selectedRows.first {
+            tableView.scrollRowToVisible(firstRow)
+        }
+        focusFileList()
+        return true
+    }
+
+    @discardableResult
+    func openFileSystemItemURL(_ url: URL) -> Bool {
+        let standardizedURL = url.standardizedFileURL
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory) else {
+            return false
+        }
+
+        if isDirectory.boolValue {
+            if isInsideArchive {
+                closeAllArchives()
+            }
+
+            loadDirectory(standardizedURL)
+            focusFileList()
+            return true
+        }
+
+        switch openArchiveInline(standardizedURL,
+                                 hostDirectory: standardizedURL.deletingLastPathComponent().standardizedFileURL,
+                                 showError: false,
+                                 replaceCurrentState: true) {
+        case .opened:
+            focusFileList()
+            return true
+        case .unsupportedArchive:
+            return revealFileSystemItemURLs([standardizedURL])
+        case .cancelled:
+            return false
+        case let .failed(error):
+            showErrorAlert(error)
+            return false
+        }
+    }
+
     func transferFileSystemItemURLs(_ urls: [URL],
                                     to destinationDirectory: URL,
                                     operation: NSDragOperation,
