@@ -15,6 +15,8 @@ enum SZSettingsKey: String {
     case singleClickOpen = "SingleClick"
     case quitAfterLastWindowClosed = "QuitAfterLastWindowClosed"
     case excludeMacResourceFilesByDefault = "ExcludeMacResourceFilesByDefault"
+    case moveArchiveToTrashAfterExtraction = "MoveArchiveToTrashAfterExtraction"
+    case inheritDownloadedFileQuarantine = "InheritDownloadedFileQuarantine"
     case memLimitEnabled = "MemLimitEnabled"
     case memLimitGB = "MemLimitGB"
 
@@ -31,7 +33,7 @@ struct SZSettings {
 
     private static func defaultBool(for key: SZSettingsKey) -> Bool {
         switch key {
-        case .showRealFileIcons, .workDirRemovableOnly:
+        case .showRealFileIcons, .workDirRemovableOnly, .inheritDownloadedFileQuarantine:
             return true
         default:
             return false
@@ -197,17 +199,16 @@ class SettingsWindowController: NSWindowController {
         stack.alignment = .leading
         stack.spacing = 6
 
-        let checkboxes: [(String, SZSettingsKey)] = [
+        let generalCheckboxes: [(String, SZSettingsKey)] = [
             ("Show \"..\" item", .showDots),
             ("Show real file icons", .showRealFileIcons),
             ("Show hidden files in File Manager", .showHiddenFiles),
             ("Show grid lines", .showGridLines),
             ("Single-click to open an item", .singleClickOpen),
             ("Quit the app when the last window closes", .quitAfterLastWindowClosed),
-            ("Exclude macOS resource files by default", .excludeMacResourceFilesByDefault),
         ]
 
-        for (title, key) in checkboxes {
+        for (title, key) in generalCheckboxes {
             let cb = NSButton(checkboxWithTitle: title, target: self, action: #selector(settingsCheckboxChanged(_:)))
             cb.tag = key.hashValue
             cb.identifier = NSUserInterfaceItemIdentifier(key.rawValue)
@@ -215,13 +216,39 @@ class SettingsWindowController: NSWindowController {
             stack.addArrangedSubview(cb)
         }
 
-        // Separator
-        let sep = NSBox()
-        sep.boxType = .separator
-        stack.addArrangedSubview(sep)
-        sep.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        let compressionSeparator = makeSettingsSeparator()
+        stack.addArrangedSubview(compressionSeparator)
+        compressionSeparator.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        // Memory limit
+        stack.addArrangedSubview(makeSectionLabel("Compression"))
+
+        let compressionCheckbox = NSButton(checkboxWithTitle: "Exclude macOS resource fork files by default",
+                                           target: self,
+                                           action: #selector(settingsCheckboxChanged(_:)))
+        compressionCheckbox.tag = SZSettingsKey.excludeMacResourceFilesByDefault.hashValue
+        compressionCheckbox.identifier = NSUserInterfaceItemIdentifier(SZSettingsKey.excludeMacResourceFilesByDefault.rawValue)
+        compressionCheckbox.state = SZSettings.bool(.excludeMacResourceFilesByDefault) ? .on : .off
+        stack.addArrangedSubview(compressionCheckbox)
+
+        let extractionSeparator = makeSettingsSeparator()
+        stack.addArrangedSubview(extractionSeparator)
+        extractionSeparator.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        stack.addArrangedSubview(makeSectionLabel("Extraction"))
+
+        let extractionCheckboxes: [(String, SZSettingsKey)] = [
+            ("Move compressed file to Trash after extraction", .moveArchiveToTrashAfterExtraction),
+            ("Inherit quarantine from downloaded file (if applicable)", .inheritDownloadedFileQuarantine),
+        ]
+
+        for (title, key) in extractionCheckboxes {
+            let cb = NSButton(checkboxWithTitle: title, target: self, action: #selector(settingsCheckboxChanged(_:)))
+            cb.tag = key.hashValue
+            cb.identifier = NSUserInterfaceItemIdentifier(key.rawValue)
+            cb.state = SZSettings.bool(key) ? .on : .off
+            stack.addArrangedSubview(cb)
+        }
+
         let memLabel = NSTextField(labelWithString: "Maximum RAM for extraction:")
         stack.addArrangedSubview(memLabel)
 
@@ -254,6 +281,18 @@ class SettingsWindowController: NSWindowController {
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
         ])
         return view
+    }
+
+    private func makeSettingsSeparator() -> NSBox {
+        let separator = NSBox()
+        separator.boxType = .separator
+        return separator
+    }
+
+    private func makeSectionLabel(_ title: String) -> NSTextField {
+        let label = NSTextField(labelWithString: title)
+        label.font = .boldSystemFont(ofSize: 12)
+        return label
     }
 
     // MARK: - Folders Page (FoldersPage.cpp)

@@ -46,7 +46,28 @@
             minimumWidth = accessoryWidth;
         }
     }
+    const CGFloat buttonRowWidth = [self minimumButtonRowWidth];
+    if (buttonRowWidth > minimumWidth) {
+        minimumWidth = buttonRowWidth;
+    }
     return minimumWidth;
+}
+
+- (CGFloat)minimumButtonRowWidth {
+    if (_buttonTitles.count == 0) {
+        return 0;
+    }
+
+    CGFloat totalWidth = 40;
+    totalWidth += (_buttonTitles.count - 1) * 8;
+
+    for (NSString *title in _buttonTitles) {
+        NSButton *button = [NSButton buttonWithTitle:title target:nil action:NULL];
+        NSSize fittingSize = button.fittingSize;
+        totalWidth += ceil(fittingSize.width);
+    }
+
+    return totalWidth;
 }
 
 - (instancetype)initWithStyle:(SZDialogStyle)style
@@ -163,6 +184,8 @@
     buttonStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     buttonStack.spacing = 8;
     buttonStack.alignment = NSLayoutAttributeCenterY;
+    [buttonStack setContentHuggingPriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [buttonStack setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
     [container addSubview:buttonStack];
 
     NSMutableArray<NSButton *> *buttons = [NSMutableArray arrayWithCapacity:_buttonTitles.count];
@@ -205,6 +228,7 @@
         accessoryHeight,
 
         [buttonStack.topAnchor constraintEqualToAnchor:accessoryContainer.bottomAnchor constant:18],
+        [buttonStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:container.leadingAnchor constant:20],
         [buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-20],
         [buttonStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-16],
     ]];

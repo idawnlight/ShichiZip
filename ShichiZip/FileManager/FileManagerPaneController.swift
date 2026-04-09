@@ -620,6 +620,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return selectedItems[0].url
     }
 
+    func sourceArchiveURLForExtraction() -> URL? {
+        if let level = archiveStack.last, level.temporaryDirectory == nil {
+            return URL(fileURLWithPath: level.archivePath).standardizedFileURL
+        }
+
+        return selectedArchiveCandidateURL()?.standardizedFileURL
+    }
+
     func openSelection() {
         openSelectedItem(nil)
     }
@@ -844,6 +852,22 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         return archiveURL.deletingPathExtension().lastPathComponent
+    }
+
+    func selectedOrDisplayedArchiveEntriesForExtraction() -> [ArchiveItem] {
+        guard let level = archiveStack.last else { return [] }
+
+        let indices = Set(archiveEntryIndices(for: archiveItemsForSelectionOrDisplayedItems()).map(\.intValue))
+        return level.allEntries.filter { indices.contains($0.index) }
+    }
+
+    func pathPrefixToStripForCurrentExtraction(destinationURL: URL,
+                                               pathMode: SZPathMode,
+                                               eliminateDuplicates: Bool) -> String? {
+        archivePathPrefixToStrip(for: archiveItemsForSelectionOrDisplayedItems(),
+                                 destinationURL: destinationURL,
+                                 pathMode: pathMode,
+                                 eliminateDuplicates: eliminateDuplicates)
     }
 
     func selectedItemNames(limit: Int? = nil) -> [String] {

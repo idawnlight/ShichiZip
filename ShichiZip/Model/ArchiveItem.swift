@@ -96,6 +96,95 @@ struct ArchiveItem {
         return (prefixComponents + [trimmedLeafName]).joined(separator: "/")
     }
 
+    static func extractedOutputURLs(for items: [ArchiveItem],
+                                    destinationURL: URL,
+                                    pathMode: SZPathMode,
+                                    pathPrefixToStrip: String?) -> [URL] {
+        let prefixComponents = pathPrefixToStrip.map(Self.derivePathParts(from:)) ?? []
+        var seenPaths = Set<String>()
+        var outputURLs: [URL] = []
+
+        for item in items {
+            let itemOutputURLs = extractedOutputURLs(for: item,
+                                                     destinationURL: destinationURL,
+                                                     pathMode: pathMode,
+                                                     prefixComponents: prefixComponents)
+            for outputURL in itemOutputURLs {
+                let standardizedURL = outputURL.standardizedFileURL
+                guard seenPaths.insert(standardizedURL.path).inserted else { continue }
+                outputURLs.append(standardizedURL)
+            }
+        }
+
+        return outputURLs
+    }
+
+    private static func extractedOutputURLs(for item: ArchiveItem,
+                                            destinationURL: URL,
+                                            pathMode: SZPathMode,
+                                            prefixComponents: [String]) -> [URL] {
+        let components = item.pathParts.isEmpty ? derivePathParts(from: item.path) : item.pathParts
+        let relativeComponents = removingPrefixComponents(prefixComponents, from: components)
+
+        switch pathMode {
+        case .noPaths:
+            guard !item.isDirectory else { return [] }
+            let leafName = relativeComponents.last ?? item.name
+            guard !leafName.isEmpty else { return [] }
+            return [destinationURL.appendingPathComponent(leafName, isDirectory: false)]
+
+        case .absolutePaths:
+            if NSString(string: item.path).isAbsolutePath {
+                let trimmedPath = item.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                guard !trimmedPath.isEmpty else { return [] }
+                return [URL(fileURLWithPath: item.path)]
+            }
+
+            return relativeOutputURLs(from: relativeComponents,
+                                      destinationURL: destinationURL,
+                                      leafIsDirectory: item.isDirectory)
+
+        default:
+            return relativeOutputURLs(from: relativeComponents,
+                                      destinationURL: destinationURL,
+                                      leafIsDirectory: item.isDirectory)
+        }
+    }
+
+    private static func relativeOutputURLs(from relativeComponents: [String],
+                                           destinationURL: URL,
+                                           leafIsDirectory: Bool) -> [URL] {
+        guard !relativeComponents.isEmpty else { return [] }
+
+        var urls: [URL] = []
+        if relativeComponents.count > 1 {
+            for depth in 1..<relativeComponents.count {
+                let directoryPath = NSString.path(withComponents: Array(relativeComponents.prefix(depth)))
+                urls.append(destinationURL.appendingPathComponent(directoryPath, isDirectory: true))
+            }
+        }
+
+        let leafPath = NSString.path(withComponents: relativeComponents)
+        urls.append(destinationURL.appendingPathComponent(leafPath, isDirectory: leafIsDirectory))
+        return urls
+    }
+
+    private static func removingPrefixComponents(_ prefixComponents: [String],
+                                                 from components: [String]) -> [String] {
+        guard !prefixComponents.isEmpty,
+              components.count >= prefixComponents.count else {
+            return components
+        }
+
+        for (prefixComponent, component) in zip(prefixComponents, components) {
+            guard stringsMatch(prefixComponent, component) else {
+                return components
+            }
+        }
+
+        return Array(components.dropFirst(prefixComponents.count))
+    }
+
     private static func normalizedPathParts(_ parts: [String]) -> [String] {
         parts.filter { !$0.isEmpty }
     }

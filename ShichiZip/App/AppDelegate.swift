@@ -1,10 +1,118 @@
 import Cocoa
+import Darwin
+
+struct ArchiveExtractionPostProcessResult {
+    let movedSourceArchiveToTrash: Bool
+}
+
+enum ArchiveExtractionPostProcessor {
+    private static let quarantineAttributeName = "com.apple.quarantine"
+
+    static func finalizeExtraction(sourceArchiveURL: URL?,
+                                   extractedItems: [ArchiveItem],
+                                   destinationURL: URL,
+                                   pathMode: SZPathMode,
+                                   pathPrefixToStrip: String?,
+                                   moveSourceArchiveToTrash: Bool,
+                                   inheritSourceQuarantine: Bool) throws -> ArchiveExtractionPostProcessResult {
+        let standardizedSourceArchiveURL = sourceArchiveURL?.standardizedFileURL
+
+        if inheritSourceQuarantine,
+           let standardizedSourceArchiveURL,
+           let quarantineData = try quarantineData(for: standardizedSourceArchiveURL) {
+            let extractedOutputURLs = ArchiveItem.extractedOutputURLs(for: extractedItems,
+                                                                      destinationURL: destinationURL,
+                                                                      pathMode: pathMode,
+                                                                      pathPrefixToStrip: pathPrefixToStrip)
+            try applyExtendedAttribute(named: quarantineAttributeName,
+                                       data: quarantineData,
+                                       to: extractedOutputURLs)
+        }
+
+        guard moveSourceArchiveToTrash,
+              let standardizedSourceArchiveURL,
+              FileManager.default.fileExists(atPath: standardizedSourceArchiveURL.path) else {
+            return ArchiveExtractionPostProcessResult(movedSourceArchiveToTrash: false)
+        }
+
+        try FileManager.default.trashItem(at: standardizedSourceArchiveURL, resultingItemURL: nil)
+        return ArchiveExtractionPostProcessResult(movedSourceArchiveToTrash: true)
+    }
+
+    private static func quarantineData(for url: URL) throws -> Data? {
+        let size = url.path.withCString { pathPointer in
+            quarantineAttributeName.withCString { namePointer in
+                getxattr(pathPointer, namePointer, nil, 0, 0, XATTR_NOFOLLOW)
+            }
+        }
+
+        if size < 0 {
+            if errno == ENOATTR || errno == ENOENT {
+                return nil
+            }
+            throw posixError(for: url)
+        }
+
+        var data = Data(count: size)
+        let result = data.withUnsafeMutableBytes { buffer in
+            url.path.withCString { pathPointer in
+                quarantineAttributeName.withCString { namePointer in
+                    getxattr(pathPointer,
+                             namePointer,
+                             buffer.baseAddress,
+                             buffer.count,
+                             0,
+                             XATTR_NOFOLLOW)
+                }
+            }
+        }
+
+        if result < 0 {
+            if errno == ENOATTR || errno == ENOENT {
+                return nil
+            }
+            throw posixError(for: url)
+        }
+
+        return data
+    }
+
+    private static func applyExtendedAttribute(named name: String,
+                                               data: Data,
+                                               to urls: [URL]) throws {
+        for url in urls {
+            let result = data.withUnsafeBytes { buffer in
+                url.path.withCString { pathPointer in
+                    name.withCString { namePointer in
+                        setxattr(pathPointer,
+                                 namePointer,
+                                 buffer.baseAddress,
+                                 buffer.count,
+                                 0,
+                                 XATTR_NOFOLLOW)
+                    }
+                }
+            }
+
+            if result != 0, errno != ENOENT {
+                throw posixError(for: url)
+            }
+        }
+    }
+
+    private static func posixError(for url: URL) -> NSError {
+        NSError(domain: NSPOSIXErrorDomain,
+                code: Int(errno),
+                userInfo: [NSFilePathErrorKey: url.path])
+    }
+}
 
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private struct SmartQuickExtractPlan {
         let destinationURL: URL
         let pathPrefixToStrip: String?
+        let extractedItems: [ArchiveItem]
     }
 
     private var fileManagerWindowController: FileManagerWindowController?
@@ -283,10 +391,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
 
             do {
-                let destinationURL = try await ArchiveOperationRunner.run(operationTitle: "Extracting...",
-                                                                          initialFileName: archiveURL.lastPathComponent,
-                                                                          parentWindow: parentWindow,
-                                                                          deferredDisplay: true) { session in
+                let plan = try await ArchiveOperationRunner.run(operationTitle: "Extracting...",
+                                                                initialFileName: archiveURL.lastPathComponent,
+                                                                parentWindow: parentWindow,
+                                                                deferredDisplay: true) { session in
                     let archive = SZArchive()
                     try archive.open(atPath: archiveURL.path, session: session)
                     defer { archive.close() }
@@ -303,15 +411,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     try archive.extract(toPath: plan.destinationURL.path,
                                         settings: settings,
                                         session: session)
-                    return plan.destinationURL
+                    return plan
+                }
+
+                let postProcessError: Error?
+                do {
+                    _ = try ArchiveExtractionPostProcessor.finalizeExtraction(sourceArchiveURL: archiveURL,
+                                                                             extractedItems: plan.extractedItems,
+                                                                             destinationURL: plan.destinationURL,
+                                                                             pathMode: .fullPaths,
+                                                                             pathPrefixToStrip: plan.pathPrefixToStrip,
+                                                                             moveSourceArchiveToTrash: defaults.moveArchiveToTrashAfterExtraction,
+                                                                             inheritSourceQuarantine: defaults.inheritDownloadedFileQuarantine)
+                    postProcessError = nil
+                } catch {
+                    postProcessError = error
                 }
 
                 let baseDirectory = archiveURL.deletingLastPathComponent().standardizedFileURL
-                if destinationURL != baseDirectory {
-                    NSWorkspace.shared.selectFile(destinationURL.path,
+                if plan.destinationURL != baseDirectory {
+                    NSWorkspace.shared.selectFile(plan.destinationURL.path,
                                                   inFileViewerRootedAtPath: baseDirectory.path)
                 } else {
-                    NSWorkspace.shared.open(destinationURL)
+                    NSWorkspace.shared.open(plan.destinationURL)
+                }
+
+                if let postProcessError {
+                    szPresentError(postProcessError, for: parentWindow)
                 }
             } catch {
                 szPresentError(error, for: parentWindow)
@@ -416,6 +542,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         return SmartQuickExtractPlan(destinationURL: destinationURL,
-                                     pathPrefixToStrip: pathPrefixToStrip)
+                                     pathPrefixToStrip: pathPrefixToStrip,
+                                     extractedItems: archiveItems)
     }
 }

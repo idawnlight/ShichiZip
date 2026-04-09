@@ -7,12 +7,16 @@ struct ExtractDialogResult {
     let password: String?
     let preserveNtSecurityInfo: Bool
     let eliminateDuplicates: Bool
+    let moveArchiveToTrashAfterExtraction: Bool
+    let inheritDownloadedFileQuarantine: Bool
 }
 
 struct ExtractQuickActionDefaults {
     let overwriteMode: SZOverwriteMode
     let preserveNtSecurityInfo: Bool
     let eliminateDuplicates: Bool
+    let moveArchiveToTrashAfterExtraction: Bool
+    let inheritDownloadedFileQuarantine: Bool
 }
 
 final class ExtractDialogController: NSObject {
@@ -180,6 +184,7 @@ final class ExtractDialogController: NSObject {
     private let defaultPathMode: SZPathMode
     private let showsCurrentPathsOption: Bool
     private let suggestedSplitDestinationName: String?
+    private let sourceArchiveAvailableForPostProcessing: Bool
     private var destinationPicker: DestinationPicker?
     private weak var splitNameField: NSTextField?
     private weak var splitNameRow: NSView?
@@ -195,13 +200,15 @@ final class ExtractDialogController: NSObject {
          message: String?,
          defaultPathMode: SZPathMode,
          showsCurrentPathsOption: Bool,
-         suggestedSplitDestinationName: String? = nil) {
+         suggestedSplitDestinationName: String? = nil,
+         sourceArchiveAvailableForPostProcessing: Bool = true) {
         self.suggestedDestinationURL = suggestedDestinationURL.standardizedFileURL
         self.baseDirectory = baseDirectory.standardizedFileURL
         self.messageText = message
         self.defaultPathMode = defaultPathMode
         self.showsCurrentPathsOption = showsCurrentPathsOption
         self.suggestedSplitDestinationName = suggestedSplitDestinationName
+        self.sourceArchiveAvailableForPostProcessing = sourceArchiveAvailableForPostProcessing
     }
 
     func runModal(for parentWindow: NSWindow?) -> ExtractDialogResult? {
@@ -217,6 +224,8 @@ final class ExtractDialogController: NSObject {
         var splitDestination = DialogPreferences.splitDestination()
         var splitName = suggestedSplitDestinationName ?? ""
         var showPassword = DialogPreferences.showPassword()
+        var moveArchiveToTrashAfterExtraction = SZSettings.bool(.moveArchiveToTrashAfterExtraction)
+        var inheritDownloadedFileQuarantine = SZSettings.bool(.inheritDownloadedFileQuarantine)
 
         while true {
             let historyEntries = DestinationHistory.entries()
@@ -317,12 +326,28 @@ final class ExtractDialogController: NSObject {
                                                        action: nil)
             eliminateDuplicatesCheckbox.state = eliminateDuplicates ? .on : .off
 
+            let moveArchiveToTrashCheckbox = NSButton(checkboxWithTitle: "Move compressed file to Trash after extraction",
+                                                      target: nil,
+                                                      action: nil)
+            moveArchiveToTrashCheckbox.state = moveArchiveToTrashAfterExtraction ? .on : .off
+            moveArchiveToTrashCheckbox.isEnabled = sourceArchiveAvailableForPostProcessing
+            moveArchiveToTrashCheckbox.alphaValue = sourceArchiveAvailableForPostProcessing ? 1.0 : 0.55
+
+            let inheritDownloadedFileQuarantineCheckbox = NSButton(checkboxWithTitle: "Inherit quarantine from downloaded file (if applicable)",
+                                                                   target: nil,
+                                                                   action: nil)
+            inheritDownloadedFileQuarantineCheckbox.state = inheritDownloadedFileQuarantine ? .on : .off
+            inheritDownloadedFileQuarantineCheckbox.isEnabled = sourceArchiveAvailableForPostProcessing
+            inheritDownloadedFileQuarantineCheckbox.alphaValue = sourceArchiveAvailableForPostProcessing ? 1.0 : 0.55
+
             let accessoryView = makeAccessoryView(pathRow: pathRow,
                                                   splitRow: splitRow,
                                                   pathModePopup: pathModePopup,
                                                   overwriteModePopup: overwriteModePopup,
                                                   passwordContainer: passwordContainer,
                                                   showPasswordCheckbox: showPasswordCheckbox,
+                                                  moveArchiveToTrashCheckbox: moveArchiveToTrashCheckbox,
+                                                  inheritDownloadedFileQuarantineCheckbox: inheritDownloadedFileQuarantineCheckbox,
                                                   ntSecurityCheckbox: ntSecurityCheckbox,
                                                   eliminateDuplicatesCheckbox: eliminateDuplicatesCheckbox)
 
@@ -376,6 +401,8 @@ final class ExtractDialogController: NSObject {
             selectedOverwriteMode = overwriteModeOptions[overwriteModePopup.indexOfSelectedItem].value
             preserveNtSecurityInfo = ntSecurityCheckbox.state == .on
             eliminateDuplicates = eliminateDuplicatesCheckbox.state == .on
+            moveArchiveToTrashAfterExtraction = moveArchiveToTrashCheckbox.state == .on
+            inheritDownloadedFileQuarantine = inheritDownloadedFileQuarantineCheckbox.state == .on
 
             do {
                 let baseDestinationURL = try resolveDestinationDirectoryURL(from: selectedPath)
@@ -390,12 +417,16 @@ final class ExtractDialogController: NSObject {
                                          eliminateDuplicates: eliminateDuplicates,
                                          splitDestination: splitDestination,
                                          showPassword: showPassword)
+                SZSettings.set(moveArchiveToTrashAfterExtraction, for: .moveArchiveToTrashAfterExtraction)
+                SZSettings.set(inheritDownloadedFileQuarantine, for: .inheritDownloadedFileQuarantine)
                 return ExtractDialogResult(destinationURL: destinationURL,
                                            overwriteMode: selectedOverwriteMode,
                                            pathMode: selectedPathMode,
                                            password: password,
                                            preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                           eliminateDuplicates: eliminateDuplicates)
+                                           eliminateDuplicates: eliminateDuplicates,
+                                           moveArchiveToTrashAfterExtraction: moveArchiveToTrashAfterExtraction,
+                                           inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine)
             } catch {
                 szPresentError(error, for: parentWindow)
             }
@@ -429,6 +460,8 @@ final class ExtractDialogController: NSObject {
                                    overwriteModePopup: NSPopUpButton,
                                    passwordContainer: NSView,
                                    showPasswordCheckbox: NSButton,
+                                   moveArchiveToTrashCheckbox: NSButton,
+                                   inheritDownloadedFileQuarantineCheckbox: NSButton,
                                    ntSecurityCheckbox: NSButton,
                                    eliminateDuplicatesCheckbox: NSButton) -> NSView {
         let formStack = NSStackView(views: [
@@ -453,7 +486,12 @@ final class ExtractDialogController: NSObject {
         let optionsLabel = NSTextField(labelWithString: "Options")
         optionsLabel.font = .systemFont(ofSize: 12, weight: .semibold)
 
-        let optionsStack = NSStackView(views: [ntSecurityCheckbox, eliminateDuplicatesCheckbox])
+        let optionsStack = NSStackView(views: [
+            moveArchiveToTrashCheckbox,
+            inheritDownloadedFileQuarantineCheckbox,
+            ntSecurityCheckbox,
+            eliminateDuplicatesCheckbox,
+        ])
         optionsStack.orientation = .vertical
         optionsStack.alignment = .leading
         optionsStack.spacing = 8
@@ -464,7 +502,7 @@ final class ExtractDialogController: NSObject {
         contentStack.spacing = 12
         contentStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let wrapper = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 260))
+        let wrapper = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 320))
         wrapper.translatesAutoresizingMaskIntoConstraints = false
         wrapper.addSubview(contentStack)
 
@@ -603,6 +641,8 @@ extension ExtractDialogController {
     static func quickActionDefaults() -> ExtractQuickActionDefaults {
         ExtractQuickActionDefaults(overwriteMode: DialogPreferences.overwriteMode(defaultValue: .ask),
                                    preserveNtSecurityInfo: DialogPreferences.preserveNtSecurityInfo(),
-                                   eliminateDuplicates: DialogPreferences.eliminateDuplicates())
+                                   eliminateDuplicates: DialogPreferences.eliminateDuplicates(),
+                                   moveArchiveToTrashAfterExtraction: SZSettings.bool(.moveArchiveToTrashAfterExtraction),
+                                   inheritDownloadedFileQuarantine: SZSettings.bool(.inheritDownloadedFileQuarantine))
     }
 }

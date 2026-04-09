@@ -773,13 +773,21 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         guard activePane.canExtractSelectionOrArchive() else { return }
 
         guard let extractResult = promptForArchiveDestination(from: activePane) else { return }
+        let sourceArchiveURL = activePane.sourceArchiveURLForExtraction()
 
         Task { @MainActor [weak self] in
             guard let self, let parentWindow = self.window else { return }
             do {
+                var extractedItems: [ArchiveItem] = []
+                var pathPrefixToStrip: String?
+
                 try await ArchiveOperationRunner.run(operationTitle: "Extracting...",
                                                      parentWindow: parentWindow) { session in
                     if activePane.isVirtualLocation {
+                        extractedItems = activePane.selectedOrDisplayedArchiveEntriesForExtraction()
+                        pathPrefixToStrip = activePane.pathPrefixToStripForCurrentExtraction(destinationURL: extractResult.destinationURL,
+                                                                                            pathMode: extractResult.pathMode,
+                                                                                            eliminateDuplicates: extractResult.eliminateDuplicates)
                         try activePane.extractCurrentSelectionOrDisplayedArchiveItems(to: extractResult.destinationURL,
                                                                                       session: session,
                                                                                       overwriteMode: extractResult.overwriteMode,
@@ -798,23 +806,48 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                          password: extractResult.password,
                                          session: session)
                         let archiveItems = archive.entries().map(ArchiveItem.init)
+                        extractedItems = archiveItems
                         let settings = SZExtractionSettings()
                         settings.overwriteMode = extractResult.overwriteMode
                         settings.pathMode = extractResult.pathMode
                         settings.password = extractResult.password
                         settings.preserveNtSecurityInfo = extractResult.preserveNtSecurityInfo
-                        settings.pathPrefixToStrip = self.archiveExtractionPathPrefixToStrip(for: archiveItems,
-                                                                                             destinationURL: extractResult.destinationURL,
-                                                                                             pathMode: extractResult.pathMode,
-                                                                                             eliminateDuplicates: extractResult.eliminateDuplicates)
+                        pathPrefixToStrip = self.archiveExtractionPathPrefixToStrip(for: archiveItems,
+                                                                                   destinationURL: extractResult.destinationURL,
+                                                                                   pathMode: extractResult.pathMode,
+                                                                                   eliminateDuplicates: extractResult.eliminateDuplicates)
+                        settings.pathPrefixToStrip = pathPrefixToStrip
                         try archive.extract(toPath: extractResult.destinationURL.path,
                                             settings: settings,
                                             session: session)
                         archive.close()
                     }
                 }
+
+                let postProcessResult: ArchiveExtractionPostProcessResult
+                let postProcessError: Error?
+                do {
+                    postProcessResult = try ArchiveExtractionPostProcessor.finalizeExtraction(sourceArchiveURL: sourceArchiveURL,
+                                                                                            extractedItems: extractedItems,
+                                                                                            destinationURL: extractResult.destinationURL,
+                                                                                            pathMode: extractResult.pathMode,
+                                                                                            pathPrefixToStrip: pathPrefixToStrip,
+                                                                                            moveSourceArchiveToTrash: extractResult.moveArchiveToTrashAfterExtraction,
+                                                                                            inheritSourceQuarantine: extractResult.inheritDownloadedFileQuarantine)
+                    postProcessError = nil
+                } catch {
+                    postProcessResult = ArchiveExtractionPostProcessResult(movedSourceArchiveToTrash: false)
+                    postProcessError = error
+                }
                 self.refreshPaneDisplayingDirectory(extractResult.destinationURL)
+                if postProcessResult.movedSourceArchiveToTrash,
+                   let sourceArchiveURL {
+                    self.refreshPaneDisplayingDirectory(sourceArchiveURL.deletingLastPathComponent())
+                }
                 NSWorkspace.shared.open(extractResult.destinationURL)
+                if let postProcessError {
+                    self.showErrorAlert(postProcessError)
+                }
             } catch {
                 self.showErrorAlert(error)
             }
@@ -1429,7 +1462,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                              message: extractDialogInfoText(for: sourcePane),
                                              defaultPathMode: sourcePane.isVirtualLocation ? .currentPaths : .fullPaths,
                                              showsCurrentPathsOption: sourcePane.isVirtualLocation,
-                                             suggestedSplitDestinationName: sourcePane.suggestedExtractDestinationName)
+                                             suggestedSplitDestinationName: sourcePane.suggestedExtractDestinationName,
+                                             sourceArchiveAvailableForPostProcessing: sourcePane.sourceArchiveURLForExtraction() != nil)
         return dialog.runModal(for: window)
     }
 
