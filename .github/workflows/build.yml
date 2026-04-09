@@ -81,3 +81,4 @@ jobs:
           name: ShichiZip-${{ env.XCODE_CONFIGURATION }}-macOS
           path: ShichiZip-${{ env.XCODE_CONFIGURATION }}-*.zip
           if-no-files-found: error
+          archive: false
