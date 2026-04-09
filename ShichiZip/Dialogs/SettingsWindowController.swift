@@ -14,6 +14,7 @@ enum SZSettingsKey: String {
     case showGridLines = "ShowGrid"
     case singleClickOpen = "SingleClick"
     case quitAfterLastWindowClosed = "QuitAfterLastWindowClosed"
+    case excludeMacResourceFilesByDefault = "ExcludeMacResourceFilesByDefault"
     case memLimitEnabled = "MemLimitEnabled"
     case memLimitGB = "MemLimitGB"
 
@@ -203,6 +204,7 @@ class SettingsWindowController: NSWindowController {
             ("Show grid lines", .showGridLines),
             ("Single-click to open an item", .singleClickOpen),
             ("Quit the app when the last window closes", .quitAfterLastWindowClosed),
+            ("Exclude macOS resource files by default", .excludeMacResourceFilesByDefault),
         ]
 
         for (title, key) in checkboxes {

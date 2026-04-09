@@ -582,6 +582,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     private weak var encryptionPopup: NSPopUpButton?
     private weak var encryptNamesCheckbox: NSButton?
     private weak var createSFXCheckbox: NSButton?
+    private weak var excludeMacResourceFilesCheckbox: NSButton?
     private weak var openSharedCheckbox: NSButton?
     private weak var deleteAfterCheckbox: NSButton?
     private weak var dictionaryLabel: NSTextField?
@@ -668,6 +669,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         var selectedConfirmation = ""
         var selectedEncryption = defaultEncryption(for: selectedFormatName)
         var createSFX = false
+        var excludeMacResourceFiles = SZSettings.bool(.excludeMacResourceFilesByDefault)
         var advancedOptions = DialogPreferences.advancedOptions(
             defaults: defaultAdvancedOptionsState(for: formatOption(named: selectedFormatName) ?? availableFormats[0],
                                                  methodName: selectedMethodName)
@@ -781,6 +783,10 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                              target: self,
                                              action: #selector(createSFXToggled(_:)))
             createSFXCheckbox.state = createSFX ? .on : .off
+            let excludeMacResourceFilesCheckbox = NSButton(checkboxWithTitle: "Exclude macOS resource files",
+                                                           target: nil,
+                                                           action: nil)
+            excludeMacResourceFilesCheckbox.state = excludeMacResourceFiles ? .on : .off
 
             let advancedOptionsButton = NSButton(title: "Options",
                                                  target: self,
@@ -864,6 +870,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
 
             let optionsColumn = makeTitledSection(title: "Options", rows: [
                 createSFXCheckbox,
+                excludeMacResourceFilesCheckbox,
                 openSharedCheckbox,
                 deleteAfterCheckbox,
                 advancedOptionsRow,
@@ -926,6 +933,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             self.encryptionPopup = encryptionPopup
             self.encryptNamesCheckbox = encryptNamesCheckbox
             self.createSFXCheckbox = createSFXCheckbox
+            self.excludeMacResourceFilesCheckbox = excludeMacResourceFilesCheckbox
             self.openSharedCheckbox = openSharedCheckbox
             self.deleteAfterCheckbox = deleteAfterCheckbox
             self.dictionaryLabel = dictionaryLabel
@@ -982,6 +990,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                 self.encryptionPopup = nil
                 self.encryptNamesCheckbox = nil
                 self.createSFXCheckbox = nil
+                self.excludeMacResourceFilesCheckbox = nil
                 self.openSharedCheckbox = nil
                 self.deleteAfterCheckbox = nil
                 self.dictionaryLabel = nil
@@ -1024,6 +1033,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             selectedEncryption = selectedEncryptionOption()?.value ?? .none
             encryptNames = encryptNamesCheckbox.state == .on
             createSFX = createSFXCheckbox.state == .on
+            excludeMacResourceFiles = excludeMacResourceFilesCheckbox.state == .on
             openSharedFiles = openSharedCheckbox.state == .on
             deleteAfterCompression = deleteAfterCheckbox.state == .on
             advancedOptions = advancedOptionsState
@@ -1047,6 +1057,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                              confirmation: selectedConfirmation,
                                              encryptNames: encryptNames,
                                              createSFX: createSFX,
+                                             excludeMacResourceFiles: excludeMacResourceFiles,
                                              memoryUsageSpec: selectedMemoryUsageSpec,
                                              openSharedFiles: openSharedFiles,
                                              deleteAfterCompression: deleteAfterCompression,
@@ -1663,6 +1674,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                              confirmation: String,
                              encryptNames: Bool,
                              createSFX: Bool,
+                             excludeMacResourceFiles: Bool,
                              memoryUsageSpec: String,
                              openSharedFiles: Bool,
                              deleteAfterCompression: Bool,
@@ -1701,6 +1713,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         settings.password = normalizedPassword
         settings.encryptFileNames = normalizedPassword != nil && format.supportsEncryptFileNames && encryptNames
         settings.createSFX = effectiveCreateSFX
+        settings.excludeMacResourceFiles = excludeMacResourceFiles
         settings.solidMode = format.supportsSolid && solidMode
         settings.dictionarySize = dictionarySize
         settings.wordSize = wordSize

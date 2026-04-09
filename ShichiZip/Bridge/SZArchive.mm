@@ -1352,6 +1352,77 @@ static void SZSplitOptionsToStrings(const UString &src, UStringVector &strings) 
     }
 }
 
+static void SZAddCensorExclude(NWildcard::CCensor &censor,
+                               const wchar_t *path,
+                               bool recursive,
+                               bool wildcardMatching,
+                               Byte markMode) {
+    NWildcard::CCensorPathProps props;
+    props.Recursive = recursive;
+    props.WildcardMatching = wildcardMatching;
+    props.MarkMode = markMode;
+    censor.AddPreItem(false, UString(path), props);
+}
+
+static void SZAddMacResourceFileExcludes(NWildcard::CCensor &censor) {
+    SZAddCensorExclude(censor,
+                       L".DS_Store",
+                       true,
+                       false,
+                       NWildcard::kMark_StrictFile);
+    SZAddCensorExclude(censor,
+                       L"._*",
+                       true,
+                       true,
+                       NWildcard::kMark_StrictFile);
+    SZAddCensorExclude(censor,
+                       L"Icon\r",
+                       true,
+                       false,
+                       NWildcard::kMark_StrictFile);
+    SZAddCensorExclude(censor,
+                       L".VolumeIcon.icns",
+                       true,
+                       false,
+                       NWildcard::kMark_StrictFile);
+    SZAddCensorExclude(censor,
+                       L".apdisk",
+                       true,
+                       false,
+                       NWildcard::kMark_StrictFile);
+
+    SZAddCensorExclude(censor,
+                       L"__MACOSX/",
+                       true,
+                       false,
+                       NWildcard::kMark_FileOrDir);
+    SZAddCensorExclude(censor,
+                       L".Spotlight-V100/",
+                       true,
+                       false,
+                       NWildcard::kMark_FileOrDir);
+    SZAddCensorExclude(censor,
+                       L".Trashes/",
+                       true,
+                       false,
+                       NWildcard::kMark_FileOrDir);
+    SZAddCensorExclude(censor,
+                       L".fseventsd/",
+                       true,
+                       false,
+                       NWildcard::kMark_FileOrDir);
+    SZAddCensorExclude(censor,
+                       L".TemporaryItems/",
+                       true,
+                       false,
+                       NWildcard::kMark_FileOrDir);
+    SZAddCensorExclude(censor,
+                       L".DocumentRevisions-V100/",
+                       true,
+                       false,
+                       NWildcard::kMark_FileOrDir);
+}
+
 static bool SZHasMethodOverride(bool is7z, const UStringVector &strings) {
     FOR_VECTOR (i, strings)
     {
@@ -1624,6 +1695,9 @@ static bool SZParseVolumeSizes(const UString &text, CRecordVector<UInt64> &value
     NWildcard::CCensor censor;
     for (NSString *srcPath in src) {
         censor.AddPreItem_NoWildcard(ToU(srcPath));
+    }
+    if (s.excludeMacResourceFiles) {
+        SZAddMacResourceFileExcludes(censor);
     }
 
     SZOperationSession *resolvedSession = session ?: SZMakeDefaultOperationSession(nil);
