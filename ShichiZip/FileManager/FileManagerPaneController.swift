@@ -1524,7 +1524,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func extractSelectedArchiveItems(to destinationURL: URL,
-                                     progress: SZProgressDelegate?,
+                                     session: SZOperationSession? = nil,
                                      overwriteMode: SZOverwriteMode = .ask,
                                      pathMode: SZPathMode = .currentPaths,
                                      password: String? = nil,
@@ -1536,29 +1536,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
         try extractArchiveItems(selectedItems,
                                 to: destinationURL,
-                                progress: progress,
-                                session: nil,
-                                overwriteMode: overwriteMode,
-                                pathMode: pathMode,
-                                password: password,
-                                preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                eliminateDuplicates: eliminateDuplicates)
-    }
-
-    func extractSelectedArchiveItems(to destinationURL: URL,
-                                     session: SZOperationSession?,
-                                     overwriteMode: SZOverwriteMode = .ask,
-                                     pathMode: SZPathMode = .currentPaths,
-                                     password: String? = nil,
-                                     preserveNtSecurityInfo: Bool = false,
-                                     eliminateDuplicates: Bool = false) throws {
-        let selectedItems = selectedArchiveItems()
-        guard !selectedItems.isEmpty else {
-            throw paneOperationError("Select one or more archive items first.")
-        }
-        try extractArchiveItems(selectedItems,
-                                to: destinationURL,
-                                progress: nil,
                                 session: session,
                                 overwriteMode: overwriteMode,
                                 pathMode: pathMode,
@@ -1568,7 +1545,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func extractCurrentSelectionOrDisplayedArchiveItems(to destinationURL: URL,
-                                                        progress: SZProgressDelegate?,
+                                                        session: SZOperationSession? = nil,
                                                         overwriteMode: SZOverwriteMode = .ask,
                                                         pathMode: SZPathMode = .currentPaths,
                                                         password: String? = nil,
@@ -1580,29 +1557,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
         try extractArchiveItems(itemsToExtract,
                                 to: destinationURL,
-                                progress: progress,
-                                session: nil,
-                                overwriteMode: overwriteMode,
-                                pathMode: pathMode,
-                                password: password,
-                                preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                eliminateDuplicates: eliminateDuplicates)
-    }
-
-    func extractCurrentSelectionOrDisplayedArchiveItems(to destinationURL: URL,
-                                                        session: SZOperationSession?,
-                                                        overwriteMode: SZOverwriteMode = .ask,
-                                                        pathMode: SZPathMode = .currentPaths,
-                                                        password: String? = nil,
-                                                        preserveNtSecurityInfo: Bool = false,
-                                                        eliminateDuplicates: Bool = false) throws {
-        let itemsToExtract = archiveItemsForSelectionOrDisplayedItems()
-        guard !itemsToExtract.isEmpty else {
-            throw paneOperationError("There are no archive items to extract.")
-        }
-        try extractArchiveItems(itemsToExtract,
-                                to: destinationURL,
-                                progress: nil,
                                 session: session,
                                 overwriteMode: overwriteMode,
                                 pathMode: pathMode,
@@ -1611,14 +1565,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                 eliminateDuplicates: eliminateDuplicates)
     }
 
-    func testCurrentArchive(progress: SZProgressDelegate?) throws {
-        guard let level = archiveStack.last else {
-            throw paneOperationError("No archive is open.")
-        }
-        try level.archive.test(withProgress: progress)
-    }
-
-    func testCurrentArchive(session: SZOperationSession?) throws {
+    func testCurrentArchive(session: SZOperationSession? = nil) throws {
         guard let level = archiveStack.last else {
             throw paneOperationError("No archive is open.")
         }
@@ -1925,7 +1872,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func extractArchiveItems(_ itemsToExtract: [ArchiveItem],
                                      to destinationURL: URL,
-                                     progress: SZProgressDelegate?,
                                      session: SZOperationSession?,
                                      overwriteMode: SZOverwriteMode,
                                      pathMode: SZPathMode,
@@ -1949,17 +1895,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                               pathMode: pathMode,
                                                               eliminateDuplicates: eliminateDuplicates)
         settings.preserveNtSecurityInfo = preserveNtSecurityInfo
-        if let session {
-            try level.archive.extractEntries(indices,
-                                             toPath: destinationURL.path,
-                                             settings: settings,
-                                             session: session)
-        } else {
-            try level.archive.extractEntries(indices,
-                                             toPath: destinationURL.path,
-                                             settings: settings,
-                                             progress: progress)
-        }
+        try level.archive.extractEntries(indices,
+                                         toPath: destinationURL.path,
+                                         settings: settings,
+                                         session: session)
     }
 
     private func paneOperationError(_ description: String) -> NSError {

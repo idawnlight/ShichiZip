@@ -230,17 +230,10 @@ final class FileManagerArchiveItemWorkflowService {
         do {
             let settings = stagingExtractionSettings()
             let indices = items.map { NSNumber(value: $0.index) }
-            if let session {
-                try context.archive.extractEntries(indices,
-                                                  toPath: temporaryDirectory.path,
-                                                  settings: settings,
-                                                  session: session)
-            } else {
-                try context.archive.extractEntries(indices,
-                                                  toPath: temporaryDirectory.path,
-                                                  settings: settings,
-                                                  progress: nil)
-            }
+            try context.archive.extractEntries(indices,
+                                              toPath: temporaryDirectory.path,
+                                              settings: settings,
+                                              session: session)
 
             let fileURLs = items.map { temporaryDirectory.appendingPathComponent($0.path) }
             guard fileURLs.allSatisfy({ fileManager.fileExists(atPath: $0.path) }) else {
@@ -263,17 +256,10 @@ final class FileManagerArchiveItemWorkflowService {
 
         do {
             let settings = stagingExtractionSettings()
-            if let session {
-                try context.archive.extractEntries([NSNumber(value: item.index)],
-                                                  toPath: temporaryDirectory.path,
-                                                  settings: settings,
-                                                  session: session)
-            } else {
-                try context.archive.extractEntries([NSNumber(value: item.index)],
-                                                  toPath: temporaryDirectory.path,
-                                                  settings: settings,
-                                                  progress: nil)
-            }
+            try context.archive.extractEntries([NSNumber(value: item.index)],
+                                              toPath: temporaryDirectory.path,
+                                              settings: settings,
+                                              session: session)
 
             let fileURL = temporaryDirectory.appendingPathComponent(item.path)
             guard fileManager.fileExists(atPath: fileURL.path) else {
@@ -304,17 +290,10 @@ final class FileManagerArchiveItemWorkflowService {
         let settings = directPromiseExtractionSettings()
 
         do {
-            if let session {
-                try context.archive.extractEntries([NSNumber(value: item.index)],
-                                                  toPath: destinationDirectory.path,
-                                                  settings: settings,
-                                                  session: session)
-            } else {
-                try context.archive.extractEntries([NSNumber(value: item.index)],
-                                                  toPath: destinationDirectory.path,
-                                                  settings: settings,
-                                                  progress: nil)
-            }
+            try context.archive.extractEntries([NSNumber(value: item.index)],
+                                              toPath: destinationDirectory.path,
+                                              settings: settings,
+                                              session: session)
 
             guard fileManager.fileExists(atPath: standardizedExtractedURL.path) else {
                 throw extractionPreparationError()
