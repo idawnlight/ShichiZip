@@ -69,6 +69,21 @@ jobs:
             VALID_ARCHS="$HOST_ARCH" \
             build
 
+      - name: Ad hoc sign app bundle
+        run: |
+          app_path="build/DerivedData/Build/Products/${XCODE_CONFIGURATION}/ShichiZip.app"
+          quick_action_entitlements="ShichiZip/QuickActions/Resources/QuickAction.entitlements"
+          app_entitlements="ShichiZip/Resources/ShichiZip.entitlements"
+
+          test -d "$app_path"
+
+          for appex in "$app_path"/Contents/PlugIns/*.appex; do
+            codesign --force --sign - --entitlements "$quick_action_entitlements" "$appex"
+          done
+
+          codesign --force --sign - --entitlements "$app_entitlements" "$app_path"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+
       - name: Package app artifact
         run: |
           app_path="build/DerivedData/Build/Products/${XCODE_CONFIGURATION}/ShichiZip.app"
