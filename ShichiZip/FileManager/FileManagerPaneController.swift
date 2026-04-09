@@ -2662,8 +2662,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return nil
 
         case let .archive(ai):
-            guard let context = currentArchiveItemWorkflowContext(),
-                  !ai.isDirectory else {
+            guard let context = currentArchiveItemWorkflowContext() else {
                 return nil
             }
 
@@ -3175,6 +3174,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     private func archivePromiseFileType(for item: ArchiveItem) -> String {
+        if item.isDirectory {
+            return UTType.folder.identifier
+        }
+
         guard !item.fileExtension.isEmpty,
               let fileType = UTType(filenameExtension: item.fileExtension) else {
             return UTType.data.identifier

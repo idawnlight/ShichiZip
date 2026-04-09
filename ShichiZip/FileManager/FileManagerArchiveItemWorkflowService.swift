@@ -208,17 +208,17 @@ final class FileManagerArchiveItemWorkflowService {
                       session: SZOperationSession?) throws {
         let standardizedDestinationURL = destinationURL.standardizedFileURL
 
-        if try extractPromiseDirectlyIfPossible(for: item,
+        if !item.isDirectory,
+           try extractPromiseDirectlyIfPossible(for: item,
                                                context: context,
                                                to: standardizedDestinationURL,
                                                session: session) {
             return
         }
 
-        let stagedItem = try stage(item: item,
-                                   context: context,
-                                   temporaryDirectoryPrefix: FileManagerTemporaryDirectorySupport.dragPrefix,
-                                   session: session)
+        let stagedItem = try stagePromiseItem(for: item,
+                                              context: context,
+                                              session: session)
         defer {
             cleanup(stagedItem.temporaryDirectory)
         }
@@ -281,6 +281,62 @@ final class FileManagerArchiveItemWorkflowService {
             cleanup(temporaryDirectory)
             throw error
         }
+    }
+
+    private func stagePromiseItem(for item: ArchiveItem,
+                                  context: FileManagerArchiveItemWorkflowContext,
+                                  session: SZOperationSession?) throws -> StagedArchiveItem {
+        let extractionIndices = promiseExtractionIndices(for: item,
+                                                         context: context)
+        guard !extractionIndices.isEmpty else {
+            throw extractionPreparationError()
+        }
+
+        let temporaryDirectory = try createTemporaryDirectory(prefix: FileManagerTemporaryDirectorySupport.dragPrefix)
+
+        do {
+            let settings = stagingExtractionSettings()
+            try context.archive.extractEntries(extractionIndices,
+                                              toPath: temporaryDirectory.path,
+                                              settings: settings,
+                                              session: session)
+
+            let fileURL = temporaryDirectory.appendingPathComponent(item.path,
+                                                                    isDirectory: item.isDirectory)
+            guard fileManager.fileExists(atPath: fileURL.path) else {
+                throw extractionPreparationError()
+            }
+
+            return StagedArchiveItem(temporaryDirectory: temporaryDirectory,
+                                     fileURL: fileURL)
+        } catch {
+            cleanup(temporaryDirectory)
+            throw error
+        }
+    }
+
+    private func promiseExtractionIndices(for item: ArchiveItem,
+                                          context: FileManagerArchiveItemWorkflowContext) -> [NSNumber] {
+        let archiveItems = context.archive.entries().map { ArchiveItem(from: $0) }
+        var indices = Set<Int>()
+
+        if item.index >= 0 {
+            indices.insert(item.index)
+        }
+
+        if item.isDirectory || item.index < 0 {
+            let directoryPath = normalizeArchivePath(item.path)
+            let prefix = directoryPath.isEmpty ? "" : directoryPath + "/"
+
+            for entry in archiveItems where entry.index >= 0 {
+                let entryPath = normalizeArchivePath(entry.path)
+                if entryPath == directoryPath || (!prefix.isEmpty && entryPath.hasPrefix(prefix)) {
+                    indices.insert(entry.index)
+                }
+            }
+        }
+
+        return indices.sorted().map { NSNumber(value: $0) }
     }
 
     private func makeNestedArchiveWriteBackInfo(for item: ArchiveItem,
@@ -379,6 +435,14 @@ final class FileManagerArchiveItemWorkflowService {
         settings.overwriteMode = .overwrite
         settings.pathMode = .noPaths
         return settings
+    }
+
+    private func normalizeArchivePath(_ path: String) -> String {
+        var normalized = path
+        while normalized.hasSuffix("/") {
+            normalized.removeLast()
+        }
+        return normalized
     }
 
     private func nestedDisplayPath(for item: ArchiveItem,
