@@ -2,6 +2,57 @@
 
 #include "SZCallbacks.h"
 
+#import "../Dialogs/SZDialogPresenter.h"
+
+static inline void SZDispatchSyncOnMainThread(dispatch_block_t block) {
+    if ([NSThread isMainThread]) {
+        block();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), block);
+    }
+}
+
+static void SZAppendErrorMessage(UString &storage, const UString &message) {
+    if (message.IsEmpty()) {
+        return;
+    }
+
+    if (!storage.IsEmpty()) {
+        storage += UString(L"\n\n");
+    }
+    storage += message;
+}
+
+static void SZAppendErrorMessage(UString &storage, NSString *message) {
+    if (!message || message.length == 0) {
+        return;
+    }
+
+    SZAppendErrorMessage(storage, ToU(message));
+}
+
+static NSString *SZBuildMemoryLimitFailureReason(uint32_t requiredGB,
+                                                 uint32_t currentLimitGB,
+                                                 NSString *archivePath,
+                                                 NSString *filePath,
+                                                 BOOL archiveSkipped) {
+    NSMutableArray<NSString *> *lines = [NSMutableArray array];
+    [lines addObject:@"Memory usage limit was exceeded."];
+    [lines addObject:[NSString stringWithFormat:@"Required memory: %u GB", requiredGB]];
+    [lines addObject:[NSString stringWithFormat:@"Current limit: %u GB", currentLimitGB]];
+    [lines addObject:[NSString stringWithFormat:@"Installed RAM: %u GB", SZRoundUpByteCountToGB([NSProcessInfo processInfo].physicalMemory)]];
+    if (archivePath.length > 0) {
+        [lines addObject:[NSString stringWithFormat:@"Archive: %@", archivePath]];
+    }
+    if (filePath.length > 0) {
+        [lines addObject:[NSString stringWithFormat:@"File: %@", filePath]];
+    }
+    if (archiveSkipped) {
+        [lines addObject:@"Archive unpacking was skipped."];
+    }
+    return [lines componentsJoinedByString:@"\n"];
+}
+
 // ============================================================
 // SZOpenCallbackUI implementation
 // ============================================================
@@ -184,7 +235,9 @@ Z7_COM7F_IMF(SZFolderExtractCallback::PrepareOperation(const wchar_t *name, Int3
 Z7_COM7F_IMF(SZFolderExtractCallback::MessageError(const wchar_t *message)) {
     NumErrors++;
     if (message) {
-        NSLog(@"[ShichiZip] Extract error: %@", ToNS(UString(message)));
+        UString extractedMessage(message);
+        SZAppendErrorMessage(LastErrorMessage, extractedMessage);
+        NSLog(@"[ShichiZip] Extract error: %@", ToNS(extractedMessage));
     }
     return S_OK;
 }
@@ -214,6 +267,122 @@ Z7_COM7F_IMF(SZFolderExtractCallback::CryptoGetTextPassword(BSTR *pw)) {
         if (hr != S_OK) return hr;
     }
     return StringToBstr(Password, pw);
+}
+
+Z7_COM7F_IMF(SZFolderExtractCallback::RequestMemoryUse(
+    UInt32 flags, UInt32 indexType, UInt32 index, const wchar_t *path,
+    UInt64 requiredSize, UInt64 *allowedSize, UInt32 *answerFlags))
+{
+    UNUSED_VAR(index)
+
+    if (!allowedSize || !answerFlags) {
+        return E_INVALIDARG;
+    }
+
+    UInt64 currentLimitBytes = *allowedSize;
+    uint32_t currentLimitGB = SZRoundUpByteCountToGB(currentLimitBytes);
+
+    if ((flags & NRequestMemoryUseFlags::k_IsReport) == 0) {
+        if (SZExtractionMemoryLimitIsEnabled()) {
+            const uint64_t configuredLimitBytes = SZConfiguredExtractionMemoryLimitBytes();
+            if ((flags & NRequestMemoryUseFlags::k_AllowedSize_WasForced) == 0
+                || currentLimitBytes < configuredLimitBytes) {
+                currentLimitBytes = configuredLimitBytes;
+                currentLimitGB = SZConfiguredExtractionMemoryLimitGB();
+            }
+        }
+
+        *allowedSize = currentLimitBytes;
+        if (requiredSize <= currentLimitBytes) {
+            *answerFlags = NRequestMemoryAnswerFlags::k_Allow;
+            return S_OK;
+        }
+
+        *answerFlags = NRequestMemoryAnswerFlags::k_Limit_Exceeded;
+        if (flags & NRequestMemoryUseFlags::k_SkipArc_IsExpected) {
+            *answerFlags |= NRequestMemoryAnswerFlags::k_SkipArc;
+        }
+    }
+
+    const uint32_t requiredGB = SZRoundUpByteCountToGB(requiredSize);
+    NSString *archivePath = ArchivePath.IsEmpty() ? nil : ToNS(ArchivePath);
+    NSString *filePath = path ? ToNS(UString(path)) : nil;
+
+    if ((flags & NRequestMemoryUseFlags::k_IsReport) == 0) {
+        if (!RememberMemoryDecision) {
+            __block BOOL confirmed = NO;
+            __block SZMemoryLimitPromptResult *promptResult = nil;
+            const BOOL showRemember = indexType != NArchive::NEventIndexType::kNoIndex || path != NULL;
+
+            SZOperationSession *session = Session;
+            if (session) {
+                [session prepareForUserInteraction];
+            }
+
+            SZDispatchSyncOnMainThread(^{
+                confirmed = [SZDialogPresenter promptForMemoryLimitWithRequiredBytes:requiredSize
+                                                                    currentLimitBytes:currentLimitBytes
+                                                                          archivePath:archivePath
+                                                                             filePath:filePath
+                                                                             testMode:TestMode
+                                                                         showRemember:showRemember
+                                                                               result:&promptResult];
+            });
+
+            if (session) {
+                [session finishUserInteraction];
+            }
+
+            if (!confirmed) {
+                *answerFlags = NRequestMemoryAnswerFlags::k_Stop;
+                return E_ABORT;
+            }
+
+            if (promptResult.saveLimit) {
+                currentLimitGB = promptResult.limitGB;
+                currentLimitBytes = ((UInt64)promptResult.limitGB) << 30;
+                SZPersistExtractionMemoryLimitGB(promptResult.limitGB);
+            }
+
+            if (promptResult.rememberChoice) {
+                RememberMemoryDecision = true;
+                SkipMemoryArchive = promptResult.skipArchive;
+            }
+
+            *allowedSize = currentLimitBytes;
+            if (!promptResult.skipArchive) {
+                *answerFlags = NRequestMemoryAnswerFlags::k_Allow;
+                return S_OK;
+            }
+
+            *answerFlags = NRequestMemoryAnswerFlags::k_SkipArc | NRequestMemoryAnswerFlags::k_Limit_Exceeded;
+            flags |= NRequestMemoryUseFlags::k_Report_SkipArc;
+        } else {
+            *allowedSize = currentLimitBytes;
+            if (!SkipMemoryArchive) {
+                *answerFlags = NRequestMemoryAnswerFlags::k_Allow;
+                return S_OK;
+            }
+
+            *answerFlags = NRequestMemoryAnswerFlags::k_SkipArc | NRequestMemoryAnswerFlags::k_Limit_Exceeded;
+            flags |= NRequestMemoryUseFlags::k_Report_SkipArc;
+        }
+    }
+
+    if ((flags & NRequestMemoryUseFlags::k_NoErrorMessage) == 0) {
+        const BOOL archiveSkipped = (flags & NRequestMemoryUseFlags::k_SkipArc_IsExpected)
+            || (flags & NRequestMemoryUseFlags::k_Report_SkipArc);
+        NSString *failureReason = SZBuildMemoryLimitFailureReason(requiredGB,
+                                                                  currentLimitGB,
+                                                                  archivePath,
+                                                                  filePath,
+                                                                  archiveSkipped);
+        SZAppendErrorMessage(LastErrorMessage, failureReason);
+        NumErrors++;
+        NSLog(@"[ShichiZip] %@", failureReason);
+    }
+
+    return S_OK;
 }
 
 // ============================================================

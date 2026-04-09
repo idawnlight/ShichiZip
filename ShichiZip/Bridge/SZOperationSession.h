@@ -52,6 +52,7 @@ typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationPromptStyle styl
 - (BOOL)shouldCancel;
 - (void)requestCancel;
 - (void)prepareForUserInteraction;
+- (void)finishUserInteraction;
 - (SZOperationSnapshot *)snapshot;
 - (BOOL)requestPasswordWithTitle:(NSString *)title
                          message:(nullable NSString *)message

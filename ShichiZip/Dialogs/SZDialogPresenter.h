@@ -4,6 +4,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@interface SZMemoryLimitPromptResult : NSObject
+
+@property (nonatomic) BOOL saveLimit;
+@property (nonatomic) BOOL skipArchive;
+@property (nonatomic) BOOL rememberChoice;
+@property (nonatomic) uint32_t limitGB;
+
+@end
+
 @interface SZDialogPresenter : NSObject
 
 + (void)presentError:(NSError *)error forWindow:(nullable NSWindow *)window;
@@ -23,6 +32,14 @@ NS_ASSUME_NONNULL_BEGIN
                            message:(nullable NSString *)message
                       initialValue:(nullable NSString *)initialValue
                            password:(NSString * _Nullable * _Nullable)password;
+
++ (BOOL)promptForMemoryLimitWithRequiredBytes:(uint64_t)requiredBytes
+            currentLimitBytes:(uint64_t)currentLimitBytes
+              archivePath:(nullable NSString *)archivePath
+             filePath:(nullable NSString *)filePath
+             testMode:(BOOL)testMode
+             showRemember:(BOOL)showRemember
+               result:(SZMemoryLimitPromptResult * _Nullable * _Nullable)result;
 
 @end
 

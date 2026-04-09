@@ -58,6 +58,48 @@ static inline NSError *SZMakeDetailedError(NSInteger code, NSString *desc, NSStr
                            }];
 }
 
+static NSString * const SZSettingsDidChangeNotificationName = @"SZSettingsDidChange";
+static NSString * const SZSettingsDidChangeKeyUserInfoKey = @"key";
+static NSString * const SZExtractionMemoryLimitEnabledPreferenceKey = @"MemLimitEnabled";
+static NSString * const SZExtractionMemoryLimitGBPreferenceKey = @"MemLimitGB";
+
+static inline uint32_t SZRoundUpByteCountToGB(uint64_t byteCount) {
+    if (byteCount == 0) {
+        return 1;
+    }
+
+    const uint64_t rounded = (byteCount + (((uint64_t)1 << 30) - 1)) >> 30;
+    return rounded > UINT32_MAX ? UINT32_MAX : (uint32_t)rounded;
+}
+
+static inline BOOL SZExtractionMemoryLimitIsEnabled(void) {
+    return [[NSUserDefaults standardUserDefaults] boolForKey:SZExtractionMemoryLimitEnabledPreferenceKey];
+}
+
+static inline uint32_t SZConfiguredExtractionMemoryLimitGB(void) {
+    const NSInteger storedValue = [[NSUserDefaults standardUserDefaults] integerForKey:SZExtractionMemoryLimitGBPreferenceKey];
+    return storedValue > 0 ? (uint32_t)storedValue : 4;
+}
+
+static inline uint64_t SZConfiguredExtractionMemoryLimitBytes(void) {
+    return ((uint64_t)SZConfiguredExtractionMemoryLimitGB()) << 30;
+}
+
+static inline void SZPostSettingsDidChange(NSString *key) {
+    [[NSNotificationCenter defaultCenter] postNotificationName:SZSettingsDidChangeNotificationName
+                                                        object:nil
+                                                      userInfo:@{SZSettingsDidChangeKeyUserInfoKey: key}];
+}
+
+static inline void SZPersistExtractionMemoryLimitGB(uint32_t limitGB) {
+    const NSInteger resolvedLimitGB = MAX((NSInteger)limitGB, 1);
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setBool:YES forKey:SZExtractionMemoryLimitEnabledPreferenceKey];
+    [defaults setInteger:resolvedLimitGB forKey:SZExtractionMemoryLimitGBPreferenceKey];
+    SZPostSettingsDidChange(SZExtractionMemoryLimitEnabledPreferenceKey);
+    SZPostSettingsDidChange(SZExtractionMemoryLimitGBPreferenceKey);
+}
+
 // ============================================================
 // Codec manager singleton
 // ============================================================

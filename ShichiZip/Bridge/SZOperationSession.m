@@ -239,6 +239,12 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     });
 }
 
+- (void)finishUserInteraction {
+    @synchronized (self) {
+        _waitingForUserInteraction = NO;
+    }
+}
+
 - (SZOperationSnapshot *)snapshot {
     @synchronized (self) {
         return [[SZOperationSnapshot alloc] initWithProgressFraction:_progressFraction
@@ -259,9 +265,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 
     SZOperationPasswordRequestHandler handler = self.passwordRequestHandler;
     if (!handler) {
-        @synchronized (self) {
-            _waitingForUserInteraction = NO;
-        }
+        [self finishUserInteraction];
         return NO;
     }
 
@@ -273,9 +277,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
         resolvedPassword = [promptPassword copy];
     });
 
-    @synchronized (self) {
-        _waitingForUserInteraction = NO;
-    }
+    [self finishUserInteraction];
 
     if (password) {
         *password = resolvedPassword;
@@ -292,9 +294,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     NSInteger defaultChoice = buttonTitles.count > 0 ? (NSInteger)buttonTitles.count - 1 : 0;
     SZOperationChoiceRequestHandler handler = self.choiceRequestHandler;
     if (!handler) {
-        @synchronized (self) {
-            _waitingForUserInteraction = NO;
-        }
+        [self finishUserInteraction];
         return defaultChoice;
     }
 
@@ -303,9 +303,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
         choice = handler(style, title, message, buttonTitles);
     });
 
-    @synchronized (self) {
-        _waitingForUserInteraction = NO;
-    }
+    [self finishUserInteraction];
     return choice;
 }
 

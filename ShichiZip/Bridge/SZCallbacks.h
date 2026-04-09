@@ -71,6 +71,7 @@ class SZFolderExtractCallback final :
     public IFolderArchiveExtractCallback,
     public IFolderArchiveExtractCallback2,
     public ICryptoGetTextPassword,
+    public IArchiveRequestMemoryUseCallback,
     public CMyUnknownImp
 {
 public:
@@ -82,12 +83,18 @@ public:
     __unsafe_unretained SZOperationSession *Session;
     UInt32 NumErrors;
     bool PasswordWasWrong;
+    bool TestMode;
+    bool RememberMemoryDecision;
+    bool SkipMemoryArchive;
+    UString ArchivePath;
+    UString LastErrorMessage;
 
     SZFolderExtractCallback() : PasswordIsDefined(false), PasswordWasAsked(false), TotalSize(0),
         OverwriteMode(SZOverwriteModeAsk), Session(nil),
-        NumErrors(0), PasswordWasWrong(false) {}
+        NumErrors(0), PasswordWasWrong(false),
+        TestMode(false), RememberMemoryDecision(false), SkipMemoryArchive(false) {}
 
-    Z7_COM_UNKNOWN_IMP_3(IFolderArchiveExtractCallback, IFolderArchiveExtractCallback2, ICryptoGetTextPassword)
+    Z7_COM_UNKNOWN_IMP_4(IFolderArchiveExtractCallback, IFolderArchiveExtractCallback2, ICryptoGetTextPassword, IArchiveRequestMemoryUseCallback)
 
     STDMETHOD(SetTotal)(UInt64 total) override;
     STDMETHOD(SetCompleted)(const UInt64 *completed) override;
@@ -100,6 +107,8 @@ public:
     STDMETHOD(SetOperationResult)(Int32 opRes, Int32 encrypted) override;
     STDMETHOD(ReportExtractResult)(Int32 opRes, Int32 encrypted, const wchar_t *name) override;
     STDMETHOD(CryptoGetTextPassword)(BSTR *pw) override;
+    STDMETHOD(RequestMemoryUse)(UInt32 flags, UInt32 indexType, UInt32 index, const wchar_t *path,
+                                UInt64 requiredSize, UInt64 *allowedSize, UInt32 *answerFlags) override;
 };
 
 // ============================================================

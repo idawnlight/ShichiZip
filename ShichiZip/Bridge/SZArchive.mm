@@ -1106,7 +1106,11 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
         return NO;
     }
     if (r == S_OK && fae->NumErrors > 0) {
-        if (error) *error = SZMakeError(SZArchiveErrorCodePartialFailure, [NSString stringWithFormat:@"Completed with %u error(s)", fae->NumErrors]);
+        NSString *title = [NSString stringWithFormat:@"Completed with %u error%@",
+                           fae->NumErrors,
+                           fae->NumErrors == 1 ? @"" : @"s"];
+        NSString *failureReason = fae->LastErrorMessage.IsEmpty() ? nil : ToNS(fae->LastErrorMessage);
+        if (error) *error = SZMakeDetailedError(SZArchiveErrorCodePartialFailure, title, failureReason);
         return NO;
     }
     if (r != S_OK) {
@@ -1134,6 +1138,8 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
     faeSpec->Session = resolvedSession;
     faeSpec->OverwriteMode = s.overwriteMode;
+    faeSpec->ArchivePath = ToU(_archivePath);
+    faeSpec->TestMode = false;
     [self configureExtractPasswordForCallback:faeSpec explicitPassword:s.password];
 
     CArchiveExtractCallback *ecs = new CArchiveExtractCallback;
@@ -1170,6 +1176,8 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
     faeSpec->Session = resolvedSession;
     faeSpec->OverwriteMode = s.overwriteMode;
+    faeSpec->ArchivePath = ToU(_archivePath);
+    faeSpec->TestMode = false;
     [self configureExtractPasswordForCallback:faeSpec explicitPassword:s.password];
 
     CArchiveExtractCallback *ecs = new CArchiveExtractCallback;
@@ -1206,6 +1214,8 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
     SZFolderExtractCallback *faeSpec = new SZFolderExtractCallback;
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
     faeSpec->Session = resolvedSession;
+    faeSpec->ArchivePath = ToU(_archivePath);
+    faeSpec->TestMode = true;
     [self configureExtractPasswordForCallback:faeSpec explicitPassword:nil];
 
     CArchiveExtractCallback *ecs = new CArchiveExtractCallback;

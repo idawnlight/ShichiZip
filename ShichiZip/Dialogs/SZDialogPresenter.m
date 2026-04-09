@@ -4,12 +4,38 @@
 
 static NSString * const SZShowPasswordPreferenceKey = @"SZShowPasswordInPrompts";
 
+static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
+    if (byteCount == 0) {
+        return 1;
+    }
+
+    const uint64_t rounded = (byteCount + (((uint64_t)1 << 30) - 1)) >> 30;
+    return rounded > UINT32_MAX ? UINT32_MAX : (uint32_t)rounded;
+}
+
 @interface SZPasswordAccessoryController : NSViewController
 
 - (instancetype)initWithInitialValue:(nullable NSString *)initialValue;
 
 @property (nonatomic, readonly) NSString *password;
 @property (nonatomic, readonly) BOOL showsPassword;
+@property (nonatomic, readonly) NSView *preferredFirstResponderView;
+
+@end
+
+@interface SZMemoryLimitAccessoryController : NSViewController
+
+- (instancetype)initWithRequiredBytes:(uint64_t)requiredBytes
+                    currentLimitBytes:(uint64_t)currentLimitBytes
+                          archivePath:(nullable NSString *)archivePath
+                             filePath:(nullable NSString *)filePath
+                         showRemember:(BOOL)showRemember;
+
+@property (nonatomic, readonly) BOOL saveLimit;
+@property (nonatomic, readonly) BOOL skipArchive;
+@property (nonatomic, readonly) BOOL rememberChoice;
+@property (nonatomic, readonly) uint32_t limitGB;
+@property (nonatomic, readonly) BOOL installedRAMIsInsufficient;
 @property (nonatomic, readonly) NSView *preferredFirstResponderView;
 
 @end
@@ -97,6 +123,204 @@ static NSString * const SZShowPasswordPreferenceKey = @"SZShowPasswordInPrompts"
 
 - (NSView *)preferredFirstResponderView {
     return self.showsPassword ? _plainField : _secureField;
+}
+
+@end
+
+@implementation SZMemoryLimitPromptResult
+@end
+
+@implementation SZMemoryLimitAccessoryController {
+    uint32_t _requiredGB;
+    uint32_t _currentLimitGB;
+    uint32_t _installedRAMGB;
+    BOOL _showRemember;
+    NSButton *_saveLimitButton;
+    NSTextField *_limitField;
+    NSTextField *_limitUnitLabel;
+    NSButton *_allowButton;
+    NSButton *_skipButton;
+    NSButton *_rememberButton;
+    NSString *_archivePath;
+    NSString *_filePath;
+}
+
+- (instancetype)initWithRequiredBytes:(uint64_t)requiredBytes
+                    currentLimitBytes:(uint64_t)currentLimitBytes
+                          archivePath:(NSString *)archivePath
+                             filePath:(NSString *)filePath
+                         showRemember:(BOOL)showRemember {
+    if ((self = [super initWithNibName:nil bundle:nil])) {
+        _requiredGB = SZDialogRoundUpByteCountToGB(requiredBytes);
+        _currentLimitGB = SZDialogRoundUpByteCountToGB(currentLimitBytes);
+        _installedRAMGB = SZDialogRoundUpByteCountToGB([NSProcessInfo processInfo].physicalMemory);
+        _showRemember = showRemember;
+        _archivePath = [archivePath copy] ?: @"";
+        _filePath = [filePath copy] ?: @"";
+    }
+    return self;
+}
+
+- (BOOL)installedRAMIsInsufficient {
+    return _installedRAMGB > 0 && _requiredGB > _installedRAMGB;
+}
+
+- (NSTextField *)detailLabelWithString:(NSString *)stringValue {
+    NSTextField *label = [NSTextField wrappingLabelWithString:stringValue];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.font = [NSFont systemFontOfSize:12];
+    label.textColor = NSColor.secondaryLabelColor;
+    label.maximumNumberOfLines = 0;
+    [label setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationVertical];
+    return label;
+}
+
+- (NSButton *)radioButtonWithTitle:(NSString *)title action:(SEL)action {
+    NSButton *button = [[NSButton alloc] initWithFrame:NSZeroRect];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.buttonType = NSButtonTypeRadio;
+    button.title = title;
+    button.target = self;
+    button.action = action;
+    return button;
+}
+
+- (void)loadView {
+    NSView *container = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 380, 220)];
+
+    NSStackView *stack = [[NSStackView alloc] init];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    stack.alignment = NSLayoutAttributeLeading;
+    stack.spacing = 12;
+    [container addSubview:stack];
+
+    NSStackView *detailsStack = [[NSStackView alloc] init];
+    detailsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    detailsStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    detailsStack.alignment = NSLayoutAttributeLeading;
+    detailsStack.spacing = 4;
+    [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"Required memory: %u GB", _requiredGB]]];
+    [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"Current limit: %u GB", _currentLimitGB]]];
+    [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"Installed RAM: %u GB", _installedRAMGB]]];
+    if (_archivePath.length > 0) {
+        [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"Archive: %@", _archivePath]]];
+    }
+    if (_filePath.length > 0) {
+        [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"File: %@", _filePath]]];
+    }
+    [stack addArrangedSubview:detailsStack];
+
+    _saveLimitButton = [NSButton checkboxWithTitle:@"Change allowed limit for next operations" target:self action:@selector(toggleSaveLimit:)];
+    _saveLimitButton.translatesAutoresizingMaskIntoConstraints = NO;
+
+    NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+    formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    formatter.minimum = @1;
+    formatter.maximum = @16384;
+    formatter.allowsFloats = NO;
+    formatter.generatesDecimalNumbers = NO;
+
+    _limitField = [[NSTextField alloc] initWithFrame:NSZeroRect];
+    _limitField.translatesAutoresizingMaskIntoConstraints = NO;
+    _limitField.formatter = formatter;
+    _limitField.alignment = NSTextAlignmentRight;
+    _limitField.stringValue = [NSString stringWithFormat:@"%u", MAX(_requiredGB, 1u)];
+    _limitField.enabled = NO;
+
+    _limitUnitLabel = [NSTextField labelWithString:@"GB"];
+    _limitUnitLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _limitUnitLabel.textColor = NSColor.secondaryLabelColor;
+    _limitUnitLabel.enabled = NO;
+
+    NSStackView *limitStack = [[NSStackView alloc] init];
+    limitStack.translatesAutoresizingMaskIntoConstraints = NO;
+    limitStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    limitStack.alignment = NSLayoutAttributeCenterY;
+    limitStack.spacing = 8;
+    [limitStack addArrangedSubview:_saveLimitButton];
+    [limitStack addArrangedSubview:_limitField];
+    [limitStack addArrangedSubview:_limitUnitLabel];
+    [NSLayoutConstraint activateConstraints:@[
+        [_limitField.widthAnchor constraintEqualToConstant:72],
+    ]];
+    [stack addArrangedSubview:limitStack];
+
+    NSTextField *actionLabel = [NSTextField labelWithString:@"If the archive needs more than the current limit:"];
+    actionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    actionLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
+    [stack addArrangedSubview:actionLabel];
+
+    _allowButton = [self radioButtonWithTitle:@"Allow archive unpacking" action:@selector(selectActionButton:)];
+    _skipButton = [self radioButtonWithTitle:@"Skip archive unpacking" action:@selector(selectActionButton:)];
+    _allowButton.state = self.installedRAMIsInsufficient ? NSControlStateValueOff : NSControlStateValueOn;
+    _skipButton.state = self.installedRAMIsInsufficient ? NSControlStateValueOn : NSControlStateValueOff;
+
+    NSStackView *actionStack = [[NSStackView alloc] init];
+    actionStack.translatesAutoresizingMaskIntoConstraints = NO;
+    actionStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    actionStack.alignment = NSLayoutAttributeLeading;
+    actionStack.spacing = 6;
+    [actionStack addArrangedSubview:_allowButton];
+    [actionStack addArrangedSubview:_skipButton];
+    [stack addArrangedSubview:actionStack];
+
+    _rememberButton = [NSButton checkboxWithTitle:@"Repeat selected action for current operation" target:nil action:NULL];
+    _rememberButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _rememberButton.hidden = !_showRemember;
+    if (_showRemember) {
+        [stack addArrangedSubview:_rememberButton];
+    }
+
+    [NSLayoutConstraint activateConstraints:@[
+        [container.widthAnchor constraintEqualToConstant:380],
+        [stack.topAnchor constraintEqualToAnchor:container.topAnchor],
+        [stack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [stack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [stack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
+    ]];
+
+    self.view = container;
+}
+
+- (void)toggleSaveLimit:(NSButton *)sender {
+    const BOOL enabled = sender.state == NSControlStateValueOn;
+    _limitField.enabled = enabled;
+    _limitUnitLabel.enabled = enabled;
+    if (enabled && _limitField.integerValue <= 0) {
+        _limitField.stringValue = [NSString stringWithFormat:@"%u", MAX(_requiredGB, 1u)];
+    }
+}
+
+- (void)selectActionButton:(NSButton *)sender {
+    const BOOL shouldSkip = sender == _skipButton;
+    _allowButton.state = shouldSkip ? NSControlStateValueOff : NSControlStateValueOn;
+    _skipButton.state = shouldSkip ? NSControlStateValueOn : NSControlStateValueOff;
+}
+
+- (BOOL)saveLimit {
+    return _saveLimitButton.state == NSControlStateValueOn;
+}
+
+- (BOOL)skipArchive {
+    return _skipButton.state == NSControlStateValueOn;
+}
+
+- (BOOL)rememberChoice {
+    return _showRemember && _rememberButton.state == NSControlStateValueOn;
+}
+
+- (uint32_t)limitGB {
+    if (!self.saveLimit) {
+        return _currentLimitGB;
+    }
+
+    const NSInteger value = _limitField.integerValue;
+    return value > 0 ? (uint32_t)value : MAX(_requiredGB, 1u);
+}
+
+- (NSView *)preferredFirstResponderView {
+    return _allowButton;
 }
 
 @end
@@ -207,6 +431,50 @@ static NSString * const SZShowPasswordPreferenceKey = @"SZShowPasswordInPrompts"
     [[NSUserDefaults standardUserDefaults] setBool:accessoryController.showsPassword forKey:SZShowPasswordPreferenceKey];
     if (password) {
         *password = accessoryController.password;
+    }
+    return YES;
+}
+
++ (BOOL)promptForMemoryLimitWithRequiredBytes:(uint64_t)requiredBytes
+                            currentLimitBytes:(uint64_t)currentLimitBytes
+                                  archivePath:(NSString *)archivePath
+                                     filePath:(NSString *)filePath
+                                     testMode:(BOOL)testMode
+                                 showRemember:(BOOL)showRemember
+                                       result:(SZMemoryLimitPromptResult * _Nullable * _Nullable)result {
+    SZMemoryLimitAccessoryController *accessoryController = [[SZMemoryLimitAccessoryController alloc] initWithRequiredBytes:requiredBytes
+                                                                                                         currentLimitBytes:currentLimitBytes
+                                                                                                               archivePath:archivePath
+                                                                                                                  filePath:filePath
+                                                                                                              showRemember:showRemember];
+
+    NSString *message = testMode
+        ? @"This archive needs more memory to continue testing than the current limit allows."
+        : @"This archive needs more memory to continue extracting than the current limit allows.";
+    if (accessoryController.installedRAMIsInsufficient) {
+        message = [message stringByAppendingString:@" Installed RAM may also be insufficient."];
+    }
+
+    SZModalDialogController *controller = [[SZModalDialogController alloc] initWithStyle:(accessoryController.installedRAMIsInsufficient ? SZDialogStyleCritical : SZDialogStyleWarning)
+                                                                                    title:@"Memory Usage Limit Exceeded"
+                                                                                  message:message
+                                                                             buttonTitles:@[@"Cancel", @"Continue"]
+                                                                            accessoryView:accessoryController.view
+                                                                   preferredFirstResponder:accessoryController.preferredFirstResponderView
+                                                                        cancelButtonIndex:0];
+
+    NSInteger selectedButtonIndex = [controller runModal];
+    if (selectedButtonIndex != 1) {
+        return NO;
+    }
+
+    if (result) {
+        SZMemoryLimitPromptResult *promptResult = [SZMemoryLimitPromptResult new];
+        promptResult.saveLimit = accessoryController.saveLimit;
+        promptResult.skipArchive = accessoryController.skipArchive;
+        promptResult.rememberChoice = accessoryController.rememberChoice;
+        promptResult.limitGB = accessoryController.limitGB;
+        *result = promptResult;
     }
     return YES;
 }
