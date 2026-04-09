@@ -344,6 +344,13 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
                     session:(nullable SZOperationSession *)session
                         error:(NSError **)error;
 
+/// Replace one existing item in the currently open archive with a file from disk.
+- (BOOL)replaceItemAtPath:(NSString *)itemPath
+                     inArchiveSubdir:(NSString *)archiveSubdir
+                        withFileAtPath:(NSString *)sourceFilePath
+                                     session:(nullable SZOperationSession *)session
+                                         error:(NSError **)error;
+
 /// Create a new archive from files
 + (BOOL)createAtPath:(NSString *)archivePath
            fromPaths:(NSArray<NSString *> *)sourcePaths

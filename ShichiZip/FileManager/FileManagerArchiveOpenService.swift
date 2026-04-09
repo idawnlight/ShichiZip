@@ -24,6 +24,35 @@ enum FileManagerArchiveOpenResult {
     case failed(Error)
 }
 
+struct FileManagerArchiveMutationTarget {
+    let archive: SZArchive
+    let subdir: String
+}
+
+struct FileManagerArchiveFileFingerprint: Equatable {
+    let fileSize: UInt64
+    let modificationDate: Date
+
+    static func captureIfPossible(for url: URL,
+                                  fileManager: FileManager = .default) -> FileManagerArchiveFileFingerprint? {
+        let standardizedURL = url.standardizedFileURL
+        guard let attributes = try? fileManager.attributesOfItem(atPath: standardizedURL.path),
+              let modificationDate = attributes[.modificationDate] as? Date else {
+            return nil
+        }
+
+        let fileSize = (attributes[.size] as? NSNumber)?.uint64Value ?? 0
+        return FileManagerArchiveFileFingerprint(fileSize: fileSize,
+                                                 modificationDate: modificationDate)
+    }
+}
+
+struct FileManagerNestedArchiveWriteBackInfo {
+    let parentTarget: FileManagerArchiveMutationTarget
+    let parentItemPath: String
+    let initialFingerprint: FileManagerArchiveFileFingerprint
+}
+
 struct FileManagerPreparedArchiveOpen {
     let hostDirectory: URL
     let archivePath: String
@@ -31,6 +60,7 @@ struct FileManagerPreparedArchiveOpen {
     let archive: SZArchive
     let entries: [ArchiveItem]
     let temporaryDirectory: URL?
+    let nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo?
 }
 
 enum FileManagerPreparedArchiveOpenResult {
@@ -46,6 +76,7 @@ enum FileManagerArchiveOpenService {
                                   hostDirectory: URL,
                                   temporaryDirectory: URL?,
                                   displayPathPrefix: String,
+                                  nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo? = nil,
                                   openMode: FileManagerArchiveOpenMode = .defaultBehavior) -> FileManagerPreparedArchiveOpenResult {
         do {
             return try ArchiveOperationRunner.runSynchronously(operationTitle: "Opening archive...",
@@ -55,6 +86,7 @@ enum FileManagerArchiveOpenService {
                                    hostDirectory: hostDirectory,
                                    temporaryDirectory: temporaryDirectory,
                                    displayPathPrefix: displayPathPrefix,
+                                   nestedWriteBackInfo: nestedWriteBackInfo,
                                    openMode: openMode,
                                    session: session)
             }
@@ -67,6 +99,7 @@ enum FileManagerArchiveOpenService {
                                    hostDirectory: URL,
                                    temporaryDirectory: URL?,
                                    displayPathPrefix: String,
+                                   nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo?,
                                    openMode: FileManagerArchiveOpenMode,
                                    session: SZOperationSession) -> FileManagerPreparedArchiveOpenResult {
         let archive = SZArchive()
@@ -90,6 +123,7 @@ enum FileManagerArchiveOpenService {
                                                       displayPathPrefix: displayPathPrefix,
                                                       archive: archive,
                                                       entries: entries,
-                                                      temporaryDirectory: temporaryDirectory))
+                                                      temporaryDirectory: temporaryDirectory,
+                                                      nestedWriteBackInfo: nestedWriteBackInfo))
     }
 }

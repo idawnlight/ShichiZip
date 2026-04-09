@@ -6,6 +6,7 @@ struct FileManagerArchiveItemWorkflowContext {
     let archive: SZArchive
     let hostDirectory: URL
     let displayPathPrefix: String
+    let mutationTarget: FileManagerArchiveMutationTarget?
 }
 
 struct FileManagerArchiveQuickLookPreview {
@@ -107,7 +108,7 @@ final class FileManagerArchiveItemWorkflowService {
     func open(_ item: ArchiveItem,
               context: FileManagerArchiveItemWorkflowContext,
               strategy: FileManagerArchiveItemOpenStrategy = .automatic,
-              openArchiveInline: (URL, URL, String, URL, FileManagerArchiveOpenMode) -> FileManagerArchiveOpenResult,
+              openArchiveInline: (URL, URL, String, URL, FileManagerNestedArchiveWriteBackInfo?, FileManagerArchiveOpenMode) -> FileManagerArchiveOpenResult,
               openExternally: (URL, URL, URL) -> Bool,
               openExternallyIfPossible: (URL, URL) -> Bool) throws {
         let stagedItem = try stage(item: item,
@@ -129,11 +130,15 @@ final class FileManagerArchiveItemWorkflowService {
                 return
             }
 
+            let nestedWriteBackInfo = try makeNestedArchiveWriteBackInfo(for: item,
+                                                                         context: context,
+                                                                         stagedArchiveURL: stagedItem.fileURL)
             switch openArchiveInline(stagedItem.fileURL,
                                      stagedItem.temporaryDirectory,
                                      nestedDisplayPath(for: item,
                                                        displayPathPrefix: context.displayPathPrefix),
                                      context.hostDirectory,
+                                     nestedWriteBackInfo,
                                      .defaultBehavior) {
             case .opened:
                 return
@@ -163,11 +168,15 @@ final class FileManagerArchiveItemWorkflowService {
             }
 
         case let .forceInternal(openMode):
+            let nestedWriteBackInfo = try makeNestedArchiveWriteBackInfo(for: item,
+                                                                         context: context,
+                                                                         stagedArchiveURL: stagedItem.fileURL)
             switch openArchiveInline(stagedItem.fileURL,
                                      stagedItem.temporaryDirectory,
                                      nestedDisplayPath(for: item,
                                                        displayPathPrefix: context.displayPathPrefix),
                                      context.hostDirectory,
+                                     nestedWriteBackInfo,
                                      openMode) {
             case .opened, .cancelled:
                 return
@@ -272,6 +281,23 @@ final class FileManagerArchiveItemWorkflowService {
             cleanup(temporaryDirectory)
             throw error
         }
+    }
+
+    private func makeNestedArchiveWriteBackInfo(for item: ArchiveItem,
+                                                context: FileManagerArchiveItemWorkflowContext,
+                                                stagedArchiveURL: URL) throws -> FileManagerNestedArchiveWriteBackInfo? {
+        guard let parentTarget = context.mutationTarget else {
+            return nil
+        }
+
+        guard let initialFingerprint = FileManagerArchiveFileFingerprint.captureIfPossible(for: stagedArchiveURL,
+                                                                                           fileManager: fileManager) else {
+            throw extractionPreparationError()
+        }
+
+        return FileManagerNestedArchiveWriteBackInfo(parentTarget: parentTarget,
+                                                     parentItemPath: item.path,
+                                                     initialFingerprint: initialFingerprint)
     }
 
     private func extractPromiseDirectlyIfPossible(for item: ArchiveItem,

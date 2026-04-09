@@ -201,16 +201,21 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         let allEntries: [ArchiveItem]
         let currentSubdir: String
         let temporaryDirectory: URL?
+        let nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo?
     }
     private var archiveStack: [ArchiveLevel] = []
     private var isInsideArchive: Bool { !archiveStack.isEmpty }
     private var archiveDisplayItems: [ArchiveItem] = []
     private let archiveItemWorkflowService = FileManagerArchiveItemWorkflowService()
+    private func archiveLevelSupportsInPlaceMutation(_ level: ArchiveLevel) -> Bool {
+        level.temporaryDirectory == nil || level.nestedWriteBackInfo != nil
+    }
+
     var supportsInPlaceArchiveMutation: Bool {
         guard let level = archiveStack.last else {
             return false
         }
-        return level.temporaryDirectory == nil
+        return archiveLevelSupportsInPlaceMutation(level)
     }
     private var showsRealFileIcons: Bool { SZSettings.bool(.showRealFileIcons) }
     private var showsParentRow: Bool {
@@ -593,11 +598,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     var isVirtualLocation: Bool { isInsideArchive }
 
     func currentArchiveMutationTarget() -> (archive: SZArchive, subdir: String)? {
-        guard supportsInPlaceArchiveMutation,
-              let level = archiveStack.last else {
+        guard let level = archiveStack.last,
+              let target = archiveMutationTarget(for: level) else {
             return nil
         }
-        return (level.archive, level.currentSubdir)
+        return (target.archive, target.subdir)
     }
 
     func currentArchiveDestinationDisplayPath() -> String? {
@@ -609,12 +614,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     func currentArchiveMutationTarget(for archiveURL: URL,
                                       subdir: String) -> (archive: SZArchive, subdir: String)? {
-        guard supportsInPlaceArchiveMutation,
-              let level = archiveStack.last,
+        guard let level = archiveStack.last,
               URL(fileURLWithPath: level.archivePath).standardizedFileURL == archiveURL.standardizedFileURL else {
             return nil
         }
-        return (level.archive, subdir)
+
+        guard let target = archiveMutationTarget(for: level, subdir: subdir) else {
+            return nil
+        }
+
+        return (target.archive, target.subdir)
     }
 
     var canQuickLookSelection: Bool {
@@ -790,11 +799,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 try archiveItemWorkflowService.open(archiveItem,
                                                     context: context,
                                                     strategy: .forceExternal,
-                                                    openArchiveInline: { [self] url, temporaryDirectory, displayPathPrefix, hostDirectory, openMode in
+                                                    openArchiveInline: { [self] url, temporaryDirectory, displayPathPrefix, hostDirectory, nestedWriteBackInfo, openMode in
                                                         openArchiveInline(url,
                                                                           hostDirectory: hostDirectory,
                                                                           temporaryDirectory: temporaryDirectory,
                                                                           displayPathPrefix: displayPathPrefix,
+                                                                          nestedWriteBackInfo: nestedWriteBackInfo,
                                                                           openMode: openMode,
                                                                           showError: false)
                                                     },
@@ -872,8 +882,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func openRecentDirectory(_ url: URL) {
-        if isInsideArchive {
-            closeAllArchives()
+        if isInsideArchive && !closeAllArchives(showError: true) {
+            return
         }
         loadDirectory(url)
     }
@@ -1127,8 +1137,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return false
         }
 
-        if isInsideArchive {
-            closeAllArchives()
+        if isInsideArchive && !closeAllArchives(showError: true) {
+            return false
         }
 
         loadDirectory(parentDirectory)
@@ -1157,8 +1167,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         if isDirectory.boolValue {
-            if isInsideArchive {
-                closeAllArchives()
+            if isInsideArchive && !closeAllArchives(showError: true) {
+                return false
             }
 
             loadDirectory(standardizedURL)
@@ -1798,7 +1808,18 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         return FileManagerArchiveItemWorkflowContext(archive: level.archive,
                                                     hostDirectory: archiveHostDirectory(),
-                                                    displayPathPrefix: currentArchiveDisplayPathPrefix())
+                                                    displayPathPrefix: currentArchiveDisplayPathPrefix(),
+                                                    mutationTarget: archiveMutationTarget(for: level))
+    }
+
+    private func archiveMutationTarget(for level: ArchiveLevel,
+                                       subdir: String? = nil) -> FileManagerArchiveMutationTarget? {
+        guard archiveLevelSupportsInPlaceMutation(level) else {
+            return nil
+        }
+
+        return FileManagerArchiveMutationTarget(archive: level.archive,
+                                                subdir: subdir ?? level.currentSubdir)
     }
 
     private func canOpenArchive(at url: URL) -> Bool {
@@ -1812,16 +1833,91 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    private func closeArchiveLevel(_ level: ArchiveLevel) {
-        level.archive.close()
-        archiveItemWorkflowService.cleanup(level.temporaryDirectory)
+    private func refreshArchiveLevelEntries(at index: Int) {
+        guard archiveStack.indices.contains(index) else { return }
+
+        let level = archiveStack[index]
+        let refreshedEntries = level.archive.entries().map { ArchiveItem(from: $0) }
+        archiveStack[index] = ArchiveLevel(
+            filesystemDirectory: level.filesystemDirectory,
+            archivePath: level.archivePath,
+            displayPathPrefix: level.displayPathPrefix,
+            archive: level.archive,
+            allEntries: refreshedEntries,
+            currentSubdir: level.currentSubdir,
+            temporaryDirectory: level.temporaryDirectory,
+            nestedWriteBackInfo: level.nestedWriteBackInfo
+        )
     }
 
-    private func closeAllArchives() {
-        while let level = archiveStack.popLast() {
-            closeArchiveLevel(level)
+    private func writeBackNestedArchiveChangesIfNeeded(for level: ArchiveLevel) throws -> Int? {
+        guard let writeBackInfo = level.nestedWriteBackInfo else {
+            return nil
+        }
+
+        let temporaryArchiveURL = URL(fileURLWithPath: level.archivePath).standardizedFileURL
+        guard let currentFingerprint = FileManagerArchiveFileFingerprint.captureIfPossible(for: temporaryArchiveURL) else {
+            throw paneOperationError("The nested archive could not be synchronized because its temporary file is missing.")
+        }
+
+        guard currentFingerprint != writeBackInfo.initialFingerprint else {
+            return nil
+        }
+
+        try ArchiveOperationRunner.runSynchronously(operationTitle: "Updating archive...",
+                                                   initialFileName: (writeBackInfo.parentItemPath as NSString).lastPathComponent,
+                                                   parentWindow: view.window,
+                                                   deferredDisplay: true) { session in
+            try writeBackInfo.parentTarget.archive.replaceItem(atPath: writeBackInfo.parentItemPath,
+                                                               inArchiveSubdir: writeBackInfo.parentTarget.subdir,
+                                                               withFileAtPath: temporaryArchiveURL.path,
+                                                               session: session)
+        }
+
+        return archiveStack.count >= 2 ? archiveStack.count - 2 : nil
+    }
+
+    @discardableResult
+    private func closeArchiveLevel(_ level: ArchiveLevel,
+                                   showError: Bool = false) -> Bool {
+        do {
+            let refreshedParentIndex = try writeBackNestedArchiveChangesIfNeeded(for: level)
+            level.archive.close()
+            archiveItemWorkflowService.cleanup(level.temporaryDirectory)
+
+            if let lastLevel = archiveStack.last,
+               lastLevel.archive === level.archive {
+                archiveStack.removeLast()
+            }
+
+            if let refreshedParentIndex {
+                refreshArchiveLevelEntries(at: refreshedParentIndex)
+            }
+
+            if archiveStack.isEmpty {
+                archiveDisplayItems.removeAll()
+            } else if isViewLoaded, let currentLevel = archiveStack.last {
+                navigateArchiveSubdir(currentLevel.currentSubdir)
+            }
+
+            return true
+        } catch {
+            if showError {
+                showErrorAlert(error)
+            }
+            return false
+        }
+    }
+
+    @discardableResult
+    private func closeAllArchives(showError: Bool = false) -> Bool {
+        while let level = archiveStack.last {
+            guard closeArchiveLevel(level, showError: showError) else {
+                return false
+            }
         }
         archiveDisplayItems.removeAll()
+        return true
     }
 
     private func reloadCurrentArchiveEntries(selectingPaths paths: [String] = []) {
@@ -1835,7 +1931,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             archive: level.archive,
             allEntries: refreshedEntries,
             currentSubdir: level.currentSubdir,
-            temporaryDirectory: level.temporaryDirectory
+            temporaryDirectory: level.temporaryDirectory,
+            nestedWriteBackInfo: level.nestedWriteBackInfo
         )
 
         navigateArchiveSubdir(level.currentSubdir)
@@ -2235,7 +2332,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
             do {
                 let contents = try directoryContents(for: url)
-                closeAllArchives()
+                guard closeAllArchives(showError: true) else {
+                    updatePathField()
+                    return
+                }
                 applyDirectoryContents(contents, for: url)
             } catch {
                 updatePathField()
@@ -2260,7 +2360,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 return
             }
 
-            closeAllArchives()
+            guard closeAllArchives(showError: true) else {
+                updatePathField()
+                return
+            }
             switch openArchiveInline(url,
                                      hostDirectory: url.deletingLastPathComponent(),
                                      showError: false) {
@@ -2358,11 +2461,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             try archiveItemWorkflowService.open(item,
                                                 context: context,
                                                 strategy: strategy,
-                                                openArchiveInline: { [self] url, temporaryDirectory, displayPathPrefix, hostDirectory, openMode in
+                                                openArchiveInline: { [self] url, temporaryDirectory, displayPathPrefix, hostDirectory, nestedWriteBackInfo, openMode in
                                                     openArchiveInline(url,
                                                                       hostDirectory: hostDirectory,
                                                                       temporaryDirectory: temporaryDirectory,
                                                                       displayPathPrefix: displayPathPrefix,
+                                                                      nestedWriteBackInfo: nestedWriteBackInfo,
                                                                       openMode: openMode,
                                                                       showError: false,
                                                                       preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported)
@@ -2406,8 +2510,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 navigateArchiveSubdir(parent)
             } else {
                 let fsDir = level.filesystemDirectory
-                archiveStack.removeLast()
-                closeArchiveLevel(level)
+                guard closeArchiveLevel(level, showError: true) else {
+                    return
+                }
                 if archiveStack.isEmpty {
                     loadDirectory(fsDir)
                 } else {
@@ -3191,6 +3296,7 @@ extension FileManagerPaneController {
                                    hostDirectory: URL? = nil,
                                    temporaryDirectory: URL? = nil,
                                    displayPathPrefix: String? = nil,
+                                   nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo? = nil,
                                    openMode: FileManagerArchiveOpenMode = .defaultBehavior,
                                    showError: Bool = true,
                                    preserveTemporaryDirectoryOnUnsupported: Bool = false,
@@ -3202,6 +3308,7 @@ extension FileManagerPaneController {
                                                                              hostDirectory: paneHostDirectory,
                                                                              temporaryDirectory: temporaryDirectory,
                                                                              displayPathPrefix: resolvedDisplayPathPrefix,
+                                                                             nestedWriteBackInfo: nestedWriteBackInfo,
                                                                              openMode: openMode)
 
         return finishArchiveOpen(preparedResult,
@@ -3219,8 +3326,10 @@ extension FileManagerPaneController {
         let result: FileManagerArchiveOpenResult
         switch preparedResult {
         case let .opened(prepared):
-            commitPreparedArchive(prepared, replaceCurrentState: replaceCurrentState)
-            return .opened
+            if commitPreparedArchive(prepared, replaceCurrentState: replaceCurrentState) {
+                return .opened
+            }
+            return .cancelled
         case let .unsupportedArchive(error):
             if !preserveTemporaryDirectoryOnUnsupported {
                 archiveItemWorkflowService.cleanup(temporaryDirectory)
@@ -3247,9 +3356,11 @@ extension FileManagerPaneController {
     }
 
     private func commitPreparedArchive(_ prepared: FileManagerPreparedArchiveOpen,
-                                       replaceCurrentState: Bool) {
-        if replaceCurrentState {
-            closeAllArchives()
+                                       replaceCurrentState: Bool) -> Bool {
+        if replaceCurrentState && !closeAllArchives(showError: true) {
+            prepared.archive.close()
+            archiveItemWorkflowService.cleanup(prepared.temporaryDirectory)
+            return false
         }
 
         currentDirectory = prepared.hostDirectory
@@ -3265,10 +3376,12 @@ extension FileManagerPaneController {
             archive: prepared.archive,
             allEntries: prepared.entries,
             currentSubdir: "",
-            temporaryDirectory: prepared.temporaryDirectory
+            temporaryDirectory: prepared.temporaryDirectory,
+            nestedWriteBackInfo: prepared.nestedWriteBackInfo
         )
         archiveStack.append(level)
         navigateArchiveSubdir("")
+        return true
     }
 
     func navigateArchiveSubdir(_ subdir: String) {
@@ -3282,7 +3395,8 @@ extension FileManagerPaneController {
             archive: level.archive,
             allEntries: level.allEntries,
             currentSubdir: subdir,
-            temporaryDirectory: level.temporaryDirectory
+            temporaryDirectory: level.temporaryDirectory,
+            nestedWriteBackInfo: level.nestedWriteBackInfo
         )
         level = archiveStack.last!
 

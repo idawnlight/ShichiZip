@@ -1806,6 +1806,97 @@ static BOOL CheckExtractResult(SZFolderExtractCallback *fae, HRESULT r, NSError 
     return YES;
 }
 
+- (BOOL)replaceItemAtPath:(NSString *)itemPath inArchiveSubdir:(NSString *)archiveSubdir withFileAtPath:(NSString *)sourceFilePath session:(SZOperationSession *)session error:(NSError **)error {
+    if (!_isOpen) {
+        if (error) *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+        return NO;
+    }
+
+    NSString *standardizedSourcePath = [NSURL fileURLWithPath:sourceFilePath].standardizedURL.path;
+    if (![[NSFileManager defaultManager] fileExistsAtPath:standardizedSourcePath]) {
+        if (error) {
+            *error = SZMakeError(E_INVALIDARG, @"The updated nested archive file is missing.");
+        }
+        return NO;
+    }
+
+    SZOperationSession *resolvedSession = session ?: SZMakeDefaultOperationSession(nil);
+    SZAgentUpdateCallback *updateSpec = new SZAgentUpdateCallback;
+    CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
+    updateSpec->Session = resolvedSession;
+    updateSpec->ArchivePath = ToU(_archivePath ?: @"");
+    if (_cachedPasswordIsDefined) {
+        updateSpec->PasswordIsDefined = true;
+        updateSpec->Password = ToU(_cachedPassword ?: @"");
+    }
+
+    CMyComPtr<IInFolderArchive> agent;
+    CAgent *agentSpec = NULL;
+    CMyComPtr<IFolderFolder> folder;
+    HRESULT result = SZOpenAgentFolder(_archivePath,
+                                       _openType,
+                                       updateSpec,
+                                       archiveSubdir,
+                                       agent,
+                                       agentSpec,
+                                       folder);
+    if (result != S_OK) {
+        if (error) {
+            const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo : CArcErrorInfo();
+            *error = SZOpenArchiveErrorFromPasswordContext(result,
+                                                           errorInfo,
+                                                           updateSpec->PasswordWasAsked,
+                                                           updateSpec->PasswordIsDefined);
+        }
+        return NO;
+    }
+
+    std::vector<UInt32> indices;
+    result = SZResolveFolderItemIndices(folder, @[itemPath], archiveSubdir, indices);
+    if (result != S_OK || indices.size() != 1) {
+        if (error) {
+            *error = SZArchiveUpdateErrorFromResult(E_INVALIDARG,
+                                                    @"Cannot update nested archive in parent archive",
+                                                    UString());
+        }
+        return NO;
+    }
+
+    CMyComPtr<IFolderOperations> folderOperations;
+    folder.QueryInterface(IID_IFolderOperations, &folderOperations);
+    if (!folderOperations) {
+        if (error) {
+            *error = SZMakeError(SZArchiveErrorCodeUnsupportedFormat,
+                                 @"This archive does not support in-place updates.");
+        }
+        return NO;
+    }
+
+    result = folderOperations->CopyFromFile(indices[0],
+                                            ToU(standardizedSourcePath).Ptr(),
+                                            updateCallback);
+
+    if (updateSpec->PasswordIsDefined && (result == S_OK || updateSpec->ArchiveWasReplaced)) {
+        [self storeCachedPassword:updateSpec->Password defined:true];
+    }
+
+    if ((result == S_OK || updateSpec->ArchiveWasReplaced)
+        && ![self reopenAfterExternalMutationWithSession:resolvedSession error:error]) {
+        return NO;
+    }
+
+    if (result != S_OK) {
+        if (error) {
+            *error = SZArchiveUpdateErrorFromResult(result,
+                                                    @"Cannot update nested archive in parent archive",
+                                                    updateSpec->LastErrorMessage);
+        }
+        return NO;
+    }
+
+    return YES;
+}
+
 static UString SZCompressionMethodSpec(SZCompressionSettings *settings) {
     if (settings.methodName.length > 0) {
         return ToU(settings.methodName);
