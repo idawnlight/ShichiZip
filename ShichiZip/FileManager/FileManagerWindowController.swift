@@ -50,13 +50,13 @@ private final class FileOperationDestinationPicker: NSObject {
         if let ownerWindow {
             panel.beginSheetModal(for: ownerWindow) { [weak self] response in
                 guard response == .OK, let url = panel.url else { return }
-                self?.pathField?.stringValue = url.standardizedFileURL.path
+                self?.pathField?.stringValue = szNormalizedDestinationDisplayPath(url.standardizedFileURL.path)
             }
             return
         }
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        pathField?.stringValue = url.standardizedFileURL.path
+        pathField?.stringValue = szNormalizedDestinationDisplayPath(url.standardizedFileURL.path)
     }
 
     private func suggestedDirectoryURL() -> URL {
@@ -77,14 +77,29 @@ private final class FileOperationDestinationPicker: NSObject {
             candidateURL = URL(fileURLWithPath: expandedPath, relativeTo: baseDirectory)
         }
 
-        let standardizedURL = candidateURL.standardizedFileURL
-        var isDirectory: ObjCBool = false
-        if FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory) {
-            return isDirectory.boolValue ? standardizedURL : standardizedURL.deletingLastPathComponent()
-        }
+        var probeURL = candidateURL.standardizedFileURL
 
-        return standardizedURL.deletingLastPathComponent()
+        while true {
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: probeURL.path, isDirectory: &isDirectory) {
+                return isDirectory.boolValue ? probeURL : probeURL.deletingLastPathComponent()
+            }
+
+            let parentURL = probeURL.deletingLastPathComponent().standardizedFileURL
+            if parentURL.path == probeURL.path {
+                return baseDirectory
+            }
+
+            probeURL = parentURL
+        }
     }
+}
+
+private func szNormalizedDestinationDisplayPath(_ path: String) -> String {
+    guard !path.isEmpty, path != "/" else {
+        return path.isEmpty ? "/" : path
+    }
+    return path.hasSuffix("/") ? path : path + "/"
 }
 
 enum FileManagerViewPreferences {
@@ -380,12 +395,31 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         static func record(_ path: String) {
             let normalizedPath = URL(fileURLWithPath: path).standardizedFileURL.path
-            var updatedEntries = entries().filter { $0 != normalizedPath }
-            updatedEntries.insert(normalizedPath, at: 0)
+            let displayPath = szNormalizedDestinationDisplayPath(normalizedPath)
+            var updatedEntries = entries().filter {
+                URL(fileURLWithPath: $0).standardizedFileURL.path != normalizedPath
+            }
+            updatedEntries.insert(displayPath, at: 0)
             if updatedEntries.count > maxEntries {
                 updatedEntries.removeSubrange(maxEntries..<updatedEntries.count)
             }
             defaults.set(updatedEntries, forKey: entriesKey)
+        }
+    }
+
+    private enum FileOperationDestinationTarget {
+        case directory(URL)
+        case archive(archiveURL: URL, subdir: String)
+
+        var displayPath: String {
+            switch self {
+            case let .directory(url):
+                return szNormalizedDestinationDisplayPath(url.standardizedFileURL.path)
+            case let .archive(archiveURL, subdir):
+                let archivePath = archiveURL.standardizedFileURL.path
+                let combinedPath = subdir.isEmpty ? archivePath : archivePath + "/" + subdir
+                return szNormalizedDestinationDisplayPath(combinedPath)
+            }
         }
     }
 
@@ -923,7 +957,43 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         let activePane = self.activePane
         guard activePane.canAddSelectedItemsToArchive() else {
             if activePane.isVirtualLocation {
-                showUnsupportedOperationAlert("Creating or updating archives from inside an open archive is not implemented yet.")
+                showUnsupportedOperationAlert("This archive view is backed by a temporary extracted copy. Open the archive directly to add files into it.")
+            }
+            return
+        }
+
+        if activePane.isVirtualLocation {
+            guard let target = activePane.currentArchiveMutationTarget() else {
+                showUnsupportedOperationAlert("This archive view is backed by a temporary extracted copy. Open the archive directly to add files into it.")
+                return
+            }
+
+            let openPanel = NSOpenPanel()
+            openPanel.canChooseFiles = true
+            openPanel.canChooseDirectories = true
+            openPanel.allowsMultipleSelection = true
+            openPanel.resolvesAliases = true
+            openPanel.prompt = "Add"
+            openPanel.message = "Select files or folders to add to the archive."
+            openPanel.directoryURL = suggestedArchiveAddSourceDirectory(for: activePane)
+
+            let handleSelection = { [weak self] in
+                let selectedURLs = openPanel.urls.map(\.standardizedFileURL)
+                guard !selectedURLs.isEmpty else { return }
+                activePane.beginConfirmedArchiveTransfer(selectedURLs,
+                                                        to: target,
+                                                        operation: .copy,
+                                                        sourcePane: nil,
+                                                        parentWindow: self?.window)
+            }
+
+            if let window {
+                openPanel.beginSheetModal(for: window) { response in
+                    guard response == .OK else { return }
+                    handleSelection()
+                }
+            } else if openPanel.runModal() == .OK {
+                handleSelection()
             }
             return
         }
@@ -1352,39 +1422,32 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         let pane = activePane
 
         if pane.isVirtualLocation {
-            if let sourcePane = inactiveFileSystemSourcePaneForActiveArchiveMutation(),
-               let target = pane.currentArchiveMutationTarget(),
-               (move || !pane.canCopySelection()) {
-                let sourceURLs = sourcePane.selectedFileURLs()
-                pane.beginConfirmedArchiveTransfer(sourceURLs,
-                                                   to: target,
-                                                   operation: move ? .move : .copy,
-                                                   sourcePane: sourcePane,
-                                                   parentWindow: window)
-                return
-            }
-
             if move {
                 showUnsupportedOperationAlert("Moving items from an open archive is not implemented yet. Use Copy to extract them out first.")
                 return
             }
 
             guard pane.canCopySelection() else { return }
-            guard let destURL = promptForFileOperationDestination(forMove: false, sourcePane: pane) else { return }
+            guard let destinationTarget = promptForFileOperationDestination(forMove: false, sourcePane: pane) else { return }
 
-            Task { @MainActor [weak self] in
-                guard let self, let parentWindow = self.window else { return }
-                do {
-                    try await ArchiveOperationRunner.run(operationTitle: "Copying selected archive items...",
-                                                         parentWindow: parentWindow) { session in
-                        try pane.extractSelectedArchiveItems(to: destURL,
-                                                             session: session,
-                                                             overwriteMode: .ask)
+            switch destinationTarget {
+            case let .directory(destURL):
+                Task { @MainActor [weak self] in
+                    guard let self, let parentWindow = self.window else { return }
+                    do {
+                        try await ArchiveOperationRunner.run(operationTitle: "Copying selected archive items...",
+                                                             parentWindow: parentWindow) { session in
+                            try pane.extractSelectedArchiveItems(to: destURL,
+                                                                 session: session,
+                                                                 overwriteMode: .ask)
+                        }
+                        self.refreshPaneDisplayingDirectory(destURL)
+                    } catch {
+                        self.showErrorAlert(error)
                     }
-                    self.refreshPaneDisplayingDirectory(destURL)
-                } catch {
-                    self.showErrorAlert(error)
                 }
+            case .archive:
+                showUnsupportedOperationAlert("Copying items from an open archive directly into another archive is not implemented yet.")
             }
             return
         }
@@ -1392,59 +1455,37 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         let sourceURLs = pane.selectedFileURLs()
         guard !sourceURLs.isEmpty else { return }
 
-        if let destinationPane = inactivePane,
-           destinationPane.isVirtualLocation {
-            guard let target = destinationPane.currentArchiveMutationTarget() else {
-                showUnsupportedOperationAlert("This archive view is backed by a temporary extracted copy. Open the archive directly to copy or move files into it.")
-                return
-            }
+        guard let destinationTarget = promptForFileOperationDestination(forMove: move, sourcePane: pane) else { return }
+        guard validateTransferDestination(destinationTarget, for: pane, move: move) else { return }
 
-            destinationPane.beginConfirmedArchiveTransfer(sourceURLs,
-                                                          to: target,
-                                                          operation: move ? .move : .copy,
-                                                          sourcePane: pane,
-                                                          parentWindow: window)
-            return
-        }
-
-        guard let destURL = promptForFileOperationDestination(forMove: move, sourcePane: pane) else { return }
-        guard validateTransferDestination(destURL, for: pane, move: move) else { return }
-
-        let operation = move ? "Moving" : "Copying"
-        let dragOperation: NSDragOperation = move ? .move : .copy
-        Task { @MainActor [weak self] in
-            guard let self, let parentWindow = self.window else { return }
-            do {
-                try await ArchiveOperationRunner.run(operationTitle: "\(operation) \(sourceURLs.count) item(s)...",
-                                                     parentWindow: parentWindow) { session in
-                    try pane.transferFileSystemItemURLs(sourceURLs,
-                                                        to: destURL,
-                                                        operation: dragOperation,
-                                                        session: session)
+        switch destinationTarget {
+        case let .directory(destURL):
+            let operation = move ? "Moving" : "Copying"
+            let dragOperation: NSDragOperation = move ? .move : .copy
+            Task { @MainActor [weak self] in
+                guard let self, let parentWindow = self.window else { return }
+                do {
+                    try await ArchiveOperationRunner.run(operationTitle: "\(operation) \(sourceURLs.count) item(s)...",
+                                                         parentWindow: parentWindow) { session in
+                        try pane.transferFileSystemItemURLs(sourceURLs,
+                                                            to: destURL,
+                                                            operation: dragOperation,
+                                                            session: session)
+                    }
+                    self.refreshAfterFilesystemTransfer(from: pane,
+                                                       to: destURL,
+                                                       operation: dragOperation)
+                } catch {
+                    self.showErrorAlert(error)
                 }
-                self.refreshAfterFilesystemTransfer(from: pane,
-                                                   to: destURL,
-                                                   operation: dragOperation)
-            } catch {
-                self.showErrorAlert(error)
             }
+        case let .archive(archiveURL, subdir):
+            performArchiveDestinationTransfer(sourceURLs,
+                                             from: pane,
+                                             toArchiveURL: archiveURL,
+                                             subdir: subdir,
+                                             move: move)
         }
-    }
-
-    private func inactiveFileSystemSourcePaneForActiveArchiveMutation() -> FileManagerPaneController? {
-        guard activePane.isVirtualLocation,
-              activePane.supportsInPlaceArchiveMutation,
-              let pane = inactivePane,
-              !pane.isVirtualLocation,
-              !pane.selectedFileURLs().isEmpty else {
-            return nil
-        }
-
-        return pane
-    }
-
-    private func canImportInactivePaneSelectionIntoActiveArchive() -> Bool {
-        inactiveFileSystemSourcePaneForActiveArchiveMutation() != nil
     }
 
     @objc func createFolder(_ sender: Any?) {
@@ -1544,14 +1585,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         case #selector(testArchive(_:)):
             return activePane.canTestArchiveSelection()
         case #selector(copyFiles(_:)):
-            if activePane.isVirtualLocation {
-                return activePane.canCopySelection() || canImportInactivePaneSelectionIntoActiveArchive()
-            }
             return activePane.canCopySelection()
         case #selector(moveFiles(_:)):
-            if activePane.isVirtualLocation {
-                return canImportInactivePaneSelectionIntoActiveArchive()
-            }
             return activePane.canMoveSelection()
         case #selector(renameSelection(_:)):
             return activePane.canRenameSelection()
@@ -1664,12 +1699,27 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         return isEnabled
     }
 
-    private func suggestedDestinationURL(for sourcePane: FileManagerPaneController) -> URL {
-        if let otherPane = inactivePane, !otherPane.isVirtualLocation {
+    private func suggestedArchiveAddSourceDirectory(for targetPane: FileManagerPaneController) -> URL {
+        if let otherPane = inactivePane,
+           !otherPane.isVirtualLocation {
             return otherPane.currentDirectoryURL.standardizedFileURL
         }
 
-        return sourcePane.currentDirectoryURL.standardizedFileURL
+        return targetPane.currentDirectoryURL.standardizedFileURL
+    }
+
+    private func suggestedDestinationPath(for sourcePane: FileManagerPaneController) -> String {
+        if let otherPane = inactivePane {
+            if let archivePath = otherPane.currentArchiveDestinationDisplayPath() {
+                return szNormalizedDestinationDisplayPath(archivePath)
+            }
+
+            if !otherPane.isVirtualLocation {
+                return szNormalizedDestinationDisplayPath(otherPane.currentDirectoryURL.standardizedFileURL.path)
+            }
+        }
+
+        return szNormalizedDestinationDisplayPath(sourcePane.currentDirectoryURL.standardizedFileURL.path)
     }
 
     private func promptForArchiveDestination(from sourcePane: FileManagerPaneController) -> ExtractDialogResult? {
@@ -1717,12 +1767,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     private func promptForFileOperationDestination(forMove move: Bool,
-                                                   sourcePane: FileManagerPaneController) -> URL? {
+                                                   sourcePane: FileManagerPaneController) -> FileOperationDestinationTarget? {
         let title = move ? "Move" : "Copy"
         let actionTitle = move ? "Move" : "Copy"
         let labelTitle = move ? "Move to:" : "Copy to:"
         let historyEntries = FileOperationDestinationHistory.entries()
-        let defaultPath = suggestedDestinationURL(for: sourcePane).path
+        let defaultPath = suggestedDestinationPath(for: sourcePane)
         let infoText = fileOperationInfoText(for: sourcePane)
 
         while true {
@@ -1783,22 +1833,22 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             let enteredPath = pathField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
 
             do {
-                let destinationURL = try resolveDestinationDirectoryURL(from: enteredPath,
-                                                                        relativeTo: sourcePane.currentDirectoryURL)
-                FileOperationDestinationHistory.record(destinationURL.path)
-                return destinationURL
+                let destinationTarget = try resolveDestinationTarget(from: enteredPath,
+                                                                     relativeTo: sourcePane.currentDirectoryURL)
+                FileOperationDestinationHistory.record(destinationTarget.displayPath)
+                return destinationTarget
             } catch {
                 showErrorAlert(error)
             }
         }
     }
 
-    private func resolveDestinationDirectoryURL(from enteredPath: String,
-                                                relativeTo baseDirectory: URL) throws -> URL {
+    private func resolveDestinationTarget(from enteredPath: String,
+                                          relativeTo baseDirectory: URL) throws -> FileOperationDestinationTarget {
         guard !enteredPath.isEmpty else {
             throw NSError(domain: NSCocoaErrorDomain,
                           code: NSFileNoSuchFileError,
-                          userInfo: [NSLocalizedDescriptionKey: "Enter a destination folder."])
+                          userInfo: [NSLocalizedDescriptionKey: "Enter a destination folder or archive."])
         }
 
         let expandedPath = NSString(string: enteredPath).expandingTildeInPath
@@ -1810,6 +1860,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
 
         let standardizedURL = candidateURL.standardizedFileURL
+
+        if let archiveTarget = try resolveArchiveDestinationTarget(from: standardizedURL) {
+            return archiveTarget
+        }
+
         var isDirectory: ObjCBool = false
 
         if FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory) {
@@ -1818,14 +1873,80 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                               code: NSFileWriteInvalidFileNameError,
                               userInfo: [
                                   NSFilePathErrorKey: standardizedURL.path,
-                                  NSLocalizedDescriptionKey: "The destination path must be a folder."
+                                  NSLocalizedDescriptionKey: "The destination path must be a folder or archive."
                               ])
             }
-            return standardizedURL
+            return .directory(standardizedURL)
+        }
+
+        if containsArchiveLikePathComponent(standardizedURL.path) {
+            throw NSError(domain: NSCocoaErrorDomain,
+                          code: NSFileNoSuchFileError,
+                          userInfo: [
+                              NSFilePathErrorKey: standardizedURL.path,
+                              NSLocalizedDescriptionKey: "The destination archive does not exist. Use Add to create a new archive."
+                          ])
         }
 
         try FileManager.default.createDirectory(at: standardizedURL, withIntermediateDirectories: true)
-        return standardizedURL
+        return .directory(standardizedURL)
+    }
+
+    private func resolveArchiveDestinationTarget(from standardizedURL: URL) throws -> FileOperationDestinationTarget? {
+        let pathComponents = standardizedURL.pathComponents
+
+        for componentCount in stride(from: pathComponents.count, through: 1, by: -1) {
+            let prefixPath = NSString.path(withComponents: Array(pathComponents.prefix(componentCount)))
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: prefixPath, isDirectory: &isDirectory) else {
+                continue
+            }
+
+            guard !isDirectory.boolValue else {
+                continue
+            }
+
+            let archiveURL = URL(fileURLWithPath: prefixPath).standardizedFileURL
+            guard isArchiveFile(at: archiveURL) else {
+                throw NSError(domain: NSCocoaErrorDomain,
+                              code: NSFileWriteInvalidFileNameError,
+                              userInfo: [
+                                  NSFilePathErrorKey: prefixPath,
+                                  NSLocalizedDescriptionKey: "The destination path must be a folder or archive."
+                              ])
+            }
+
+            let subdir = Array(pathComponents.dropFirst(componentCount)).joined(separator: "/")
+            return .archive(archiveURL: archiveURL, subdir: subdir)
+        }
+
+        return nil
+    }
+
+    private func isArchiveFile(at url: URL) -> Bool {
+        let archive = SZArchive()
+
+        do {
+            try archive.open(atPath: url.path)
+            archive.close()
+            return true
+        } catch {
+            let nsError = error as NSError
+            return nsError.domain == SZArchiveErrorDomain && nsError.code == -12
+        }
+    }
+
+    private func containsArchiveLikePathComponent(_ path: String) -> Bool {
+        let supportedExtensions = Set(
+            SZArchive.supportedFormats()
+                .flatMap(\.extensions)
+                .map { $0.lowercased() }
+        )
+
+        return URL(fileURLWithPath: path).standardizedFileURL.pathComponents.contains { component in
+            let ext = URL(fileURLWithPath: component).pathExtension.lowercased()
+            return !ext.isEmpty && supportedExtensions.contains(ext)
+        }
     }
 
     private func fileOperationInfoText(for sourcePane: FileManagerPaneController) -> String {
@@ -1842,9 +1963,22 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         return lines.joined(separator: "\n")
     }
 
-    private func validateTransferDestination(_ destinationURL: URL,
+    private func validateTransferDestination(_ destinationTarget: FileOperationDestinationTarget,
                                              for sourcePane: FileManagerPaneController,
                                              move: Bool) -> Bool {
+        switch destinationTarget {
+        case let .archive(archiveURL, _):
+            let selectedURLs = Set(sourcePane.selectedFileURLs().map(\.standardizedFileURL))
+            guard !selectedURLs.contains(archiveURL.standardizedFileURL) else {
+                let action = move ? "move" : "copy"
+                szPresentMessage(title: "Cannot \(action) an archive into itself",
+                                 message: "Choose a different destination archive.",
+                                 style: .warning,
+                                 for: window)
+                return false
+            }
+            return true
+        case let .directory(destinationURL):
         let sourceDirectory = sourcePane.currentDirectoryURL.standardizedFileURL
         let standardizedDestination = destinationURL.standardizedFileURL
 
@@ -1858,6 +1992,99 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
 
         return true
+        }
+    }
+
+    private func performArchiveDestinationTransfer(_ sourceURLs: [URL],
+                                                   from sourcePane: FileManagerPaneController,
+                                                   toArchiveURL archiveURL: URL,
+                                                   subdir: String,
+                                                   move: Bool) {
+        let operation: NSDragOperation = move ? .move : .copy
+
+        if let (pane, target) = archiveDestinationTarget(for: archiveURL, subdir: subdir) {
+            pane.beginArchiveTransfer(sourceURLs,
+                                      to: target,
+                                      operation: operation,
+                                      sourcePane: sourcePane,
+                                      parentWindow: window,
+                                      requiresConfirmation: false)
+            return
+        }
+
+        let operationTitle = move ? "Moving \(sourceURLs.count) item(s)..." : "Copying \(sourceURLs.count) item(s)..."
+        let selectionPaths = archiveSelectionPaths(for: sourceURLs, targetSubdir: subdir)
+
+        Task { @MainActor [weak self] in
+            guard let self, let parentWindow = self.window else { return }
+            do {
+                try await ArchiveOperationRunner.run(operationTitle: operationTitle,
+                                                     parentWindow: parentWindow) { session in
+                    let archive = SZArchive()
+                    try archive.open(atPath: archiveURL.path, session: session)
+                    defer { archive.close() }
+                    try archive.addPaths(sourceURLs.map(\.path),
+                                         toArchiveSubdir: subdir,
+                                         moveMode: move,
+                                         session: session)
+                }
+
+                self.refreshOpenArchiveDestinations(archiveURL: archiveURL,
+                                                    targetSubdir: subdir,
+                                                    selectingPaths: selectionPaths)
+                if move {
+                    sourcePane.refresh()
+                }
+            } catch {
+                self.showErrorAlert(error)
+            }
+        }
+    }
+
+    private func archiveDestinationTarget(for archiveURL: URL,
+                                          subdir: String) -> (pane: FileManagerPaneController, target: (archive: SZArchive, subdir: String))? {
+        if let target = leftPane.currentArchiveMutationTarget(for: archiveURL, subdir: subdir) {
+            return (leftPane, target)
+        }
+
+        if isDualPane,
+           let target = rightPane.currentArchiveMutationTarget(for: archiveURL, subdir: subdir) {
+            return (rightPane, target)
+        }
+
+        return nil
+    }
+
+    private func archiveSelectionPaths(for sourceURLs: [URL],
+                                       targetSubdir: String) -> [String] {
+        var seenPaths = Set<String>()
+        var selectionPaths: [String] = []
+
+        for url in sourceURLs {
+            let leafName = url.lastPathComponent
+            guard !leafName.isEmpty else { continue }
+
+            let path = targetSubdir.isEmpty ? leafName : targetSubdir + "/" + leafName
+            guard seenPaths.insert(path).inserted else { continue }
+            selectionPaths.append(path)
+        }
+
+        return selectionPaths
+    }
+
+    private func refreshOpenArchiveDestinations(archiveURL: URL,
+                                                targetSubdir: String,
+                                                selectingPaths: [String]) {
+        if leftPane.currentArchiveMutationTarget(for: archiveURL, subdir: targetSubdir) != nil {
+            leftPane.refreshArchiveAfterMutation(targetSubdir: targetSubdir,
+                                                 selectingPaths: selectingPaths)
+        }
+
+        if isDualPane,
+           rightPane.currentArchiveMutationTarget(for: archiveURL, subdir: targetSubdir) != nil {
+            rightPane.refreshArchiveAfterMutation(targetSubdir: targetSubdir,
+                                                  selectingPaths: selectingPaths)
+        }
     }
 
     private func refreshPaneDisplayingDirectory(_ directoryURL: URL) {

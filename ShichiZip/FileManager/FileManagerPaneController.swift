@@ -600,12 +600,32 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return (level.archive, level.currentSubdir)
     }
 
+    func currentArchiveDestinationDisplayPath() -> String? {
+        guard isInsideArchive, supportsInPlaceArchiveMutation else {
+            return nil
+        }
+        return currentLocationDisplayPath
+    }
+
+    func currentArchiveMutationTarget(for archiveURL: URL,
+                                      subdir: String) -> (archive: SZArchive, subdir: String)? {
+        guard supportsInPlaceArchiveMutation,
+              let level = archiveStack.last,
+              URL(fileURLWithPath: level.archivePath).standardizedFileURL == archiveURL.standardizedFileURL else {
+            return nil
+        }
+        return (level.archive, subdir)
+    }
+
     var canQuickLookSelection: Bool {
         !selectedRealPaneItems().isEmpty
     }
 
     func canAddSelectedItemsToArchive() -> Bool {
-        !isInsideArchive && !selectedFileSystemItems().isEmpty
+        if isInsideArchive {
+            return supportsInPlaceArchiveMutation
+        }
+        return !selectedFileSystemItems().isEmpty
     }
 
     func canCreateFolderHere() -> Bool {
@@ -1837,9 +1857,36 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
+    func refreshArchiveAfterMutation(targetSubdir: String? = nil,
+                                     selectingPaths paths: [String] = []) {
+        let normalizedTargetSubdir = normalizeArchivePath(targetSubdir ?? archiveStack.last?.currentSubdir ?? "")
+        let normalizedCurrentSubdir = normalizeArchivePath(archiveStack.last?.currentSubdir ?? "")
+        let selectionPaths = normalizedTargetSubdir == normalizedCurrentSubdir
+            ? paths.map(normalizeArchivePath)
+            : []
+        reloadCurrentArchiveEntries(selectingPaths: selectionPaths)
+    }
+
     private func refreshArchiveAfterMutation(selectingPath path: String? = nil) {
-        let selectedPaths = path.map { [normalizeArchivePath($0)] } ?? []
-        reloadCurrentArchiveEntries(selectingPaths: selectedPaths)
+        refreshArchiveAfterMutation(selectingPaths: path.map { [$0] } ?? [])
+    }
+
+    private func archiveSelectionPaths(for urls: [URL],
+                                       targetSubdir: String) -> [String] {
+        var seenPaths = Set<String>()
+        var selectionPaths: [String] = []
+
+        for url in urls {
+            let leafName = url.lastPathComponent
+            guard !leafName.isEmpty else { continue }
+
+            let path = targetSubdir.isEmpty ? leafName : targetSubdir + "/" + leafName
+            let normalizedPath = normalizeArchivePath(path)
+            guard seenPaths.insert(normalizedPath).inserted else { continue }
+            selectionPaths.append(normalizedPath)
+        }
+
+        return selectionPaths
     }
 
     @discardableResult
@@ -2753,16 +2800,26 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    func beginConfirmedArchiveTransfer(_ urls: [URL],
-                                       to target: (archive: SZArchive, subdir: String),
-                                       operation: NSDragOperation,
-                                       sourcePane: FileManagerPaneController?,
-                                       cleanupDirectory: URL? = nil,
-                                       parentWindow: NSWindow? = nil) {
+    func beginArchiveTransfer(_ urls: [URL],
+                              to target: (archive: SZArchive, subdir: String),
+                              operation: NSDragOperation,
+                              sourcePane: FileManagerPaneController?,
+                              cleanupDirectory: URL? = nil,
+                              parentWindow: NSWindow? = nil,
+                              requiresConfirmation: Bool = false) {
         guard !urls.isEmpty else {
             if let cleanupDirectory {
                 try? FileManager.default.removeItem(at: cleanupDirectory)
             }
+            return
+        }
+
+        guard requiresConfirmation else {
+            beginDroppedArchiveTransfer(urls,
+                                        to: target,
+                                        operation: operation,
+                                        sourcePane: sourcePane,
+                                        cleanupDirectory: cleanupDirectory)
             return
         }
 
@@ -2803,19 +2860,29 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
+    func beginConfirmedArchiveTransfer(_ urls: [URL],
+                                       to target: (archive: SZArchive, subdir: String),
+                                       operation: NSDragOperation,
+                                       sourcePane: FileManagerPaneController?,
+                                       cleanupDirectory: URL? = nil,
+                                       parentWindow: NSWindow? = nil) {
+        beginArchiveTransfer(urls,
+                             to: target,
+                             operation: operation,
+                             sourcePane: sourcePane,
+                             cleanupDirectory: cleanupDirectory,
+                             parentWindow: parentWindow,
+                             requiresConfirmation: true)
+    }
+
     private func beginDroppedArchiveTransfer(_ urls: [URL],
                                              to target: (archive: SZArchive, subdir: String),
                                              operation: NSDragOperation,
                                              sourcePane: FileManagerPaneController?,
                                              cleanupDirectory: URL? = nil) {
         let operationTitle = operation == .move ? "Moving..." : "Copying..."
-        let selectionPath: String?
-        if urls.count == 1 {
-            let leafName = urls[0].lastPathComponent
-            selectionPath = target.subdir.isEmpty ? leafName : target.subdir + "/" + leafName
-        } else {
-            selectionPath = nil
-        }
+        let selectionPaths = archiveSelectionPaths(for: urls,
+                                                   targetSubdir: target.subdir)
 
         Task { @MainActor [weak self, weak sourcePane] in
             defer {
@@ -2836,7 +2903,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                 session: session)
                 }
 
-                self.refreshArchiveAfterMutation(selectingPath: selectionPath)
+                self.refreshArchiveAfterMutation(targetSubdir: target.subdir,
+                                                selectingPaths: selectionPaths)
                 if operation == .move,
                    let sourcePane,
                    sourcePane !== self {
@@ -3322,8 +3390,8 @@ extension FileManagerPaneController {
     }
 
     @objc private func compressSelected(_ sender: Any?) {
-        guard !isInsideArchive else {
-            showUnsupportedArchiveOperationAlert(action: "Compressing archive items")
+        if isInsideArchive && !supportsInPlaceArchiveMutation {
+            showReadOnlyArchiveMutationAlert(action: "Adding files to archive")
             return
         }
 
