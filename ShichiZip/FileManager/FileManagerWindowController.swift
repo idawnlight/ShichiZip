@@ -242,80 +242,50 @@ private enum FileManagerHashAlgorithm {
     case sha3256
     case blake2sp
 
-    private static let orderedAlgorithms: [FileManagerHashAlgorithm] = [
-        .crc32,
-        .crc64,
-        .xxh64,
-        .md5,
-        .sha1,
-        .sha256,
-        .sha384,
-        .sha512,
-        .sha3256,
-        .blake2sp,
+    private struct Definition {
+        let algorithm: FileManagerHashAlgorithm
+        let title: String
+        let bridgeName: String
+    }
+
+    private static let orderedDefinitions: [Definition] = [
+        Definition(algorithm: .crc32, title: "CRC-32", bridgeName: "CRC32"),
+        Definition(algorithm: .crc64, title: "CRC-64", bridgeName: "CRC64"),
+        Definition(algorithm: .xxh64, title: "XXH64", bridgeName: "XXH64"),
+        Definition(algorithm: .md5, title: "MD5", bridgeName: "MD5"),
+        Definition(algorithm: .sha1, title: "SHA-1", bridgeName: "SHA1"),
+        Definition(algorithm: .sha256, title: "SHA-256", bridgeName: "SHA256"),
+        Definition(algorithm: .sha384, title: "SHA-384", bridgeName: "SHA384"),
+        Definition(algorithm: .sha512, title: "SHA-512", bridgeName: "SHA512"),
+        Definition(algorithm: .sha3256, title: "SHA3-256", bridgeName: "SHA3-256"),
+        Definition(algorithm: .blake2sp, title: "BLAKE2sp", bridgeName: "BLAKE2sp"),
     ]
+
+    private static let definitionsByAlgorithm: [FileManagerHashAlgorithm: Definition] = {
+        let allDefinition = Definition(algorithm: .all, title: "*", bridgeName: "*")
+        let definitions = [allDefinition] + orderedDefinitions
+        return Dictionary(uniqueKeysWithValues: definitions.map { ($0.algorithm, $0) })
+    }()
+
+    private var definition: Definition {
+        Self.definitionsByAlgorithm[self]!
+    }
 
     var displayedAlgorithms: [FileManagerHashAlgorithm] {
         switch self {
         case .all:
-            return Self.orderedAlgorithms
+            return Self.orderedDefinitions.map(\.algorithm)
         default:
             return [self]
         }
     }
 
     var title: String {
-        switch self {
-        case .all:
-            return "*"
-        case .crc32:
-            return "CRC-32"
-        case .crc64:
-            return "CRC-64"
-        case .xxh64:
-            return "XXH64"
-        case .md5:
-            return "MD5"
-        case .sha1:
-            return "SHA-1"
-        case .sha256:
-            return "SHA-256"
-        case .sha384:
-            return "SHA-384"
-        case .sha512:
-            return "SHA-512"
-        case .sha3256:
-            return "SHA3-256"
-        case .blake2sp:
-            return "BLAKE2sp"
-        }
+        definition.title
     }
 
     var bridgeName: String {
-        switch self {
-        case .all:
-            return "*"
-        case .crc32:
-            return "CRC32"
-        case .crc64:
-            return "CRC64"
-        case .xxh64:
-            return "XXH64"
-        case .md5:
-            return "MD5"
-        case .sha1:
-            return "SHA1"
-        case .sha256:
-            return "SHA256"
-        case .sha384:
-            return "SHA384"
-        case .sha512:
-            return "SHA512"
-        case .sha3256:
-            return "SHA3-256"
-        case .blake2sp:
-            return "BLAKE2sp"
-        }
+        definition.bridgeName
     }
 }
 
