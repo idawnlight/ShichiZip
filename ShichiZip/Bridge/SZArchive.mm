@@ -119,6 +119,7 @@ enum SZCompressionEstimateMethodID {
 
 static const UInt32 kSZCompressionEstimateLzmaMaxDictSize = (UInt32)15 << 28;
 #if SHICHIZIP_ZS_VARIANT
+static const NSInteger kSZCompressionZstdFastLevelIncrement = 32;
 static const NSInteger kSZCompressionZstdUltimateLevel = 255;
 #endif
 
@@ -238,6 +239,15 @@ static bool SZCompressionEstimateIsZstdFastLevel(int level) {
 
 static UInt32 SZCompressionEstimateZstdFastLevel(int level) {
     return level < 0 ? (UInt32)(-level) : 0;
+}
+
+static UInt32 SZCompressionLevelPropertyValue(int methodID, NSInteger levelValue) {
+#if SHICHIZIP_ZS_VARIANT
+    if (methodID == kSZCompressionEstimateZstd && levelValue < 0) {
+        return (UInt32)(kSZCompressionZstdFastLevelIncrement - levelValue);
+    }
+#endif
+    return (UInt32)levelValue;
 }
 
 static int SZCompressionEstimateMethodID(SZCompressionSettings *settings) {
@@ -2542,13 +2552,10 @@ static bool SZParseVolumeSizes(const UString &text, CRecordVector<UInt64> &value
     }
     const bool methodOverride = SZHasMethodOverride(is7z, optionStrings);
 
-    // Set compression properties
-    CProperty propLevel;
-    propLevel.Name = L"x";
-    wchar_t levelBuf[16];
-    swprintf(levelBuf, 16, L"%d", (int)s.levelValue);
-    propLevel.Value = levelBuf;
-    options.MethodMode.Properties.Add(propLevel);
+    // Match upstream 7-Zip ZS GUI encoding for ZSTD fast levels.
+    SZAddCompressionPropertyUInt32(options.MethodMode.Properties,
+                                   L"x",
+                                   SZCompressionLevelPropertyValue(methodID, s.levelValue));
 
     if (!methodSpec.IsEmpty() && !methodOverride) {
         SZAddCompressionProperty(options.MethodMode.Properties,

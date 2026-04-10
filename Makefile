@@ -9,6 +9,7 @@ SEVENZ_LIBRARY_NAME ?= lib7zip.a
 SEVENZ_OBJECT_SUBDIR ?= mainline
 EXTRA_CODEC_INCLUDE_FLAGS =
 FASTLZMA2_CFLAGS =
+ZSTD_CFLAGS =
 ZS_C_SRCS =
 ZS_COMMON_SRCS =
 ZS_ARCHIVE_SRCS =
@@ -26,6 +27,7 @@ EXTRA_CODEC_INCLUDE_FLAGS = \
 	-I$(C_ROOT)/lz5 \
 	-I$(C_ROOT)/zstd
 FASTLZMA2_CFLAGS = -DNO_XXHASH -DFL2_7ZIP_BUILD
+ZSTD_CFLAGS = -DZSTD_LEGACY_SUPPORT -DZSTD_MULTITHREAD
 ZS_C_SRCS = \
 	$(wildcard $(C_ROOT)/brotli/*.c) \
 	$(wildcard $(C_ROOT)/fast-lzma2/*.c) \
@@ -78,8 +80,9 @@ CXX = clang++
 AR = ar
 
 MACOSX_DEPLOYMENT_TARGET ?= 13.0
+TARGET_ARCH ?= arm64
 
-ARCH = -arch arm64
+ARCH = -arch $(TARGET_ARCH)
 CFLAGS_COMMON = $(ARCH) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -O2 -DNDEBUG -D_REENTRANT -D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE_SOURCE -fPIC -Wall -Wextra
 SEVENZ_INCLUDE_FLAGS = -I$(SEVENZ_ROOT)
@@ -90,6 +93,16 @@ OBJCXXFLAGS = $(CFLAGS_COMMON) -std=c++11 -fobjc-arc -DSHICHIZIP_APPLE_DETECTOR 
 O = build/obj/$(SEVENZ_OBJECT_SUBDIR)
 LIB_OUT = build/lib
 LIB = $(LIB_OUT)/$(SEVENZ_LIBRARY_NAME)
+
+ifeq ($(TARGET_ARCH),arm64)
+LZMA_DEC_CFLAGS = -DZ7_LZMA_DEC_OPT
+LZMA_DEC_OPT_OBJS = $(O)/Asm/arm64/LzmaDecOpt.o
+ARM64_ASM_CFLAGS = -Wno-unused-macros
+else
+LZMA_DEC_CFLAGS =
+LZMA_DEC_OPT_OBJS =
+ARM64_ASM_CFLAGS =
+endif
 
 # === C sources (core compression engine) ===
 C_SRCS = \
@@ -473,7 +486,7 @@ SHICHIZIP_VENDOR_MM_SRCS = \
 C_OBJS = $(patsubst $(SEVENZ_ROOT)/%.c,$(O)/%.o,$(C_SRCS))
 CPP_OBJS = $(patsubst $(SEVENZ_ROOT)/%.cpp,$(O)/%.o,$(ALL_CPP_SRCS))
 MM_OBJS = $(patsubst %.mm,$(O)/%.o,$(SHICHIZIP_VENDOR_MM_SRCS))
-ALL_OBJS = $(C_OBJS) $(CPP_OBJS) $(MM_OBJS)
+ALL_OBJS = $(C_OBJS) $(CPP_OBJS) $(MM_OBJS) $(LZMA_DEC_OPT_OBJS)
 
 .PHONY: all clean lib info prepare-7zip lib-mainline lib-zs
 
@@ -503,6 +516,25 @@ $(LIB): $(ALL_OBJS)
 $(O)/C/fast-lzma2/%.o: $(SEVENZ_ROOT)/C/fast-lzma2/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(FASTLZMA2_CFLAGS) -c -o $@ $<
+
+# Match upstream arm64 builds by enabling the optimized LZMA decoder path.
+$(O)/C/LzmaDec.o: $(SEVENZ_ROOT)/C/LzmaDec.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(LZMA_DEC_CFLAGS) -c -o $@ $<
+
+$(O)/Asm/arm64/LzmaDecOpt.o: $(SEVENZ_ROOT)/Asm/arm64/LzmaDecOpt.S $(SEVENZ_ROOT)/Asm/arm64/7zAsm.S
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(ARM64_ASM_CFLAGS) -c -o $@ $<
+
+# Upstream ZS enables legacy decode support and multithreaded ZSTD parameters.
+$(O)/C/zstd/%.o: $(SEVENZ_ROOT)/C/zstd/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(ZSTD_CFLAGS) -c -o $@ $<
+
+# Upstream also disables the optional x86 BMI2 ASM path for this TU.
+$(O)/C/zstd/huf_decompress.o: $(SEVENZ_ROOT)/C/zstd/huf_decompress.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(ZSTD_CFLAGS) -DZSTD_DISABLE_ASM -c -o $@ $<
 
 # C compilation
 $(O)/%.o: $(SEVENZ_ROOT)/%.c
