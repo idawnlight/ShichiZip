@@ -20,6 +20,10 @@ enum SZSettingsKey: String {
     case memLimitEnabled = "MemLimitEnabled"
     case memLimitGB = "MemLimitGB"
 
+    // Shortcuts page
+    case fileManagerShortcutPreset = "FileManagerShortcutPreset"
+    case fileManagerCustomShortcuts = "FileManagerCustomShortcuts"
+
     // Folders page
     case workDirMode = "WorkDirMode" // 0=system temp, 1=current, 2=specified
     case workDirPath = "WorkDirPath"
@@ -79,6 +83,45 @@ struct SZSettings {
     static var memLimitGB: Int {
         let v = defaults.integer(forKey: SZSettingsKey.memLimitGB.rawValue)
         return v > 0 ? v : 4
+    }
+
+    static var fileManagerShortcutPreset: FileManagerShortcutPreset {
+        guard defaults.object(forKey: SZSettingsKey.fileManagerShortcutPreset.rawValue) != nil else {
+            return .finder
+        }
+
+        let rawValue = defaults.integer(forKey: SZSettingsKey.fileManagerShortcutPreset.rawValue)
+        return FileManagerShortcutPreset(rawValue: rawValue) ?? .finder
+    }
+
+    static func setFileManagerShortcutPreset(_ preset: FileManagerShortcutPreset) {
+        set(preset.rawValue, for: .fileManagerShortcutPreset)
+    }
+
+    static var hasFileManagerCustomShortcutMap: Bool {
+        defaults.object(forKey: SZSettingsKey.fileManagerCustomShortcuts.rawValue) != nil
+    }
+
+    static var fileManagerCustomShortcutMap: [FileManagerShortcutCommand: FileManagerShortcut] {
+        guard let rawMap = defaults.dictionary(forKey: SZSettingsKey.fileManagerCustomShortcuts.rawValue) as? [String: [String: Any]] else {
+            return [:]
+        }
+
+        var resolvedMap: [FileManagerShortcutCommand: FileManagerShortcut] = [:]
+        for command in FileManagerShortcutCommand.allCases {
+            guard let shortcutRepresentation = rawMap[command.rawValue],
+                  let shortcut = FileManagerShortcut.fromSerializedRepresentation(shortcutRepresentation) else {
+                continue
+            }
+            resolvedMap[command] = shortcut
+        }
+        return resolvedMap
+    }
+
+    static func setFileManagerCustomShortcutMap(_ map: [FileManagerShortcutCommand: FileManagerShortcut]) {
+        let rawMap = Dictionary(uniqueKeysWithValues: map.map { ($0.key.rawValue, $0.value.serializedRepresentation) })
+        defaults.set(rawMap, forKey: SZSettingsKey.fileManagerCustomShortcuts.rawValue)
+        postChange(for: .fileManagerCustomShortcuts)
     }
 
     static var workDirMode: Int {

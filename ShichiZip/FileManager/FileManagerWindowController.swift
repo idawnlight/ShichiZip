@@ -430,7 +430,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     private var isDualPane = PanePreferences.showsDualPane
     private weak var trackedActivePane: FileManagerPaneController?
     private var fileOperationDestinationPicker: FileOperationDestinationPicker?
-    private var keyEventMonitor: Any?
     private var viewPreferencesObserver: NSObjectProtocol?
     private var autoRefreshTimer: Timer?
     private var foldersHistoryWindowController: FoldersHistoryWindowController?
@@ -458,7 +457,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         self.window?.delegate = self
         setupUI()
         setupToolbar()
-        setupMainMenu()
         observeViewPreferences()
         configureAutoRefreshTimer()
         trackedActivePane = leftPane
@@ -467,9 +465,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     deinit {
-        if let keyEventMonitor {
-            NSEvent.removeMonitor(keyEventMonitor)
-        }
         if let viewPreferencesObserver {
             NotificationCenter.default.removeObserver(viewPreferencesObserver)
         }
@@ -488,10 +483,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     func windowWillClose(_ notification: Notification) {
-        if let keyEventMonitor {
-            NSEvent.removeMonitor(keyEventMonitor)
-            self.keyEventMonitor = nil
-        }
         autoRefreshTimer?.invalidate()
         autoRefreshTimer = nil
         closeQuickLookPreview()
@@ -612,14 +603,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
     }
 
-    private func setupMainMenu() {
-        // Main menu is defined in MainMenu.xib or programmatically
-        // We'll handle key events for F-key shortcuts
-        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            return self?.handleKeyEvent(event) ?? event
-        }
-    }
-
     private func observeViewPreferences() {
         viewPreferencesObserver = NotificationCenter.default.addObserver(
             forName: .fileManagerViewPreferencesDidChange,
@@ -661,31 +644,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
     }
 
-    private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
-        guard window?.isKeyWindow == true else { return event }
-
-        switch event.keyCode {
-        case 48: // Tab - Switch panes (PanelKey.cpp)
-            switchPanes(nil)
-            return nil
-        case 96: // F5 - Copy
-            copyFiles(nil)
-            return nil
-        case 97: // F6 - Move
-            moveFiles(nil)
-            return nil
-        case 98: // F7 - Create folder
-            createFolder(nil)
-            return nil
-        case 100: // F8 - Delete
-            deleteFiles(nil)
-            return nil
-        case 101: // F9 - Toggle dual pane
-            toggleDualPane(nil)
-            return nil
-        default:
-            return event
-        }
+    @objc func openSelectedItem(_ sender: Any?) {
+        activePane.openSelection()
     }
 
     private var isQuickLookVisible: Bool {
@@ -1138,10 +1098,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 self.showErrorAlert(error)
             }
         }
-    }
-
-    @objc func openSelectedItem(_ sender: Any?) {
-        activePane.openSelection()
     }
 
     @objc func openSelectedItemInside(_ sender: Any?) {
@@ -2178,8 +2134,8 @@ protocol FileManagerPaneDelegate: AnyObject {
     func paneDidRequestOpenArchiveInNewWindow(_ url: URL)
     func paneDidBecomeActive(_ pane: FileManagerPaneController)
     func paneSelectionDidChange(_ pane: FileManagerPaneController)
-    func paneDidRequestToggleQuickLook(_ pane: FileManagerPaneController)
     func paneDidRequestQuickLook(_ pane: FileManagerPaneController)
+    func pane(_ pane: FileManagerPaneController, didRequestShortcutCommand command: FileManagerShortcutCommand) -> Bool
 }
 
 extension FileManagerWindowController: FileManagerPaneDelegate {
@@ -2202,12 +2158,39 @@ extension FileManagerWindowController: FileManagerPaneDelegate {
                                 userInitiated: false)
     }
 
-    func paneDidRequestToggleQuickLook(_ pane: FileManagerPaneController) {
-        toggleQuickLookPreview(for: pane)
-    }
-
     func paneDidRequestQuickLook(_ pane: FileManagerPaneController) {
         openQuickLookPreview(for: pane)
+    }
+
+    func pane(_ pane: FileManagerPaneController, didRequestShortcutCommand command: FileManagerShortcutCommand) -> Bool {
+        setActivePane(pane)
+
+        switch command {
+        case .openSelectedItem:
+            openSelectedItem(nil)
+        case .toggleQuickLook:
+            toggleQuickLookPreview(for: pane)
+        case .goUpOneLevel:
+            goUpOneLevel(nil)
+        case .renameSelection:
+            renameSelection(nil)
+        case .switchPanes:
+            switchPanes(nil)
+        case .copyFiles:
+            copyFiles(nil)
+        case .moveFiles:
+            moveFiles(nil)
+        case .createFolder:
+            createFolder(nil)
+        case .deleteFiles:
+            deleteFiles(nil)
+        case .toggleDualPane:
+            toggleDualPane(nil)
+        case .refreshActivePane:
+            refreshActivePane(nil)
+        }
+
+        return true
     }
 }
 
@@ -2244,11 +2227,6 @@ extension FileManagerWindowController: QLPreviewPanelDataSource, QLPreviewPanelD
         guard let event,
               event.type == .keyDown else {
             return false
-        }
-
-        if event.keyCode == 49 {
-            closeQuickLookPreview()
-            return true
         }
 
         guard let pane = quickLookPreviewSourcePane else {

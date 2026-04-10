@@ -6,6 +6,375 @@ private enum MainMenuIdentifiers {
         static let timeMenu = NSUserInterfaceItemIdentifier("TimeMenu")
 }
 
+struct FileManagerMenuShortcut {
+        let keyEquivalent: String
+        let modifiers: NSEvent.ModifierFlags
+
+        init(_ keyEquivalent: String,
+                 modifiers: NSEvent.ModifierFlags = [.command]) {
+                self.keyEquivalent = keyEquivalent
+                self.modifiers = modifiers
+        }
+}
+
+struct FileManagerShortcut: Equatable {
+        let keyCode: UInt16
+        let modifiers: NSEvent.ModifierFlags
+        let keyEquivalent: String
+
+        init(keyCode: UInt16,
+                 modifiers: NSEvent.ModifierFlags = [],
+                 keyEquivalent: String) {
+                self.keyCode = keyCode
+                self.modifiers = Self.normalizedModifiers(modifiers)
+                self.keyEquivalent = keyEquivalent
+        }
+
+        init?(event: NSEvent) {
+                guard let keyEquivalent = Self.keyEquivalentString(for: event) else {
+                        return nil
+                }
+
+                self.init(keyCode: event.keyCode,
+                          modifiers: event.modifierFlags,
+                          keyEquivalent: keyEquivalent)
+        }
+
+        var menuShortcut: FileManagerMenuShortcut {
+                FileManagerMenuShortcut(keyEquivalent, modifiers: modifiers)
+        }
+
+        var displayName: String {
+                let keyName = Self.baseKeyDisplayName(forKeyCode: keyCode,
+                                                      keyEquivalent: keyEquivalent)
+                let modifierNames = Self.modifierDisplayNames(for: modifiers)
+                return (modifierNames + [keyName]).joined(separator: "+")
+        }
+
+        func matches(_ event: NSEvent) -> Bool {
+                keyCode == event.keyCode && modifiers == Self.normalizedModifiers(event.modifierFlags)
+        }
+
+        var serializedRepresentation: [String: Any] {
+                [
+                        "keyCode": Int(keyCode),
+                        "modifiers": Int(modifiers.rawValue),
+                        "keyEquivalent": keyEquivalent,
+                ]
+        }
+
+        static func fromSerializedRepresentation(_ representation: [String: Any]) -> FileManagerShortcut? {
+                guard let keyCode = representation["keyCode"] as? Int,
+                          let modifiers = representation["modifiers"] as? Int,
+                          let keyEquivalent = representation["keyEquivalent"] as? String else {
+                        return nil
+                }
+
+                return FileManagerShortcut(keyCode: UInt16(keyCode),
+                                           modifiers: NSEvent.ModifierFlags(rawValue: UInt(modifiers)),
+                                           keyEquivalent: keyEquivalent)
+        }
+
+        private static func normalizedModifiers(_ modifiers: NSEvent.ModifierFlags) -> NSEvent.ModifierFlags {
+                modifiers.intersection([.command, .option, .control, .shift])
+        }
+
+        private static func keyEquivalentString(for event: NSEvent) -> String? {
+                if let specialKeyEquivalent = specialKeyEquivalent(for: event.keyCode) {
+                        return specialKeyEquivalent
+                }
+
+                guard var characters = event.charactersIgnoringModifiers,
+                          !characters.isEmpty else {
+                        return nil
+                }
+
+                if characters.count > 1 {
+                        characters = String(characters.prefix(1))
+                }
+
+                return characters.lowercased()
+        }
+
+        private static func specialKeyEquivalent(for keyCode: UInt16) -> String? {
+                switch keyCode {
+                case 36:
+                        return "\r"
+                case 48:
+                        return "\t"
+                case 49:
+                        return " "
+                case 51:
+                        return String(UnicodeScalar(NSDeleteCharacter)!)
+                case 96:
+                        return functionKeyEquivalent(5)
+                case 97:
+                        return functionKeyEquivalent(6)
+                case 98:
+                        return functionKeyEquivalent(7)
+                case 100:
+                        return functionKeyEquivalent(8)
+                case 101:
+                        return functionKeyEquivalent(9)
+                case 120:
+                        return functionKeyEquivalent(2)
+                case 123:
+                        return String(UnicodeScalar(NSLeftArrowFunctionKey)!)
+                case 124:
+                        return String(UnicodeScalar(NSRightArrowFunctionKey)!)
+                case 125:
+                        return String(UnicodeScalar(NSDownArrowFunctionKey)!)
+                case 126:
+                        return String(UnicodeScalar(NSUpArrowFunctionKey)!)
+                default:
+                        return nil
+                }
+        }
+
+        private static func functionKeyEquivalent(_ number: Int) -> String {
+                String(UnicodeScalar(Int(NSF1FunctionKey) + number - 1)!)
+        }
+
+        private static func baseKeyDisplayName(forKeyCode keyCode: UInt16,
+                                               keyEquivalent: String) -> String {
+                switch keyCode {
+                case 36:
+                        return "Return"
+                case 48:
+                        return "Tab"
+                case 49:
+                        return "Space"
+                case 51:
+                        return "Delete"
+                case 96:
+                        return "F5"
+                case 97:
+                        return "F6"
+                case 98:
+                        return "F7"
+                case 100:
+                        return "F8"
+                case 101:
+                        return "F9"
+                case 120:
+                        return "F2"
+                case 123:
+                        return "Left Arrow"
+                case 124:
+                        return "Right Arrow"
+                case 125:
+                        return "Down Arrow"
+                case 126:
+                        return "Up Arrow"
+                default:
+                        return keyEquivalent == " " ? "Space" : keyEquivalent.uppercased()
+                }
+        }
+
+        private static func modifierDisplayNames(for modifiers: NSEvent.ModifierFlags) -> [String] {
+                var names: [String] = []
+                if modifiers.contains(.command) {
+                        names.append("Command")
+                }
+                if modifiers.contains(.shift) {
+                        names.append("Shift")
+                }
+                if modifiers.contains(.option) {
+                        names.append("Option")
+                }
+                if modifiers.contains(.control) {
+                        names.append("Control")
+                }
+                return names
+        }
+}
+
+enum FileManagerShortcutPreset: Int, CaseIterable {
+        case finder = 0
+        case commander = 1
+        case custom = 2
+
+        var displayName: String {
+                switch self {
+                case .finder:
+                        return "Finder-like"
+                case .commander:
+                        return "Commander-like"
+                case .custom:
+                        return "Custom"
+                }
+        }
+
+        var descriptionText: String {
+                switch self {
+                case .finder:
+                        return "Uses macOS-style file manager shortcuts, including Return to rename and Command+Arrow navigation."
+                case .commander:
+                        return "Uses the classic 7-Zip function-key workflow for file operations and pane management."
+                case .custom:
+                        return "Uses your saved per-command file manager shortcuts."
+                }
+        }
+}
+
+enum FileManagerShortcutCommand: String, CaseIterable {
+        case openSelectedItem
+        case toggleQuickLook
+        case goUpOneLevel
+        case renameSelection
+        case switchPanes
+        case copyFiles
+        case moveFiles
+        case createFolder
+        case deleteFiles
+        case toggleDualPane
+        case refreshActivePane
+
+        var title: String {
+                switch self {
+                case .openSelectedItem:
+                        return "Open selected item"
+                case .toggleQuickLook:
+                        return "Quick Look"
+                case .goUpOneLevel:
+                        return "Up one level"
+                case .renameSelection:
+                        return "Rename"
+                case .switchPanes:
+                        return "Switch panes"
+                case .copyFiles:
+                        return "Copy To"
+                case .moveFiles:
+                        return "Move To"
+                case .createFolder:
+                        return "Create folder"
+                case .deleteFiles:
+                        return "Delete"
+                case .toggleDualPane:
+                        return "Toggle dual pane"
+                case .refreshActivePane:
+                        return "Refresh"
+                }
+        }
+}
+
+struct FileManagerShortcutBinding {
+        let command: FileManagerShortcutCommand
+        let shortcut: FileManagerShortcut?
+
+        var displayKey: String {
+                shortcut?.displayName ?? "None"
+        }
+
+        var menuShortcut: FileManagerMenuShortcut? {
+                shortcut?.menuShortcut
+        }
+}
+
+enum FileManagerShortcuts {
+        static func bindings(for preset: FileManagerShortcutPreset = SZSettings.fileManagerShortcutPreset) -> [FileManagerShortcutBinding] {
+                let bindingMap = resolvedBindingMap(for: preset)
+                return FileManagerShortcutCommand.allCases.map { command in
+                        FileManagerShortcutBinding(command: command,
+                                                   shortcut: bindingMap[command])
+                }
+        }
+
+        static func resolvedBindingMap(for preset: FileManagerShortcutPreset = SZSettings.fileManagerShortcutPreset) -> [FileManagerShortcutCommand: FileManagerShortcut] {
+                switch preset {
+                case .finder, .commander:
+                        return standardBindingMap(for: preset)
+                case .custom:
+                        if SZSettings.hasFileManagerCustomShortcutMap {
+                                return SZSettings.fileManagerCustomShortcutMap
+                        }
+                        return standardBindingMap(for: .finder)
+                }
+        }
+
+        static func menuShortcut(for command: FileManagerShortcutCommand,
+                                                         preset: FileManagerShortcutPreset = SZSettings.fileManagerShortcutPreset) -> FileManagerMenuShortcut? {
+                binding(for: command, preset: preset).menuShortcut
+        }
+
+        static func binding(for command: FileManagerShortcutCommand,
+                            preset: FileManagerShortcutPreset = SZSettings.fileManagerShortcutPreset) -> FileManagerShortcutBinding {
+                return FileManagerShortcutBinding(command: command,
+                                                  shortcut: resolvedBindingMap(for: preset)[command])
+        }
+
+        static func command(for event: NSEvent,
+                            preset: FileManagerShortcutPreset = SZSettings.fileManagerShortcutPreset) -> FileManagerShortcutCommand? {
+                for command in FileManagerShortcutCommand.allCases {
+                        guard let shortcut = resolvedBindingMap(for: preset)[command] else {
+                                continue
+                        }
+                        if shortcut.matches(event) {
+                                return command
+                        }
+                }
+
+                return nil
+        }
+
+        private static func standardBindingMap(for preset: FileManagerShortcutPreset) -> [FileManagerShortcutCommand: FileManagerShortcut] {
+                switch preset {
+                case .finder:
+                        return [
+                                .openSelectedItem: FileManagerShortcut(keyCode: 125,
+                                                                       modifiers: [.command],
+                                                                       keyEquivalent: String(UnicodeScalar(NSDownArrowFunctionKey)!)),
+                                .toggleQuickLook: FileManagerShortcut(keyCode: 49,
+                                                                      keyEquivalent: " "),
+                                .goUpOneLevel: FileManagerShortcut(keyCode: 126,
+                                                                   modifiers: [.command],
+                                                                   keyEquivalent: String(UnicodeScalar(NSUpArrowFunctionKey)!)),
+                                .renameSelection: FileManagerShortcut(keyCode: 36,
+                                                                      keyEquivalent: "\r"),
+                                .switchPanes: FileManagerShortcut(keyCode: 48,
+                                                                  keyEquivalent: "\t"),
+                                .createFolder: FileManagerShortcut(keyCode: 45,
+                                                                   modifiers: [.command, .shift],
+                                                                   keyEquivalent: "n"),
+                                .deleteFiles: FileManagerShortcut(keyCode: 51,
+                                                                  modifiers: [.command],
+                                                                  keyEquivalent: String(UnicodeScalar(NSDeleteCharacter)!)),
+                                .refreshActivePane: FileManagerShortcut(keyCode: 15,
+                                                                        modifiers: [.command],
+                                                                        keyEquivalent: "r"),
+                        ]
+                case .commander:
+                        return [
+                                .openSelectedItem: FileManagerShortcut(keyCode: 36,
+                                                                       keyEquivalent: "\r"),
+                                .toggleQuickLook: FileManagerShortcut(keyCode: 49,
+                                                                      keyEquivalent: " "),
+                                .goUpOneLevel: FileManagerShortcut(keyCode: 51,
+                                                                   keyEquivalent: String(UnicodeScalar(NSDeleteCharacter)!)),
+                                .renameSelection: FileManagerShortcut(keyCode: 120,
+                                                                      keyEquivalent: String(UnicodeScalar(Int(NSF1FunctionKey) + 1)!)),
+                                .switchPanes: FileManagerShortcut(keyCode: 48,
+                                                                  keyEquivalent: "\t"),
+                                .copyFiles: FileManagerShortcut(keyCode: 96,
+                                                                keyEquivalent: String(UnicodeScalar(Int(NSF1FunctionKey) + 4)!)),
+                                .moveFiles: FileManagerShortcut(keyCode: 97,
+                                                                keyEquivalent: String(UnicodeScalar(Int(NSF1FunctionKey) + 5)!)),
+                                .createFolder: FileManagerShortcut(keyCode: 98,
+                                                                   keyEquivalent: String(UnicodeScalar(Int(NSF1FunctionKey) + 6)!)),
+                                .deleteFiles: FileManagerShortcut(keyCode: 100,
+                                                                  keyEquivalent: String(UnicodeScalar(Int(NSF1FunctionKey) + 7)!)),
+                                .toggleDualPane: FileManagerShortcut(keyCode: 101,
+                                                                     keyEquivalent: String(UnicodeScalar(Int(NSF1FunctionKey) + 8)!)),
+                                .refreshActivePane: FileManagerShortcut(keyCode: 15,
+                                                                        modifiers: [.command],
+                                                                        keyEquivalent: "r"),
+                        ]
+                case .custom:
+                        return [:]
+                }
+        }
+}
+
 enum FileManagerFavoriteStore {
     static let slotCount = 10
 
@@ -78,6 +447,11 @@ enum FileManagerMenuFactory {
                 self.keyEquivalent = keyEquivalent
                 self.modifiers = modifiers
           }
+
+            init(_ shortcut: FileManagerMenuShortcut) {
+                    self.keyEquivalent = shortcut.keyEquivalent
+                    self.modifiers = shortcut.modifiers
+            }
     }
 
     private indirect enum Node {
@@ -107,9 +481,17 @@ enum FileManagerMenuFactory {
           return menu
     }
 
+    private static func shortcut(_ command: FileManagerShortcutCommand) -> Shortcut? {
+            guard let shortcut = FileManagerShortcuts.menuShortcut(for: command) else {
+                    return nil
+            }
+            return Shortcut(shortcut)
+    }
+
     private static let openNodes: [Node] = [
           .item(title: "Open",
-                  action: #selector(FileManagerWindowController.openSelectedItem(_:))),
+                        action: #selector(FileManagerWindowController.openSelectedItem(_:)),
+                        shortcut: shortcut(.openSelectedItem)),
           .item(title: "Open Inside",
                   action: #selector(FileManagerWindowController.openSelectedItemInside(_:))),
           .item(title: "Open Inside *",
@@ -162,20 +544,25 @@ enum FileManagerMenuFactory {
                         action: #selector(FileManagerWindowController.testArchive(_:))),
                 .separator,
                 .item(title: "Rename",
-                        action: #selector(FileManagerWindowController.renameSelection(_:))),
+                        action: #selector(FileManagerWindowController.renameSelection(_:)),
+                        shortcut: shortcut(.renameSelection)),
                 .item(title: "Copy To…",
-                        action: #selector(FileManagerWindowController.copyFiles(_:))),
+                        action: #selector(FileManagerWindowController.copyFiles(_:)),
+                        shortcut: shortcut(.copyFiles)),
                 .item(title: "Move To…",
-                        action: #selector(FileManagerWindowController.moveFiles(_:))),
+                        action: #selector(FileManagerWindowController.moveFiles(_:)),
+                        shortcut: shortcut(.moveFiles)),
                 .item(title: "Delete",
-                        action: #selector(FileManagerWindowController.deleteFiles(_:))),
+                        action: #selector(FileManagerWindowController.deleteFiles(_:)),
+                        shortcut: shortcut(.deleteFiles)),
                 .separator,
                 .item(title: "Properties",
                         action: #selector(FileManagerWindowController.showProperties(_:))),
                 .submenu(title: "CRC", children: hashNodes),
                 .separator,
                 .item(title: "Create Folder",
-                        action: #selector(FileManagerWindowController.createFolder(_:))),
+                        action: #selector(FileManagerWindowController.createFolder(_:)),
+                        shortcut: shortcut(.createFolder)),
                 .item(title: "Create File",
                         action: #selector(FileManagerWindowController.createFile(_:))),
                 .separator,
@@ -198,18 +585,23 @@ enum FileManagerMenuFactory {
                         action: #selector(FileManagerWindowController.testArchive(_:))),
                 .separator,
                 .item(title: "Rename",
-                        action: #selector(FileManagerWindowController.renameSelection(_:))),
+                        action: #selector(FileManagerWindowController.renameSelection(_:)),
+                        shortcut: shortcut(.renameSelection)),
                 .item(title: "Copy To…",
-                        action: #selector(FileManagerWindowController.copyFiles(_:))),
+                        action: #selector(FileManagerWindowController.copyFiles(_:)),
+                        shortcut: shortcut(.copyFiles)),
                 .item(title: "Move To…",
-                        action: #selector(FileManagerWindowController.moveFiles(_:))),
+                        action: #selector(FileManagerWindowController.moveFiles(_:)),
+                        shortcut: shortcut(.moveFiles)),
                 .item(title: "Delete",
-                        action: #selector(FileManagerWindowController.deleteFiles(_:))),
+                        action: #selector(FileManagerWindowController.deleteFiles(_:)),
+                        shortcut: shortcut(.deleteFiles)),
                 .separator,
                 .submenu(title: "CRC", children: hashNodes),
                 .separator,
                 .item(title: "Create Folder",
-                        action: #selector(FileManagerWindowController.createFolder(_:))),
+                        action: #selector(FileManagerWindowController.createFolder(_:)),
+                        shortcut: shortcut(.createFolder)),
                 .item(title: "Create File",
                         action: #selector(FileManagerWindowController.createFile(_:))),
                 .separator,
@@ -344,8 +736,10 @@ private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
 /// Sets up the main application menu bar programmatically.
 enum MainMenu {
     private static let coordinator = MainMenuCoordinator()
+        private static var settingsObserver: NSObjectProtocol?
 
     static func setup() {
+                installSettingsObserverIfNeeded()
         let mainMenu = NSMenu(title: "Main Menu")
 
         let appMenu = NSMenu(title: "ShichiZip")
@@ -449,7 +843,9 @@ enum MainMenu {
         addDisabledItem(to: viewMenu, title: "Flat View")
         addItem(to: viewMenu,
                 title: "2 Panels",
-                action: #selector(FileManagerWindowController.toggleDualPane(_:)))
+                action: #selector(FileManagerWindowController.toggleDualPane(_:)),
+                keyEquivalent: FileManagerShortcuts.menuShortcut(for: .toggleDualPane)?.keyEquivalent ?? "",
+                modifiers: FileManagerShortcuts.menuShortcut(for: .toggleDualPane)?.modifiers ?? [.command])
 
         let timeMenuItem = NSMenuItem(title: FileManagerViewPreferences.timeMenuPreviewTitle(for: .day),
                                       action: nil,
@@ -481,14 +877,17 @@ enum MainMenu {
                 action: #selector(FileManagerWindowController.openRootFolder(_:)))
         addItem(to: viewMenu,
                 title: "Up One Level",
-                action: #selector(FileManagerWindowController.goUpOneLevel(_:)))
+                action: #selector(FileManagerWindowController.goUpOneLevel(_:)),
+                keyEquivalent: FileManagerShortcuts.menuShortcut(for: .goUpOneLevel)?.keyEquivalent ?? "",
+                modifiers: FileManagerShortcuts.menuShortcut(for: .goUpOneLevel)?.modifiers ?? [.command])
         addItem(to: viewMenu,
                 title: "Folders History…",
                 action: #selector(FileManagerWindowController.showFoldersHistory(_:)))
         addItem(to: viewMenu,
                 title: "Refresh",
                 action: #selector(FileManagerWindowController.refreshActivePane(_:)),
-                keyEquivalent: "r")
+                keyEquivalent: FileManagerShortcuts.menuShortcut(for: .refreshActivePane)?.keyEquivalent ?? "r",
+                modifiers: FileManagerShortcuts.menuShortcut(for: .refreshActivePane)?.modifiers ?? [.command])
         addItem(to: viewMenu,
                 title: "Auto Refresh",
                 action: #selector(FileManagerWindowController.toggleAutoRefresh(_:)))
@@ -560,6 +959,24 @@ enum MainMenu {
         static func refreshDynamicMenuState() {
                 coordinator.refreshTimeMenuTitle()
     }
+
+        private static func installSettingsObserverIfNeeded() {
+                guard settingsObserver == nil else { return }
+
+                settingsObserver = NotificationCenter.default.addObserver(
+                        forName: .szSettingsDidChange,
+                        object: nil,
+                        queue: .main
+                ) { notification in
+                        guard let key = notification.userInfo?["key"] as? String,
+                                  key == SZSettingsKey.fileManagerShortcutPreset.rawValue ||
+                                  key == SZSettingsKey.fileManagerCustomShortcuts.rawValue else {
+                                return
+                        }
+
+                        setup()
+                }
+        }
 
     @discardableResult
     private static func addItem(to menu: NSMenu,

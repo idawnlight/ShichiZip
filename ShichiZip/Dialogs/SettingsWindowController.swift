@@ -2,15 +2,181 @@ import Cocoa
 
 // MARK: - Settings Window Controller (matches Windows 7-Zip Options dialog)
 
+private final class SettingsPageContainerView: NSView {
+    private let contentStack: NSStackView
+    private let contentInsets: NSEdgeInsets
+
+    init(contentStack: NSStackView,
+         contentInsets: NSEdgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)) {
+        self.contentStack = contentStack
+        self.contentInsets = contentInsets
+        super.init(frame: .zero)
+
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(contentStack)
+
+        NSLayoutConstraint.activate([
+            contentStack.topAnchor.constraint(equalTo: topAnchor, constant: contentInsets.top),
+            contentStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: contentInsets.left),
+            contentStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -contentInsets.right),
+            bottomAnchor.constraint(equalTo: contentStack.bottomAnchor, constant: contentInsets.bottom),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    var preferredHeight: CGFloat {
+        layoutSubtreeIfNeeded()
+        return contentStack.fittingSize.height + contentInsets.top + contentInsets.bottom
+    }
+}
+
+private final class ShortcutRecorderButton: NSButton {
+    var shortcut: FileManagerShortcut? {
+        didSet {
+            if !isRecording {
+                updateAppearance()
+            }
+        }
+    }
+
+    var onShortcutChanged: ((FileManagerShortcut?) -> Void)?
+
+    private var recordingMonitor: Any?
+    private var isRecording = false {
+        didSet {
+            updateAppearance()
+        }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        bezelStyle = .rounded
+        setButtonType(.momentaryPushIn)
+        target = self
+        action = #selector(toggleRecording(_:))
+        updateAppearance()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        stopRecording()
+    }
+
+    @objc private func toggleRecording(_ sender: Any?) {
+        if isRecording {
+            cancelRecording()
+        } else {
+            startRecording()
+        }
+    }
+
+    private func startRecording() {
+        guard recordingMonitor == nil else { return }
+
+        isRecording = true
+        window?.makeFirstResponder(self)
+        recordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.isRecording else {
+                return event
+            }
+
+            return self.capture(event)
+        }
+    }
+
+    private func cancelRecording() {
+        stopRecording()
+    }
+
+    private func stopRecording() {
+        if let recordingMonitor {
+            NSEvent.removeMonitor(recordingMonitor)
+            self.recordingMonitor = nil
+        }
+        isRecording = false
+    }
+
+    private func capture(_ event: NSEvent) -> NSEvent? {
+        if event.keyCode == 53 {
+            cancelRecording()
+            return nil
+        }
+
+        guard let shortcut = FileManagerShortcut(event: event) else {
+            NSSound.beep()
+            return nil
+        }
+
+        self.shortcut = shortcut
+        stopRecording()
+        onShortcutChanged?(shortcut)
+        return nil
+    }
+
+    private func updateAppearance() {
+        let baseFont = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+
+        if isRecording {
+            attributedTitle = NSAttributedString(
+                string: "Type Shortcut…",
+                attributes: [
+                    .font: NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold),
+                    .foregroundColor: NSColor.controlAccentColor,
+                ]
+            )
+            return
+        }
+
+        if let shortcut {
+            attributedTitle = NSAttributedString(
+                string: shortcut.displayName,
+                attributes: [
+                    .font: NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .medium),
+                    .foregroundColor: NSColor.labelColor,
+                ]
+            )
+            return
+        }
+
+        let placeholderFont = NSFontManager.shared.convert(baseFont, toHaveTrait: .italicFontMask)
+        attributedTitle = NSAttributedString(
+            string: "Record Shortcut",
+            attributes: [
+                .font: placeholderFont,
+                .foregroundColor: NSColor.placeholderTextColor,
+            ]
+        )
+    }
+}
+
 class SettingsWindowController: NSWindowController {
 
+    private enum LayoutMetrics {
+        static let outerInset: CGFloat = 12
+        static let segmentSpacing: CGFloat = 12
+    }
+
     private var tabView: NSTabView!
+    private var tabSegmentedControl: NSSegmentedControl!
+    private var shortcutPresetPopup: NSPopUpButton?
+    private var shortcutPresetDescriptionLabel: NSTextField?
+    private var shortcutBindingsStack: NSStackView?
+    private var shortcutRecorders: [FileManagerShortcutCommand: ShortcutRecorderButton] = [:]
+    private var isUpdatingShortcutControls = false
 
     private static let finderQuickActionsSettingsURL = URL(string: "x-apple.systempreferences:com.apple.ExtensionsPreferences?extensionPointIdentifier=com.apple.services")
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 400),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 440),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -34,6 +200,11 @@ class SettingsWindowController: NSWindowController {
         settingsTab.view = createSettingsPage()
         tabView.addTabViewItem(settingsTab)
 
+        let shortcutsTab = NSTabViewItem(identifier: "shortcuts")
+        shortcutsTab.label = "Shortcuts"
+        shortcutsTab.view = createShortcutsPage()
+        tabView.addTabViewItem(shortcutsTab)
+
         // Folders tab (FoldersPage.cpp)
         let foldersTab = NSTabViewItem(identifier: "folders")
         foldersTab.label = "Folders"
@@ -48,36 +219,38 @@ class SettingsWindowController: NSWindowController {
         contentView.addSubview(tabView)
 
         // Segmented control for tab switching
-        let segmented = NSSegmentedControl(labels: ["Settings", "Folders", "Integration"],
-                                           trackingMode: .selectOne,
-                                           target: self,
-                                           action: #selector(tabSegmentChanged(_:)))
-        segmented.translatesAutoresizingMaskIntoConstraints = false
-        segmented.selectedSegment = 0
-        segmented.segmentStyle = .automatic
-        contentView.addSubview(segmented)
+        tabSegmentedControl = NSSegmentedControl(labels: ["Settings", "Shortcuts", "Folders", "Integration"],
+                                                trackingMode: .selectOne,
+                                                target: self,
+                                                action: #selector(tabSegmentChanged(_:)))
+        tabSegmentedControl.translatesAutoresizingMaskIntoConstraints = false
+        tabSegmentedControl.selectedSegment = 0
+        tabSegmentedControl.segmentStyle = .automatic
+        contentView.addSubview(tabSegmentedControl)
 
         NSLayoutConstraint.activate([
-            segmented.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-            segmented.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            tabSegmentedControl.topAnchor.constraint(equalTo: contentView.topAnchor, constant: LayoutMetrics.outerInset),
+            tabSegmentedControl.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
 
-            tabView.topAnchor.constraint(equalTo: segmented.bottomAnchor, constant: 12),
-            tabView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
-            tabView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
-            tabView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12),
+            tabView.topAnchor.constraint(equalTo: tabSegmentedControl.bottomAnchor, constant: LayoutMetrics.segmentSpacing),
+            tabView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: LayoutMetrics.outerInset),
+            tabView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -LayoutMetrics.outerInset),
+            tabView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -LayoutMetrics.outerInset),
         ])
+
+        contentView.layoutSubtreeIfNeeded()
+        resizeWindowToFitSelectedTab(animated: false)
     }
 
     @objc private func tabSegmentChanged(_ sender: NSSegmentedControl) {
         tabView.selectTabViewItem(at: sender.selectedSegment)
+        resizeWindowToFitSelectedTab(animated: true)
     }
 
     // MARK: - Settings Page (SettingsPage.cpp)
 
     private func createSettingsPage() -> NSView {
-        let view = NSView()
         let stack = NSStackView()
-        stack.translatesAutoresizingMaskIntoConstraints = false
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 6
@@ -157,13 +330,7 @@ class SettingsWindowController: NSWindowController {
 
         stack.addArrangedSubview(memRow)
 
-        view.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-        ])
-        return view
+        return makePageView(containing: stack)
     }
 
     private func makeSettingsSeparator() -> NSBox {
@@ -178,12 +345,194 @@ class SettingsWindowController: NSWindowController {
         return label
     }
 
+    private func makePageView(containing stack: NSStackView) -> NSView {
+        SettingsPageContainerView(contentStack: stack)
+    }
+
+    private func resizeWindowToFitSelectedTab(animated: Bool) {
+        guard let window,
+              let contentView = window.contentView,
+              let selectedView = tabView.selectedTabViewItem?.view as? SettingsPageContainerView else {
+            return
+        }
+
+        contentView.layoutSubtreeIfNeeded()
+        selectedView.layoutSubtreeIfNeeded()
+
+        let desiredContentHeight = LayoutMetrics.outerInset
+            + tabSegmentedControl.fittingSize.height
+            + LayoutMetrics.segmentSpacing
+            + selectedView.preferredHeight
+            + LayoutMetrics.outerInset
+
+        let currentFrame = window.frame
+        let currentContentRect = window.contentRect(forFrameRect: currentFrame)
+        let targetContentRect = NSRect(x: 0,
+                                       y: 0,
+                                       width: currentContentRect.width,
+                                       height: desiredContentHeight)
+        var targetFrame = window.frameRect(forContentRect: targetContentRect)
+        targetFrame.origin.x = currentFrame.origin.x
+        targetFrame.origin.y = currentFrame.maxY - targetFrame.height
+
+        window.setFrame(targetFrame, display: true, animate: animated)
+    }
+
+    // MARK: - Shortcuts Page
+
+    private func createShortcutsPage() -> NSView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+
+        stack.addArrangedSubview(makeSectionLabel("Preset"))
+
+        let descriptionLabel = NSTextField(wrappingLabelWithString: "")
+        descriptionLabel.textColor = .secondaryLabelColor
+        descriptionLabel.maximumNumberOfLines = 0
+        descriptionLabel.preferredMaxLayoutWidth = 480
+        shortcutPresetDescriptionLabel = descriptionLabel
+        stack.addArrangedSubview(descriptionLabel)
+
+        let presetRow = NSStackView()
+        presetRow.orientation = .horizontal
+        presetRow.alignment = .centerY
+        presetRow.spacing = 8
+
+        let presetLabel = NSTextField(labelWithString: "Scheme:")
+        presetRow.addArrangedSubview(presetLabel)
+
+        let presetPopup = NSPopUpButton()
+        for preset in FileManagerShortcutPreset.allCases {
+            presetPopup.addItem(withTitle: preset.displayName)
+            presetPopup.lastItem?.tag = preset.rawValue
+        }
+        if let item = presetPopup.itemArray.first(where: { $0.tag == SZSettings.fileManagerShortcutPreset.rawValue }) {
+            presetPopup.select(item)
+        }
+        presetPopup.target = self
+        presetPopup.action = #selector(shortcutPresetChanged(_:))
+        shortcutPresetPopup = presetPopup
+        presetRow.addArrangedSubview(presetPopup)
+
+        stack.addArrangedSubview(presetRow)
+
+        let noteLabel = NSTextField(wrappingLabelWithString: "These shortcuts apply to file manager commands. Standard app shortcuts such as Preferences and Quit stay unchanged.")
+        noteLabel.textColor = .secondaryLabelColor
+        noteLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        noteLabel.maximumNumberOfLines = 0
+        noteLabel.preferredMaxLayoutWidth = 480
+        stack.addArrangedSubview(noteLabel)
+
+        let customNoteLabel = NSTextField(wrappingLabelWithString: "Changing an individual binding switches the preset to Custom. Reusing a shortcut clears it from the previous command. Click a shortcut field and press any key combination. Press Escape to cancel recording.")
+        customNoteLabel.textColor = .secondaryLabelColor
+        customNoteLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        customNoteLabel.maximumNumberOfLines = 0
+        customNoteLabel.preferredMaxLayoutWidth = 480
+        stack.addArrangedSubview(customNoteLabel)
+
+        let separator = makeSettingsSeparator()
+        stack.addArrangedSubview(separator)
+        separator.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        stack.addArrangedSubview(makeSectionLabel("Current Shortcuts"))
+
+        let bindingsStack = NSStackView()
+        bindingsStack.orientation = .vertical
+        bindingsStack.alignment = .leading
+        bindingsStack.spacing = 6
+        shortcutBindingsStack = bindingsStack
+
+        for command in FileManagerShortcutCommand.allCases {
+            let row = NSStackView()
+            row.orientation = .horizontal
+            row.alignment = .centerY
+            row.spacing = 12
+
+            let titleLabel = NSTextField(labelWithString: command.title)
+            titleLabel.preferredMaxLayoutWidth = 260
+            titleLabel.widthAnchor.constraint(equalToConstant: 220).isActive = true
+            row.addArrangedSubview(titleLabel)
+
+            let recorder = ShortcutRecorderButton(frame: .zero)
+            recorder.shortcut = FileManagerShortcuts.binding(for: command).shortcut
+            recorder.widthAnchor.constraint(equalToConstant: 190).isActive = true
+            recorder.onShortcutChanged = { [weak self] shortcut in
+                self?.updateShortcutBinding(for: command, to: shortcut)
+            }
+            shortcutRecorders[command] = recorder
+            row.addArrangedSubview(recorder)
+
+            let clearButton = NSButton(title: "Clear", target: self, action: #selector(clearShortcutBinding(_:)))
+            clearButton.identifier = NSUserInterfaceItemIdentifier(command.rawValue)
+            row.addArrangedSubview(clearButton)
+
+            bindingsStack.addArrangedSubview(row)
+        }
+
+        stack.addArrangedSubview(bindingsStack)
+
+        updateShortcutPresetUI(for: SZSettings.fileManagerShortcutPreset)
+        return makePageView(containing: stack)
+    }
+
+    private func updateShortcutPresetUI(for preset: FileManagerShortcutPreset) {
+        shortcutPresetDescriptionLabel?.stringValue = preset.descriptionText
+        if let item = shortcutPresetPopup?.itemArray.first(where: { $0.tag == preset.rawValue }) {
+            shortcutPresetPopup?.select(item)
+        }
+        rebuildShortcutBindingsList(for: preset)
+    }
+
+    private func rebuildShortcutBindingsList(for preset: FileManagerShortcutPreset) {
+        isUpdatingShortcutControls = true
+        defer { isUpdatingShortcutControls = false }
+
+        let bindingMap = FileManagerShortcuts.resolvedBindingMap(for: preset)
+        for command in FileManagerShortcutCommand.allCases {
+            guard let recorder = shortcutRecorders[command] else { continue }
+            recorder.shortcut = bindingMap[command]
+        }
+    }
+
+    private func seedCustomShortcutMapIfNeeded(from preset: FileManagerShortcutPreset) {
+        guard !SZSettings.hasFileManagerCustomShortcutMap else { return }
+        SZSettings.setFileManagerCustomShortcutMap(FileManagerShortcuts.resolvedBindingMap(for: preset))
+    }
+
+    private func updateShortcutBinding(for command: FileManagerShortcutCommand,
+                                       to shortcut: FileManagerShortcut?) {
+        guard !isUpdatingShortcutControls else { return }
+
+        let previousPreset = SZSettings.fileManagerShortcutPreset
+        var bindingMap = FileManagerShortcuts.resolvedBindingMap(for: previousPreset)
+
+        if let shortcut {
+            for otherCommand in FileManagerShortcutCommand.allCases where otherCommand != command {
+                if bindingMap[otherCommand] == shortcut {
+                    bindingMap.removeValue(forKey: otherCommand)
+                }
+            }
+            bindingMap[command] = shortcut
+        } else {
+            bindingMap.removeValue(forKey: command)
+        }
+
+        SZSettings.setFileManagerCustomShortcutMap(bindingMap)
+
+        if previousPreset != .custom {
+            SZSettings.setFileManagerShortcutPreset(.custom)
+        }
+
+        updateShortcutPresetUI(for: .custom)
+        resizeWindowToFitSelectedTab(animated: true)
+    }
+
     // MARK: - Integration Page
 
     private func createIntegrationPage() -> NSView {
-        let view = NSView()
         let stack = NSStackView()
-        stack.translatesAutoresizingMaskIntoConstraints = false
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
@@ -206,21 +555,13 @@ class SettingsWindowController: NSWindowController {
         noteLabel.preferredMaxLayoutWidth = 440
         stack.addArrangedSubview(noteLabel)
 
-        view.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-        ])
-        return view
+        return makePageView(containing: stack)
     }
 
     // MARK: - Folders Page (FoldersPage.cpp)
 
     private func createFoldersPage() -> NSView {
-        let view = NSView()
         let stack = NSStackView()
-        stack.translatesAutoresizingMaskIntoConstraints = false
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
@@ -274,13 +615,7 @@ class SettingsWindowController: NSWindowController {
         removableCheck.state = SZSettings.bool(.workDirRemovableOnly) ? .on : .off
         stack.addArrangedSubview(removableCheck)
 
-        view.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-        ])
-        return view
+        return makePageView(containing: stack)
     }
 
     // MARK: - Actions
@@ -305,6 +640,37 @@ class SettingsWindowController: NSWindowController {
 
     @objc private func memLimitChanged(_ sender: NSTextField) {
         SZSettings.set(max(1, sender.integerValue), for: .memLimitGB)
+    }
+
+    @objc private func shortcutPresetChanged(_ sender: NSPopUpButton) {
+        guard !isUpdatingShortcutControls else { return }
+
+        let previousPreset = SZSettings.fileManagerShortcutPreset
+        guard let selectedItem = sender.selectedItem,
+              let preset = FileManagerShortcutPreset(rawValue: selectedItem.tag) else {
+            return
+        }
+
+        if preset == previousPreset {
+            return
+        }
+
+        if preset == .custom {
+            seedCustomShortcutMapIfNeeded(from: previousPreset)
+        }
+
+        SZSettings.setFileManagerShortcutPreset(preset)
+        updateShortcutPresetUI(for: preset)
+        resizeWindowToFitSelectedTab(animated: true)
+    }
+
+    @objc private func clearShortcutBinding(_ sender: NSButton) {
+        guard let commandRawValue = sender.identifier?.rawValue,
+              let command = FileManagerShortcutCommand(rawValue: commandRawValue) else {
+            return
+        }
+
+        updateShortcutBinding(for: command, to: nil)
     }
 
     @objc private func workDirModeChanged(_ sender: NSButton) {

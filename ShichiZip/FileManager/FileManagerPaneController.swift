@@ -80,8 +80,8 @@ private final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate 
 
 private final class FileManagerTableView: NSTableView {
     var contextMenuPreparationHandler: ((Int) -> Void)?
-    var quickLookToggleHandler: (() -> Void)?
     var quickLookPreviewHandler: (() -> Void)?
+    var shortcutEventHandler: ((NSEvent) -> Bool)?
     private var deepClickTriggered = false
 
     override func canDragRows(with rowIndexes: IndexSet, at mouseDownPoint: NSPoint) -> Bool {
@@ -106,12 +106,19 @@ private final class FileManagerTableView: NSTableView {
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 49 {
-            quickLookToggleHandler?()
+        if shortcutEventHandler?(event) == true {
             return
         }
 
         super.keyDown(with: event)
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if shortcutEventHandler?(event) == true {
+            return true
+        }
+
+        return super.performKeyEquivalent(with: event)
     }
 
     override func pressureChange(with event: NSEvent) {
@@ -294,13 +301,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         fileTableView.contextMenuPreparationHandler = { [weak self] clickedRow in
             self?.prepareContextMenu(forClickedRow: clickedRow)
         }
-        fileTableView.quickLookToggleHandler = { [weak self] in
-            guard let self else { return }
-            self.delegate?.paneDidRequestToggleQuickLook(self)
-        }
         fileTableView.quickLookPreviewHandler = { [weak self] in
             guard let self else { return }
             self.delegate?.paneDidRequestQuickLook(self)
+        }
+        fileTableView.shortcutEventHandler = { [weak self] event in
+            self?.handleShortcutEvent(event) ?? false
         }
         fileTableView.pressureConfiguration = NSPressureConfiguration(pressureBehavior: .primaryDeepClick)
         tableView = fileTableView
@@ -1101,6 +1107,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func handleQuickLookEvent(_ event: NSEvent) -> Bool {
+        if handleShortcutEvent(event) {
+            return true
+        }
+
         if !event.modifierFlags.intersection([.command, .control, .option]).isEmpty {
             return false
         }
@@ -1117,6 +1127,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         return true
+    }
+
+    private func handleShortcutEvent(_ event: NSEvent) -> Bool {
+        guard let command = FileManagerShortcuts.command(for: event) else {
+            return false
+        }
+
+        delegate?.paneDidBecomeActive(self)
+        return delegate?.pane(self, didRequestShortcutCommand: command) ?? false
     }
 
     func selectedFilePaths() -> [String] {
@@ -1419,6 +1438,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             applyFileManagerSettings()
         case .showHiddenFiles:
             refresh()
+            return
+        case .fileManagerShortcutPreset, .fileManagerCustomShortcuts:
+            tableView.menu = buildContextMenu()
             return
         default:
             return
@@ -2482,18 +2504,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                 })
         } catch {
             showErrorAlert(error)
-        }
-    }
-
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == 36 { // Enter - Open
-            doubleClickRow(nil)
-        } else if event.keyCode == 51 { // Backspace - Go up
-            goUp()
-        } else if event.keyCode == 120 { // F2 - Rename (PanelKey.cpp)
-            renameSelected(nil)
-        } else {
-            super.keyDown(with: event)
         }
     }
 
