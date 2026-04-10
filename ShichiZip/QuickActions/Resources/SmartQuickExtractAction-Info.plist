@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>SZ: Smart Quick Extract</string>
+	<string>$(SHICHIZIP_QUICK_ACTION_DISPLAY_NAME)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>SZ: Smart Quick Extract</string>
+	<string>$(SHICHIZIP_QUICK_ACTION_DISPLAY_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
 	<key>CFBundleShortVersionString</key>
@@ -22,6 +22,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
+	<key>ShichiZipHostAppDisplayName</key>
+	<string>$(SHICHIZIP_HOST_APP_DISPLAY_NAME)</string>
+	<key>ShichiZipQuickActionPasteboardType</key>
+	<string>$(SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE)</string>
+	<key>ShichiZipQuickActionURLScheme</key>
+	<string>$(SHICHIZIP_QUICK_ACTION_URL_SCHEME)</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>
@@ -33,7 +39,7 @@
 			<key>NSExtensionServiceFinderPreviewIconName</key>
 			<string>NSActionTemplate</string>
 			<key>NSExtensionServiceFinderPreviewLabel</key>
-			<string>SZ: Smart Quick Extract</string>
+			<string>$(SHICHIZIP_QUICK_ACTION_LABEL)</string>
 			<key>NSExtensionServiceRoleType</key>
 			<string>NSExtensionServiceRoleTypeViewer</string>
 		</dict>

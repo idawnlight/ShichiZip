@@ -1,5 +1,24 @@
 import Foundation
 
+enum ShichiZipQuickActionAppInfo {
+    private static let hostAppDisplayNameKey = "ShichiZipHostAppDisplayName"
+
+    static var hostAppDisplayName: String {
+        if let configuredName = (Bundle.main.object(forInfoDictionaryKey: hostAppDisplayNameKey) as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !configuredName.isEmpty {
+            return configuredName
+        }
+
+        let bundleIdentifier = (Bundle.main.bundleIdentifier ?? "").lowercased()
+        if bundleIdentifier.contains("shichizipzs") {
+            return "ShichiZip ZS"
+        }
+
+        return "ShichiZip"
+    }
+}
+
 enum ShichiZipQuickAction: String, Codable {
     case showInFileManager = "show-in-file-manager"
     case openInShichiZip = "open-in-shichizip"
@@ -40,7 +59,7 @@ enum ShichiZipQuickActionError: LocalizedError {
         case .invalidPayload:
             return "The Quick Action request payload is invalid."
         case .launchFailed:
-            return "ShichiZip could not be launched from the Quick Action."
+            return "\(ShichiZipQuickActionAppInfo.hostAppDisplayName) could not be launched from the Quick Action."
         case let .unsupportedSelection(message):
             return message
         }

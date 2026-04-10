@@ -30,6 +30,7 @@
 - (instancetype)init {
     if ((self = [super init])) {
         _format = SZArchiveFormat7z; _level = SZCompressionLevelNormal;
+        _levelValue = SZCompressionLevelNormal;
         _method = SZCompressionMethodLZMA2; _encryption = SZEncryptionMethodNone;
         _updateMode = SZCompressionUpdateModeAdd;
         _pathMode = SZCompressionPathModeRelativePaths;
@@ -101,11 +102,21 @@ enum SZCompressionEstimateMethodID {
     kSZCompressionEstimateDeflate,
     kSZCompressionEstimateDeflate64,
     kSZCompressionEstimatePPMdZip,
+    kSZCompressionEstimateFastLzma2,
+    kSZCompressionEstimateZstd,
+    kSZCompressionEstimateBrotli,
+    kSZCompressionEstimateLz4,
+    kSZCompressionEstimateLz5,
+    kSZCompressionEstimateLizardFastLz4,
+    kSZCompressionEstimateLizardLizV1,
+    kSZCompressionEstimateLizardFastLz4Huffman,
+    kSZCompressionEstimateLizardLizV1Huffman,
     kSZCompressionEstimateGnu,
     kSZCompressionEstimatePosix,
 };
 
 static const UInt32 kSZCompressionEstimateLzmaMaxDictSize = (UInt32)15 << 28;
+static const NSInteger kSZCompressionZstdUltimateLevel = 255;
 
 struct SZCompressionEstimateRamInfo {
     bool IsDefined;
@@ -119,6 +130,8 @@ static bool SZCompressionEstimateMethodSupportsSFX(int methodID) {
         case kSZCompressionEstimateLZMA:
         case kSZCompressionEstimateLZMA2:
         case kSZCompressionEstimatePPMd:
+        case kSZCompressionEstimateFastLzma2:
+        case kSZCompressionEstimateZstd:
             return true;
         default:
             return false;
@@ -135,6 +148,11 @@ static bool SZCompressionEstimateFormatSupportsThreads(SZArchiveFormat format) {
         case SZArchiveFormatZip:
         case SZArchiveFormatBZip2:
         case SZArchiveFormatXz:
+        case SZArchiveFormatZstd:
+        case SZArchiveFormatBrotli:
+        case SZArchiveFormatLizard:
+        case SZArchiveFormatLz4:
+        case SZArchiveFormatLz5:
             return true;
         default:
             return false;
@@ -148,6 +166,11 @@ static bool SZCompressionEstimateFormatSupportsMemoryUse(SZArchiveFormat format)
         case SZArchiveFormatGZip:
         case SZArchiveFormatBZip2:
         case SZArchiveFormatXz:
+        case SZArchiveFormatZstd:
+        case SZArchiveFormatBrotli:
+        case SZArchiveFormatLizard:
+        case SZArchiveFormatLz4:
+        case SZArchiveFormatLz5:
             return true;
         default:
             return false;
@@ -162,9 +185,16 @@ static bool SZCompressionEstimateIsXzFormat(SZArchiveFormat format) {
     return format == SZArchiveFormatXz;
 }
 
-static UInt32 SZCompressionEstimateLevel(SZCompressionSettings *settings) {
-    const NSInteger level = settings.level;
-    return level < 0 ? 5u : (UInt32)level;
+static int SZCompressionEstimateLevel(SZCompressionSettings *settings) {
+    return (int)settings.levelValue;
+}
+
+static bool SZCompressionEstimateIsZstdFastLevel(int level) {
+    return level < 0;
+}
+
+static UInt32 SZCompressionEstimateZstdFastLevel(int level) {
+    return level < 0 ? (UInt32)(-level) : 0;
 }
 
 static int SZCompressionEstimateMethodID(SZCompressionSettings *settings) {
@@ -191,6 +221,33 @@ static int SZCompressionEstimateMethodID(SZCompressionSettings *settings) {
         if ([methodName isEqualToString:@"deflate64"]) {
             return kSZCompressionEstimateDeflate64;
         }
+        if ([methodName isEqualToString:@"flzma2"]) {
+            return kSZCompressionEstimateFastLzma2;
+        }
+        if ([methodName isEqualToString:@"zstd"]) {
+            return kSZCompressionEstimateZstd;
+        }
+        if ([methodName isEqualToString:@"brotli"]) {
+            return kSZCompressionEstimateBrotli;
+        }
+        if ([methodName isEqualToString:@"lz4"]) {
+            return kSZCompressionEstimateLz4;
+        }
+        if ([methodName isEqualToString:@"lz5"]) {
+            return kSZCompressionEstimateLz5;
+        }
+        if ([methodName isEqualToString:@"lizard-fastlz4"]) {
+            return kSZCompressionEstimateLizardFastLz4;
+        }
+        if ([methodName isEqualToString:@"lizard-lizv1"]) {
+            return kSZCompressionEstimateLizardLizV1;
+        }
+        if ([methodName isEqualToString:@"lizard-fastlz4-huffman"]) {
+            return kSZCompressionEstimateLizardFastLz4Huffman;
+        }
+        if ([methodName isEqualToString:@"lizard-lizv1-huffman"]) {
+            return kSZCompressionEstimateLizardLizV1Huffman;
+        }
         if ([methodName isEqualToString:@"gnu"]) {
             return kSZCompressionEstimateGnu;
         }
@@ -206,6 +263,16 @@ static int SZCompressionEstimateMethodID(SZCompressionSettings *settings) {
             return kSZCompressionEstimateBZip2;
         case SZArchiveFormatXz:
             return kSZCompressionEstimateLZMA2;
+        case SZArchiveFormatZstd:
+            return kSZCompressionEstimateZstd;
+        case SZArchiveFormatBrotli:
+            return kSZCompressionEstimateBrotli;
+        case SZArchiveFormatLizard:
+            return kSZCompressionEstimateLizardFastLz4;
+        case SZArchiveFormatLz4:
+            return kSZCompressionEstimateLz4;
+        case SZArchiveFormatLz5:
+            return kSZCompressionEstimateLz5;
         default:
             break;
     }
@@ -352,7 +419,7 @@ static void SZCompressionEstimateGetCpuThreadCounts(UInt32 &numCPUs,
 #endif
 }
 
-static UInt64 SZCompressionEstimateAutoDictionary(int methodID, UInt32 level) {
+static UInt64 SZCompressionEstimateAutoDictionary(int methodID, int level) {
     switch (methodID) {
         case kSZCompressionEstimateLZMA:
         case kSZCompressionEstimateLZMA2:
@@ -384,6 +451,80 @@ static UInt64 SZCompressionEstimateAutoDictionary(int methodID, UInt32 level) {
         case kSZCompressionEstimateCopy:
             return 0;
 
+        case kSZCompressionEstimateFastLzma2:
+            if (level == 0) {
+                level = 1;
+            }
+            if (level > 9) {
+                level = 9;
+            }
+            switch (level) {
+                case 1:
+                    return (UInt64)1 << 20;
+                case 2:
+                case 3:
+                    return (UInt64)2 << 20;
+                case 4:
+                    return (UInt64)4 << 20;
+                case 5:
+                    return (UInt64)16 << 20;
+                case 6:
+                    return (UInt64)32 << 20;
+                case 7:
+                case 8:
+                    return (UInt64)64 << 20;
+                case 9:
+                default:
+                    return (UInt64)128 << 20;
+            }
+
+        case kSZCompressionEstimateZstd:
+            if (level == (int)kSZCompressionZstdUltimateLevel) {
+                return (UInt64)1 << 27;
+            }
+            if (SZCompressionEstimateIsZstdFastLevel(level)) {
+                const UInt32 fastLevel = SZCompressionEstimateZstdFastLevel(level);
+                const UInt32 windowLog = fastLevel >= 12 ? 20u : fastLevel >= 6 ? 22u : 24u;
+                return (UInt64)1 << windowLog;
+            }
+            if (level <= 3) {
+                return (UInt64)1 << 23;
+            }
+            if (level <= 9) {
+                return (UInt64)1 << 24;
+            }
+            if (level <= 16) {
+                return (UInt64)1 << 25;
+            }
+            return (UInt64)1 << 26;
+
+        case kSZCompressionEstimateBrotli:
+            return level >= 9 ? (UInt64)16 << 20 : level >= 5 ? (UInt64)8 << 20 : (UInt64)4 << 20;
+
+        case kSZCompressionEstimateLz4:
+            if (level <= 4) {
+                return (UInt64)4 << 20;
+            }
+            if (level <= 8) {
+                return (UInt64)8 << 20;
+            }
+            return (UInt64)16 << 20;
+
+        case kSZCompressionEstimateLz5:
+            if (level <= 5) {
+                return (UInt64)8 << 20;
+            }
+            if (level <= 10) {
+                return (UInt64)16 << 20;
+            }
+            return (UInt64)32 << 20;
+
+        case kSZCompressionEstimateLizardFastLz4:
+        case kSZCompressionEstimateLizardLizV1:
+        case kSZCompressionEstimateLizardFastLz4Huffman:
+        case kSZCompressionEstimateLizardLizV1Huffman:
+            return level >= 40 ? (UInt64)64 << 20 : level >= 30 ? (UInt64)32 << 20 : (UInt64)16 << 20;
+
         default:
             return (UInt64)-1;
     }
@@ -391,7 +532,7 @@ static UInt64 SZCompressionEstimateAutoDictionary(int methodID, UInt32 level) {
 
 static UInt64 SZCompressionEstimateDictionary(SZCompressionSettings *settings,
                                               int methodID,
-                                              UInt32 level) {
+                                              int level) {
     if (settings.dictionarySize > 0) {
         return settings.dictionarySize;
     }
@@ -399,7 +540,7 @@ static UInt64 SZCompressionEstimateDictionary(SZCompressionSettings *settings,
 }
 
 static bool SZCompressionEstimateAutoWordSize(int methodID,
-                                              UInt32 level,
+                                              int level,
                                               UInt32 &wordSize) {
     switch (methodID) {
         case kSZCompressionEstimateLZMA:
@@ -434,6 +575,23 @@ static bool SZCompressionEstimateAutoWordSize(int methodID,
             wordSize = level + 3;
             return true;
 
+        case kSZCompressionEstimateFastLzma2:
+            if (level == 0) {
+                level = 1;
+            }
+            if (level <= 4) {
+                wordSize = 32;
+            } else if (level == 5) {
+                wordSize = 48;
+            } else if (level == 6) {
+                wordSize = 64;
+            } else if (level == 7) {
+                wordSize = 96;
+            } else {
+                wordSize = 273;
+            }
+            return true;
+
         default:
             return false;
     }
@@ -441,7 +599,7 @@ static bool SZCompressionEstimateAutoWordSize(int methodID,
 
 static bool SZCompressionEstimateWordSize(SZCompressionSettings *settings,
                                           int methodID,
-                                          UInt32 level,
+                                          int level,
                                           UInt32 &wordSize) {
     if (settings.wordSize > 0) {
         wordSize = settings.wordSize;
@@ -452,11 +610,11 @@ static bool SZCompressionEstimateWordSize(SZCompressionSettings *settings,
 
 static UInt64 SZCompressionEstimateMemoryUsage_Threads_Dict_DecompMem(SZArchiveFormat format,
                                                                       int methodID,
-                                                                      UInt32 level,
+                                                                      int level,
                                                                       UInt32 numThreads,
                                                                       UInt64 dict64,
                                                                       UInt64 &decompressMemory) {
-                                                                    decompressMemory = (UInt64)-1;
+        decompressMemory = (UInt64)-1;
 
     if (level == 0) {
         decompressMemory = (UInt64)1 << 20;
@@ -589,6 +747,52 @@ static UInt64 SZCompressionEstimateMemoryUsage_Threads_Dict_DecompMem(SZArchiveF
             decompressMemory = dict64 + (2 << 20);
             return size + (UInt64)decompressMemory * numThreads;
 
+        case kSZCompressionEstimateFastLzma2: {
+            const UInt64 dictionary = dict64 == (UInt64)-1 ? (UInt64)16 << 20 : dict64;
+            const UInt32 effectiveThreads = numThreads == 0 ? 1u : numThreads;
+            decompressMemory = dictionary + (4 << 20);
+            return ((UInt64)12 << 20) + dictionary * 3 + ((UInt64)4 << 20) * effectiveThreads;
+        }
+
+        case kSZCompressionEstimateZstd: {
+            const UInt64 dictionary = dict64 == (UInt64)-1 ? (UInt64)1 << 24 : dict64;
+            const UInt32 effectiveThreads = numThreads == 0 ? 1u : numThreads;
+            const UInt64 perThread = SZCompressionEstimateIsZstdFastLevel(level) ? (UInt64)3 << 20 : (UInt64)8 << 20;
+            decompressMemory = dictionary + (2 << 20);
+            return dictionary * 2 + perThread * effectiveThreads;
+        }
+
+        case kSZCompressionEstimateBrotli: {
+            const UInt64 dictionary = dict64 == (UInt64)-1 ? (UInt64)8 << 20 : dict64;
+            const UInt32 effectiveThreads = numThreads == 0 ? 1u : numThreads;
+            decompressMemory = dictionary + (1 << 20);
+            return dictionary * 2 + ((UInt64)10 << 20) * effectiveThreads;
+        }
+
+        case kSZCompressionEstimateLz4: {
+            const UInt64 dictionary = dict64 == (UInt64)-1 ? (UInt64)8 << 20 : dict64;
+            const UInt32 effectiveThreads = numThreads == 0 ? 1u : numThreads;
+            decompressMemory = (4 << 20);
+            return dictionary + ((UInt64)6 << 20) * effectiveThreads;
+        }
+
+        case kSZCompressionEstimateLz5: {
+            const UInt64 dictionary = dict64 == (UInt64)-1 ? (UInt64)16 << 20 : dict64;
+            const UInt32 effectiveThreads = numThreads == 0 ? 1u : numThreads;
+            decompressMemory = (6 << 20);
+            return dictionary + ((UInt64)8 << 20) * effectiveThreads;
+        }
+
+        case kSZCompressionEstimateLizardFastLz4:
+        case kSZCompressionEstimateLizardLizV1:
+        case kSZCompressionEstimateLizardFastLz4Huffman:
+        case kSZCompressionEstimateLizardLizV1Huffman: {
+            const UInt64 dictionary = dict64 == (UInt64)-1 ? (UInt64)16 << 20 : dict64;
+            const UInt32 effectiveThreads = numThreads == 0 ? 1u : numThreads;
+            decompressMemory = (8 << 20);
+            return dictionary + ((UInt64)10 << 20) * effectiveThreads;
+        }
+
         default:
             return (UInt64)-1;
     }
@@ -596,7 +800,7 @@ static UInt64 SZCompressionEstimateMemoryUsage_Threads_Dict_DecompMem(SZArchiveF
 
 static UInt32 SZCompressionEstimateAutoThreads(SZCompressionSettings *settings,
                                                int methodID,
-                                               UInt32 level,
+                                               int level,
                                                UInt64 dict64,
                                                UInt64 memoryUsageLimit,
                                                bool memoryUsageLimitIsDefined) {
@@ -623,6 +827,17 @@ static UInt32 SZCompressionEstimateAutoThreads(SZCompressionSettings *settings,
                 break;
             case kSZCompressionEstimateBZip2:
                 numAlgoThreadsMax = 64;
+                break;
+            case kSZCompressionEstimateFastLzma2:
+            case kSZCompressionEstimateZstd:
+            case kSZCompressionEstimateBrotli:
+            case kSZCompressionEstimateLz4:
+            case kSZCompressionEstimateLz5:
+            case kSZCompressionEstimateLizardFastLz4:
+            case kSZCompressionEstimateLizardLizV1:
+            case kSZCompressionEstimateLizardFastLz4Huffman:
+            case kSZCompressionEstimateLizardLizV1Huffman:
+                numAlgoThreadsMax = 128;
                 break;
             case kSZCompressionEstimateCopy:
             case kSZCompressionEstimatePPMd:
@@ -967,7 +1182,7 @@ static NSError *SZArchiveUpdateErrorFromResult(HRESULT result,
         return info;
     }
 
-    const UInt32 level = SZCompressionEstimateLevel(settings);
+    const int level = SZCompressionEstimateLevel(settings);
     const UInt64 dict64 = SZCompressionEstimateDictionary(settings, methodID, level);
     if (dict64 != (UInt64)-1) {
         info.resolvedDictionarySizeIsDefined = YES;
@@ -2210,8 +2425,8 @@ static bool SZParseVolumeSizes(const UString &text, CRecordVector<UInt64> &value
     CCodecs *codecs = SZGetCodecs();
     if (!codecs) { if (error) *error = SZMakeError(-1, @"Failed to init codecs"); return NO; }
 
-    static const char *fmts[] = {"7z","zip","tar","gzip","bzip2","xz","wim","zstd"};
-    int fi = (int)s.format; if (fi < 0 || fi >= 8) fi = 0;
+    static const char *fmts[] = {"7z","zip","tar","gzip","bzip2","xz","wim","zstd","brotli","lizard","lz4","lz5"};
+    int fi = (int)s.format; if (fi < 0 || fi >= 12) fi = 0;
 
     CUpdateOptions options;
     options.Commands.Clear();
@@ -2272,7 +2487,7 @@ static bool SZParseVolumeSizes(const UString &text, CRecordVector<UInt64> &value
     CProperty propLevel;
     propLevel.Name = L"x";
     wchar_t levelBuf[16];
-    swprintf(levelBuf, 16, L"%d", (int)s.level);
+    swprintf(levelBuf, 16, L"%d", (int)s.levelValue);
     propLevel.Value = levelBuf;
     options.MethodMode.Properties.Add(propLevel);
 

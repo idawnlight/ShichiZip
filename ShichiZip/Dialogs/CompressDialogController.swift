@@ -12,14 +12,39 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         let value: Value
     }
 
+    private struct LevelOption: Equatable {
+        let title: String
+        let levelValue: Int
+        let isDefault: Bool
+    }
+
     private struct MethodOption: Equatable {
         let title: String
         let enumValue: SZCompressionMethod?
         let methodName: String
+        let levelOptions: [LevelOption]?
         let dictionaryLabel: String
         let dictionaryOptions: [Option<UInt64>]
         let wordLabel: String
         let wordOptions: [Option<UInt32>]
+
+        init(title: String,
+             enumValue: SZCompressionMethod?,
+             methodName: String,
+             levelOptions: [LevelOption]? = nil,
+             dictionaryLabel: String,
+             dictionaryOptions: [Option<UInt64>],
+             wordLabel: String,
+             wordOptions: [Option<UInt32>]) {
+            self.title = title
+            self.enumValue = enumValue
+            self.methodName = methodName
+            self.levelOptions = levelOptions
+            self.dictionaryLabel = dictionaryLabel
+            self.dictionaryOptions = dictionaryOptions
+            self.wordLabel = wordLabel
+            self.wordOptions = wordOptions
+        }
     }
 
     private struct FormatOption: Equatable {
@@ -27,7 +52,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         let codecName: String
         let format: SZArchiveFormat
         let defaultExtension: String
-        let levelOptions: [Option<SZCompressionLevel>]
+        let levelOptions: [LevelOption]
         let methods: [MethodOption]
         let supportsSolid: Bool
         let supportsThreads: Bool
@@ -404,7 +429,6 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         }
     }
 
-    private static let knownArchiveExtensions: Set<String> = ["7z", "zip", "tar", "gz", "gzip", "bz2", "bzip2", "xz", "wim", "zst", "zstd", "exe"]
     private static let defaultMemoryUsagePercent: UInt64 = 80
     private static let knownTimePrecisionValues: [SZCompressionTimePrecision] = [
         SZCompressionTimePrecision(rawValue: 0)!,
@@ -417,18 +441,140 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     private static let rightColumnWidth: CGFloat = 364
     private static let columnSpacing: CGFloat = 20
 
-    private static let levelOptions: [Option<SZCompressionLevel>] = [
-        Option(title: "Store", value: .store),
-        Option(title: "Fastest", value: .fastest),
-        Option(title: "Fast", value: .fast),
-        Option(title: "Normal", value: .normal),
-        Option(title: "Maximum", value: .maximum),
-        Option(title: "Ultra", value: .ultra),
-    ]
+    private static let knownArchiveExtensions: Set<String> = ["7z", "zip", "tar", "gz", "gzip", "bz2", "bzip2", "xz", "wim", "zst", "zstd", "br", "brotli", "liz", "lz4", "lz5", "exe"]
 
-    private static let storeOnlyLevelOptions: [Option<SZCompressionLevel>] = [
-        Option(title: "Store", value: .store)
+    private static func compressionEnumValue(for levelValue: Int) -> SZCompressionLevel {
+        if levelValue == 0 {
+            return .store
+        }
+        if levelValue < 0 || levelValue <= 1 {
+            return .fastest
+        }
+        if levelValue <= 4 {
+            return .fast
+        }
+        if levelValue <= 6 {
+            return .normal
+        }
+        if levelValue <= 8 {
+            return .maximum
+        }
+        return .ultra
+    }
+
+    private static func levelOption(title: String,
+                                    value: Int,
+                                    isDefault: Bool = false) -> LevelOption {
+        LevelOption(title: title,
+                    levelValue: value,
+                    isDefault: isDefault)
+    }
+
+    private static func makeStandardLevelOptions(includeStore: Bool) -> [LevelOption] {
+        var options: [LevelOption] = []
+        if includeStore {
+            options.append(levelOption(title: "Store", value: 0))
+        }
+        options.append(levelOption(title: "Fastest", value: 1))
+        options.append(levelOption(title: "Fast", value: 3))
+        options.append(levelOption(title: "Normal", value: 5, isDefault: true))
+        options.append(levelOption(title: "Maximum", value: 7))
+        options.append(levelOption(title: "Ultra", value: 9))
+        options.append(levelOption(title: "Highest", value: 255))
+        return options
+    }
+
+    private static func numberedLevelTitle(_ value: Int,
+                                           namedLabel: String?) -> String {
+        let base = "Level \(value)"
+        guard let namedLabel else {
+            return base
+        }
+        return "\(base) (\(namedLabel))"
+    }
+
+    private static func makeNumberedLevelOptions(range: ClosedRange<Int>,
+                                                 namedLabels: [Int: String],
+                                                 defaultValue: Int,
+                                                 highestTitle: String = "Highest") -> [LevelOption] {
+        var options = range.map { value in
+            levelOption(title: numberedLevelTitle(value, namedLabel: namedLabels[value]),
+                        value: value,
+                        isDefault: value == defaultValue)
+        }
+        options.append(levelOption(title: highestTitle, value: 255))
+        return options
+    }
+
+    private static func zstdNamedLabel(for value: Int) -> String? {
+        switch value {
+        case -64:
+            return "Ultimate Fast"
+        case -7:
+            return "Ultra Fast"
+        case -1:
+            return "Super Fast"
+        case 1:
+            return "Fastest"
+        case 3:
+            return "Fast"
+        case 11:
+            return "Normal"
+        case 19:
+            return "Maximum"
+        case 20:
+            return "Ultra"
+        default:
+            return nil
+        }
+    }
+
+    private static func zstdLevelTitle(for value: Int) -> String {
+        let base = value < 0 ? "Fast \(value)" : "Level \(value)"
+        guard let namedLabel = zstdNamedLabel(for: value) else {
+            return base
+        }
+        return "\(base) (\(namedLabel))"
+    }
+
+    private static func makeZstdLevelOptions() -> [LevelOption] {
+        var options: [LevelOption] = []
+        for value in -64...22 where value != 0 {
+            options.append(levelOption(title: zstdLevelTitle(for: value),
+                                       value: value,
+                                       isDefault: value == 11))
+        }
+        options.append(levelOption(title: "Advanced Max", value: 255))
+        return options
+    }
+
+    private static let levelOptions: [LevelOption] = makeStandardLevelOptions(includeStore: true)
+    private static let nonStoreLevelOptions: [LevelOption] = makeStandardLevelOptions(includeStore: false)
+    private static let storeOnlyLevelOptions: [LevelOption] = [
+        levelOption(title: "Store", value: 0, isDefault: true)
     ]
+    private static let zstdLevelOptions: [LevelOption] = makeZstdLevelOptions()
+    private static let brotliLevelOptions: [LevelOption] = makeNumberedLevelOptions(range: 0...11,
+                                                                                    namedLabels: [0: "Store", 1: "Fastest", 3: "Fast", 6: "Normal", 9: "Maximum", 11: "Ultra"],
+                                                                                    defaultValue: 6)
+    private static let lz4LevelOptions: [LevelOption] = makeNumberedLevelOptions(range: 1...12,
+                                                                                 namedLabels: [1: "Fastest", 3: "Fast", 6: "Normal", 9: "Maximum", 12: "Ultra"],
+                                                                                 defaultValue: 6)
+    private static let lz5LevelOptions: [LevelOption] = makeNumberedLevelOptions(range: 1...15,
+                                                                                 namedLabels: [1: "Fastest", 3: "Fast", 7: "Normal", 11: "Maximum", 15: "Ultra"],
+                                                                                 defaultValue: 7)
+    private static let lizardMethod1LevelOptions: [LevelOption] = makeNumberedLevelOptions(range: 10...19,
+                                                                                           namedLabels: [10: "Fastest", 13: "Fast", 15: "Normal", 17: "Maximum", 19: "Ultra"],
+                                                                                           defaultValue: 15)
+    private static let lizardMethod2LevelOptions: [LevelOption] = makeNumberedLevelOptions(range: 20...29,
+                                                                                           namedLabels: [20: "Fastest", 23: "Fast", 25: "Normal", 27: "Maximum", 29: "Ultra"],
+                                                                                           defaultValue: 25)
+    private static let lizardMethod3LevelOptions: [LevelOption] = makeNumberedLevelOptions(range: 30...39,
+                                                                                           namedLabels: [30: "Fastest", 33: "Fast", 35: "Normal", 37: "Maximum", 39: "Ultra"],
+                                                                                           defaultValue: 35)
+    private static let lizardMethod4LevelOptions: [LevelOption] = makeNumberedLevelOptions(range: 40...49,
+                                                                                           namedLabels: [40: "Fastest", 43: "Fast", 45: "Normal", 47: "Maximum", 49: "Ultra"],
+                                                                                           defaultValue: 45)
 
     private static let standardDictionaryOptions: [Option<UInt64>] = [
         Option(title: "Auto", value: 0),
@@ -513,7 +659,16 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         MethodOption(title: "BZip2", enumValue: .bZip2, methodName: "BZip2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
         MethodOption(title: "Deflate", enumValue: .deflate, methodName: "Deflate", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
         MethodOption(title: "Deflate64", enumValue: .deflate64, methodName: "Deflate64", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "Copy", enumValue: .copy, methodName: "Copy", dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "ZSTD", enumValue: nil, methodName: "ZSTD", levelOptions: zstdLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "Brotli", enumValue: nil, methodName: "Brotli", levelOptions: brotliLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "LZ4", enumValue: nil, methodName: "LZ4", levelOptions: lz4LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "LZ5", enumValue: nil, methodName: "LZ5", levelOptions: lz5LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "Lizard FastLZ4", enumValue: nil, methodName: "Lizard-FastLZ4", levelOptions: lizardMethod1LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "Lizard LIZv1", enumValue: nil, methodName: "Lizard-LIZv1", levelOptions: lizardMethod2LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "Lizard FastLZ4 + Huffman", enumValue: nil, methodName: "Lizard-FastLZ4-Huffman", levelOptions: lizardMethod3LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "Lizard LIZv1 + Huffman", enumValue: nil, methodName: "Lizard-LIZv1-Huffman", levelOptions: lizardMethod4LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "FLZMA2", enumValue: nil, methodName: "FLZMA2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+        MethodOption(title: "Copy", enumValue: .copy, methodName: "Copy", levelOptions: storeOnlyLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
     ]
 
     private static let zipMethods: [MethodOption] = [
@@ -522,6 +677,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         MethodOption(title: "BZip2", enumValue: .bZip2, methodName: "BZip2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
         MethodOption(title: "LZMA", enumValue: .LZMA, methodName: "LZMA", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
         MethodOption(title: "PPMd", enumValue: .ppMd, methodName: "PPMd", dictionaryLabel: "Memory usage:", dictionaryOptions: ppmdDictionaryOptions, wordLabel: "Order:", wordOptions: orderOptions),
+        MethodOption(title: "ZSTD", enumValue: nil, methodName: "ZSTD", levelOptions: zstdLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "Copy", enumValue: .copy, methodName: "Copy", levelOptions: storeOnlyLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
     ]
 
     private static let gzipMethods: [MethodOption] = [
@@ -542,18 +699,41 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     ]
 
     private static let zstdMethods: [MethodOption] = [
-        MethodOption(title: "ZSTD", enumValue: nil, methodName: "ZSTD", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "ZSTD", enumValue: nil, methodName: "ZSTD", levelOptions: zstdLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+    ]
+
+    private static let brotliMethods: [MethodOption] = [
+        MethodOption(title: "Brotli", enumValue: nil, methodName: "Brotli", levelOptions: brotliLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+    ]
+
+    private static let lizardMethods: [MethodOption] = [
+        MethodOption(title: "FastLZ4", enumValue: nil, methodName: "Lizard-FastLZ4", levelOptions: lizardMethod1LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "LIZv1", enumValue: nil, methodName: "Lizard-LIZv1", levelOptions: lizardMethod2LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "FastLZ4 + Huffman", enumValue: nil, methodName: "Lizard-FastLZ4-Huffman", levelOptions: lizardMethod3LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+        MethodOption(title: "LIZv1 + Huffman", enumValue: nil, methodName: "Lizard-LIZv1-Huffman", levelOptions: lizardMethod4LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+    ]
+
+    private static let lz4Methods: [MethodOption] = [
+        MethodOption(title: "LZ4", enumValue: nil, methodName: "LZ4", levelOptions: lz4LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+    ]
+
+    private static let lz5Methods: [MethodOption] = [
+        MethodOption(title: "LZ5", enumValue: nil, methodName: "LZ5", levelOptions: lz5LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
     ]
 
     private static let formatCatalog: [FormatOption] = [
         FormatOption(title: "7z", codecName: "7z", format: .format7z, defaultExtension: "7z", levelOptions: levelOptions, methods: sevenZipMethods, supportsSolid: true, supportsThreads: true, encryptionOptions: [Option(title: "AES-256", value: .AES256)], supportsEncryptFileNames: true, keepsName: false),
         FormatOption(title: "zip", codecName: "zip", format: .formatZip, defaultExtension: "zip", levelOptions: levelOptions, methods: zipMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [Option(title: "ZipCrypto", value: .zipCrypto), Option(title: "AES-256", value: .AES256)], supportsEncryptFileNames: false, keepsName: false),
+        FormatOption(title: "gzip", codecName: "gzip", format: .formatGZip, defaultExtension: "gz", levelOptions: nonStoreLevelOptions, methods: gzipMethods, supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+        FormatOption(title: "bzip2", codecName: "bzip2", format: .formatBZip2, defaultExtension: "bz2", levelOptions: nonStoreLevelOptions, methods: bzip2Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+        FormatOption(title: "xz", codecName: "xz", format: .formatXz, defaultExtension: "xz", levelOptions: nonStoreLevelOptions, methods: xzMethods, supportsSolid: true, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+        FormatOption(title: "zstd", codecName: "zstd", format: .formatZstd, defaultExtension: "zst", levelOptions: zstdLevelOptions, methods: zstdMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+        FormatOption(title: "Brotli", codecName: "brotli", format: .formatBrotli, defaultExtension: "br", levelOptions: brotliLevelOptions, methods: brotliMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+        FormatOption(title: "Lizard", codecName: "lizard", format: .formatLizard, defaultExtension: "liz", levelOptions: lizardMethod1LevelOptions, methods: lizardMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+        FormatOption(title: "LZ4", codecName: "lz4", format: .formatLz4, defaultExtension: "lz4", levelOptions: lz4LevelOptions, methods: lz4Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+        FormatOption(title: "LZ5", codecName: "lz5", format: .formatLz5, defaultExtension: "lz5", levelOptions: lz5LevelOptions, methods: lz5Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
         FormatOption(title: "tar", codecName: "tar", format: .formatTar, defaultExtension: "tar", levelOptions: storeOnlyLevelOptions, methods: tarMethods, supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: false),
-        FormatOption(title: "gzip", codecName: "gzip", format: .formatGZip, defaultExtension: "gz", levelOptions: levelOptions, methods: gzipMethods, supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "bzip2", codecName: "bzip2", format: .formatBZip2, defaultExtension: "bz2", levelOptions: levelOptions, methods: bzip2Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "xz", codecName: "xz", format: .formatXz, defaultExtension: "xz", levelOptions: levelOptions, methods: xzMethods, supportsSolid: true, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
         FormatOption(title: "wim", codecName: "wim", format: .formatWim, defaultExtension: "wim", levelOptions: storeOnlyLevelOptions, methods: [], supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: false),
-        FormatOption(title: "zstd", codecName: "zstd", format: .formatZstd, defaultExtension: "zst", levelOptions: levelOptions, methods: zstdMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
     ]
 
     private let sourceURLs: [URL]
@@ -656,8 +836,9 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         var encryptNames = DialogPreferences.encryptNames()
         var showPassword = DialogPreferences.showPassword()
         var selectedArchivePath = defaultArchiveURL(for: selectedFormatName).path
-        var selectedLevel = defaultLevel(for: selectedFormatName)
         var selectedMethodName = defaultMethodName(for: selectedFormatName)
+        var selectedLevel = defaultLevel(for: selectedFormatName,
+                         methodName: selectedMethodName)
         var selectedDictionarySize: UInt64 = 0
         var selectedWordSize: UInt32 = 0
         var selectedSolidMode = true
@@ -1016,7 +1197,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             syncPasswordFields()
             selectedArchivePath = archivePathField.stringValue
             selectedFormatName = selectedFormatOption()?.codecName ?? selectedFormatName
-            selectedLevel = selectedLevelOption()?.value ?? selectedLevel
+            selectedLevel = selectedLevelOption()?.levelValue ?? selectedLevel
             selectedMethodName = selectedMethodOption()?.methodName ?? ""
             selectedDictionarySize = selectedDictionaryOption()?.value ?? 0
             selectedWordSize = selectedWordOption()?.value ?? 0
@@ -1128,10 +1309,11 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     }
 
     @objc private func methodChanged(_ sender: Any?) {
-        let preferredDictionarySize = selectedDictionaryOption()?.value
-        let preferredWordSize = selectedWordOption()?.value
-        reloadMethodDependentControls(preferredDictionarySize: preferredDictionarySize,
-                                      preferredWordSize: preferredWordSize)
+        reloadFormatDependentControls(preferredLevel: nil,
+                                      preferredMethodName: selectedMethodOption()?.methodName,
+                                      preferredDictionarySize: selectedDictionaryOption()?.value,
+                                      preferredWordSize: selectedWordOption()?.value,
+                                      preferredEncryption: selectedEncryptionOption()?.value)
 
         if !advancedOptionsWereCustomized,
            !hasStoredAdvancedPreferences,
@@ -1475,20 +1657,12 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                         baseState: updatedState).state
     }
 
-    private func reloadFormatDependentControls(preferredLevel: SZCompressionLevel?,
+    private func reloadFormatDependentControls(preferredLevel: Int?,
                                                preferredMethodName: String?,
                                                preferredDictionarySize: UInt64?,
                                                preferredWordSize: UInt32?,
                                                preferredEncryption: SZEncryptionMethod?) {
         guard let format = selectedFormatOption() else { return }
-
-        populate(levelPopup, with: format.levelOptions.map(\.title))
-        if let preferredLevel,
-           let selectedIndex = format.levelOptions.firstIndex(where: { $0.value == preferredLevel }) {
-            levelPopup?.selectItem(at: selectedIndex)
-        } else {
-            levelPopup?.selectItem(at: defaultLevelIndex(for: format))
-        }
 
         if format.methods.isEmpty {
             populate(methodPopup, with: ["Default"])
@@ -1501,6 +1675,17 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             } else {
                 methodPopup?.selectItem(at: 0)
             }
+        }
+
+        let levelOptions = levelOptions(for: format,
+                                        method: selectedMethodOption())
+        populate(levelPopup, with: levelOptions.map(\.title))
+        if let preferredLevel,
+           let selectedIndex = levelOptions.firstIndex(where: { $0.levelValue == preferredLevel }) {
+            levelPopup?.selectItem(at: selectedIndex)
+        } else {
+            levelPopup?.selectItem(at: defaultLevelIndex(for: format,
+                                                         method: selectedMethodOption()))
         }
 
         if format.encryptionOptions.isEmpty {
@@ -1562,7 +1747,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         guard let format = selectedFormatOption() else { return }
 
         let method = selectedMethodOption()
-        let level = selectedLevelOption()?.value ?? defaultLevel(for: format.codecName)
+        let level = selectedLevelOption()?.levelValue ?? defaultLevel(for: format.codecName,
+                                                                      methodName: method?.methodName)
         let selectedDictionarySize = selectedDictionaryOption()?.value ?? 0
         let selectedWordSize = selectedWordOption()?.value ?? 0
         let currentThreadText = threadField?.stringValue ?? "Auto"
@@ -1581,7 +1767,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                               currentThreadText: currentThreadText,
                                               estimate: estimate)
 
-        levelPopup?.isEnabled = format.levelOptions.count > 1
+        levelPopup?.isEnabled = levelOptions(for: format, method: method).count > 1
         methodPopup?.isEnabled = !format.methods.isEmpty
         dictionaryPopup?.isEnabled = !(method?.dictionaryOptions.isEmpty ?? true)
         wordPopup?.isEnabled = !(method?.wordOptions.isEmpty ?? true)
@@ -1659,7 +1845,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
 
     private func buildResult(archivePath: String,
                              format: FormatOption,
-                             level: SZCompressionLevel,
+                             level: Int,
                              method: MethodOption?,
                              dictionarySize: UInt64,
                              wordSize: UInt32,
@@ -1683,7 +1869,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         if createSFX && !effectiveCreateSFX {
             throw NSError(domain: NSCocoaErrorDomain,
                           code: NSUserCancelledError,
-                          userInfo: [NSLocalizedDescriptionKey: "Windows SFX is only available for 7z archives using Copy, LZMA, LZMA2, or PPMd, and requires the bundled 7z.sfx module."])
+                          userInfo: [NSLocalizedDescriptionKey: "Windows SFX is only available for 7z archives using Copy, LZMA, LZMA2, PPMd, FLZMA2, or ZSTD, and requires the bundled 7z.sfx module."])
         }
 
         let trimmedSplitVolumes = splitVolumes.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1704,7 +1890,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                                       encryption: encryption)
         let settings = SZCompressionSettings()
         settings.format = format.format
-        settings.level = level
+        settings.level = Self.compressionEnumValue(for: level)
+        settings.levelValue = level
         settings.method = method?.enumValue ?? .LZMA2
         settings.methodName = method?.methodName
         settings.updateMode = updateMode
@@ -1935,16 +2122,18 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         return availableFormats[index]
     }
 
-    private func selectedLevelOption() -> Option<SZCompressionLevel>? {
+    private func selectedLevelOption() -> LevelOption? {
         guard let format = selectedFormatOption(),
               let levelPopup else {
             return nil
         }
+        let levelOptions = levelOptions(for: format,
+                                        method: selectedMethodOption())
         let index = levelPopup.indexOfSelectedItem
-        guard format.levelOptions.indices.contains(index) else {
-            return format.levelOptions.first
+        guard levelOptions.indices.contains(index) else {
+            return levelOptions.first
         }
-        return format.levelOptions[index]
+        return levelOptions[index]
     }
 
     private func selectedMethodOption() -> MethodOption? {
@@ -2040,8 +2229,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             return true
         }
 
-        switch method.enumValue {
-        case .copy?, .LZMA?, .LZMA2?, .ppMd?:
+        switch method.methodName.lowercased() {
+        case "copy", "lzma", "lzma2", "ppmd", "flzma2", "zstd":
             return true
         default:
             return false
@@ -2081,16 +2270,32 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         availableFormats.first { $0.codecName == formatName }
     }
 
-    private func defaultLevel(for formatName: String) -> SZCompressionLevel {
-        let format = formatOption(named: formatName) ?? availableFormats[0]
-        return format.levelOptions[defaultLevelIndex(for: format)].value
+    private func levelOptions(for format: FormatOption,
+                              method: MethodOption?) -> [LevelOption] {
+        method?.levelOptions ?? format.levelOptions
     }
 
-    private func defaultLevelIndex(for format: FormatOption) -> Int {
-        if let normalIndex = format.levelOptions.firstIndex(where: { $0.value == .normal }) {
-            return normalIndex
+    private func defaultLevel(for formatName: String,
+                              methodName: String? = nil) -> Int {
+        let format = formatOption(named: formatName) ?? availableFormats[0]
+        let method = methodName.flatMap { name in
+            format.methods.first(where: { $0.methodName == name })
+        } ?? format.methods.first
+        let levelOptions = levelOptions(for: format,
+                                        method: method)
+        return levelOptions[defaultLevelIndex(for: format,
+                                              method: method)].levelValue
+    }
+
+    private func defaultLevelIndex(for format: FormatOption,
+                                   method: MethodOption? = nil) -> Int {
+        let levelOptions = levelOptions(for: format,
+                                        method: method)
+        if let defaultIndex = levelOptions.firstIndex(where: { $0.isDefault }) {
+            return defaultIndex
         }
-        return 0
+        guard !levelOptions.isEmpty else { return 0 }
+        return min(levelOptions.count / 2, levelOptions.count - 1)
     }
 
     private func defaultMethodName(for formatName: String) -> String {
@@ -2662,13 +2867,14 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
 
     private func compressionResourceEstimate(for format: FormatOption,
                                              method: MethodOption?,
-                                             level: SZCompressionLevel,
+                                             level: Int,
                                              dictionarySize: UInt64,
                                              threadText: String?,
                                              memoryUsageSpec: String) -> CompressionResourceEstimate {
         let settings = SZCompressionSettings()
         settings.format = format.format
-        settings.level = level
+        settings.level = Self.compressionEnumValue(for: level)
+        settings.levelValue = level
         settings.method = method?.enumValue ?? .LZMA2
         settings.methodName = method?.methodName
         settings.dictionarySize = dictionarySize

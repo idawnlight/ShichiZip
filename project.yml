@@ -19,7 +19,7 @@ targets:
           info_plist="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
           commit_count="$(git -C "${SRCROOT}" rev-list --count HEAD 2>/dev/null || printf '0')"
           short_hash="$(git -C "${SRCROOT}" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
-          license_source="${SRCROOT}/vendor/7zip/DOC/License.txt"
+          license_source="${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}"
           license_dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt"
           sfx_source="${SRCROOT}/vendor/7z.sfx"
           sfx_dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx"
@@ -63,6 +63,14 @@ targets:
         PRODUCT_NAME: ShichiZip
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
+        SHICHIZIP_APP_DISPLAY_NAME: ShichiZip
+        SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip
+        SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip based."
+        SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip/DOC/License.txt
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
+        SEVENZ_LIBRARY_NAME: lib7zip.a
+        SEVENZ_VENDOR_ROOT: vendor/7zip
         INFOPLIST_FILE: ShichiZip/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/Resources/ShichiZip.entitlements
         ARCHS: arm64
@@ -70,14 +78,14 @@ targets:
         CLANG_CXX_LANGUAGE_STANDARD: c++11
         SWIFT_OBJC_BRIDGING_HEADER: ShichiZip/App/ShichiZip-Bridging-Header.h
         HEADER_SEARCH_PATHS:
-          - $(PROJECT_DIR)/vendor/7zip
-          - $(PROJECT_DIR)/vendor/7zip/CPP
-          - $(PROJECT_DIR)/vendor/7zip/C
+          - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)
+          - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/CPP
+          - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/C
         LIBRARY_SEARCH_PATHS:
           - $(PROJECT_DIR)/build/lib
         OTHER_LDFLAGS:
           - -force_load
-          - $(PROJECT_DIR)/build/lib/lib7zip.a
+          - $(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)
           - -liconv
           - -lpthread
         SWIFT_VERSION: "5.9"
@@ -94,6 +102,101 @@ targets:
         CLANG_WARN_DOCUMENTATION_COMMENTS: false
         GCC_WARN_INHIBIT_ALL_WARNINGS: true
 
+  ShichiZipZS:
+    type: application
+    platform: macOS
+    postBuildScripts:
+      - name: Generate Build Metadata
+        basedOnDependencyAnalysis: false
+        script: |
+          set -eu
+
+          info_plist="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+          commit_count="$(git -C "${SRCROOT}" rev-list --count HEAD 2>/dev/null || printf '0')"
+          short_hash="$(git -C "${SRCROOT}" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+          license_source="${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}"
+          license_dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt"
+          sfx_source="${SRCROOT}/vendor/7z.sfx"
+          sfx_dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx"
+
+          set_plist_value() {
+            local plist_path="$1"
+            local key="$2"
+            local value="$3"
+
+            if /usr/libexec/PlistBuddy -c "Print :${key}" "${plist_path}" >/dev/null 2>&1; then
+              /usr/libexec/PlistBuddy -c "Set :${key} ${value}" "${plist_path}"
+            else
+              /usr/libexec/PlistBuddy -c "Add :${key} string ${value}" "${plist_path}"
+            fi
+          }
+
+          set_plist_value "${info_plist}" "ShichiZipGitCommitCount" "${commit_count}"
+          set_plist_value "${info_plist}" "ShichiZipGitShortHash" "${short_hash}"
+
+          mkdir -p "$(dirname "${license_dest}")"
+          cp "${license_source}" "${license_dest}"
+
+          if [ -f "${sfx_source}" ]; then
+            cp "${sfx_source}" "${sfx_dest}"
+          fi
+    sources:
+      - path: ShichiZip
+        excludes:
+          - "**/*.entitlements"
+          - "QuickActions/Extensions/**"
+    dependencies:
+      - target: ShichiZipZSShowInFileManagerAction
+        embed: true
+      - target: ShichiZipZSOpenInShichiZipAction
+        embed: true
+      - target: ShichiZipZSSmartQuickExtractAction
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS
+        PRODUCT_NAME: ShichiZip ZS
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SHICHIZIP_APP_DISPLAY_NAME: ShichiZip ZS
+        SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip-zstd
+        SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip ZS (mcmilk/7-Zip-zstd) based."
+        SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip-zstd/COPYING
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
+        SEVENZ_LIBRARY_NAME: lib7zip-zs.a
+        SEVENZ_VENDOR_ROOT: vendor/7zip-zstd
+        INFOPLIST_FILE: ShichiZip/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShichiZip/Resources/ShichiZip.entitlements
+        ARCHS: arm64
+        VALID_ARCHS: arm64
+        CLANG_CXX_LANGUAGE_STANDARD: c++11
+        SWIFT_OBJC_BRIDGING_HEADER: ShichiZip/App/ShichiZip-Bridging-Header.h
+        HEADER_SEARCH_PATHS:
+          - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)
+          - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/CPP
+          - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/C
+        LIBRARY_SEARCH_PATHS:
+          - $(PROJECT_DIR)/build/lib
+        OTHER_LDFLAGS:
+          - -force_load
+          - $(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)
+          - -liconv
+          - -lpthread
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: false
+        CLANG_ENABLE_OBJC_ARC: true
+        GCC_PREPROCESSOR_DEFINITIONS:
+          - "$(inherited)"
+          - "NDEBUG=1"
+        OTHER_CPLUSPLUSFLAGS:
+          - "$(inherited)"
+          - "-Wno-everything"
+        CLANG_WARN_DOCUMENTATION_COMMENTS: false
+        GCC_WARN_INHIBIT_ALL_WARNINGS: true
+
   ShichiZipShowInFileManagerAction:
     type: app-extension
     platform: macOS
@@ -107,6 +210,11 @@ targets:
         PRODUCT_NAME: ShichiZipShowInFileManagerAction
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
+        SHICHIZIP_HOST_APP_DISPLAY_NAME: ShichiZip
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Show in File Manager"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Show in File Manager"
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/ShowInFileManagerAction-Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
         SWIFT_VERSION: "5.9"
@@ -127,6 +235,11 @@ targets:
         PRODUCT_NAME: ShichiZipOpenInShichiZipAction
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
+        SHICHIZIP_HOST_APP_DISPLAY_NAME: ShichiZip
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Open in ShichiZip"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Open in ShichiZip"
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/OpenInShichiZipAction-Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
         SWIFT_VERSION: "5.9"
@@ -147,6 +260,86 @@ targets:
         PRODUCT_NAME: ShichiZipSmartQuickExtractAction
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
+        SHICHIZIP_HOST_APP_DISPLAY_NAME: ShichiZip
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Smart Quick Extract"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Smart Quick Extract"
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
+        INFOPLIST_FILE: ShichiZip/QuickActions/Resources/SmartQuickExtractAction-Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        GENERATE_INFOPLIST_FILE: false
+        APPLICATION_EXTENSION_API_ONLY: true
+
+  ShichiZipZSShowInFileManagerAction:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ShichiZip/QuickActions
+        excludes:
+          - "Resources/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.ShowInFileManagerAction
+        PRODUCT_NAME: ShichiZipZSShowInFileManagerAction
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SHICHIZIP_HOST_APP_DISPLAY_NAME: "ShichiZip ZS"
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Show in File Manager"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Show in File Manager"
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
+        INFOPLIST_FILE: ShichiZip/QuickActions/Resources/ShowInFileManagerAction-Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        GENERATE_INFOPLIST_FILE: false
+        APPLICATION_EXTENSION_API_ONLY: true
+
+  ShichiZipZSOpenInShichiZipAction:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ShichiZip/QuickActions
+        excludes:
+          - "Resources/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.OpenInShichiZipAction
+        PRODUCT_NAME: ShichiZipZSOpenInShichiZipAction
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SHICHIZIP_HOST_APP_DISPLAY_NAME: "ShichiZip ZS"
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Open in ShichiZip ZS"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Open in ShichiZip ZS"
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
+        INFOPLIST_FILE: ShichiZip/QuickActions/Resources/OpenInShichiZipAction-Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        GENERATE_INFOPLIST_FILE: false
+        APPLICATION_EXTENSION_API_ONLY: true
+
+  ShichiZipZSSmartQuickExtractAction:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ShichiZip/QuickActions
+        excludes:
+          - "Resources/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.SmartQuickExtractAction
+        PRODUCT_NAME: ShichiZipZSSmartQuickExtractAction
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SHICHIZIP_HOST_APP_DISPLAY_NAME: "ShichiZip ZS"
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Smart Quick Extract"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Smart Quick Extract"
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/SmartQuickExtractAction-Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
         SWIFT_VERSION: "5.9"

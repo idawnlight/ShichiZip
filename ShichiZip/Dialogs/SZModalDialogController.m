@@ -1,5 +1,20 @@
 #import "SZModalDialogController.h"
 
+static NSString *SZModalDialogAppDisplayName(void) {
+    NSBundle *bundle = NSBundle.mainBundle;
+    NSString *displayName = [bundle objectForInfoDictionaryKey:@"CFBundleDisplayName"];
+    if (displayName.length > 0) {
+        return displayName;
+    }
+
+    NSString *bundleName = [bundle objectForInfoDictionaryKey:@"CFBundleName"];
+    if (bundleName.length > 0) {
+        return bundleName;
+    }
+
+    return @"ShichiZip";
+}
+
 @interface SZModalDialogContentViewController : NSViewController
 
 - (instancetype)initWithStyle:(SZDialogStyle)style
@@ -259,7 +274,7 @@
         _cancelButtonIndex = cancelButtonIndex;
         _selectedButtonIndex = cancelButtonIndex;
 
-        window.title = @"ShichiZip";
+        window.title = SZModalDialogAppDisplayName();
         window.titleVisibility = NSWindowTitleHidden;
         window.titlebarAppearsTransparent = YES;
         window.movableByWindowBackground = YES;

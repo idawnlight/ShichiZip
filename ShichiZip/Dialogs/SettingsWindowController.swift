@@ -539,7 +539,7 @@ class SettingsWindowController: NSWindowController {
 
         stack.addArrangedSubview(makeSectionLabel("Finder Quick Actions"))
 
-        let descriptionLabel = NSTextField(wrappingLabelWithString: "Open the Finder Quick Actions page in System Settings and review whether ShichiZip's Quick Actions are currently enabled.")
+        let descriptionLabel = NSTextField(wrappingLabelWithString: "Open the Finder Quick Actions page in System Settings and review whether \(AppBuildInfo.appDisplayName())'s Quick Actions are currently enabled.")
         descriptionLabel.textColor = .secondaryLabelColor
         descriptionLabel.maximumNumberOfLines = 0
         descriptionLabel.preferredMaxLayoutWidth = 440
@@ -720,7 +720,7 @@ class SettingsWindowController: NSWindowController {
               NSWorkspace.shared.open(url) else {
             let alert = NSAlert()
             alert.messageText = "Unable to open Finder Quick Actions settings."
-            alert.informativeText = "Open System Settings and go to Extensions > Finder to manage ShichiZip's Quick Actions."
+            alert.informativeText = "Open System Settings and go to Extensions > Finder to manage \(AppBuildInfo.appDisplayName())'s Quick Actions."
             alert.runModal()
             return
         }

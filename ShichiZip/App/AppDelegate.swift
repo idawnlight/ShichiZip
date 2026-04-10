@@ -205,7 +205,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
         panel.prompt = "Open"
-        panel.message = "Choose archive files to open in ShichiZip"
+        panel.message = "Choose archive files to open in \(AppBuildInfo.appDisplayName())"
 
         panel.begin { [weak self] response in
             guard response == .OK else { return }
@@ -313,10 +313,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @IBAction func showAbout(_ sender: Any?) {
-        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
-            ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String
-            ?? "ShichiZip"
-        let details = AppBuildInfo.bundled7ZipLicense() ?? "7-Zip license text is unavailable."
+        let appName = AppBuildInfo.appDisplayName()
+        let details = AppBuildInfo.bundled7ZipLicense() ?? AppBuildInfo.missingLicenseMessage()
         let summary = AppBuildInfo.aboutSummary()
         let parentWindow = NSApp.keyWindow ?? NSApp.mainWindow
 
@@ -379,7 +377,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handleOpenInShichiZipQuickAction(_ request: ShichiZipQuickActionRequest) throws {
         let itemURL = try existingSingleURL(from: request,
-                                            selectionError: "Select a single file or folder to open in ShichiZip.")
+                                            selectionError: "Select a single file or folder to open in \(AppBuildInfo.appDisplayName()).")
         let controller = ensurePrimaryFileManagerWindowController()
         _ = controller.openFileSystemItem(itemURL, revealWindow: true)
     }

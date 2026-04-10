@@ -1,0 +1,185 @@
+diff --git a/CPP/7zip/UI/Agent/Agent.cpp b/CPP/7zip/UI/Agent/Agent.cpp
+index 46b740a..e4352d5 100644
+--- a/CPP/7zip/UI/Agent/Agent.cpp
++++ b/CPP/7zip/UI/Agent/Agent.cpp
+@@ -1496,8 +1496,11 @@ Z7_COM7F_IMF(CAgentFolder::Extract(const UInt32 *indices,
+   if (path)
+   {
+     pathU = us2fs(path);
+-    if (!pathU.IsEmpty()
+-      && !NFile::NName::IsAltStreamPrefixWithColon(path))
++    bool isAltStreamPrefix = false;
++    #if defined(_WIN32) && !defined(UNDER_CE)
++    isAltStreamPrefix = NFile::NName::IsAltStreamPrefixWithColon(path);
++    #endif
++    if (!pathU.IsEmpty() && !isAltStreamPrefix)
+     {
+       NFile::NName::NormalizeDirPathPrefix(pathU);
+       NFile::NDir::CreateComplexDir(pathU);
+@@ -1620,8 +1623,13 @@ Z7_COM7F_IMF(CAgent::Open(
+       return GetLastError_noZero_HRESULT();
+     if (fi.IsDir())
+       return E_FAIL;
++    #ifdef _WIN32
+     _attrib = fi.Attrib;
+     _isDeviceFile = fi.IsDevice;
++    #else
++    _attrib = fi.GetWinAttrib();
++    _isDeviceFile = S_ISCHR(fi.mode) || S_ISBLK(fi.mode);
++    #endif
+     FString dirPrefix, fileName;
+     if (NFile::NDir::GetFullPathAndSplit(us2fs(_archiveFilePath), dirPrefix, fileName))
+     {
+@@ -1667,7 +1675,7 @@ Z7_COM7F_IMF(CAgent::Open(
+     if (!inStream)
+     {
+       arc.MTime.Set_From_FiTime(fi.MTime);
+-      arc.MTime.Def = !fi.IsDevice;
++      arc.MTime.Def = !_isDeviceFile;
+     }
+     
+     ArchiveType = GetTypeOfArc(arc);
+diff --git a/CPP/7zip/UI/Agent/Agent.h b/CPP/7zip/UI/Agent/Agent.h
+index a63e459..3978939 100644
+--- a/CPP/7zip/UI/Agent/Agent.h
++++ b/CPP/7zip/UI/Agent/Agent.h
+@@ -6,6 +6,7 @@
+ #include "../../../Common/MyCom.h"
+ 
+ #include "../../../Windows/PropVariant.h"
++#include "../../../Windows/DLL.h"
+ 
+ #include "../Common/LoadCodecs.h"
+ #include "../Common/OpenArchive.h"
+@@ -250,7 +251,7 @@ public:
+ 
+   bool Is_Attrib_ReadOnly() const
+   {
+-    return _attrib != INVALID_FILE_ATTRIBUTES && (_attrib & FILE_ATTRIBUTE_READONLY);
++    return _attrib != (DWORD)-1 && (_attrib & FILE_ATTRIBUTE_READONLY);
+   }
+ 
+   bool IsThere_ReadOnlyArc() const
+diff --git a/CPP/7zip/UI/Agent/AgentOut.cpp b/CPP/7zip/UI/Agent/AgentOut.cpp
+index 903cde2..b4990dd 100644
+--- a/CPP/7zip/UI/Agent/AgentOut.cpp
++++ b/CPP/7zip/UI/Agent/AgentOut.cpp
+@@ -225,19 +225,28 @@ Z7_COM7F_IMF(CAgent::DoOperation(
+ 
+   {
+     FString folderPrefix = _folderPrefix;
+-    if (!NFile::NName::IsAltStreamPrefixWithColon(fs2us(folderPrefix)))
++    bool isAltStreamPrefix = false;
++    #if defined(_WIN32) && !defined(UNDER_CE)
++    isAltStreamPrefix = NFile::NName::IsAltStreamPrefixWithColon(fs2us(folderPrefix));
++    #endif
++    if (!isAltStreamPrefix)
+       NFile::NName::NormalizeDirPathPrefix(folderPrefix);
+     
+     RINOK(dirItems.EnumerateItems2(folderPrefix, _updatePathPrefix, _names, requestedPaths))
+ 
+     if (_updatePathPrefix_is_AltFolder)
+     {
++      #ifndef _WIN32
++      return E_NOTIMPL;
++      #endif
+       FOR_VECTOR(i, dirItems.Items)
+       {
+         CDirItem &item = dirItems.Items[i];
+         if (item.IsDir())
+           return E_NOTIMPL;
++        #ifdef _WIN32
+         item.IsAltStream = true;
++        #endif
+       }
+     }
+   }
+@@ -507,7 +516,7 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
+ 
+   CDirItem di;
+ 
+-  di.Attrib = FILE_ATTRIBUTE_DIRECTORY;
++  di.SetAsDir();
+   di.Size = 0;
+   bool isAltStreamFolder = false;
+   if (_proxy2)
+@@ -516,9 +525,8 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
+     di.Name = _proxy->GetDirPath_as_Prefix(_agentFolder->_proxyDirIndex);
+   di.Name += folderName;
+ 
+-  FILETIME ft;
+-  NTime::GetCurUtcFileTime(ft);
+-  di.CTime = di.ATime = di.MTime = ft;
++  NTime::GetCurUtc_FiTime(di.MTime);
++  di.CTime = di.ATime = di.MTime;
+ 
+   dirItems.Items.Add(di);
+ 
+diff --git a/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp b/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp
+index 1da6601..e291b6b 100644
+--- a/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp
++++ b/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp
+@@ -43,7 +43,7 @@ static bool Delete_EmptyFolder_And_EmptySubFolders(const FString &path)
+           return false;
+         if (!found)
+           break;
+-        if (fileInfo.IsDir())
++        if (enumerator.DirEntry_IsDir(fileInfo, false))
+           names.Add(fileInfo.Name);
+       }
+     }
+@@ -57,7 +57,7 @@ static bool Delete_EmptyFolder_And_EmptySubFolders(const FString &path)
+       return false;
+   }
+   // we clear read-only attrib to remove read-only dir
+-  if (!SetFileAttrib(path, 0))
++  if (!SetFileAttrib_PosixHighDetect(path, 0))
+     return false;
+   return RemoveDir(path);
+ }
+diff --git a/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp b/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp
+index 8299902..42ebd40 100644
+--- a/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp
++++ b/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp
+@@ -36,14 +36,14 @@ HRESULT CUpdateCallbackAgent::WriteSfx(const wchar_t * /* name */, UInt64 /* siz
+ }
+ 
+ 
+-HRESULT CUpdateCallbackAgent::SetTotal(UINT64 size)
++HRESULT CUpdateCallbackAgent::SetTotal(UInt64 size)
+ {
+   if (Callback)
+     return Callback->SetTotal(size);
+   return S_OK;
+ }
+ 
+-HRESULT CUpdateCallbackAgent::SetCompleted(const UINT64 *completeValue)
++HRESULT CUpdateCallbackAgent::SetCompleted(const UInt64 *completeValue)
+ {
+   if (Callback)
+     return Callback->SetCompleted(completeValue);
+diff --git a/CPP/7zip/UI/Common/WorkDir.cpp b/CPP/7zip/UI/Common/WorkDir.cpp
+index a492967..a2c112e 100644
+--- a/CPP/7zip/UI/Common/WorkDir.cpp
++++ b/CPP/7zip/UI/Common/WorkDir.cpp
+@@ -11,6 +11,10 @@ using namespace NWindows;
+ using namespace NFile;
+ using namespace NDir;
+ 
++#ifdef __APPLE__
++extern bool SZWorkDirShouldUseConfiguredMode(const FString &path);
++#endif
++
+ FString GetWorkDir(const NWorkDir::CInfo &workDirInfo, const FString &path, FString &fileName)
+ {
+   NWorkDir::NMode::EEnum mode = workDirInfo.Mode;
+@@ -34,6 +38,9 @@ FString GetWorkDir(const NWorkDir::CInfo &workDirInfo, const FString &path, FStr
+       mode = NZipSettings::NWorkDir::NMode::kCurrent;
+     */
+   }
++  #elif defined(__APPLE__)
++  if (workDirInfo.ForRemovableOnly && !SZWorkDirShouldUseConfiguredMode(path))
++    mode = NWorkDir::NMode::kCurrent;
+   #endif
+   
+   const int pos = path.ReverseFind_PathSepar() + 1;

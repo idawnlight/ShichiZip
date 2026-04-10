@@ -32,7 +32,11 @@ typedef NS_ENUM(NSInteger, SZArchiveFormat) {
     SZArchiveFormatBZip2,
     SZArchiveFormatXz,
     SZArchiveFormatWim,
-    SZArchiveFormatZstd
+    SZArchiveFormatZstd,
+    SZArchiveFormatBrotli,
+    SZArchiveFormatLizard,
+    SZArchiveFormatLz4,
+    SZArchiveFormatLz5
 };
 
 /// Compression level
@@ -115,6 +119,7 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 @interface SZCompressionSettings : NSObject
 @property (nonatomic) SZArchiveFormat format;
 @property (nonatomic) SZCompressionLevel level;
+@property (nonatomic) NSInteger levelValue;
 @property (nonatomic) SZCompressionMethod method;
 @property (nonatomic) SZCompressionUpdateMode updateMode;
 @property (nonatomic) SZCompressionPathMode pathMode;

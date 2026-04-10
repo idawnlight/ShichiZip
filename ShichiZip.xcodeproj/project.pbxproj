@@ -7,57 +7,108 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00AEEE9E43FAE109D91E7A02 /* QuickActionRequestHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A258EE11DC87F3E1709B0582 /* QuickActionRequestHandlers.swift */; };
+		09E3C97B92CF49D5BB8E53A2 /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
 		0C23FCE2AC98E009C562F169 /* ShowInFileManagerAction-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5A18E8BB4528A1AB4DD349EB /* ShowInFileManagerAction-Info.plist */; };
 		0E083C8C01751D167AA800E1 /* DialogPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E2FF83FA1080A0CA38F27F5 /* DialogPresenter.swift */; };
 		1506FF719B49C353449C3276 /* FileSystemItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F199F3D5EFC006C978C935C8 /* FileSystemItem.swift */; };
+		18FFE0D2BD16EC68A07DDBEA /* FileManagerArchiveItemWorkflowService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E9365E10448902B8CE7660 /* FileManagerArchiveItemWorkflowService.swift */; };
+		1CBC7CC9B31B4A1D1BA695A0 /* SZArchive.mm in Sources */ = {isa = PBXBuildFile; fileRef = FC8109FC18679384CCE1FCC9 /* SZArchive.mm */; };
 		1CD870CF4E20D4259C8BBF7F /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
 		1CE5457C544B20D5DF0D42F3 /* BenchmarkWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */; };
 		1D72EE5985CD0DA1D5075BA6 /* QuickActionRequestHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A258EE11DC87F3E1709B0582 /* QuickActionRequestHandlers.swift */; };
 		1F4FA2F4EBF56D3C51E1ABA5 /* ExtractDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1063FC95805225AC501608 /* ExtractDialogController.swift */; };
 		1F5A95E542D55CE4B86982D2 /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
+		20A344F10BF19FA853E7015E /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15AF94624BC55B258E21F044 /* main.swift */; };
+		26FBCDAE7985FA01FA96BE26 /* BenchmarkWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */; };
 		2754EF55454FEC5CEE4E1E33 /* SZArchive.mm in Sources */ = {isa = PBXBuildFile; fileRef = FC8109FC18679384CCE1FCC9 /* SZArchive.mm */; };
 		27AAAB1352382FE609A3B393 /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */; };
+		2C1FAB277BAFEC027D963EF8 /* QuickActionRequestHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A258EE11DC87F3E1709B0582 /* QuickActionRequestHandlers.swift */; };
+		2C3C4E26634CFF9A4FD20529 /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
 		34D1F242A66E0994C0F50FCD /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
 		3526B672AB9F2CEAFD0E549B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 937563A1E648A0013C4DD0C3 /* Assets.xcassets */; };
+		389484DCDF1B87E7084A60EE /* SZModalDialogController.m in Sources */ = {isa = PBXBuildFile; fileRef = 17A1A16D1207F4EA60603172 /* SZModalDialogController.m */; };
 		3EB1A6D4145C14DAED1F6FFF /* ArchiveItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B2D1040171A178E5575D88 /* ArchiveItem.swift */; };
+		454747F0D3404AADF88B92CD /* SmartQuickExtractAction-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D8FE357C90F014620315B33 /* SmartQuickExtractAction-Info.plist */; };
+		45806ACB468551C4463CCD51 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */; };
+		4747789EA60F4B81B574BFC9 /* ShichiZipZSOpenInShichiZipAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2D52490C7FF5294CC6DEBEEE /* ShichiZipZSOpenInShichiZipAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		47A974D49EB2F91F92DD6456 /* SZSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D6A1A6EF0AE7CB104B909C /* SZSettings.swift */; };
+		4A3147B030026487D9A8E1FF /* SZOperationSession.m in Sources */ = {isa = PBXBuildFile; fileRef = 0DEB3F8BBDBD6F9E07CBC6B4 /* SZOperationSession.m */; };
+		4F372B7D7336BBA8A2F1B894 /* FoldersHistoryWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5287B22A45EB2C1D5DDAF5B /* FoldersHistoryWindowController.swift */; };
+		4F7418E2CB43A17B0BB5D6DB /* FileManagerDirectoryListing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF12616F99B5BC0BECF7D3BD /* FileManagerDirectoryListing.swift */; };
+		5047A72E9DE6E574585A77E1 /* CompressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB37EA2DD031212A342F87 /* CompressDialogController.swift */; };
 		523834239F9A009DC22B0C0C /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
 		5544DF4679FC2E8A56B9C8C5 /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
+		561AEC518507EB7849E83F8E /* SZDialogPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E8962DD7A7A34F21F49446 /* SZDialogPresenter.m */; };
 		586E8349FFE035506C922697 /* FileManagerArchiveOpenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F978AA77CB7237708162BD /* FileManagerArchiveOpenService.swift */; };
+		59C09EE81DB70063B69EAD1D /* FileManagerExternalOpenRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F07428E479FD64D8594CBD8 /* FileManagerExternalOpenRouter.swift */; };
 		5C20141C7403D014630B77AA /* FileManagerArchiveItemWorkflowService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E9365E10448902B8CE7660 /* FileManagerArchiveItemWorkflowService.swift */; };
+		61CAA7FD4E52AF53571A6451 /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
 		638B19CD6D0F3AD721A43B9A /* SZBridgeCommon.mm in Sources */ = {isa = PBXBuildFile; fileRef = 103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */; };
+		6A69673BA2A347175FDF9A9C /* ArchiveOperationRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B46B23B616057C7E76AFC3 /* ArchiveOperationRunner.swift */; };
+		715C1116BE0352E3331DB1B4 /* ExtractDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1063FC95805225AC501608 /* ExtractDialogController.swift */; };
 		77648FA14E470C55E65CAD70 /* SZCallbacks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 079C800E6F9E105461CEDF6F /* SZCallbacks.mm */; };
+		7D3E8F5D0878C91227F5F441 /* OpenInShichiZipAction-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 9912ACD566B45B235D6D1A85 /* OpenInShichiZipAction-Info.plist */; };
 		7EE100FF37A26DA3FA69134C /* FileManagerExternalOpenRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F07428E479FD64D8594CBD8 /* FileManagerExternalOpenRouter.swift */; };
+		7F2F9ED5078249215A9D8FC1 /* ArchiveItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B2D1040171A178E5575D88 /* ArchiveItem.swift */; };
+		81F4A125CA2C1B3AB4C7BC22 /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */; };
+		83B8CB9B62D8908871600033 /* ProgressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */; };
+		85B71500F6B01C977BA3CE0A /* FileManagerPaneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */; };
+		87B2A87DBD278092A7BD9542 /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
+		8968FA44FE5E203D31BE6E1F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */; };
+		8F1B684BE3CF524FBAD74E35 /* SZArchive+Benchmark.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5F0BD3119D294173A9C87820 /* SZArchive+Benchmark.mm */; };
+		8F443172B4CC4D1A4E15C0C6 /* SZCallbacks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 079C800E6F9E105461CEDF6F /* SZCallbacks.mm */; };
 		91FE56013292C5E5D05EE8B9 /* QuickActionRequestHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A258EE11DC87F3E1709B0582 /* QuickActionRequestHandlers.swift */; };
 		92508A846730EC64177768C0 /* CompressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB37EA2DD031212A342F87 /* CompressDialogController.swift */; };
 		95020B695CD4B8B7EA2C94E5 /* ArchiveOperationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1797F83BAF1E2349FCC716 /* ArchiveOperationCoordinator.swift */; };
+		952163A36AC7FA8802B04BF2 /* ShichiZipZSSmartQuickExtractAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 21BD5F44EF90F577C1F1EE7F /* ShichiZipZSSmartQuickExtractAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		96CADD8337309780C30D05B7 /* AppBuildInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC377A7A1121F0ED50658A6B /* AppBuildInfo.swift */; };
 		982013070593772CA679F1CB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */; };
 		9BC6DE961145D43CD2EA04C1 /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
 		9D467ED2259C046B6F86ED09 /* OpenInShichiZipAction-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 9912ACD566B45B235D6D1A85 /* OpenInShichiZipAction-Info.plist */; };
+		9FD92DF7516C92C44C5521A0 /* DialogPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E2FF83FA1080A0CA38F27F5 /* DialogPresenter.swift */; };
+		A21488890672AD8AAD5DA1C0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 937563A1E648A0013C4DD0C3 /* Assets.xcassets */; };
 		A386AA53745E51B22EC51125 /* FileManagerTemporaryDirectorySupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21E05B9DDAEF0F17D9CF282 /* FileManagerTemporaryDirectorySupport.swift */; };
 		A6D570941AD9603FF45FB5B7 /* FileManagerPaneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */; };
 		A75F0A88DDC9FEB2C258A88D /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */; };
 		A783E2CAD13FA8016D826804 /* SZModalDialogController.m in Sources */ = {isa = PBXBuildFile; fileRef = 17A1A16D1207F4EA60603172 /* SZModalDialogController.m */; };
 		A815E7061443DE855ED1278E /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
+		A976B3C18729D2D38CF72CAD /* SZOperationSessionDefaults.m in Sources */ = {isa = PBXBuildFile; fileRef = CCCBD7802EE988D8182FB615 /* SZOperationSessionDefaults.m */; };
+		A99AE60F0C2B2EB29984ED2F /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
 		AA261563B50B35EE2B312E27 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15AF94624BC55B258E21F044 /* main.swift */; };
 		B0A9836EF7F1152F96BAF8F7 /* ShichiZipSmartQuickExtractAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 91C3FAE8FA976852BE2914A1 /* ShichiZipSmartQuickExtractAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B11BF90848B5A2C3BD688684 /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
 		B2B8116921C374B976FF9283 /* FileManagerWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */; };
+		B3A8D9FEEB33A73AADDF374F /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
+		B4AE76FC286D96BE3C5BC486 /* DeleteTemporaryFilesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FECEA4ECEDC8A862D8490673 /* DeleteTemporaryFilesWindowController.swift */; };
+		BE80C668F39224BF46D40337 /* SZBridgeCommon.mm in Sources */ = {isa = PBXBuildFile; fileRef = 103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */; };
 		C2AE2F82C129E34E248C85A1 /* SZDialogPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E8962DD7A7A34F21F49446 /* SZDialogPresenter.m */; };
 		C44DCC2A272B0564DE7C1180 /* ShichiZipShowInFileManagerAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B9C89302B67D839C0200FDF7 /* ShichiZipShowInFileManagerAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C73C2AD5976979EB6FEAA476 /* SZSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D6A1A6EF0AE7CB104B909C /* SZSettings.swift */; };
 		CC25E7829B0F9828F2D77A80 /* QuickActionRequestHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A258EE11DC87F3E1709B0582 /* QuickActionRequestHandlers.swift */; };
+		D1EFE263428E5A0EDAD8DA7C /* QuickActionRequestHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A258EE11DC87F3E1709B0582 /* QuickActionRequestHandlers.swift */; };
+		D31C83242FB9281D42DE5B61 /* FileManagerTemporaryDirectorySupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21E05B9DDAEF0F17D9CF282 /* FileManagerTemporaryDirectorySupport.swift */; };
 		D33844E6931D04F9C12964F0 /* ProgressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86B7F4EB8AA8831BF2F6B97 /* ProgressDialogController.swift */; };
 		D49D1ABE0FB54A906B16439D /* SZOperationSessionDefaults.m in Sources */ = {isa = PBXBuildFile; fileRef = CCCBD7802EE988D8182FB615 /* SZOperationSessionDefaults.m */; };
+		DAED128E61169B4A2FFFE7D0 /* FileManagerWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */; };
+		DB5BE6784CF237891B6B78D3 /* ShichiZipZSShowInFileManagerAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 73A6FF9C36DA03A588B9C493 /* ShichiZipZSShowInFileManagerAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DD5AD35072740B80CC6815D7 /* ArchiveOperationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1797F83BAF1E2349FCC716 /* ArchiveOperationCoordinator.swift */; };
 		E1568B37527443E8A00EFC19 /* FoldersHistoryWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5287B22A45EB2C1D5DDAF5B /* FoldersHistoryWindowController.swift */; };
+		E46647F05E557A3794B38F70 /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
 		E519278C982B2E456EB05C70 /* SZArchive+Benchmark.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5F0BD3119D294173A9C87820 /* SZArchive+Benchmark.mm */; };
 		E536B805338610B9325FDE45 /* DeleteTemporaryFilesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FECEA4ECEDC8A862D8490673 /* DeleteTemporaryFilesWindowController.swift */; };
+		E787FF0A90ECEB3692D568C1 /* ShowInFileManagerAction-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5A18E8BB4528A1AB4DD349EB /* ShowInFileManagerAction-Info.plist */; };
 		E9865828DA3922DAB799958A /* ShichiZipOpenInShichiZipAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9887C73E191CC8096CA816E7 /* ShichiZipOpenInShichiZipAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		EEC9FF565AB0CFBC22265E27 /* SmartQuickExtractAction-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D8FE357C90F014620315B33 /* SmartQuickExtractAction-Info.plist */; };
 		EFD6C6263E7F428FB8939A42 /* FileManagerDirectoryListing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF12616F99B5BC0BECF7D3BD /* FileManagerDirectoryListing.swift */; };
+		F2268F98EB1940EF90A4394C /* AppBuildInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC377A7A1121F0ED50658A6B /* AppBuildInfo.swift */; };
+		F322B1EF38BEC6C3DD97CB5C /* FileManagerArchiveOpenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F978AA77CB7237708162BD /* FileManagerArchiveOpenService.swift */; };
 		F5D35697C677E69E61A6D2E7 /* ArchiveDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */; };
 		F6B05D0482BBA25989226D61 /* ArchiveOperationRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B46B23B616057C7E76AFC3 /* ArchiveOperationRunner.swift */; };
 		F86A0A75F45A7424DF89A0E6 /* SZOperationSession.m in Sources */ = {isa = PBXBuildFile; fileRef = 0DEB3F8BBDBD6F9E07CBC6B4 /* SZOperationSession.m */; };
+		F98B0F687F2B27EC466EE20D /* ArchiveDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */; };
+		FB053A8BC4259F0A5FC50BD0 /* FileSystemItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F199F3D5EFC006C978C935C8 /* FileSystemItem.swift */; };
+		FF83CF8E4E8D1F7369B1A244 /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,12 +119,33 @@
 			remoteGlobalIDString = 61819A2856748E3AF80EE0BA;
 			remoteInfo = ShichiZipOpenInShichiZipAction;
 		};
+		915367B34E044549C5193A35 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2200CF465CA28D3C3640EF76 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E2B5F048B3BE15FF075B03E3;
+			remoteInfo = ShichiZipZSShowInFileManagerAction;
+		};
+		9EF65095277FA3E0175C2061 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2200CF465CA28D3C3640EF76 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DF6841685683BFAE9E366FAF;
+			remoteInfo = ShichiZipZSOpenInShichiZipAction;
+		};
 		A1E82E5830A30F624E4F7B96 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 2200CF465CA28D3C3640EF76 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 406D608D01E8F9D3AF7E9409;
 			remoteInfo = ShichiZipShowInFileManagerAction;
+		};
+		A5D57576C819C089CA79F48B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2200CF465CA28D3C3640EF76 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 57D9F21C31B9932487060F27;
+			remoteInfo = ShichiZipZSSmartQuickExtractAction;
 		};
 		B2BCB3C38D2B85D394DD26DA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -85,6 +157,19 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		0AA9DF18257864612F073768 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				DB5BE6784CF237891B6B78D3 /* ShichiZipZSShowInFileManagerAction.appex in Embed Foundation Extensions */,
+				4747789EA60F4B81B574BFC9 /* ShichiZipZSOpenInShichiZipAction.appex in Embed Foundation Extensions */,
+				952163A36AC7FA8802B04BF2 /* ShichiZipZSSmartQuickExtractAction.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A4559E6B65B89CE442283441 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -110,6 +195,8 @@
 		15AF94624BC55B258E21F044 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		17A1A16D1207F4EA60603172 /* SZModalDialogController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SZModalDialogController.m; sourceTree = "<group>"; };
 		1F07428E479FD64D8594CBD8 /* FileManagerExternalOpenRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerExternalOpenRouter.swift; sourceTree = "<group>"; };
+		21BD5F44EF90F577C1F1EE7F /* ShichiZipZSSmartQuickExtractAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShichiZipZSSmartQuickExtractAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		2D52490C7FF5294CC6DEBEEE /* ShichiZipZSOpenInShichiZipAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShichiZipZSOpenInShichiZipAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E2FF83FA1080A0CA38F27F5 /* DialogPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialogPresenter.swift; sourceTree = "<group>"; };
 		37EC5FDA76CEDC07B700597B /* SZDialogPresenter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZDialogPresenter.h; sourceTree = "<group>"; };
 		3D1797F83BAF1E2349FCC716 /* ArchiveOperationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveOperationCoordinator.swift; sourceTree = "<group>"; };
@@ -124,9 +211,11 @@
 		66C60AB7E758ABD0F2751D95 /* SZCallbacks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZCallbacks.h; sourceTree = "<group>"; };
 		6A27325B4402993E4B3F4F0B /* SZOperationSession.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZOperationSession.h; sourceTree = "<group>"; };
 		6D8FE357C90F014620315B33 /* SmartQuickExtractAction-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "SmartQuickExtractAction-Info.plist"; sourceTree = "<group>"; };
+		73A6FF9C36DA03A588B9C493 /* ShichiZipZSShowInFileManagerAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShichiZipZSShowInFileManagerAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		73F978AA77CB7237708162BD /* FileManagerArchiveOpenService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerArchiveOpenService.swift; sourceTree = "<group>"; };
 		78EC0F8B9F4DC1C6D26F42CD /* SZBridgeCommon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZBridgeCommon.h; sourceTree = "<group>"; };
 		80B076D6AC7F0BF7BC2633E8 /* ShichiZip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShichiZip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		851064193250F62DE895FB60 /* ShichiZipZS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShichiZipZS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D97DFC28A8EEEC9BBDB51EA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		91C3FAE8FA976852BE2914A1 /* ShichiZipSmartQuickExtractAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShichiZipSmartQuickExtractAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		937563A1E648A0013C4DD0C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -184,6 +273,10 @@
 				9887C73E191CC8096CA816E7 /* ShichiZipOpenInShichiZipAction.appex */,
 				B9C89302B67D839C0200FDF7 /* ShichiZipShowInFileManagerAction.appex */,
 				91C3FAE8FA976852BE2914A1 /* ShichiZipSmartQuickExtractAction.appex */,
+				851064193250F62DE895FB60 /* ShichiZipZS.app */,
+				2D52490C7FF5294CC6DEBEEE /* ShichiZipZSOpenInShichiZipAction.appex */,
+				73A6FF9C36DA03A588B9C493 /* ShichiZipZSShowInFileManagerAction.appex */,
+				21BD5F44EF90F577C1F1EE7F /* ShichiZipZSSmartQuickExtractAction.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -323,6 +416,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		1ACB25CC88C450B49EB16BBD /* ShichiZipZS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0E089FE9E90667438801E6F3 /* Build configuration list for PBXNativeTarget "ShichiZipZS" */;
+			buildPhases = (
+				9BF6ED9889843D423E6C4233 /* Sources */,
+				89E463E597F5868FF26BCD09 /* Resources */,
+				0AA9DF18257864612F073768 /* Embed Foundation Extensions */,
+				3048E55F7BCCE7F70BE23445 /* Generate Build Metadata */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D37D36E19ACA93E0AC362AC5 /* PBXTargetDependency */,
+				03128856949C6A0F3DA6E15D /* PBXTargetDependency */,
+				C889809E635266B648845C1B /* PBXTargetDependency */,
+			);
+			name = ShichiZipZS;
+			packageProductDependencies = (
+			);
+			productName = ShichiZipZS;
+			productReference = 851064193250F62DE895FB60 /* ShichiZipZS.app */;
+			productType = "com.apple.product-type.application";
+		};
 		406D608D01E8F9D3AF7E9409 /* ShichiZipShowInFileManagerAction */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = DA94294D0070065500AB997E /* Build configuration list for PBXNativeTarget "ShichiZipShowInFileManagerAction" */;
@@ -363,6 +479,23 @@
 			productReference = 80B076D6AC7F0BF7BC2633E8 /* ShichiZip.app */;
 			productType = "com.apple.product-type.application";
 		};
+		57D9F21C31B9932487060F27 /* ShichiZipZSSmartQuickExtractAction */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 31F771420F79FA710ADF5472 /* Build configuration list for PBXNativeTarget "ShichiZipZSSmartQuickExtractAction" */;
+			buildPhases = (
+				24FD08725C0226A688AC5F4D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShichiZipZSSmartQuickExtractAction;
+			packageProductDependencies = (
+			);
+			productName = ShichiZipZSSmartQuickExtractAction;
+			productReference = 21BD5F44EF90F577C1F1EE7F /* ShichiZipZSSmartQuickExtractAction.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		61819A2856748E3AF80EE0BA /* ShichiZipOpenInShichiZipAction */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 953F6C8D3E6F822E2F359BE3 /* Build configuration list for PBXNativeTarget "ShichiZipOpenInShichiZipAction" */;
@@ -397,6 +530,40 @@
 			productReference = 91C3FAE8FA976852BE2914A1 /* ShichiZipSmartQuickExtractAction.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		DF6841685683BFAE9E366FAF /* ShichiZipZSOpenInShichiZipAction */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5E6FC042418F6BFF16072145 /* Build configuration list for PBXNativeTarget "ShichiZipZSOpenInShichiZipAction" */;
+			buildPhases = (
+				57A898B50DCD772DDD2970EC /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShichiZipZSOpenInShichiZipAction;
+			packageProductDependencies = (
+			);
+			productName = ShichiZipZSOpenInShichiZipAction;
+			productReference = 2D52490C7FF5294CC6DEBEEE /* ShichiZipZSOpenInShichiZipAction.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		E2B5F048B3BE15FF075B03E3 /* ShichiZipZSShowInFileManagerAction */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8EA7AB96A71089370DBAA981 /* Build configuration list for PBXNativeTarget "ShichiZipZSShowInFileManagerAction" */;
+			buildPhases = (
+				BBC7E7D9447AED95E9F12125 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShichiZipZSShowInFileManagerAction;
+			packageProductDependencies = (
+			);
+			productName = ShichiZipZSShowInFileManagerAction;
+			productReference = 73A6FF9C36DA03A588B9C493 /* ShichiZipZSShowInFileManagerAction.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -426,11 +593,26 @@
 				61819A2856748E3AF80EE0BA /* ShichiZipOpenInShichiZipAction */,
 				406D608D01E8F9D3AF7E9409 /* ShichiZipShowInFileManagerAction */,
 				78DD331DEB5B56770291A29A /* ShichiZipSmartQuickExtractAction */,
+				1ACB25CC88C450B49EB16BBD /* ShichiZipZS */,
+				DF6841685683BFAE9E366FAF /* ShichiZipZSOpenInShichiZipAction */,
+				E2B5F048B3BE15FF075B03E3 /* ShichiZipZSShowInFileManagerAction */,
+				57D9F21C31B9932487060F27 /* ShichiZipZSSmartQuickExtractAction */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		89E463E597F5868FF26BCD09 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A21488890672AD8AAD5DA1C0 /* Assets.xcassets in Resources */,
+				7D3E8F5D0878C91227F5F441 /* OpenInShichiZipAction-Info.plist in Resources */,
+				E787FF0A90ECEB3692D568C1 /* ShowInFileManagerAction-Info.plist in Resources */,
+				454747F0D3404AADF88B92CD /* SmartQuickExtractAction-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D37E858B5F5A990AB339A0C8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -445,6 +627,25 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		3048E55F7BCCE7F70BE23445 /* Generate Build Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Metadata";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\nsfx_source=\"${SRCROOT}/vendor/7z.sfx\"\nsfx_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx\"\n\nset_plist_value() {\n  local plist_path=\"$1\"\n  local key=\"$2\"\n  local value=\"$3\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${plist_path}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${plist_path}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${plist_path}\"\n  fi\n}\n\nset_plist_value \"${info_plist}\" \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"${info_plist}\" \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n\nif [ -f \"${sfx_source}\" ]; then\n  cp \"${sfx_source}\" \"${sfx_dest}\"\nfi\n";
+		};
 		807B4DC42912EBCC6372573E /* Generate Build Metadata */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -462,7 +663,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/vendor/7zip/DOC/License.txt\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\nsfx_source=\"${SRCROOT}/vendor/7z.sfx\"\nsfx_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx\"\n\nset_plist_value() {\n  local plist_path=\"$1\"\n  local key=\"$2\"\n  local value=\"$3\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${plist_path}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${plist_path}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${plist_path}\"\n  fi\n}\n\nset_plist_value \"${info_plist}\" \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"${info_plist}\" \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n\nif [ -f \"${sfx_source}\" ]; then\n  cp \"${sfx_source}\" \"${sfx_dest}\"\nfi\n";
+			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\nsfx_source=\"${SRCROOT}/vendor/7z.sfx\"\nsfx_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx\"\n\nset_plist_value() {\n  local plist_path=\"$1\"\n  local key=\"$2\"\n  local value=\"$3\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${plist_path}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${plist_path}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${plist_path}\"\n  fi\n}\n\nset_plist_value \"${info_plist}\" \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"${info_plist}\" \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n\nif [ -f \"${sfx_source}\" ]; then\n  cp \"${sfx_source}\" \"${sfx_dest}\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -474,6 +675,26 @@
 				9BC6DE961145D43CD2EA04C1 /* QuickActionCore.swift in Sources */,
 				1D72EE5985CD0DA1D5075BA6 /* QuickActionRequestHandlers.swift in Sources */,
 				1F5A95E542D55CE4B86982D2 /* QuickActionTransport.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		24FD08725C0226A688AC5F4D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2C3C4E26634CFF9A4FD20529 /* QuickActionCore.swift in Sources */,
+				00AEEE9E43FAE109D91E7A02 /* QuickActionRequestHandlers.swift in Sources */,
+				A99AE60F0C2B2EB29984ED2F /* QuickActionTransport.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		57A898B50DCD772DDD2970EC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E46647F05E557A3794B38F70 /* QuickActionCore.swift in Sources */,
+				D1EFE263428E5A0EDAD8DA7C /* QuickActionRequestHandlers.swift in Sources */,
+				87B2A87DBD278092A7BD9542 /* QuickActionTransport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -494,6 +715,58 @@
 				1CD870CF4E20D4259C8BBF7F /* QuickActionCore.swift in Sources */,
 				CC25E7829B0F9828F2D77A80 /* QuickActionRequestHandlers.swift in Sources */,
 				B11BF90848B5A2C3BD688684 /* QuickActionTransport.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9BF6ED9889843D423E6C4233 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F2268F98EB1940EF90A4394C /* AppBuildInfo.swift in Sources */,
+				8968FA44FE5E203D31BE6E1F /* AppDelegate.swift in Sources */,
+				F98B0F687F2B27EC466EE20D /* ArchiveDocument.swift in Sources */,
+				7F2F9ED5078249215A9D8FC1 /* ArchiveItem.swift in Sources */,
+				DD5AD35072740B80CC6815D7 /* ArchiveOperationCoordinator.swift in Sources */,
+				6A69673BA2A347175FDF9A9C /* ArchiveOperationRunner.swift in Sources */,
+				26FBCDAE7985FA01FA96BE26 /* BenchmarkWindowController.swift in Sources */,
+				5047A72E9DE6E574585A77E1 /* CompressDialogController.swift in Sources */,
+				B4AE76FC286D96BE3C5BC486 /* DeleteTemporaryFilesWindowController.swift in Sources */,
+				9FD92DF7516C92C44C5521A0 /* DialogPresenter.swift in Sources */,
+				715C1116BE0352E3331DB1B4 /* ExtractDialogController.swift in Sources */,
+				18FFE0D2BD16EC68A07DDBEA /* FileManagerArchiveItemWorkflowService.swift in Sources */,
+				F322B1EF38BEC6C3DD97CB5C /* FileManagerArchiveOpenService.swift in Sources */,
+				4F7418E2CB43A17B0BB5D6DB /* FileManagerDirectoryListing.swift in Sources */,
+				59C09EE81DB70063B69EAD1D /* FileManagerExternalOpenRouter.swift in Sources */,
+				85B71500F6B01C977BA3CE0A /* FileManagerPaneController.swift in Sources */,
+				D31C83242FB9281D42DE5B61 /* FileManagerTemporaryDirectorySupport.swift in Sources */,
+				DAED128E61169B4A2FFFE7D0 /* FileManagerWindowController.swift in Sources */,
+				FB053A8BC4259F0A5FC50BD0 /* FileSystemItem.swift in Sources */,
+				4F372B7D7336BBA8A2F1B894 /* FoldersHistoryWindowController.swift in Sources */,
+				81F4A125CA2C1B3AB4C7BC22 /* MainMenu.swift in Sources */,
+				83B8CB9B62D8908871600033 /* ProgressDialogController.swift in Sources */,
+				09E3C97B92CF49D5BB8E53A2 /* QuickActionCore.swift in Sources */,
+				61CAA7FD4E52AF53571A6451 /* QuickActionTransport.swift in Sources */,
+				8F1B684BE3CF524FBAD74E35 /* SZArchive+Benchmark.mm in Sources */,
+				1CBC7CC9B31B4A1D1BA695A0 /* SZArchive.mm in Sources */,
+				BE80C668F39224BF46D40337 /* SZBridgeCommon.mm in Sources */,
+				8F443172B4CC4D1A4E15C0C6 /* SZCallbacks.mm in Sources */,
+				561AEC518507EB7849E83F8E /* SZDialogPresenter.m in Sources */,
+				389484DCDF1B87E7084A60EE /* SZModalDialogController.m in Sources */,
+				4A3147B030026487D9A8E1FF /* SZOperationSession.m in Sources */,
+				A976B3C18729D2D38CF72CAD /* SZOperationSessionDefaults.m in Sources */,
+				C73C2AD5976979EB6FEAA476 /* SZSettings.swift in Sources */,
+				45806ACB468551C4463CCD51 /* SettingsWindowController.swift in Sources */,
+				20A344F10BF19FA853E7015E /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBC7E7D9447AED95E9F12125 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FF83CF8E4E8D1F7369B1A244 /* QuickActionCore.swift in Sources */,
+				2C1FAB277BAFEC027D963EF8 /* QuickActionRequestHandlers.swift in Sources */,
+				B3A8D9FEEB33A73AADDF374F /* QuickActionTransport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -542,6 +815,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		03128856949C6A0F3DA6E15D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DF6841685683BFAE9E366FAF /* ShichiZipZSOpenInShichiZipAction */;
+			targetProxy = 9EF65095277FA3E0175C2061 /* PBXContainerItemProxy */;
+		};
 		12C00BEC3C19279780440E06 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 61819A2856748E3AF80EE0BA /* ShichiZipOpenInShichiZipAction */;
@@ -556,6 +834,16 @@
 			isa = PBXTargetDependency;
 			target = 406D608D01E8F9D3AF7E9409 /* ShichiZipShowInFileManagerAction */;
 			targetProxy = A1E82E5830A30F624E4F7B96 /* PBXContainerItemProxy */;
+		};
+		C889809E635266B648845C1B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 57D9F21C31B9932487060F27 /* ShichiZipZSSmartQuickExtractAction */;
+			targetProxy = A5D57576C819C089CA79F48B /* PBXContainerItemProxy */;
+		};
+		D37D36E19ACA93E0AC362AC5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E2B5F048B3BE15FF075B03E3 /* ShichiZipZSShowInFileManagerAction */;
+			targetProxy = 915367B34E044549C5193A35 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -579,7 +867,71 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip.OpenInShichiZipAction;
 				PRODUCT_NAME = ShichiZipOpenInShichiZipAction;
 				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = ShichiZip;
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ: Open in ShichiZip";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ: Open in ShichiZip";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
 				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		303932DB9404E7AAF2480BC2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++11";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/Resources/ShichiZip.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"NDEBUG=1",
+				);
+				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/CPP",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/C",
+				);
+				INFOPLIST_FILE = ShichiZip/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/build/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(inherited)",
+					"-Wno-everything",
+				);
+				OTHER_LDFLAGS = (
+					"-force_load",
+					"$(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)",
+					"-liconv",
+					"-lpthread",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZipZS;
+				PRODUCT_NAME = "ShichiZip ZS";
+				SDKROOT = macosx;
+				SEVENZ_LIBRARY_NAME = "lib7zip-zs.a";
+				SEVENZ_VENDOR_ROOT = "vendor/7zip-zstd";
+				SHICHIZIP_APP_DISPLAY_NAME = "ShichiZip ZS";
+				SHICHIZIP_ARCHIVE_CORE_NAME = "7-Zip-zstd";
+				SHICHIZIP_COPYRIGHT_LINE = "GitHub: idawnlight/ShichiZip, 7-Zip ZS (mcmilk/7-Zip-zstd) based.";
+				SHICHIZIP_LICENSE_SOURCE_PATH = "vendor/7zip-zstd/COPYING";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
+				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
+				SWIFT_VERSION = 5.9;
+				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};
@@ -602,6 +954,67 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip.ShowInFileManagerAction;
 				PRODUCT_NAME = ShichiZipShowInFileManagerAction;
 				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = ShichiZip;
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ: Show in File Manager";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ: Show in File Manager";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		336491B26DA2ECD4DA1EB609 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/QuickActions/Resources/QuickAction.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "ShichiZip/QuickActions/Resources/ShowInFileManagerAction-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZipZS.ShowInFileManagerAction;
+				PRODUCT_NAME = ShichiZipZSShowInFileManagerAction;
+				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = "ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ ZS: Show in File Manager";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ ZS: Show in File Manager";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		3C48BFF1E758D9F0CE0D415E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/QuickActions/Resources/QuickAction.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "ShichiZip/QuickActions/Resources/OpenInShichiZipAction-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZipZS.OpenInShichiZipAction;
+				PRODUCT_NAME = ShichiZipZSOpenInShichiZipAction;
+				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = "ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ ZS: Open in ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ ZS: Open in ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
 				SWIFT_VERSION = 5.9;
 			};
 			name = Debug;
@@ -625,6 +1038,11 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip.SmartQuickExtractAction;
 				PRODUCT_NAME = ShichiZipSmartQuickExtractAction;
 				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = ShichiZip;
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ: Smart Quick Extract";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ: Smart Quick Extract";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
 				SWIFT_VERSION = 5.9;
 			};
 			name = Debug;
@@ -647,9 +1065,9 @@
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/vendor/7zip",
-					"$(PROJECT_DIR)/vendor/7zip/CPP",
-					"$(PROJECT_DIR)/vendor/7zip/C",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/CPP",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/C",
 				);
 				INFOPLIST_FILE = ShichiZip/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -667,16 +1085,52 @@
 				);
 				OTHER_LDFLAGS = (
 					"-force_load",
-					"$(PROJECT_DIR)/build/lib/lib7zip.a",
+					"$(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)",
 					"-liconv",
 					"-lpthread",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip;
 				PRODUCT_NAME = ShichiZip;
 				SDKROOT = macosx;
+				SEVENZ_LIBRARY_NAME = lib7zip.a;
+				SEVENZ_VENDOR_ROOT = vendor/7zip;
+				SHICHIZIP_APP_DISPLAY_NAME = ShichiZip;
+				SHICHIZIP_ARCHIVE_CORE_NAME = "7-Zip";
+				SHICHIZIP_COPYRIGHT_LINE = "GitHub: idawnlight/ShichiZip, 7-Zip based.";
+				SHICHIZIP_LICENSE_SOURCE_PATH = vendor/7zip/DOC/License.txt;
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
 				SWIFT_VERSION = 5.9;
 				VALID_ARCHS = arm64;
+			};
+			name = Debug;
+		};
+		5811D35022BAF723102E0B20 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/QuickActions/Resources/QuickAction.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "ShichiZip/QuickActions/Resources/ShowInFileManagerAction-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZipZS.ShowInFileManagerAction;
+				PRODUCT_NAME = ShichiZipZSShowInFileManagerAction;
+				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = "ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ ZS: Show in File Manager";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ ZS: Show in File Manager";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
+				SWIFT_VERSION = 5.9;
 			};
 			name = Debug;
 		};
@@ -736,6 +1190,62 @@
 			};
 			name = Release;
 		};
+		6D86A19044112593217732DE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/QuickActions/Resources/QuickAction.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "ShichiZip/QuickActions/Resources/SmartQuickExtractAction-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZipZS.SmartQuickExtractAction;
+				PRODUCT_NAME = ShichiZipZSSmartQuickExtractAction;
+				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = "ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ ZS: Smart Quick Extract";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ ZS: Smart Quick Extract";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		7C58B609DF259642C8BF6B48 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/QuickActions/Resources/QuickAction.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "ShichiZip/QuickActions/Resources/SmartQuickExtractAction-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZipZS.SmartQuickExtractAction;
+				PRODUCT_NAME = ShichiZipZSSmartQuickExtractAction;
+				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = "ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ ZS: Smart Quick Extract";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ ZS: Smart Quick Extract";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
 		8373B642E21D1DA31FA1E050 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -755,6 +1265,11 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip.ShowInFileManagerAction;
 				PRODUCT_NAME = ShichiZipShowInFileManagerAction;
 				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = ShichiZip;
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ: Show in File Manager";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ: Show in File Manager";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
 				SWIFT_VERSION = 5.9;
 			};
 			name = Release;
@@ -777,9 +1292,9 @@
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/vendor/7zip",
-					"$(PROJECT_DIR)/vendor/7zip/CPP",
-					"$(PROJECT_DIR)/vendor/7zip/C",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/CPP",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/C",
 				);
 				INFOPLIST_FILE = ShichiZip/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -797,13 +1312,21 @@
 				);
 				OTHER_LDFLAGS = (
 					"-force_load",
-					"$(PROJECT_DIR)/build/lib/lib7zip.a",
+					"$(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)",
 					"-liconv",
 					"-lpthread",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip;
 				PRODUCT_NAME = ShichiZip;
 				SDKROOT = macosx;
+				SEVENZ_LIBRARY_NAME = lib7zip.a;
+				SEVENZ_VENDOR_ROOT = vendor/7zip;
+				SHICHIZIP_APP_DISPLAY_NAME = ShichiZip;
+				SHICHIZIP_ARCHIVE_CORE_NAME = "7-Zip";
+				SHICHIZIP_COPYRIGHT_LINE = "GitHub: idawnlight/ShichiZip, 7-Zip based.";
+				SHICHIZIP_LICENSE_SOURCE_PATH = vendor/7zip/DOC/License.txt;
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
 				SWIFT_VERSION = 5.9;
 				VALID_ARCHS = arm64;
@@ -892,6 +1415,98 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip.SmartQuickExtractAction;
 				PRODUCT_NAME = ShichiZipSmartQuickExtractAction;
 				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = ShichiZip;
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ: Smart Quick Extract";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ: Smart Quick Extract";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		C15B66D49F6966701261E91B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++11";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/Resources/ShichiZip.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"NDEBUG=1",
+				);
+				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/CPP",
+					"$(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/C",
+				);
+				INFOPLIST_FILE = ShichiZip/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/build/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(inherited)",
+					"-Wno-everything",
+				);
+				OTHER_LDFLAGS = (
+					"-force_load",
+					"$(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)",
+					"-liconv",
+					"-lpthread",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZipZS;
+				PRODUCT_NAME = "ShichiZip ZS";
+				SDKROOT = macosx;
+				SEVENZ_LIBRARY_NAME = "lib7zip-zs.a";
+				SEVENZ_VENDOR_ROOT = "vendor/7zip-zstd";
+				SHICHIZIP_APP_DISPLAY_NAME = "ShichiZip ZS";
+				SHICHIZIP_ARCHIVE_CORE_NAME = "7-Zip-zstd";
+				SHICHIZIP_COPYRIGHT_LINE = "GitHub: idawnlight/ShichiZip, 7-Zip ZS (mcmilk/7-Zip-zstd) based.";
+				SHICHIZIP_LICENSE_SOURCE_PATH = "vendor/7zip-zstd/COPYING";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
+				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
+				SWIFT_VERSION = 5.9;
+				VALID_ARCHS = arm64;
+			};
+			name = Debug;
+		};
+		F3A101DB1219B94CB2613C32 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShichiZip/QuickActions/Resources/QuickAction.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "ShichiZip/QuickActions/Resources/OpenInShichiZipAction-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZipZS.OpenInShichiZipAction;
+				PRODUCT_NAME = ShichiZipZSOpenInShichiZipAction;
+				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = "ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ ZS: Open in ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ ZS: Open in ShichiZip ZS";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
 				SWIFT_VERSION = 5.9;
 			};
 			name = Release;
@@ -915,6 +1530,11 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ee.dawn.ShichiZip.OpenInShichiZipAction;
 				PRODUCT_NAME = ShichiZipOpenInShichiZipAction;
 				SDKROOT = macosx;
+				SHICHIZIP_HOST_APP_DISPLAY_NAME = ShichiZip;
+				SHICHIZIP_QUICK_ACTION_DISPLAY_NAME = "SZ: Open in ShichiZip";
+				SHICHIZIP_QUICK_ACTION_LABEL = "SZ: Open in ShichiZip";
+				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
+				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
 				SWIFT_VERSION = 5.9;
 			};
 			name = Debug;
@@ -922,11 +1542,29 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0E089FE9E90667438801E6F3 /* Build configuration list for PBXNativeTarget "ShichiZipZS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C15B66D49F6966701261E91B /* Debug */,
+				303932DB9404E7AAF2480BC2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		1CF20150580B7A36531C6743 /* Build configuration list for PBXNativeTarget "ShichiZipSmartQuickExtractAction" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				478DE05294BF41B685FFD607 /* Debug */,
 				B178662E27F118BCB1F935F3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		31F771420F79FA710ADF5472 /* Build configuration list for PBXNativeTarget "ShichiZipZSSmartQuickExtractAction" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7C58B609DF259642C8BF6B48 /* Debug */,
+				6D86A19044112593217732DE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -940,11 +1578,29 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		5E6FC042418F6BFF16072145 /* Build configuration list for PBXNativeTarget "ShichiZipZSOpenInShichiZipAction" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3C48BFF1E758D9F0CE0D415E /* Debug */,
+				F3A101DB1219B94CB2613C32 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		65F23D46C202050C5D6D216F /* Build configuration list for PBXNativeTarget "ShichiZip" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				48DA5C731B9A3586882E1BFA /* Debug */,
 				94BE3AE276063E7BE27CFAB1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8EA7AB96A71089370DBAA981 /* Build configuration list for PBXNativeTarget "ShichiZipZSShowInFileManagerAction" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5811D35022BAF723102E0B20 /* Debug */,
+				336491B26DA2ECD4DA1EB609 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

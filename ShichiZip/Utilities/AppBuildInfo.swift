@@ -4,6 +4,26 @@ enum AppBuildInfo {
     private static let gitCommitCountKey = "ShichiZipGitCommitCount"
     private static let gitShortHashKey = "ShichiZipGitShortHash"
     private static let licenseResourceName = "7zip-license"
+    private static let archiveCoreNameKey = "ShichiZipArchiveCoreName"
+
+    static func appDisplayName(bundle: Bundle = .main) -> String {
+        (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+            ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
+            ?? "ShichiZip"
+    }
+
+    static func archiveCoreName(bundle: Bundle = .main) -> String {
+        if let configuredName = infoString(archiveCoreNameKey, bundle: bundle),
+           !configuredName.isEmpty {
+            return configuredName
+        }
+
+        let bundleIdentifier = bundle.bundleIdentifier ?? ""
+        if bundleIdentifier.localizedCaseInsensitiveContains("shichizipzs") {
+            return "7-Zip-zstd"
+        }
+        return "7-Zip"
+    }
 
     static func displayVersion(bundle: Bundle = .main) -> String? {
         let shortVersion = infoString("CFBundleShortVersionString", bundle: bundle)
@@ -28,9 +48,8 @@ enum AppBuildInfo {
     }
 
     static func aboutSummary(bundle: Bundle = .main) -> String {
-        let appName = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
-            ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
-            ?? "ShichiZip"
+        let appName = appDisplayName(bundle: bundle)
+        let archiveCoreName = archiveCoreName(bundle: bundle)
         let bundleIdentifier = bundle.bundleIdentifier ?? ""
         let copyright = infoString("NSHumanReadableCopyright", bundle: bundle)
 
@@ -43,12 +62,16 @@ enum AppBuildInfo {
         if !bundleIdentifier.isEmpty {
             lines.append(bundleIdentifier)
         }
-        lines.append("7-Zip core \(SZArchive.sevenZipVersionString())")
+        lines.append("\(archiveCoreName) core \(SZArchive.sevenZipVersionString())")
         if let copyright, !copyright.isEmpty {
             lines.append(copyright)
         }
-        lines.append("Included 7-Zip license information follows.")
+        lines.append("Included \(archiveCoreName) license information follows.")
         return lines.joined(separator: "\n")
+    }
+
+    static func missingLicenseMessage(bundle: Bundle = .main) -> String {
+        "\(archiveCoreName(bundle: bundle)) license information is unavailable."
     }
 
     static func bundled7ZipLicense(bundle: Bundle = .main) -> String? {

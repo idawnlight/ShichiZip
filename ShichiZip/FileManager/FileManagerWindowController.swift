@@ -420,7 +420,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             backing: .buffered,
             defer: false
         )
-        window.title = "ShichiZip"
+        window.title = AppBuildInfo.appDisplayName()
         window.minSize = NSSize(width: 600, height: 400)
         window.center()
         self.init(window: window)

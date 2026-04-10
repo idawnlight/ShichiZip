@@ -117,16 +117,14 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func benchmarkSystemSummary() -> String {
-        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
-            ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String
-            ?? ProcessInfo.processInfo.processName
+        let appName = AppBuildInfo.appDisplayName()
         let versionedAppName = if let appVersion = appVersionString() {
             "\(appName) \(appVersion)"
         } else {
             appName
         }
         let memoryText = ByteCountFormatter.string(fromByteCount: Int64(physicalMemoryBytes), countStyle: .memory)
-        return "\(versionedAppName) (7-Zip core \(SZArchive.sevenZipVersionString())) | \(Self.cpuModel()) | \(logicalCPUCount) threads | \(memoryText)"
+        return "\(versionedAppName) (\(AppBuildInfo.archiveCoreName()) core \(SZArchive.sevenZipVersionString())) | \(Self.cpuModel()) | \(logicalCPUCount) threads | \(memoryText)"
     }
 
     private func setupUI() {

@@ -1,7 +1,74 @@
 # ShichiZip - lib7zip.a static library build
 # Builds the 7-Zip C/C++ core as a static library for embedding in the macOS app
 
-SEVENZ_ROOT = vendor/7zip
+SEVENZ_VARIANT ?= mainline
+
+ifeq ($(SEVENZ_VARIANT),mainline)
+SEVENZ_ROOT ?= vendor/7zip
+SEVENZ_LIBRARY_NAME ?= lib7zip.a
+SEVENZ_OBJECT_SUBDIR ?= mainline
+EXTRA_CODEC_INCLUDE_FLAGS =
+FASTLZMA2_CFLAGS =
+ZS_C_SRCS =
+ZS_COMMON_SRCS =
+ZS_ARCHIVE_SRCS =
+ZS_COMPRESS_SRCS =
+else ifeq ($(SEVENZ_VARIANT),zs)
+SEVENZ_ROOT ?= vendor/7zip-zstd
+SEVENZ_LIBRARY_NAME ?= lib7zip-zs.a
+SEVENZ_OBJECT_SUBDIR ?= zs
+EXTRA_CODEC_INCLUDE_FLAGS = \
+	-I$(C_ROOT)/brotli \
+	-I$(C_ROOT)/fast-lzma2 \
+	-I$(C_ROOT)/hashes \
+	-I$(C_ROOT)/lizard \
+	-I$(C_ROOT)/lz4 \
+	-I$(C_ROOT)/lz5 \
+	-I$(C_ROOT)/zstd
+FASTLZMA2_CFLAGS = -DNO_XXHASH -DFL2_7ZIP_BUILD
+ZS_C_SRCS = \
+	$(wildcard $(C_ROOT)/brotli/*.c) \
+	$(wildcard $(C_ROOT)/fast-lzma2/*.c) \
+	$(wildcard $(C_ROOT)/hashes/*.c) \
+	$(wildcard $(C_ROOT)/lizard/*.c) \
+	$(wildcard $(C_ROOT)/lz4/*.c) \
+	$(wildcard $(C_ROOT)/lz5/*.c) \
+	$(wildcard $(C_ROOT)/zstd/*.c) \
+	$(wildcard $(C_ROOT)/zstdmt/*.c)
+ZS_COMMON_SRCS = \
+	$(CPP_ROOT)/Common/Blake3Reg.cpp \
+	$(CPP_ROOT)/Common/Md2Reg.cpp \
+	$(CPP_ROOT)/Common/Md4Reg.cpp \
+	$(CPP_ROOT)/Common/XXH64Reg.cpp \
+	$(CPP_ROOT)/Common/XXH32Reg.cpp \
+	$(CPP_ROOT)/Common/XXH3-64Reg.cpp \
+	$(CPP_ROOT)/Common/XXH3-128Reg.cpp
+ZS_ARCHIVE_SRCS = \
+	$(CPP_ROOT)/7zip/Archive/BrotliHandler.cpp \
+	$(CPP_ROOT)/7zip/Archive/LzHandler.cpp \
+	$(CPP_ROOT)/7zip/Archive/Lz4Handler.cpp \
+	$(CPP_ROOT)/7zip/Archive/Lz5Handler.cpp \
+	$(CPP_ROOT)/7zip/Archive/LizardHandler.cpp
+ZS_COMPRESS_SRCS = \
+	$(CPP_ROOT)/7zip/Compress/BrotliDecoder.cpp \
+	$(CPP_ROOT)/7zip/Compress/BrotliEncoder.cpp \
+	$(CPP_ROOT)/7zip/Compress/BrotliRegister.cpp \
+	$(CPP_ROOT)/7zip/Compress/FastLzma2Register.cpp \
+	$(CPP_ROOT)/7zip/Compress/Lz4Decoder.cpp \
+	$(CPP_ROOT)/7zip/Compress/Lz4Encoder.cpp \
+	$(CPP_ROOT)/7zip/Compress/Lz4Register.cpp \
+	$(CPP_ROOT)/7zip/Compress/LizardDecoder.cpp \
+	$(CPP_ROOT)/7zip/Compress/LizardEncoder.cpp \
+	$(CPP_ROOT)/7zip/Compress/LizardRegister.cpp \
+	$(CPP_ROOT)/7zip/Compress/Lz5Decoder.cpp \
+	$(CPP_ROOT)/7zip/Compress/Lz5Encoder.cpp \
+	$(CPP_ROOT)/7zip/Compress/Lz5Register.cpp \
+	$(CPP_ROOT)/7zip/Compress/ZstdEncoder.cpp \
+	$(CPP_ROOT)/7zip/Compress/ZstdRegister.cpp
+else
+$(error Unsupported SEVENZ_VARIANT '$(SEVENZ_VARIANT)')
+endif
+
 C_ROOT = $(SEVENZ_ROOT)/C
 CPP_ROOT = $(SEVENZ_ROOT)/CPP
 ASM_ROOT = $(SEVENZ_ROOT)/Asm
@@ -15,13 +82,13 @@ MACOSX_DEPLOYMENT_TARGET ?= 13.0
 ARCH = -arch arm64
 CFLAGS_COMMON = $(ARCH) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -O2 -DNDEBUG -D_REENTRANT -D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE_SOURCE -fPIC -Wall -Wextra
-CFLAGS = $(CFLAGS_COMMON) -std=c11
-CXXFLAGS = $(CFLAGS_COMMON) -std=c++11 -DSHICHIZIP_APPLE_DETECTOR
-OBJCXXFLAGS = $(CFLAGS_COMMON) -std=c++11 -fobjc-arc -DSHICHIZIP_APPLE_DETECTOR
+CFLAGS = $(CFLAGS_COMMON) -std=c11 $(EXTRA_CODEC_INCLUDE_FLAGS)
+CXXFLAGS = $(CFLAGS_COMMON) -std=c++11 -DSHICHIZIP_APPLE_DETECTOR $(EXTRA_CODEC_INCLUDE_FLAGS)
+OBJCXXFLAGS = $(CFLAGS_COMMON) -std=c++11 -fobjc-arc -DSHICHIZIP_APPLE_DETECTOR $(EXTRA_CODEC_INCLUDE_FLAGS)
 
-O = build/obj
+O = build/obj/$(SEVENZ_OBJECT_SUBDIR)
 LIB_OUT = build/lib
-LIB = $(LIB_OUT)/lib7zip.a
+LIB = $(LIB_OUT)/$(SEVENZ_LIBRARY_NAME)
 
 # === C sources (core compression engine) ===
 C_SRCS = \
@@ -79,6 +146,8 @@ C_SRCS = \
 	$(C_ROOT)/XzCrc64Opt.c \
 	$(C_ROOT)/ZstdDec.c
 
+C_SRCS += $(ZS_C_SRCS)
+
 # === CPP/Common (cross-platform utilities) ===
 COMMON_SRCS = \
 	$(CPP_ROOT)/Common/CRC.cpp \
@@ -111,6 +180,8 @@ COMMON_SRCS = \
 	$(CPP_ROOT)/Common/Xxh64Reg.cpp \
 	$(CPP_ROOT)/Common/XzCrc64Init.cpp \
 	$(CPP_ROOT)/Common/XzCrc64Reg.cpp
+
+COMMON_SRCS += $(ZS_COMMON_SRCS)
 
 # === CPP/Windows (POSIX abstraction layer) ===
 WIN_SRCS = \
@@ -202,6 +273,8 @@ ARCHIVE_SRCS = \
 	$(CPP_ROOT)/7zip/Archive/XzHandler.cpp \
 	$(CPP_ROOT)/7zip/Archive/ZHandler.cpp \
 	$(CPP_ROOT)/7zip/Archive/ZstdHandler.cpp
+
+ARCHIVE_SRCS += $(ZS_ARCHIVE_SRCS)
 
 # Archive sub-format handlers
 ARCHIVE_SUB_SRCS = \
@@ -321,6 +394,8 @@ COMPRESS_SRCS = \
 	$(CPP_ROOT)/7zip/Compress/Rar5Decoder.cpp \
 	$(CPP_ROOT)/7zip/Compress/RarCodecsRegister.cpp
 
+COMPRESS_SRCS += $(ZS_COMPRESS_SRCS)
+
 # === Crypto ===
 CRYPTO_SRCS = \
 	$(CPP_ROOT)/7zip/Crypto/7zAes.cpp \
@@ -361,7 +436,6 @@ UI_COMMON_SRCS = \
 	$(CPP_ROOT)/7zip/UI/Common/UpdateCallback.cpp \
 	$(CPP_ROOT)/7zip/UI/Common/UpdatePair.cpp \
 	$(CPP_ROOT)/7zip/UI/Common/UpdateProduce.cpp
-
 # === UI/Agent (archive-backed folder operations) ===
 AGENT_SRCS = \
 	$(CPP_ROOT)/7zip/UI/Agent/Agent.cpp \
@@ -370,6 +444,21 @@ AGENT_SRCS = \
 	$(CPP_ROOT)/7zip/UI/Agent/ArchiveFolder.cpp \
 	$(CPP_ROOT)/7zip/UI/Agent/ArchiveFolderOut.cpp \
 	$(CPP_ROOT)/7zip/UI/Agent/UpdateCallbackAgent.cpp
+
+ifeq ($(SEVENZ_VARIANT),zs)
+# The ZS fork renames or drops a few upstream files, so keep only sources that
+# actually exist in that tree and layer in the fork-specific replacements above.
+C_SRCS := $(wildcard $(C_SRCS))
+COMMON_SRCS := $(wildcard $(COMMON_SRCS))
+WIN_SRCS := $(wildcard $(WIN_SRCS))
+SEVENZIP_COMMON_SRCS := $(wildcard $(SEVENZIP_COMMON_SRCS))
+ARCHIVE_SRCS := $(wildcard $(ARCHIVE_SRCS))
+ARCHIVE_SUB_SRCS := $(wildcard $(ARCHIVE_SUB_SRCS))
+COMPRESS_SRCS := $(wildcard $(COMPRESS_SRCS))
+CRYPTO_SRCS := $(wildcard $(CRYPTO_SRCS))
+UI_COMMON_SRCS := $(wildcard $(UI_COMMON_SRCS))
+AGENT_SRCS := $(wildcard $(AGENT_SRCS))
+endif
 
 # === All sources ===
 ALL_CPP_SRCS = $(COMMON_SRCS) $(WIN_SRCS) $(SEVENZIP_COMMON_SRCS) \
@@ -385,14 +474,20 @@ CPP_OBJS = $(patsubst $(SEVENZ_ROOT)/%.cpp,$(O)/%.o,$(ALL_CPP_SRCS))
 MM_OBJS = $(patsubst %.mm,$(O)/%.o,$(SHICHIZIP_VENDOR_MM_SRCS))
 ALL_OBJS = $(C_OBJS) $(CPP_OBJS) $(MM_OBJS)
 
-.PHONY: all clean lib info prepare-7zip
+.PHONY: all clean lib info prepare-7zip lib-mainline lib-zs
 
 all: lib
 
 lib: $(LIB)
 
+lib-mainline:
+	@$(MAKE) SEVENZ_VARIANT=mainline lib
+
+lib-zs:
+	@$(MAKE) SEVENZ_VARIANT=zs lib
+
 prepare-7zip:
-	@sh vendor/apply_7zip_patches.sh
+	@sh vendor/apply_7zip_patches.sh $(SEVENZ_ROOT)
 
 $(ALL_OBJS): | prepare-7zip
 
@@ -400,6 +495,11 @@ $(LIB): $(ALL_OBJS)
 	@mkdir -p $(LIB_OUT)
 	$(AR) rcs $@ $^
 	@echo "=== Built $@ ($(words $(ALL_OBJS)) objects) ==="
+
+# Fast LZMA2 needs extra compatibility defines from the fork build.
+$(O)/C/fast-lzma2/%.o: $(SEVENZ_ROOT)/C/fast-lzma2/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(FASTLZMA2_CFLAGS) -c -o $@ $<
 
 # C compilation
 $(O)/%.o: $(SEVENZ_ROOT)/%.c

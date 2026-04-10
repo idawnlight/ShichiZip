@@ -5,9 +5,18 @@ enum ShichiZipQuickActionTransport {
     private static let launchHost = "quick-action"
     private static let launchPath = "/finder"
     private static let pasteboardQueryItemName = "pasteboard"
-    private static let pasteboardType = NSPasteboard.PasteboardType("ee.dawn.ShichiZip.quick-action-request")
+    private static let defaultPasteboardType = "ee.dawn.ShichiZip.quick-action-request"
+    private static let defaultURLScheme = "shichizip"
+    private static let pasteboardTypeInfoKey = "ShichiZipQuickActionPasteboardType"
+    private static let urlSchemeInfoKey = "ShichiZipQuickActionURLScheme"
 
-    static let urlScheme = "shichizip"
+    static var urlScheme: String {
+        infoString(forKey: urlSchemeInfoKey) ?? defaultURLScheme
+    }
+
+    private static var pasteboardType: NSPasteboard.PasteboardType {
+        NSPasteboard.PasteboardType(infoString(forKey: pasteboardTypeInfoKey) ?? defaultPasteboardType)
+    }
 
     static func canHandle(_ url: URL) -> Bool {
         guard let scheme = url.scheme?.lowercased(),
@@ -94,5 +103,10 @@ enum ShichiZipQuickActionTransport {
     private static func release(_ pasteboard: NSPasteboard) {
         pasteboard.clearContents()
         pasteboard.releaseGlobally()
+    }
+
+    private static func infoString(forKey key: String) -> String? {
+        (Bundle.main.object(forInfoDictionaryKey: key) as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

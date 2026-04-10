@@ -740,12 +740,13 @@ enum MainMenu {
 
     static func setup() {
                 installSettingsObserverIfNeeded()
+        let appName = AppBuildInfo.appDisplayName()
         let mainMenu = NSMenu(title: "Main Menu")
 
-        let appMenu = NSMenu(title: "ShichiZip")
+        let appMenu = NSMenu(title: appName)
         addTopLevelMenu(appMenu, to: mainMenu)
         addItem(to: appMenu,
-                title: "About ShichiZip",
+                title: "About \(appName)",
                 action: #selector(AppDelegate.showAbout(_:)),
                 target: NSApp.delegate)
         appMenu.addItem(.separator())
@@ -764,7 +765,7 @@ enum MainMenu {
 
         appMenu.addItem(.separator())
         addItem(to: appMenu,
-                title: "Hide ShichiZip",
+                title: "Hide \(appName)",
                 action: #selector(NSApplication.hide(_:)),
                 keyEquivalent: "h",
                 target: NSApp)
@@ -780,7 +781,7 @@ enum MainMenu {
                 target: NSApp)
         appMenu.addItem(.separator())
         addItem(to: appMenu,
-                title: "Quit ShichiZip",
+                title: "Quit \(appName)",
                 action: #selector(NSApplication.terminate(_:)),
                 keyEquivalent: "q",
                 target: NSApp)
@@ -946,7 +947,7 @@ enum MainMenu {
         let helpMenu = NSMenu(title: "Help")
         addTopLevelMenu(helpMenu, to: mainMenu)
         addItem(to: helpMenu,
-                title: "ShichiZip Help",
+                title: "\(appName) Help",
                 action: #selector(NSApplication.showHelp(_:)),
                 keyEquivalent: "?",
                 target: NSApp)

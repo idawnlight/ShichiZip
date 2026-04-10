@@ -1,3 +1,6 @@
 [submodule "vendor/7zip"]
 	path = vendor/7zip
 	url = https://github.com/ip7z/7zip.git
+[submodule "vendor/7zip-zstd"]
+	path = vendor/7zip-zstd
+	url = https://github.com/mcmilk/7-Zip-zstd.git

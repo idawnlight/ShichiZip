@@ -16,13 +16,24 @@ permissions:
 
 jobs:
   macos-build:
-    name: macOS Build
+    name: macOS Build (${{ matrix.artifact_prefix }})
     runs-on: macos-26
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scheme: ShichiZip
+            make_target: lib-mainline
+            app_bundle: ShichiZip.app
+            artifact_prefix: ShichiZip
+          - scheme: ShichiZipZS
+            make_target: lib-zs
+            app_bundle: ShichiZip ZS.app
+            artifact_prefix: ShichiZipZS
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
       XCODE_PROJECT: ShichiZip.xcodeproj
-      XCODE_SCHEME: ShichiZip
       XCODE_CONFIGURATION: Release
 
     steps:
@@ -51,18 +62,20 @@ jobs:
           echo "HOST_ARCH=$host_arch" >> "$GITHUB_ENV"
 
       - name: Build lib7zip
-        run: make -j"$(sysctl -n hw.ncpu)" ARCH="-arch ${HOST_ARCH}"
+        run: make -j"$(sysctl -n hw.ncpu)" ARCH="-arch ${HOST_ARCH}" "${{ matrix.make_target }}"
 
       - name: Generate Xcode project
         run: xcodegen generate
 
       - name: Build app bundle
         run: |
+          derived_data_path="build/DerivedData/${{ matrix.scheme }}"
+
           xcodebuild \
             -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" \
+            -scheme "${{ matrix.scheme }}" \
             -configuration "$XCODE_CONFIGURATION" \
-            -derivedDataPath build/DerivedData \
+            -derivedDataPath "$derived_data_path" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             ARCHS="$HOST_ARCH" \
@@ -71,7 +84,8 @@ jobs:
 
       - name: Ad hoc sign app bundle
         run: |
-          app_path="build/DerivedData/Build/Products/${XCODE_CONFIGURATION}/ShichiZip.app"
+          derived_data_path="build/DerivedData/${{ matrix.scheme }}"
+          app_path="${derived_data_path}/Build/Products/${XCODE_CONFIGURATION}/${{ matrix.app_bundle }}"
           quick_action_entitlements="ShichiZip/QuickActions/Resources/QuickAction.entitlements"
           app_entitlements="ShichiZip/Resources/ShichiZip.entitlements"
 
@@ -86,14 +100,15 @@ jobs:
 
       - name: Package app artifact
         run: |
-          app_path="build/DerivedData/Build/Products/${XCODE_CONFIGURATION}/ShichiZip.app"
+          derived_data_path="build/DerivedData/${{ matrix.scheme }}"
+          app_path="${derived_data_path}/Build/Products/${XCODE_CONFIGURATION}/${{ matrix.app_bundle }}"
           test -d "$app_path"
-          ditto -c -k --sequesterRsrc --keepParent "$app_path" "ShichiZip-${XCODE_CONFIGURATION}-${HOST_ARCH}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "${{ matrix.artifact_prefix }}-${XCODE_CONFIGURATION}-${HOST_ARCH}.zip"
 
       - name: Upload app artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ShichiZip-${{ env.XCODE_CONFIGURATION }}-macOS
-          path: ShichiZip-${{ env.XCODE_CONFIGURATION }}-*.zip
+          name: ${{ matrix.artifact_prefix }}-${{ env.XCODE_CONFIGURATION }}-macOS
+          path: ${{ matrix.artifact_prefix }}-${{ env.XCODE_CONFIGURATION }}-*.zip
           if-no-files-found: error
           archive: false

@@ -35,7 +35,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "ShichiZip"
+        window.title = AppBuildInfo.appDisplayName()
         window.isMovableByWindowBackground = true
         self.init(window: window)
         setupUI()

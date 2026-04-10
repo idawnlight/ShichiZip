@@ -4,8 +4,10 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>$(SHICHIZIP_APP_DISPLAY_NAME)</string>
 	<key>CFBundleExecutable</key>
-	<string>ShichiZip</string>
+	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconFile</key>
 	<string></string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>ShichiZip</string>
+	<string>$(SHICHIZIP_APP_DISPLAY_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -26,10 +28,10 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>ee.dawn.ShichiZip.quick-action</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER).quick-action</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>shichizip</string>
+				<string>$(SHICHIZIP_QUICK_ACTION_URL_SCHEME)</string>
 			</array>
 		</dict>
 	</array>
@@ -38,7 +40,13 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2026 ShichiZip. Core compression: 7-Zip by Igor Pavlov (LGPL).</string>
+	<string>$(SHICHIZIP_COPYRIGHT_LINE)</string>
+	<key>ShichiZipArchiveCoreName</key>
+	<string>$(SHICHIZIP_ARCHIVE_CORE_NAME)</string>
+	<key>ShichiZipQuickActionPasteboardType</key>
+	<string>$(SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE)</string>
+	<key>ShichiZipQuickActionURLScheme</key>
+	<string>$(SHICHIZIP_QUICK_ACTION_URL_SCHEME)</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<true/>
 	<key>NSSupportsSuddenTermination</key>

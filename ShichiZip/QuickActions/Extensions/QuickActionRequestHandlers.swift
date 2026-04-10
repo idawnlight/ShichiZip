@@ -296,7 +296,7 @@ final class OpenInShichiZipQuickActionHandler: ShichiZipQuickActionRequestHandle
 
     override func makeRequest(from fileURLs: [URL]) throws -> ShichiZipQuickActionRequest {
         guard fileURLs.count == 1 else {
-            throw ShichiZipQuickActionError.unsupportedSelection("Select a single file or folder to open in ShichiZip.")
+            throw ShichiZipQuickActionError.unsupportedSelection("Select a single file or folder to open in \(ShichiZipQuickActionAppInfo.hostAppDisplayName).")
         }
 
         return try super.makeRequest(from: fileURLs)
