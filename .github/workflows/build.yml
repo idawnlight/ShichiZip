@@ -42,11 +42,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install XcodeGen
-        run: |
-          if ! command -v xcodegen >/dev/null 2>&1; then
-            brew install xcodegen
-          fi
+      - name: Install build tools
+        run: brew install xcodegen zig
 
       - name: Detect host architecture
         run: |

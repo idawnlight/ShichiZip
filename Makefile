@@ -483,9 +483,11 @@ lib: $(LIB)
 
 lib-mainline:
 	@$(MAKE) SEVENZ_VARIANT=mainline lib
+	@$(MAKE) -f Makefile.sfx SFX_VARIANT=mainline -j8
 
 lib-zs:
 	@$(MAKE) SEVENZ_VARIANT=zs lib
+	@$(MAKE) -f Makefile.sfx SFX_VARIANT=zs -j8
 
 prepare-7zip:
 	@sh vendor/apply_7zip_patches.sh $(SEVENZ_ROOT)
@@ -518,6 +520,20 @@ $(O)/%.o: %.mm
 
 clean:
 	rm -rf build
+
+# === Cross-compile SFX modules for Windows using zig ===
+.PHONY: sfx sfx-mainline sfx-zs sfx-clean
+
+sfx-mainline:
+	@$(MAKE) -f Makefile.sfx SFX_VARIANT=mainline -j8
+
+sfx-zs:
+	@$(MAKE) -f Makefile.sfx SFX_VARIANT=zs -j8
+
+sfx: sfx-mainline sfx-zs
+
+sfx-clean:
+	@$(MAKE) -f Makefile.sfx clean
 
 # Print object count
 info:

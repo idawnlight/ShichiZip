@@ -930,7 +930,7 @@
 				SHICHIZIP_LICENSE_SOURCE_PATH = "vendor/7zip-zstd/COPYING";
 				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
 				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
-				SHICHIZIP_SFX_SOURCE_PATH = vendor/7z_zstd.sfx;
+				SHICHIZIP_SFX_SOURCE_PATH = "build/sfx/7z-zs-x86.sfx";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
 					"$(inherited)",
 					SHICHIZIP_ZS_VARIANT,
@@ -1107,7 +1107,7 @@
 				SHICHIZIP_LICENSE_SOURCE_PATH = vendor/7zip/DOC/License.txt;
 				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
 				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
-				SHICHIZIP_SFX_SOURCE_PATH = vendor/7z.sfx;
+				SHICHIZIP_SFX_SOURCE_PATH = "build/sfx/7z-mainline-x86.sfx";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
 					"$(inherited)",
 				);
@@ -1339,7 +1339,7 @@
 				SHICHIZIP_LICENSE_SOURCE_PATH = vendor/7zip/DOC/License.txt;
 				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
 				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
-				SHICHIZIP_SFX_SOURCE_PATH = vendor/7z.sfx;
+				SHICHIZIP_SFX_SOURCE_PATH = "build/sfx/7z-mainline-x86.sfx";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
 					"$(inherited)",
 				);
@@ -1494,7 +1494,7 @@
 				SHICHIZIP_LICENSE_SOURCE_PATH = "vendor/7zip-zstd/COPYING";
 				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
 				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
-				SHICHIZIP_SFX_SOURCE_PATH = vendor/7z_zstd.sfx;
+				SHICHIZIP_SFX_SOURCE_PATH = "build/sfx/7z-zs-x86.sfx";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
 					"$(inherited)",
 					SHICHIZIP_ZS_VARIANT,
