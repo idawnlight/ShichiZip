@@ -1304,7 +1304,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         let selectedSummary = makeStatusSummary(for: selectedItems)
-        var segments = [
+        let segments = [
             "\(selectedSummary.itemCount)/\(displayedSummary.itemCount) selected — \(makeSelectedSummaryText(selectedSummary))",
             "total \(displayedSummaryText)",
         ]

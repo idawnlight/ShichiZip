@@ -1,5 +1,8 @@
 import Cocoa
 
+// SZOperationSession synchronizes its mutable state internally and routes UI callbacks to the main thread.
+extension SZOperationSession: @unchecked Sendable {}
+
 enum ArchiveOperationRunner {
     @MainActor
     static func runSynchronously<T>(operationTitle: String,
