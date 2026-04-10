@@ -644,7 +644,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\nsfx_source=\"${SRCROOT}/vendor/7z.sfx\"\nsfx_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx\"\n\nset_plist_value() {\n  local plist_path=\"$1\"\n  local key=\"$2\"\n  local value=\"$3\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${plist_path}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${plist_path}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${plist_path}\"\n  fi\n}\n\nset_plist_value \"${info_plist}\" \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"${info_plist}\" \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n\nif [ -f \"${sfx_source}\" ]; then\n  cp \"${sfx_source}\" \"${sfx_dest}\"\nfi\n";
+			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\nsfx_source=\"${SRCROOT}/${SHICHIZIP_SFX_SOURCE_PATH}\"\nsfx_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx\"\n\nset_plist_value() {\n  local plist_path=\"$1\"\n  local key=\"$2\"\n  local value=\"$3\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${plist_path}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${plist_path}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${plist_path}\"\n  fi\n}\n\nset_plist_value \"${info_plist}\" \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"${info_plist}\" \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n\nif [ -f \"${sfx_source}\" ]; then\n  cp \"${sfx_source}\" \"${sfx_dest}\"\nfi\n";
 		};
 		807B4DC42912EBCC6372573E /* Generate Build Metadata */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -663,7 +663,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\nsfx_source=\"${SRCROOT}/vendor/7z.sfx\"\nsfx_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx\"\n\nset_plist_value() {\n  local plist_path=\"$1\"\n  local key=\"$2\"\n  local value=\"$3\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${plist_path}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${plist_path}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${plist_path}\"\n  fi\n}\n\nset_plist_value \"${info_plist}\" \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"${info_plist}\" \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n\nif [ -f \"${sfx_source}\" ]; then\n  cp \"${sfx_source}\" \"${sfx_dest}\"\nfi\n";
+			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\nsfx_source=\"${SRCROOT}/${SHICHIZIP_SFX_SOURCE_PATH}\"\nsfx_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx\"\n\nset_plist_value() {\n  local plist_path=\"$1\"\n  local key=\"$2\"\n  local value=\"$3\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${plist_path}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${plist_path}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${plist_path}\"\n  fi\n}\n\nset_plist_value \"${info_plist}\" \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"${info_plist}\" \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n\nif [ -f \"${sfx_source}\" ]; then\n  cp \"${sfx_source}\" \"${sfx_dest}\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -890,6 +890,7 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"NDEBUG=1",
+					"SHICHIZIP_ZS_VARIANT=1",
 				);
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -929,6 +930,11 @@
 				SHICHIZIP_LICENSE_SOURCE_PATH = "vendor/7zip-zstd/COPYING";
 				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
 				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
+				SHICHIZIP_SFX_SOURCE_PATH = vendor/7z_zstd.sfx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					SHICHIZIP_ZS_VARIANT,
+				);
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
 				SWIFT_VERSION = 5.9;
 				VALID_ARCHS = arm64;
@@ -1061,6 +1067,7 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"NDEBUG=1",
+					"SHICHIZIP_ZS_VARIANT=0",
 				);
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1100,6 +1107,10 @@
 				SHICHIZIP_LICENSE_SOURCE_PATH = vendor/7zip/DOC/License.txt;
 				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
 				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
+				SHICHIZIP_SFX_SOURCE_PATH = vendor/7z.sfx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+				);
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
 				SWIFT_VERSION = 5.9;
 				VALID_ARCHS = arm64;
@@ -1288,6 +1299,7 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"NDEBUG=1",
+					"SHICHIZIP_ZS_VARIANT=0",
 				);
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1327,6 +1339,10 @@
 				SHICHIZIP_LICENSE_SOURCE_PATH = vendor/7zip/DOC/License.txt;
 				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZip.quick-action-request";
 				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizip;
+				SHICHIZIP_SFX_SOURCE_PATH = vendor/7z.sfx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+				);
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
 				SWIFT_VERSION = 5.9;
 				VALID_ARCHS = arm64;
@@ -1438,6 +1454,7 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"NDEBUG=1",
+					"SHICHIZIP_ZS_VARIANT=1",
 				);
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1477,6 +1494,11 @@
 				SHICHIZIP_LICENSE_SOURCE_PATH = "vendor/7zip-zstd/COPYING";
 				SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE = "ee.dawn.ShichiZipZS.quick-action-request";
 				SHICHIZIP_QUICK_ACTION_URL_SCHEME = shichizipzs;
+				SHICHIZIP_SFX_SOURCE_PATH = vendor/7z_zstd.sfx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					SHICHIZIP_ZS_VARIANT,
+				);
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
 				SWIFT_VERSION = 5.9;
 				VALID_ARCHS = arm64;

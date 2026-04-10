@@ -21,7 +21,7 @@ targets:
           short_hash="$(git -C "${SRCROOT}" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
           license_source="${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}"
           license_dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt"
-          sfx_source="${SRCROOT}/vendor/7z.sfx"
+          sfx_source="${SRCROOT}/${SHICHIZIP_SFX_SOURCE_PATH}"
           sfx_dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx"
 
           set_plist_value() {
@@ -67,6 +67,7 @@ targets:
         SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip
         SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip based."
         SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip/DOC/License.txt
+        SHICHIZIP_SFX_SOURCE_PATH: vendor/7z.sfx
         SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
         SEVENZ_LIBRARY_NAME: lib7zip.a
@@ -96,6 +97,9 @@ targets:
         GCC_PREPROCESSOR_DEFINITIONS:
           - "$(inherited)"
           - "NDEBUG=1"
+          - "SHICHIZIP_ZS_VARIANT=0"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS:
+          - "$(inherited)"
         OTHER_CPLUSPLUSFLAGS:
           - "$(inherited)"
           - "-Wno-everything"  # 7-Zip headers generate many warnings
@@ -116,7 +120,7 @@ targets:
           short_hash="$(git -C "${SRCROOT}" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
           license_source="${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}"
           license_dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt"
-          sfx_source="${SRCROOT}/vendor/7z.sfx"
+          sfx_source="${SRCROOT}/${SHICHIZIP_SFX_SOURCE_PATH}"
           sfx_dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx"
 
           set_plist_value() {
@@ -162,6 +166,7 @@ targets:
         SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip-zstd
         SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip ZS (mcmilk/7-Zip-zstd) based."
         SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip-zstd/COPYING
+        SHICHIZIP_SFX_SOURCE_PATH: vendor/7z_zstd.sfx
         SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
         SEVENZ_LIBRARY_NAME: lib7zip-zs.a
@@ -191,6 +196,10 @@ targets:
         GCC_PREPROCESSOR_DEFINITIONS:
           - "$(inherited)"
           - "NDEBUG=1"
+          - "SHICHIZIP_ZS_VARIANT=1"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS:
+          - "$(inherited)"
+          - "SHICHIZIP_ZS_VARIANT"
         OTHER_CPLUSPLUSFLAGS:
           - "$(inherited)"
           - "-Wno-everything"

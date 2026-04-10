@@ -652,34 +652,46 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         "23040M - BD",
     ]
 
-    private static let sevenZipMethods: [MethodOption] = [
-        MethodOption(title: "LZMA2", enumValue: .LZMA2, methodName: "LZMA2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "LZMA", enumValue: .LZMA, methodName: "LZMA", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "PPMd", enumValue: .ppMd, methodName: "PPMd", dictionaryLabel: "Memory usage:", dictionaryOptions: ppmdDictionaryOptions, wordLabel: "Order:", wordOptions: orderOptions),
-        MethodOption(title: "BZip2", enumValue: .bZip2, methodName: "BZip2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "Deflate", enumValue: .deflate, methodName: "Deflate", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "Deflate64", enumValue: .deflate64, methodName: "Deflate64", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "ZSTD", enumValue: nil, methodName: "ZSTD", levelOptions: zstdLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-        MethodOption(title: "Brotli", enumValue: nil, methodName: "Brotli", levelOptions: brotliLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-        MethodOption(title: "LZ4", enumValue: nil, methodName: "LZ4", levelOptions: lz4LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-        MethodOption(title: "LZ5", enumValue: nil, methodName: "LZ5", levelOptions: lz5LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-        MethodOption(title: "Lizard FastLZ4", enumValue: nil, methodName: "Lizard-FastLZ4", levelOptions: lizardMethod1LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-        MethodOption(title: "Lizard LIZv1", enumValue: nil, methodName: "Lizard-LIZv1", levelOptions: lizardMethod2LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-        MethodOption(title: "Lizard FastLZ4 + Huffman", enumValue: nil, methodName: "Lizard-FastLZ4-Huffman", levelOptions: lizardMethod3LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-        MethodOption(title: "Lizard LIZv1 + Huffman", enumValue: nil, methodName: "Lizard-LIZv1-Huffman", levelOptions: lizardMethod4LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-        MethodOption(title: "FLZMA2", enumValue: nil, methodName: "FLZMA2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "Copy", enumValue: .copy, methodName: "Copy", levelOptions: storeOnlyLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-    ]
+    private static let sevenZipMethods: [MethodOption] = {
+        var methods: [MethodOption] = [
+            MethodOption(title: "LZMA2", enumValue: .LZMA2, methodName: "LZMA2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+            MethodOption(title: "LZMA", enumValue: .LZMA, methodName: "LZMA", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+            MethodOption(title: "PPMd", enumValue: .ppMd, methodName: "PPMd", dictionaryLabel: "Memory usage:", dictionaryOptions: ppmdDictionaryOptions, wordLabel: "Order:", wordOptions: orderOptions),
+            MethodOption(title: "BZip2", enumValue: .bZip2, methodName: "BZip2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+            MethodOption(title: "Deflate", enumValue: .deflate, methodName: "Deflate", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+            MethodOption(title: "Deflate64", enumValue: .deflate64, methodName: "Deflate64", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+        ]
+#if SHICHIZIP_ZS_VARIANT
+        methods += [
+            MethodOption(title: "ZSTD", enumValue: nil, methodName: "ZSTD", levelOptions: zstdLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+            MethodOption(title: "Brotli", enumValue: nil, methodName: "Brotli", levelOptions: brotliLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+            MethodOption(title: "LZ4", enumValue: nil, methodName: "LZ4", levelOptions: lz4LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+            MethodOption(title: "LZ5", enumValue: nil, methodName: "LZ5", levelOptions: lz5LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+            MethodOption(title: "Lizard FastLZ4", enumValue: nil, methodName: "Lizard-FastLZ4", levelOptions: lizardMethod1LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+            MethodOption(title: "Lizard LIZv1", enumValue: nil, methodName: "Lizard-LIZv1", levelOptions: lizardMethod2LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+            MethodOption(title: "Lizard FastLZ4 + Huffman", enumValue: nil, methodName: "Lizard-FastLZ4-Huffman", levelOptions: lizardMethod3LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+            MethodOption(title: "Lizard LIZv1 + Huffman", enumValue: nil, methodName: "Lizard-LIZv1-Huffman", levelOptions: lizardMethod4LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
+            MethodOption(title: "FLZMA2", enumValue: nil, methodName: "FLZMA2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+        ]
+#endif
+        methods.append(MethodOption(title: "Copy", enumValue: .copy, methodName: "Copy", levelOptions: storeOnlyLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []))
+        return methods
+    }()
 
-    private static let zipMethods: [MethodOption] = [
-        MethodOption(title: "Deflate", enumValue: .deflate, methodName: "Deflate", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "Deflate64", enumValue: .deflate64, methodName: "Deflate64", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "BZip2", enumValue: .bZip2, methodName: "BZip2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "LZMA", enumValue: .LZMA, methodName: "LZMA", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
-        MethodOption(title: "PPMd", enumValue: .ppMd, methodName: "PPMd", dictionaryLabel: "Memory usage:", dictionaryOptions: ppmdDictionaryOptions, wordLabel: "Order:", wordOptions: orderOptions),
-        MethodOption(title: "ZSTD", enumValue: nil, methodName: "ZSTD", levelOptions: zstdLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-        MethodOption(title: "Copy", enumValue: .copy, methodName: "Copy", levelOptions: storeOnlyLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
-    ]
+    private static let zipMethods: [MethodOption] = {
+        var methods: [MethodOption] = [
+            MethodOption(title: "Deflate", enumValue: .deflate, methodName: "Deflate", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+            MethodOption(title: "Deflate64", enumValue: .deflate64, methodName: "Deflate64", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+            MethodOption(title: "BZip2", enumValue: .bZip2, methodName: "BZip2", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+            MethodOption(title: "LZMA", enumValue: .LZMA, methodName: "LZMA", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
+            MethodOption(title: "PPMd", enumValue: .ppMd, methodName: "PPMd", dictionaryLabel: "Memory usage:", dictionaryOptions: ppmdDictionaryOptions, wordLabel: "Order:", wordOptions: orderOptions),
+        ]
+#if SHICHIZIP_ZS_VARIANT
+        methods.append(MethodOption(title: "ZSTD", enumValue: nil, methodName: "ZSTD", levelOptions: zstdLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []))
+#endif
+        methods.append(MethodOption(title: "Copy", enumValue: .copy, methodName: "Copy", levelOptions: storeOnlyLevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []))
+        return methods
+    }()
 
     private static let gzipMethods: [MethodOption] = [
         MethodOption(title: "Deflate", enumValue: .deflate, methodName: "Deflate", dictionaryLabel: "Dictionary size:", dictionaryOptions: standardDictionaryOptions, wordLabel: "Word size:", wordOptions: standardWordOptions),
@@ -721,20 +733,27 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         MethodOption(title: "LZ5", enumValue: nil, methodName: "LZ5", levelOptions: lz5LevelOptions, dictionaryLabel: "Dictionary size:", dictionaryOptions: [], wordLabel: "Word size:", wordOptions: []),
     ]
 
-    private static let formatCatalog: [FormatOption] = [
-        FormatOption(title: "7z", codecName: "7z", format: .format7z, defaultExtension: "7z", levelOptions: levelOptions, methods: sevenZipMethods, supportsSolid: true, supportsThreads: true, encryptionOptions: [Option(title: "AES-256", value: .AES256)], supportsEncryptFileNames: true, keepsName: false),
-        FormatOption(title: "zip", codecName: "zip", format: .formatZip, defaultExtension: "zip", levelOptions: levelOptions, methods: zipMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [Option(title: "ZipCrypto", value: .zipCrypto), Option(title: "AES-256", value: .AES256)], supportsEncryptFileNames: false, keepsName: false),
-        FormatOption(title: "gzip", codecName: "gzip", format: .formatGZip, defaultExtension: "gz", levelOptions: nonStoreLevelOptions, methods: gzipMethods, supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "bzip2", codecName: "bzip2", format: .formatBZip2, defaultExtension: "bz2", levelOptions: nonStoreLevelOptions, methods: bzip2Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "xz", codecName: "xz", format: .formatXz, defaultExtension: "xz", levelOptions: nonStoreLevelOptions, methods: xzMethods, supportsSolid: true, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "zstd", codecName: "zstd", format: .formatZstd, defaultExtension: "zst", levelOptions: zstdLevelOptions, methods: zstdMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "Brotli", codecName: "brotli", format: .formatBrotli, defaultExtension: "br", levelOptions: brotliLevelOptions, methods: brotliMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "Lizard", codecName: "lizard", format: .formatLizard, defaultExtension: "liz", levelOptions: lizardMethod1LevelOptions, methods: lizardMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "LZ4", codecName: "lz4", format: .formatLz4, defaultExtension: "lz4", levelOptions: lz4LevelOptions, methods: lz4Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "LZ5", codecName: "lz5", format: .formatLz5, defaultExtension: "lz5", levelOptions: lz5LevelOptions, methods: lz5Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
-        FormatOption(title: "tar", codecName: "tar", format: .formatTar, defaultExtension: "tar", levelOptions: storeOnlyLevelOptions, methods: tarMethods, supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: false),
-        FormatOption(title: "wim", codecName: "wim", format: .formatWim, defaultExtension: "wim", levelOptions: storeOnlyLevelOptions, methods: [], supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: false),
-    ]
+    private static let formatCatalog: [FormatOption] = {
+        var formats: [FormatOption] = [
+            FormatOption(title: "7z", codecName: "7z", format: .format7z, defaultExtension: "7z", levelOptions: levelOptions, methods: sevenZipMethods, supportsSolid: true, supportsThreads: true, encryptionOptions: [Option(title: "AES-256", value: .AES256)], supportsEncryptFileNames: true, keepsName: false),
+            FormatOption(title: "zip", codecName: "zip", format: .formatZip, defaultExtension: "zip", levelOptions: levelOptions, methods: zipMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [Option(title: "ZipCrypto", value: .zipCrypto), Option(title: "AES-256", value: .AES256)], supportsEncryptFileNames: false, keepsName: false),
+            FormatOption(title: "gzip", codecName: "gzip", format: .formatGZip, defaultExtension: "gz", levelOptions: nonStoreLevelOptions, methods: gzipMethods, supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+            FormatOption(title: "bzip2", codecName: "bzip2", format: .formatBZip2, defaultExtension: "bz2", levelOptions: nonStoreLevelOptions, methods: bzip2Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+            FormatOption(title: "xz", codecName: "xz", format: .formatXz, defaultExtension: "xz", levelOptions: nonStoreLevelOptions, methods: xzMethods, supportsSolid: true, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+        ]
+#if SHICHIZIP_ZS_VARIANT
+        formats += [
+            FormatOption(title: "zstd", codecName: "zstd", format: .formatZstd, defaultExtension: "zst", levelOptions: zstdLevelOptions, methods: zstdMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+            FormatOption(title: "Brotli", codecName: "brotli", format: .formatBrotli, defaultExtension: "br", levelOptions: brotliLevelOptions, methods: brotliMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+            FormatOption(title: "Lizard", codecName: "lizard", format: .formatLizard, defaultExtension: "liz", levelOptions: lizardMethod1LevelOptions, methods: lizardMethods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+            FormatOption(title: "LZ4", codecName: "lz4", format: .formatLz4, defaultExtension: "lz4", levelOptions: lz4LevelOptions, methods: lz4Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+            FormatOption(title: "LZ5", codecName: "lz5", format: .formatLz5, defaultExtension: "lz5", levelOptions: lz5LevelOptions, methods: lz5Methods, supportsSolid: false, supportsThreads: true, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: true),
+        ]
+#endif
+        formats.append(FormatOption(title: "tar", codecName: "tar", format: .formatTar, defaultExtension: "tar", levelOptions: storeOnlyLevelOptions, methods: tarMethods, supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: false))
+        formats.append(FormatOption(title: "wim", codecName: "wim", format: .formatWim, defaultExtension: "wim", levelOptions: storeOnlyLevelOptions, methods: [], supportsSolid: false, supportsThreads: false, encryptionOptions: [], supportsEncryptFileNames: false, keepsName: false))
+        return formats
+    }()
 
     private let sourceURLs: [URL]
     private let baseDirectory: URL
@@ -1867,9 +1886,15 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                              advancedOptions: AdvancedOptionsState) throws -> CompressDialogResult {
         let effectiveCreateSFX = createSFX && supportsSFX(for: format, method: method)
         if createSFX && !effectiveCreateSFX {
+            let sfxSupportDescription: String
+#if SHICHIZIP_ZS_VARIANT
+            sfxSupportDescription = "Windows SFX is only available for 7z archives using Copy, LZMA, LZMA2, PPMd, FLZMA2, or ZSTD, and requires the bundled 7z.sfx module."
+#else
+            sfxSupportDescription = "Windows SFX is only available for 7z archives using Copy, LZMA, LZMA2, or PPMd, and requires the bundled 7z.sfx module."
+#endif
             throw NSError(domain: NSCocoaErrorDomain,
                           code: NSUserCancelledError,
-                          userInfo: [NSLocalizedDescriptionKey: "Windows SFX is only available for 7z archives using Copy, LZMA, LZMA2, PPMd, FLZMA2, or ZSTD, and requires the bundled 7z.sfx module."])
+                          userInfo: [NSLocalizedDescriptionKey: sfxSupportDescription])
         }
 
         let trimmedSplitVolumes = splitVolumes.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2230,8 +2255,12 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         }
 
         switch method.methodName.lowercased() {
-        case "copy", "lzma", "lzma2", "ppmd", "flzma2", "zstd":
+        case "copy", "lzma", "lzma2", "ppmd":
             return true
+#if SHICHIZIP_ZS_VARIANT
+        case "flzma2", "zstd":
+            return true
+#endif
         default:
             return false
         }

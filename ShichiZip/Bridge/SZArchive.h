@@ -32,11 +32,13 @@ typedef NS_ENUM(NSInteger, SZArchiveFormat) {
     SZArchiveFormatBZip2,
     SZArchiveFormatXz,
     SZArchiveFormatWim,
+#if SHICHIZIP_ZS_VARIANT
     SZArchiveFormatZstd,
     SZArchiveFormatBrotli,
     SZArchiveFormatLizard,
     SZArchiveFormatLz4,
     SZArchiveFormatLz5
+#endif
 };
 
 /// Compression level
