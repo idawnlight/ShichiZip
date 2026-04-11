@@ -4,7 +4,6 @@
 #   make -f Makefile.sfx                    # builds mainline 7z.sfx (x86_64)
 #   make -f Makefile.sfx SFX_VARIANT=zs     # builds zstd 7z.sfx (x86_64)
 #   make -f Makefile.sfx SFX_ARCH=x86       # builds 32-bit
-#   make -f Makefile.sfx install             # copies output to vendor/
 
 SFX_VARIANT ?= mainline
 SFX_ARCH ?= x86

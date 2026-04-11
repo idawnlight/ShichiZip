@@ -42,9 +42,12 @@ targets:
           mkdir -p "$(dirname "${license_dest}")"
           cp "${license_source}" "${license_dest}"
 
-          if [ -f "${sfx_source}" ]; then
-            cp "${sfx_source}" "${sfx_dest}"
+          if [ ! -f "${sfx_source}" ]; then
+            echo "Missing required SFX payload: ${sfx_source}" >&2
+            exit 1
           fi
+
+          cp "${sfx_source}" "${sfx_dest}"
     sources:
       - path: ShichiZip
         excludes:
@@ -141,9 +144,12 @@ targets:
           mkdir -p "$(dirname "${license_dest}")"
           cp "${license_source}" "${license_dest}"
 
-          if [ -f "${sfx_source}" ]; then
-            cp "${sfx_source}" "${sfx_dest}"
+          if [ ! -f "${sfx_source}" ]; then
+            echo "Missing required SFX payload: ${sfx_source}" >&2
+            exit 1
           fi
+
+          cp "${sfx_source}" "${sfx_dest}"
     sources:
       - path: ShichiZip
         excludes:

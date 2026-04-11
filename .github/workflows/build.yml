@@ -59,7 +59,7 @@ jobs:
           echo "HOST_ARCH=$host_arch" >> "$GITHUB_ENV"
 
       - name: Build lib7zip
-        run: make -j"$(sysctl -n hw.ncpu)" ARCH="-arch ${HOST_ARCH}" "${{ matrix.make_target }}"
+        run: make -j"$(sysctl -n hw.ncpu)" TARGET_ARCH="${HOST_ARCH}" "${{ matrix.make_target }}"
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -96,16 +96,23 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$app_path"
 
       - name: Package app artifact
+        id: package_artifact
         run: |
           derived_data_path="build/DerivedData/${{ matrix.scheme }}"
           app_path="${derived_data_path}/Build/Products/${XCODE_CONFIGURATION}/${{ matrix.app_bundle }}"
+          artifact_dir="build/artifacts/${{ matrix.scheme }}"
+          artifact_path="${artifact_dir}/${{ matrix.artifact_prefix }}-${XCODE_CONFIGURATION}-${HOST_ARCH}.zip"
+
           test -d "$app_path"
-          ditto -c -k --sequesterRsrc --keepParent "$app_path" "${{ matrix.artifact_prefix }}-${XCODE_CONFIGURATION}-${HOST_ARCH}.zip"
+          mkdir -p "$artifact_dir"
+          rm -f "$artifact_path"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$artifact_path"
+          echo "path=$artifact_path" >> "$GITHUB_OUTPUT"
 
       - name: Upload app artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_prefix }}-${{ env.XCODE_CONFIGURATION }}-macOS
-          path: ${{ matrix.artifact_prefix }}-${{ env.XCODE_CONFIGURATION }}-*.zip
+          path: ${{ steps.package_artifact.outputs.path }}
           if-no-files-found: error
           archive: false
