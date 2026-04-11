@@ -424,7 +424,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let plan = try await ArchiveOperationRunner.run(operationTitle: "Extracting...",
                                                                 initialFileName: archiveURL.lastPathComponent,
                                                                 parentWindow: parentWindow,
-                                                                deferredDisplay: true)
+                                                                deferredDisplay: false)
                 { session in
                     let archive = SZArchive()
                     try archive.open(atPath: archiveURL.path, session: session)
