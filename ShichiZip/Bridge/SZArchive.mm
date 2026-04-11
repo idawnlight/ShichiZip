@@ -6,6 +6,13 @@
 #include <string>
 #include <vector>
 
+#ifdef __APPLE__
+#include <sys/xattr.h>
+#ifndef XATTR_NOFOLLOW
+#define XATTR_NOFOLLOW 0x0001
+#endif
+#endif
+
 #import "../Utilities/SZOperationSessionDefaults.h"
 
 #include "7zVersion.h"
@@ -68,6 +75,41 @@
     return self;
 }
 @end
+
+static NSData* SZQuarantineDataForArchivePath(NSString* archivePath) {
+    if (!archivePath || archivePath.length == 0) {
+        return nil;
+    }
+
+    static NSString* const quarantineAttributeName = @"com.apple.quarantine";
+    const ssize_t size = archivePath.fileSystemRepresentation
+        ? quarantineAttributeName.fileSystemRepresentation
+            ? getxattr(archivePath.fileSystemRepresentation,
+                  quarantineAttributeName.fileSystemRepresentation,
+                  nil,
+                  0,
+                  0,
+                  XATTR_NOFOLLOW)
+            : -1
+        : -1;
+
+    if (size < 0) {
+        return nil;
+    }
+
+    NSMutableData* data = [NSMutableData dataWithLength:(NSUInteger)size];
+    const ssize_t result = getxattr(archivePath.fileSystemRepresentation,
+        quarantineAttributeName.fileSystemRepresentation,
+        data.mutableBytes,
+        data.length,
+        0,
+        XATTR_NOFOLLOW);
+    if (result < 0) {
+        return nil;
+    }
+
+    return data;
+}
 
 @implementation SZArchiveEntry
 @end
@@ -1730,8 +1772,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
         const DWORD lastError = GetLastError_noZero_HRESULT();
         NSString* failureReason = ToNS(NWindows::NError::MyFormatMessage(lastError));
         *error = SZMakeDetailedError(SZArchiveErrorCodeExtractionFailed,
-                                     [NSString stringWithFormat:@"Can't create folder \"%@\"", dest],
-                                     failureReason);
+            [NSString stringWithFormat:@"Can't create folder \"%@\"", dest],
+            failureReason);
     }
 
     return NO;
@@ -1771,6 +1813,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     faeSpec->OverwriteMode = s.overwriteMode;
     faeSpec->ArchivePath = ToU(_archivePath);
     faeSpec->TestMode = false;
+    NSData* quarantineData = s.sourceArchivePathForQuarantine ? SZQuarantineDataForArchivePath(s.sourceArchivePathForQuarantine) : nil;
     [self configureExtractPasswordForCallback:faeSpec
                              explicitPassword:s.password];
 
@@ -1786,6 +1829,9 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     ecs->InitForMulti(false, MapPathMode(s.pathMode),
         MapOverwriteMode(s.overwriteMode),
         NExtract::NZoneIdMode::kNone, false);
+    if (quarantineData.length > 0) {
+        ecs->ZoneBuf.CopyFrom((const Byte*)quarantineData.bytes, quarantineData.length);
+    }
     ecs->Init(ntOptions, NULL, &arc, faeCallback, false, false, us2fs(ToU(dest)),
         removePathParts, false, arc.GetEstmatedPhySize());
 
@@ -1829,6 +1875,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     faeSpec->OverwriteMode = s.overwriteMode;
     faeSpec->ArchivePath = ToU(_archivePath);
     faeSpec->TestMode = false;
+    NSData* quarantineData = s.sourceArchivePathForQuarantine ? SZQuarantineDataForArchivePath(s.sourceArchivePathForQuarantine) : nil;
     [self configureExtractPasswordForCallback:faeSpec
                              explicitPassword:s.password];
 
@@ -1844,6 +1891,9 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     ecs->InitForMulti(false, MapPathMode(s.pathMode),
         MapOverwriteMode(s.overwriteMode),
         NExtract::NZoneIdMode::kNone, false);
+    if (quarantineData.length > 0) {
+        ecs->ZoneBuf.CopyFrom((const Byte*)quarantineData.bytes, quarantineData.length);
+    }
     ecs->Init(ntOptions, NULL, &arc, faeCallback, false, false, us2fs(ToU(dest)),
         removePathParts, false, arc.GetEstmatedPhySize());
 

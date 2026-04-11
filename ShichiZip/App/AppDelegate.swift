@@ -1,35 +1,14 @@
 import Cocoa
-import Darwin
 
 struct ArchiveExtractionPostProcessResult {
     let movedSourceArchiveToTrash: Bool
 }
 
 enum ArchiveExtractionPostProcessor {
-    private static let quarantineAttributeName = "com.apple.quarantine"
-
     static func finalizeExtraction(sourceArchiveURL: URL?,
-                                   extractedItems: [ArchiveItem],
-                                   destinationURL: URL,
-                                   pathMode: SZPathMode,
-                                   pathPrefixToStrip: String?,
-                                   moveSourceArchiveToTrash: Bool,
-                                   inheritSourceQuarantine: Bool) throws -> ArchiveExtractionPostProcessResult
+                                   moveSourceArchiveToTrash: Bool) throws -> ArchiveExtractionPostProcessResult
     {
         let standardizedSourceArchiveURL = sourceArchiveURL?.standardizedFileURL
-
-        if inheritSourceQuarantine,
-           let standardizedSourceArchiveURL,
-           let quarantineData = try quarantineData(for: standardizedSourceArchiveURL)
-        {
-            let extractedOutputURLs = ArchiveItem.extractedOutputURLs(for: extractedItems,
-                                                                      destinationURL: destinationURL,
-                                                                      pathMode: pathMode,
-                                                                      pathPrefixToStrip: pathPrefixToStrip)
-            try applyExtendedAttribute(named: quarantineAttributeName,
-                                       data: quarantineData,
-                                       to: extractedOutputURLs)
-        }
 
         guard moveSourceArchiveToTrash,
               let standardizedSourceArchiveURL,
@@ -40,74 +19,6 @@ enum ArchiveExtractionPostProcessor {
 
         try FileManager.default.trashItem(at: standardizedSourceArchiveURL, resultingItemURL: nil)
         return ArchiveExtractionPostProcessResult(movedSourceArchiveToTrash: true)
-    }
-
-    private static func quarantineData(for url: URL) throws -> Data? {
-        let size = url.path.withCString { pathPointer in
-            quarantineAttributeName.withCString { namePointer in
-                getxattr(pathPointer, namePointer, nil, 0, 0, XATTR_NOFOLLOW)
-            }
-        }
-
-        if size < 0 {
-            if errno == ENOATTR || errno == ENOENT {
-                return nil
-            }
-            throw posixError(for: url)
-        }
-
-        var data = Data(count: size)
-        let result = data.withUnsafeMutableBytes { buffer in
-            url.path.withCString { pathPointer in
-                quarantineAttributeName.withCString { namePointer in
-                    getxattr(pathPointer,
-                             namePointer,
-                             buffer.baseAddress,
-                             buffer.count,
-                             0,
-                             XATTR_NOFOLLOW)
-                }
-            }
-        }
-
-        if result < 0 {
-            if errno == ENOATTR || errno == ENOENT {
-                return nil
-            }
-            throw posixError(for: url)
-        }
-
-        return data
-    }
-
-    private static func applyExtendedAttribute(named name: String,
-                                               data: Data,
-                                               to urls: [URL]) throws
-    {
-        for url in urls {
-            let result = data.withUnsafeBytes { buffer in
-                url.path.withCString { pathPointer in
-                    name.withCString { namePointer in
-                        setxattr(pathPointer,
-                                 namePointer,
-                                 buffer.baseAddress,
-                                 buffer.count,
-                                 0,
-                                 XATTR_NOFOLLOW)
-                    }
-                }
-            }
-
-            if result != 0, errno != ENOENT {
-                throw posixError(for: url)
-            }
-        }
-    }
-
-    private static func posixError(for url: URL) -> NSError {
-        NSError(domain: NSPOSIXErrorDomain,
-                code: Int(errno),
-                userInfo: [NSFilePathErrorKey: url.path])
     }
 }
 
@@ -439,6 +350,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     settings.pathMode = .fullPaths
                     settings.preserveNtSecurityInfo = defaults.preserveNtSecurityInfo
                     settings.pathPrefixToStrip = plan.pathPrefixToStrip
+                    if defaults.inheritDownloadedFileQuarantine {
+                        settings.sourceArchivePathForQuarantine = archiveURL.path
+                    }
                     try archive.extract(toPath: plan.destinationURL.path,
                                         settings: settings,
                                         session: session)
@@ -448,12 +362,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let postProcessError: Error?
                 do {
                     _ = try ArchiveExtractionPostProcessor.finalizeExtraction(sourceArchiveURL: archiveURL,
-                                                                              extractedItems: plan.extractedItems,
-                                                                              destinationURL: plan.destinationURL,
-                                                                              pathMode: .fullPaths,
-                                                                              pathPrefixToStrip: plan.pathPrefixToStrip,
-                                                                              moveSourceArchiveToTrash: defaults.moveArchiveToTrashAfterExtraction,
-                                                                              inheritSourceQuarantine: defaults.inheritDownloadedFileQuarantine)
+                                                                              moveSourceArchiveToTrash: defaults.moveArchiveToTrashAfterExtraction)
                     postProcessError = nil
                 } catch {
                     postProcessError = error

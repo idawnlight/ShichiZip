@@ -1,0 +1,80 @@
+diff --git a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
+index 61f303e0..40e8d6cf 100644
+--- a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
++++ b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
+@@ -28,6 +28,10 @@
+ #include "../../../Windows/SecurityUtils.h"
+ #endif
+ 
++#ifdef __APPLE__
++#include <sys/xattr.h>
++#endif
++
+ #include "../../Common/FilePathAutoRename.h"
+ #include "../../Common/StreamUtils.h"
+ 
+@@ -49,6 +53,17 @@ static const char * const kCantDeleteOutputDir = "Cannot delete output folder";
+ static const char * const kCantOpenOutFile = "Cannot open output file";
+ #ifndef Z7_SFX
+ static const char * const kCantOpenInFile = "Cannot open input file";
++#ifdef __APPLE__
++static const char * const kMacQuarantineAttributeName = "com.apple.quarantine";
++
++static bool WriteQuarantineAttribute_To_BaseFile(CFSTR fileName, const CByteBuffer &buf)
++{
++  if (buf.Size() == 0)
++    return true;
++  return setxattr(fileName, kMacQuarantineAttributeName, buf, buf.Size(), 0, XATTR_NOFOLLOW) == 0;
++}
++#endif
++
+ #endif
+ static const char * const kCantSetFileLen = "Cannot set length for output file";
+ #ifdef SUPPORT_LINKS
+@@ -311,7 +326,7 @@ CArchiveExtractCallback::CArchiveExtractCallback():
+ 
+ void CArchiveExtractCallback::InitBeforeNewArchive()
+ {
+-#if defined(_WIN32) && !defined(UNDER_CE) && !defined(Z7_SFX)
++#if (defined(_WIN32) || defined(__APPLE__)) && !defined(UNDER_CE) && !defined(Z7_SFX)
+   ZoneBuf.Free();
+ #endif
+ }
+@@ -1971,6 +1986,15 @@ HRESULT CArchiveExtractCallback::CloseFile()
+       }
+     }
+   }
++#elif defined(__APPLE__) && !defined(UNDER_CE) && !defined(Z7_SFX)
++  if (ZoneBuf.Size() != 0
++      && !_item.IsAltStream)
++  {
++    if (!WriteQuarantineAttribute_To_BaseFile(_diskFilePath, ZoneBuf))
++    {
++      // Some destinations/filesystems don't support xattrs.
++    }
++  }
+  #endif
+ 
+   CFiTimesCAM t;
+diff --git a/CPP/7zip/UI/Common/ArchiveExtractCallback.h b/CPP/7zip/UI/Common/ArchiveExtractCallback.h
+index dab5ae5d..1111487b 100644
+--- a/CPP/7zip/UI/Common/ArchiveExtractCallback.h
++++ b/CPP/7zip/UI/Common/ArchiveExtractCallback.h
+@@ -479,7 +479,7 @@ public:
+   HRESULT SendMessageError2(HRESULT errorCode, const char *message, const FString &path1, const FString &path2) const;
+   HRESULT SendMessageError2_with_LastError(const char *message, const FString &path1, const FString &path2) const;
+ 
+-#if defined(_WIN32) && !defined(UNDER_CE) && !defined(Z7_SFX)
++#if (defined(_WIN32) || defined(__APPLE__)) && !defined(UNDER_CE) && !defined(Z7_SFX)
+   NExtract::NZoneIdMode::EEnum ZoneMode;
+   CByteBuffer ZoneBuf;
+ #endif
+@@ -507,7 +507,7 @@ public:
+     _multiArchives = multiArchives;
+     _pathMode = pathMode;
+     _overwriteMode = overwriteMode;
+-#if defined(_WIN32) && !defined(UNDER_CE) && !defined(Z7_SFX)
++#if (defined(_WIN32) || defined(__APPLE__)) && !defined(UNDER_CE) && !defined(Z7_SFX)
+      ZoneMode = zoneMode;
+ #else
+      UNUSED_VAR(zoneMode)

@@ -6,6 +6,7 @@ struct FileManagerArchiveItemWorkflowContext {
     let archive: SZArchive
     let hostDirectory: URL
     let displayPathPrefix: String
+    let quarantineSourceArchivePath: String?
     let mutationTarget: FileManagerArchiveMutationTarget?
 }
 
@@ -254,7 +255,7 @@ final class FileManagerArchiveItemWorkflowService {
         let temporaryDirectory = try createTemporaryDirectory(prefix: FileManagerTemporaryDirectorySupport.quickLookPrefix)
 
         do {
-            let settings = stagingExtractionSettings()
+            let settings = stagingExtractionSettings(for: context)
             let indices = items.map { NSNumber(value: $0.index) }
             try context.archive.extractEntries(indices,
                                                toPath: temporaryDirectory.path,
@@ -282,7 +283,7 @@ final class FileManagerArchiveItemWorkflowService {
         let temporaryDirectory = try createTemporaryDirectory(prefix: temporaryDirectoryPrefix)
 
         do {
-            let settings = stagingExtractionSettings()
+            let settings = stagingExtractionSettings(for: context)
             try context.archive.extractEntries([NSNumber(value: item.index)],
                                                toPath: temporaryDirectory.path,
                                                settings: settings,
@@ -314,7 +315,7 @@ final class FileManagerArchiveItemWorkflowService {
         let temporaryDirectory = try createTemporaryDirectory(prefix: FileManagerTemporaryDirectorySupport.dragPrefix)
 
         do {
-            let settings = stagingExtractionSettings()
+            let settings = stagingExtractionSettings(for: context)
             try context.archive.extractEntries(extractionIndices,
                                                toPath: temporaryDirectory.path,
                                                settings: settings,
@@ -393,7 +394,7 @@ final class FileManagerArchiveItemWorkflowService {
             return false
         }
 
-        let settings = directPromiseExtractionSettings()
+        let settings = directPromiseExtractionSettings(for: context)
 
         do {
             try context.archive.extractEntries([NSNumber(value: item.index)],
@@ -448,18 +449,33 @@ final class FileManagerArchiveItemWorkflowService {
         }
     }
 
-    private func stagingExtractionSettings() -> SZExtractionSettings {
+    private func stagingExtractionSettings(for context: FileManagerArchiveItemWorkflowContext) -> SZExtractionSettings {
         let settings = SZExtractionSettings()
         settings.overwriteMode = .overwrite
         settings.pathMode = .fullPaths
+        configureQuarantineInheritance(on: settings, context: context)
         return settings
     }
 
-    private func directPromiseExtractionSettings() -> SZExtractionSettings {
+    private func directPromiseExtractionSettings(for context: FileManagerArchiveItemWorkflowContext) -> SZExtractionSettings {
         let settings = SZExtractionSettings()
         settings.overwriteMode = .overwrite
         settings.pathMode = .noPaths
+        configureQuarantineInheritance(on: settings, context: context)
         return settings
+    }
+
+    private func configureQuarantineInheritance(on settings: SZExtractionSettings,
+                                                context: FileManagerArchiveItemWorkflowContext)
+    {
+        guard SZSettings.bool(.inheritDownloadedFileQuarantine),
+              let quarantineSourceArchivePath = context.quarantineSourceArchivePath,
+              !quarantineSourceArchivePath.isEmpty
+        else {
+            return
+        }
+
+        settings.sourceArchivePathForQuarantine = quarantineSourceArchivePath
     }
 
     private func normalizeArchivePath(_ path: String) -> String {

@@ -160,6 +160,7 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 @property (nonatomic, copy, nullable) NSString* password;
 @property (nonatomic, copy, nullable) NSString* pathPrefixToStrip;
 @property (nonatomic) BOOL preserveNtSecurityInfo;
+@property (nonatomic, copy, nullable) NSString* sourceArchivePathForQuarantine;
 @end
 
 /// Progress callback delegate

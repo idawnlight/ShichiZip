@@ -774,8 +774,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return selectedItems[0].url
     }
 
-    func sourceArchiveURLForExtraction() -> URL? {
+    func sourceArchiveURLForPostProcessing() -> URL? {
         if let level = archiveStack.last, level.temporaryDirectory == nil {
+            return URL(fileURLWithPath: level.archivePath).standardizedFileURL
+        }
+
+        return selectedArchiveCandidateURL()?.standardizedFileURL
+    }
+
+    func quarantineSourceArchiveURLForExtraction() -> URL? {
+        if let level = archiveStack.last {
             return URL(fileURLWithPath: level.archivePath).standardizedFileURL
         }
 
@@ -1684,7 +1692,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                      pathMode: SZPathMode = .currentPaths,
                                      password: String? = nil,
                                      preserveNtSecurityInfo: Bool = false,
-                                     eliminateDuplicates: Bool = false) throws
+                                     eliminateDuplicates: Bool = false,
+                                     inheritDownloadedFileQuarantine: Bool = SZSettings.bool(.inheritDownloadedFileQuarantine)) throws
     {
         let selectedItems = selectedArchiveItems()
         guard !selectedItems.isEmpty else {
@@ -1697,7 +1706,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                 pathMode: pathMode,
                                 password: password,
                                 preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                eliminateDuplicates: eliminateDuplicates)
+                                eliminateDuplicates: eliminateDuplicates,
+                                inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine)
     }
 
     func extractCurrentSelectionOrDisplayedArchiveItems(to destinationURL: URL,
@@ -1706,7 +1716,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                         pathMode: SZPathMode = .currentPaths,
                                                         password: String? = nil,
                                                         preserveNtSecurityInfo: Bool = false,
-                                                        eliminateDuplicates: Bool = false) throws
+                                                        eliminateDuplicates: Bool = false,
+                                                        inheritDownloadedFileQuarantine: Bool = SZSettings.bool(.inheritDownloadedFileQuarantine)) throws
     {
         let itemsToExtract = archiveItemsForSelectionOrDisplayedItems()
         guard !itemsToExtract.isEmpty else {
@@ -1719,7 +1730,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                 pathMode: pathMode,
                                 password: password,
                                 preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                eliminateDuplicates: eliminateDuplicates)
+                                eliminateDuplicates: eliminateDuplicates,
+                                inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine)
     }
 
     func testCurrentArchive(session: SZOperationSession? = nil) throws {
@@ -1879,6 +1891,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return FileManagerArchiveItemWorkflowContext(archive: level.archive,
                                                      hostDirectory: archiveHostDirectory(),
                                                      displayPathPrefix: currentArchiveDisplayPathPrefix(),
+                                                     quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path,
                                                      mutationTarget: archiveMutationTarget(for: level))
     }
 
@@ -2155,13 +2168,17 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func makeArchiveExtractionSettings(overwriteMode: SZOverwriteMode,
                                                pathMode: SZPathMode,
-                                               password: String? = nil) -> SZExtractionSettings
+                                               password: String? = nil,
+                                               inheritDownloadedFileQuarantine: Bool = SZSettings.bool(.inheritDownloadedFileQuarantine)) -> SZExtractionSettings
     {
         let settings = SZExtractionSettings()
         settings.overwriteMode = overwriteMode
         settings.pathMode = pathMode
         if let password, !password.isEmpty {
             settings.password = password
+        }
+        if inheritDownloadedFileQuarantine {
+            settings.sourceArchivePathForQuarantine = quarantineSourceArchiveURLForExtraction()?.path
         }
         if pathMode == .currentPaths,
            let level = archiveStack.last,
@@ -2257,7 +2274,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                      pathMode: SZPathMode,
                                      password: String?,
                                      preserveNtSecurityInfo: Bool,
-                                     eliminateDuplicates: Bool) throws
+                                     eliminateDuplicates: Bool,
+                                     inheritDownloadedFileQuarantine: Bool) throws
     {
         guard let level = archiveStack.last else {
             throw paneOperationError("No archive is open.")
@@ -2270,7 +2288,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         let settings = makeArchiveExtractionSettings(overwriteMode: overwriteMode,
                                                      pathMode: pathMode,
-                                                     password: password)
+                                                     password: password,
+                                                     inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine)
         settings.pathPrefixToStrip = archivePathPrefixToStrip(for: itemsToExtract,
                                                               destinationURL: destinationURL,
                                                               pathMode: pathMode,
@@ -3674,7 +3693,8 @@ extension FileManagerPaneController {
                     { session in
                         try self.extractCurrentSelectionOrDisplayedArchiveItems(to: destinationURL,
                                                                                 session: session,
-                                                                                overwriteMode: .ask)
+                                                                                overwriteMode: .ask,
+                                                                                inheritDownloadedFileQuarantine: SZSettings.bool(.inheritDownloadedFileQuarantine))
                     }
                 } catch {
                     self.showErrorAlert(error)
@@ -3696,6 +3716,9 @@ extension FileManagerPaneController {
                     try archive.open(atPath: url.path, session: session)
                     let settings = SZExtractionSettings()
                     settings.overwriteMode = .ask
+                    if SZSettings.bool(.inheritDownloadedFileQuarantine) {
+                        settings.sourceArchivePathForQuarantine = url.path
+                    }
                     try archive.extract(toPath: destURL.path, settings: settings, session: session)
                     archive.close()
                 }

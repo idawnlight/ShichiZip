@@ -188,7 +188,8 @@ final class ExtractDialogController: NSObject {
     private let defaultPathMode: SZPathMode
     private let showsCurrentPathsOption: Bool
     private let suggestedSplitDestinationName: String?
-    private let sourceArchiveAvailableForPostProcessing: Bool
+    private let sourceArchiveAvailableForMoveToTrash: Bool
+    private let sourceArchiveAvailableForQuarantineInheritance: Bool
     private var destinationPicker: DestinationPicker?
     private weak var splitNameField: NSTextField?
     private weak var splitNameRow: NSView?
@@ -205,7 +206,8 @@ final class ExtractDialogController: NSObject {
          defaultPathMode: SZPathMode,
          showsCurrentPathsOption: Bool,
          suggestedSplitDestinationName: String? = nil,
-         sourceArchiveAvailableForPostProcessing: Bool = true)
+         sourceArchiveAvailableForMoveToTrash: Bool = true,
+         sourceArchiveAvailableForQuarantineInheritance: Bool = true)
     {
         self.suggestedDestinationURL = suggestedDestinationURL.standardizedFileURL
         self.baseDirectory = baseDirectory.standardizedFileURL
@@ -213,7 +215,8 @@ final class ExtractDialogController: NSObject {
         self.defaultPathMode = defaultPathMode
         self.showsCurrentPathsOption = showsCurrentPathsOption
         self.suggestedSplitDestinationName = suggestedSplitDestinationName
-        self.sourceArchiveAvailableForPostProcessing = sourceArchiveAvailableForPostProcessing
+        self.sourceArchiveAvailableForMoveToTrash = sourceArchiveAvailableForMoveToTrash
+        self.sourceArchiveAvailableForQuarantineInheritance = sourceArchiveAvailableForQuarantineInheritance
     }
 
     func runModal(for parentWindow: NSWindow?) -> ExtractDialogResult? {
@@ -335,15 +338,15 @@ final class ExtractDialogController: NSObject {
                                                       target: nil,
                                                       action: nil)
             moveArchiveToTrashCheckbox.state = moveArchiveToTrashAfterExtraction ? .on : .off
-            moveArchiveToTrashCheckbox.isEnabled = sourceArchiveAvailableForPostProcessing
-            moveArchiveToTrashCheckbox.alphaValue = sourceArchiveAvailableForPostProcessing ? 1.0 : 0.55
+            moveArchiveToTrashCheckbox.isEnabled = sourceArchiveAvailableForMoveToTrash
+            moveArchiveToTrashCheckbox.alphaValue = sourceArchiveAvailableForMoveToTrash ? 1.0 : 0.55
 
             let inheritDownloadedFileQuarantineCheckbox = NSButton(checkboxWithTitle: "Inherit quarantine from downloaded file (if applicable)",
                                                                    target: nil,
                                                                    action: nil)
             inheritDownloadedFileQuarantineCheckbox.state = inheritDownloadedFileQuarantine ? .on : .off
-            inheritDownloadedFileQuarantineCheckbox.isEnabled = sourceArchiveAvailableForPostProcessing
-            inheritDownloadedFileQuarantineCheckbox.alphaValue = sourceArchiveAvailableForPostProcessing ? 1.0 : 0.55
+            inheritDownloadedFileQuarantineCheckbox.isEnabled = sourceArchiveAvailableForQuarantineInheritance
+            inheritDownloadedFileQuarantineCheckbox.alphaValue = sourceArchiveAvailableForQuarantineInheritance ? 1.0 : 0.55
 
             let accessoryView = makeAccessoryView(pathRow: pathRow,
                                                   splitRow: splitRow,
