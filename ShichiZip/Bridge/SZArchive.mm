@@ -2402,6 +2402,8 @@ static UString SZCompressionMethodSpec(SZCompressionSettings* settings) {
         return UString(L"Deflate64");
     case SZCompressionMethodCopy:
         return UString(L"Copy");
+    default:
+        return UString();
     }
 }
 

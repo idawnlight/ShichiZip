@@ -405,8 +405,15 @@ final class ExtractDialogController: NSObject {
             splitName = splitNameField.stringValue
             enteredPassword = visiblePasswordValue()
             showPassword = showPasswordCheckbox.state == .on
-            selectedPathMode = pathModeOptions[pathModePopup.indexOfSelectedItem].value
-            selectedOverwriteMode = overwriteModeOptions[overwriteModePopup.indexOfSelectedItem].value
+            let pathModeIndex = pathModePopup.indexOfSelectedItem
+            let overwriteModeIndex = overwriteModePopup.indexOfSelectedItem
+            guard pathModeIndex >= 0, pathModeIndex < pathModeOptions.count,
+                  overwriteModeIndex >= 0, overwriteModeIndex < overwriteModeOptions.count
+            else {
+                return nil
+            }
+            selectedPathMode = pathModeOptions[pathModeIndex].value
+            selectedOverwriteMode = overwriteModeOptions[overwriteModeIndex].value
             preserveNtSecurityInfo = ntSecurityCheckbox.state == .on
             eliminateDuplicates = eliminateDuplicatesCheckbox.state == .on
             moveArchiveToTrashAfterExtraction = moveArchiveToTrashCheckbox.state == .on

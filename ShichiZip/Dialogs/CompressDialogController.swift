@@ -1942,14 +1942,14 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                 sfxSupportDescription = "Windows SFX is only available for 7z archives using Copy, LZMA, LZMA2, or PPMd, and requires the bundled 7z.sfx module."
             #endif
             throw NSError(domain: NSCocoaErrorDomain,
-                          code: NSUserCancelledError,
+                          code: NSFormattingError,
                           userInfo: [NSLocalizedDescriptionKey: sfxSupportDescription])
         }
 
         let trimmedSplitVolumes = splitVolumes.trimmingCharacters(in: .whitespacesAndNewlines)
         if effectiveCreateSFX && !trimmedSplitVolumes.isEmpty {
             throw NSError(domain: NSCocoaErrorDomain,
-                          code: NSUserCancelledError,
+                          code: NSFormattingError,
                           userInfo: [NSLocalizedDescriptionKey: "Windows SFX archives cannot be split into volumes."])
         }
 
@@ -2006,7 +2006,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
            compressionMemory > memoryUsageLimit
         {
             throw NSError(domain: NSCocoaErrorDomain,
-                          code: NSUserCancelledError,
+                          code: NSFormattingError,
                           userInfo: [NSLocalizedDescriptionKey: "Compression requires \(Self.memoryUsageText(for: compressionMemory)), which exceeds the selected memory usage limit of \(Self.memoryUsageText(for: memoryUsageLimit))."])
         }
 
@@ -2024,20 +2024,20 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
 
         guard password == confirmation else {
             throw NSError(domain: NSCocoaErrorDomain,
-                          code: NSUserCancelledError,
+                          code: NSFormattingError,
                           userInfo: [NSLocalizedDescriptionKey: "Passwords do not match."])
         }
 
         if format.codecName == "zip" {
             guard password.canBeConverted(to: .ascii) else {
                 throw NSError(domain: NSCocoaErrorDomain,
-                              code: NSUserCancelledError,
+                              code: NSFormattingError,
                               userInfo: [NSLocalizedDescriptionKey: "ZIP passwords must use ASCII characters."])
             }
 
             if encryption == .AES256, password.utf8.count > 99 {
                 throw NSError(domain: NSCocoaErrorDomain,
-                              code: NSUserCancelledError,
+                              code: NSFormattingError,
                               userInfo: [NSLocalizedDescriptionKey: "ZIP AES passwords must be 99 bytes or fewer."])
             }
         }
@@ -2053,7 +2053,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
 
         guard let value = UInt32(trimmed), value > 0 else {
             throw NSError(domain: NSCocoaErrorDomain,
-                          code: NSUserCancelledError,
+                          code: NSFormattingError,
                           userInfo: [NSLocalizedDescriptionKey: "Thread count must be a positive number or Auto."])
         }
 
@@ -2079,7 +2079,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         let standardizedURL = archiveURL.standardizedFileURL
         guard !standardizedURL.lastPathComponent.isEmpty else {
             throw NSError(domain: NSCocoaErrorDomain,
-                          code: NSUserCancelledError,
+                          code: NSFormattingError,
                           userInfo: [NSLocalizedDescriptionKey: "Enter an archive path."])
         }
 
@@ -2089,7 +2089,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
               isDirectory.boolValue
         else {
             throw NSError(domain: NSCocoaErrorDomain,
-                          code: NSUserCancelledError,
+                          code: NSFormattingError,
                           userInfo: [NSLocalizedDescriptionKey: "The destination folder does not exist."])
         }
 
@@ -2097,7 +2097,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
            isDirectory.boolValue
         {
             throw NSError(domain: NSCocoaErrorDomain,
-                          code: NSUserCancelledError,
+                          code: NSFormattingError,
                           userInfo: [NSLocalizedDescriptionKey: "The archive path points to an existing folder."])
         }
 

@@ -3307,7 +3307,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 .appendingPathComponent(sourceURL.lastPathComponent)
                 .standardizedFileURL
 
-            if sourceURL == destinationFileURL {
+            if sourceURL.standardizedFileURL.path.lowercased() == destinationFileURL.path.lowercased() {
                 continue
             }
 
@@ -3387,7 +3387,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         try copyDroppedItemPreservingMetadata(from: sourceURL, to: destinationURL)
-        try FileManager.default.removeItem(at: sourceURL)
+        do {
+            try FileManager.default.removeItem(at: sourceURL)
+        } catch {
+            try? FileManager.default.removeItem(at: destinationURL)
+            throw error
+        }
     }
 
     private func copyDroppedItemPreservingMetadata(from sourceURL: URL,
