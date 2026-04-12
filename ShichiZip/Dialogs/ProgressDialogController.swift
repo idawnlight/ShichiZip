@@ -1,4 +1,5 @@
 import Cocoa
+import os.lock
 
 /// Progress dialog shown during extraction/compression operations
 class ProgressDialogController: NSWindowController, SZProgressDelegate {
@@ -11,12 +12,16 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     private var operationLabel: NSTextField!
     private var cancelButton: NSButton!
 
-    private var cancelled = false
-    private var startTime: Date?
+    private struct ProgressState: Sendable {
+        var cancelled = false
+        var isWaitingForProgress = false
+        var startTime: Date?
+        var lastMetricsUpdateTime: TimeInterval = 0
+    }
+
+    private let stateLock = OSAllocatedUnfairLock(initialState: ProgressState())
     private var speedLabel: NSTextField!
     private var elapsedLabel: NSTextField!
-    private var isWaitingForProgress = false
-    private var lastMetricsUpdateTime: TimeInterval = 0
     var showRequestHandler: (() -> Void)?
 
     var operationTitle: String = "Working..." {
@@ -119,12 +124,15 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     func beginWaitingMode(fileName: String? = nil) {
-        let applyWaitingMode = { [weak self] in
+        stateLock.withLock { state in
+            state.isWaitingForProgress = true
+            state.startTime = nil
+            state.lastMetricsUpdateTime = 0
+            state.cancelled = false
+        }
+
+        let applyUI = { [weak self] in
             guard let self else { return }
-            self.isWaitingForProgress = true
-            self.startTime = nil
-            self.lastMetricsUpdateTime = 0
-            self.cancelled = false
             self.cancelButton.isEnabled = true
             self.cancelButton.title = "Cancel"
             self.progressBar.stopAnimation(nil)
@@ -139,18 +147,23 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
         }
 
         if Thread.isMainThread {
-            applyWaitingMode()
+            applyUI()
         } else {
-            DispatchQueue.main.async(execute: applyWaitingMode)
+            DispatchQueue.main.async(execute: applyUI)
         }
     }
 
-    private func ensureDeterminateProgress() {
-        guard progressBar.isIndeterminate || isWaitingForProgress else { return }
+    private func ensureDeterminateProgressOnMain() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        let needsReset = stateLock.withLock { state -> Bool in
+            guard state.isWaitingForProgress else { return false }
+            state.isWaitingForProgress = false
+            return true
+        }
+        guard needsReset || progressBar.isIndeterminate else { return }
         progressBar.stopAnimation(nil)
         progressBar.isIndeterminate = false
         progressBar.doubleValue = 0
-        isWaitingForProgress = false
     }
 
     func showNowIfNeeded() {
@@ -187,7 +200,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     @objc private func cancelClicked(_: Any?) {
-        cancelled = true
+        stateLock.withLock { $0.cancelled = true }
         cancelButton.isEnabled = false
         cancelButton.title = "Cancelling..."
     }
@@ -195,50 +208,59 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     // MARK: - SZProgressDelegate (matches ProgressDialog2.cpp)
 
     @objc func progressDidUpdate(_ fraction: Double) {
-        ensureDeterminateProgress()
-        progressBar.doubleValue = fraction
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.ensureDeterminateProgressOnMain()
+            self.progressBar.doubleValue = fraction
+        }
     }
 
     @objc func progressDidUpdateFileName(_ fileName: String) {
-        fileNameLabel.stringValue = fileName
+        DispatchQueue.main.async { [weak self] in
+            self?.fileNameLabel.stringValue = fileName
+        }
     }
 
     @objc func progressDidUpdateBytesCompleted(_ completed: UInt64, total: UInt64) {
-        if total > 0 {
-            ensureDeterminateProgress()
-            progressBar.doubleValue = Double(completed) / Double(total)
+        let metrics: (startTime: Date, lastUpdate: TimeInterval, shouldSkip: Bool) = stateLock.withLock { state in
+            if state.startTime == nil { state.startTime = Date() }
+            let now = Date().timeIntervalSinceReferenceDate
+            let isFinalUpdate = total > 0 && completed >= total
+            let shouldSkip = !isFinalUpdate && state.lastMetricsUpdateTime > 0 &&
+                now - state.lastMetricsUpdateTime < Self.metricsUpdateInterval
+            if !shouldSkip {
+                state.lastMetricsUpdateTime = now
+            }
+            return (state.startTime!, state.lastMetricsUpdateTime, shouldSkip)
         }
-        if startTime == nil { startTime = Date() }
 
-        let now = Date().timeIntervalSinceReferenceDate
-        let isFinalUpdate = total > 0 && completed >= total
-        if !isFinalUpdate && lastMetricsUpdateTime > 0 &&
-            now - lastMetricsUpdateTime < Self.metricsUpdateInterval
-        {
-            return
-        }
-        lastMetricsUpdateTime = now
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if total > 0 {
+                self.ensureDeterminateProgressOnMain()
+                self.progressBar.doubleValue = Double(completed) / Double(total)
+            }
 
-        let completedStr = ByteCountFormatter.string(fromByteCount: Int64(completed), countStyle: .file)
-        let totalStr = ByteCountFormatter.string(fromByteCount: Int64(total), countStyle: .file)
-        let percent = total > 0 ? Int(Double(completed) / Double(total) * 100) : 0
-        bytesLabel.stringValue = "\(completedStr) / \(totalStr) (\(percent)%)"
+            guard !metrics.shouldSkip else { return }
 
-        // Speed and ETA calculation (like ProgressDialog2.cpp)
-        if let start = startTime {
-            let elapsed = Date().timeIntervalSince(start)
+            let completedStr = ByteCountFormatter.string(fromByteCount: Int64(completed), countStyle: .file)
+            let totalStr = ByteCountFormatter.string(fromByteCount: Int64(total), countStyle: .file)
+            let percent = total > 0 ? Int(Double(completed) / Double(total) * 100) : 0
+            self.bytesLabel.stringValue = "\(completedStr) / \(totalStr) (\(percent)%)"
+
+            let elapsed = Date().timeIntervalSince(metrics.startTime)
             if elapsed > Self.metricsUpdateInterval {
                 let speed = Double(completed) / elapsed
                 let speedStr = ByteCountFormatter.string(fromByteCount: Int64(speed), countStyle: .file)
-                speedLabel.stringValue = "Speed: \(speedStr)/s"
+                self.speedLabel.stringValue = "Speed: \(speedStr)/s"
 
-                let elapsedStr = formatDuration(elapsed)
+                let elapsedStr = self.formatDuration(elapsed)
                 if total > 0, completed > 0 {
                     let remaining = elapsed * Double(total - completed) / Double(completed)
-                    let remainStr = formatDuration(remaining)
-                    elapsedLabel.stringValue = "Elapsed: \(elapsedStr)  Remaining: \(remainStr)"
+                    let remainStr = self.formatDuration(remaining)
+                    self.elapsedLabel.stringValue = "Elapsed: \(elapsedStr)  Remaining: \(remainStr)"
                 } else {
-                    elapsedLabel.stringValue = "Elapsed: \(elapsedStr)"
+                    self.elapsedLabel.stringValue = "Elapsed: \(elapsedStr)"
                 }
             }
         }
@@ -252,13 +274,16 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     @objc func progressShouldCancel() -> Bool {
-        return cancelled
+        return stateLock.withLock { $0.cancelled }
     }
 
     func progressDidUpdateFilesCompleted(_ count: UInt64) {
-        if speedLabel.stringValue.isEmpty || speedLabel.stringValue.hasSuffix("processed") {
-            let suffix = count == 1 ? "file" : "files"
-            speedLabel.stringValue = "\(count) \(suffix) processed"
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if self.speedLabel.stringValue.isEmpty || self.speedLabel.stringValue.hasSuffix("processed") {
+                let suffix = count == 1 ? "file" : "files"
+                self.speedLabel.stringValue = "\(count) \(suffix) processed"
+            }
         }
     }
 
@@ -267,9 +292,12 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     @objc func progressResetCancellationRequest() {
-        cancelled = false
-        cancelButton.isEnabled = false
-        cancelButton.title = "Finalizing..."
+        stateLock.withLock { $0.cancelled = false }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.cancelButton.isEnabled = false
+            self.cancelButton.title = "Finalizing..."
+        }
     }
 
     @objc func progressDidUpdateSpeed(_: Double) {

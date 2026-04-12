@@ -57,23 +57,40 @@ func szRunChoiceDialog(title: String,
                        style: SZDialogStyle = .informational,
                        buttons: [String]) -> Int
 {
-    SZDialogPresenter.runMessage(with: style,
-                                 title: title,
-                                 message: message,
-                                 buttonTitles: buttons)
+    if Thread.isMainThread {
+        return SZDialogPresenter.runMessage(with: style,
+                                            title: title,
+                                            message: message,
+                                            buttonTitles: buttons)
+    } else {
+        return DispatchQueue.main.sync {
+            SZDialogPresenter.runMessage(with: style,
+                                         title: title,
+                                         message: message,
+                                         buttonTitles: buttons)
+        }
+    }
 }
 
 func szPromptForPasswordSync(title: String,
                              message: String? = nil,
                              initialValue: String? = nil) -> String?
 {
-    var password: NSString?
-    let confirmed = SZDialogPresenter.promptForPassword(withTitle: title,
-                                                        message: message,
-                                                        initialValue: initialValue,
-                                                        password: &password)
-    guard confirmed else { return nil }
-    return password as String?
+    let doPrompt = { () -> String? in
+        var password: NSString?
+        let confirmed = SZDialogPresenter.promptForPassword(withTitle: title,
+                                                            message: message,
+                                                            initialValue: initialValue,
+                                                            password: &password)
+        guard confirmed else { return nil }
+        return password as String?
+    }
+
+    if Thread.isMainThread {
+        return doPrompt()
+    } else {
+        return DispatchQueue.main.sync(execute: doPrompt)
+    }
 }
 
 func szBeginConfirmation(on window: NSWindow,

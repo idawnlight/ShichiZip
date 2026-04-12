@@ -57,19 +57,17 @@ static NSString* SZFormatFileTime(const FILETIME* ft) {
     if (!ft)
         return nil;
     // FILETIME is 100-nanosecond intervals since 1601-01-01.
-    // NSDate reference is 2001-01-01. Difference is 12622780800 seconds.
+    // dateWithTimeIntervalSince1970 uses Unix epoch (1970-01-01).
+    // Difference between 1601-01-01 and 1970-01-01 is 11644473600 seconds.
     const int64_t ticks = ((int64_t)ft->dwHighDateTime << 32) | ft->dwLowDateTime;
     if (ticks <= 0)
         return nil;
     const NSTimeInterval seconds = (NSTimeInterval)ticks / 10000000.0 - 11644473600.0;
     NSDate* date = [NSDate dateWithTimeIntervalSince1970:seconds];
-    static NSDateFormatter* formatter;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        formatter = [[NSDateFormatter alloc] init];
-        formatter.dateStyle = NSDateFormatterMediumStyle;
-        formatter.timeStyle = NSDateFormatterMediumStyle;
-    });
+    // NSDateFormatter is not thread-safe for formatting; create per-call.
+    NSDateFormatter* formatter = [[NSDateFormatter alloc] init];
+    formatter.dateStyle = NSDateFormatterMediumStyle;
+    formatter.timeStyle = NSDateFormatterMediumStyle;
     return [formatter stringFromDate:date];
 }
 
