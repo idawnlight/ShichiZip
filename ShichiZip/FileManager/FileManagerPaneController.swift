@@ -182,6 +182,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var statusLabel: NSTextField!
     private var settingsObserver: NSObjectProtocol?
     private var viewPreferencesObserver: NSObjectProtocol?
+    private var archiveChangeObserver: NSObjectProtocol?
     private var liveScrollStartObserver: NSObjectProtocol?
     private var liveScrollEndObserver: NSObjectProtocol?
     private var recentDirectories: [URL] = []
@@ -258,6 +259,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
         if let viewPreferencesObserver {
             NotificationCenter.default.removeObserver(viewPreferencesObserver)
+        }
+        if let archiveChangeObserver {
+            NotificationCenter.default.removeObserver(archiveChangeObserver)
         }
         if let liveScrollStartObserver {
             NotificationCenter.default.removeObserver(liveScrollStartObserver)
@@ -453,6 +457,19 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             queue: .main
         ) { [weak self] _ in
             self?.reloadPresentedValues()
+        }
+
+        archiveChangeObserver = NotificationCenter.default.addObserver(
+            forName: .fileManagerArchiveDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let change = FileManagerArchiveChange(notification: notification)
+            else {
+                return
+            }
+            self.handlePublishedArchiveChange(change)
         }
 
         applyFileManagerSettings()
@@ -1348,6 +1365,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                              session: session)
                     }
                     self.refreshArchiveAfterMutation(selectingPath: createdPath)
+                    self.publishArchiveMutationIfNeeded(selectingPaths: [createdPath])
                 } catch {
                     self.showErrorAlert(error)
                 }
@@ -1955,6 +1973,28 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                      mutationTarget: archiveMutationTarget(for: level))
     }
 
+    private var coordinatedArchiveLocation: FileManagerCoordinatedArchiveLocation? {
+        guard let level = archiveStack.last,
+              level.temporaryDirectory == nil,
+              level.nestedWriteBackInfo == nil
+        else {
+            return nil
+        }
+
+        return FileManagerCoordinatedArchiveLocation(archiveURL: URL(fileURLWithPath: level.archivePath),
+                                                     currentSubdir: level.currentSubdir)
+    }
+
+    private func topLevelArchiveURL(for level: ArchiveLevel) -> URL? {
+        guard level.temporaryDirectory == nil,
+              level.nestedWriteBackInfo == nil
+        else {
+            return nil
+        }
+
+        return URL(fileURLWithPath: level.archivePath).standardizedFileURL
+    }
+
     private func archiveMutationTarget(for level: ArchiveLevel,
                                        subdir: String? = nil) -> FileManagerArchiveMutationTarget?
     {
@@ -1963,7 +2003,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         return FileManagerArchiveMutationTarget(archive: level.archive,
-                                                subdir: subdir ?? level.currentSubdir)
+                                                subdir: subdir ?? level.currentSubdir,
+                                                topLevelArchiveURL: topLevelArchiveURL(for: level))
     }
 
     private func canOpenArchive(at url: URL) -> Bool {
@@ -1994,9 +2035,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         )
     }
 
-    private func writeBackNestedArchiveChangesIfNeeded(for level: ArchiveLevel) throws -> Int? {
+    private func writeBackNestedArchiveChangesIfNeeded(for level: ArchiveLevel) throws -> (refreshedParentIndex: Int?, publishedChange: FileManagerArchiveChange?) {
         guard let writeBackInfo = level.nestedWriteBackInfo else {
-            return nil
+            return (nil, nil)
         }
 
         let temporaryArchiveURL = URL(fileURLWithPath: level.archivePath).standardizedFileURL
@@ -2005,7 +2046,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         guard currentFingerprint != writeBackInfo.initialFingerprint else {
-            return nil
+            return (nil, nil)
         }
 
         try ArchiveOperationRunner.runSynchronously(operationTitle: "Updating archive...",
@@ -2019,7 +2060,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                                session: session)
         }
 
-        return archiveStack.count >= 2 ? archiveStack.count - 2 : nil
+        let publishedChange = writeBackInfo.parentTarget.topLevelArchiveURL.map {
+            FileManagerArchiveChange(archiveURL: $0,
+                                     targetSubdir: writeBackInfo.parentTarget.subdir,
+                                     selectingPaths: [writeBackInfo.parentItemPath],
+                                     sourceIdentifier: ObjectIdentifier(self))
+        }
+        return (archiveStack.count >= 2 ? archiveStack.count - 2 : nil, publishedChange)
     }
 
     @discardableResult
@@ -2027,7 +2074,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                    showError: Bool = false) -> Bool
     {
         do {
-            let refreshedParentIndex = try writeBackNestedArchiveChangesIfNeeded(for: level)
+            let nestedWriteBackResult = try writeBackNestedArchiveChangesIfNeeded(for: level)
             level.archive.close()
             archiveItemWorkflowService.cleanup(level.temporaryDirectory)
 
@@ -2037,8 +2084,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 archiveStack.removeLast()
             }
 
-            if let refreshedParentIndex {
+            if let refreshedParentIndex = nestedWriteBackResult.refreshedParentIndex {
                 refreshArchiveLevelEntries(at: refreshedParentIndex)
+            }
+
+            if let publishedChange = nestedWriteBackResult.publishedChange {
+                FileManagerArchiveChangeCoordinator.publish(publishedChange)
             }
 
             if archiveStack.isEmpty {
@@ -2132,6 +2183,60 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
+    func handlePublishedArchiveChange(_ change: FileManagerArchiveChange) {
+        switch FileManagerArchiveChangeCoordinator.handlingDecision(for: change,
+                                                                    currentLocation: coordinatedArchiveLocation,
+                                                                    observerIdentifier: ObjectIdentifier(self))
+        {
+        case .ignore:
+            return
+        case let .reload(selectingPaths):
+            reloadCoordinatedArchive(selectingPaths: selectingPaths)
+        }
+    }
+
+    private func reloadCoordinatedArchive(selectingPaths paths: [String]) {
+        guard let level = archiveStack.last,
+              level.temporaryDirectory == nil,
+              level.nestedWriteBackInfo == nil
+        else {
+            return
+        }
+
+        let currentSubdir = level.currentSubdir
+        do {
+            try reopenArchiveLevelAtTopOfStack(level)
+            reloadCurrentArchiveEntries(selectingPaths: paths,
+                                        preservingSubdir: currentSubdir)
+        } catch {
+            showErrorAlert(error)
+        }
+    }
+
+    private func reopenArchiveLevelAtTopOfStack(_ level: ArchiveLevel) throws {
+        try level.archive.reopenAfterExternalMutation(with: nil)
+    }
+
+    private func publishArchiveMutationIfNeeded(targetSubdir: String? = nil,
+                                                selectingPaths paths: [String] = [])
+    {
+        guard let level = archiveStack.last,
+              let archiveURL = topLevelArchiveURL(for: level)
+        else {
+            return
+        }
+
+        let normalizedTargetSubdir = normalizeArchivePath(targetSubdir ?? level.currentSubdir)
+        let normalizedPaths = paths.map(normalizeArchivePath)
+
+        FileManagerArchiveChangeCoordinator.publish(
+            FileManagerArchiveChange(archiveURL: archiveURL,
+                                     targetSubdir: normalizedTargetSubdir,
+                                     selectingPaths: normalizedPaths,
+                                     sourceIdentifier: ObjectIdentifier(self))
+        )
+    }
+
     func refreshArchiveAfterMutation(targetSubdir: String? = nil,
                                      selectingPaths paths: [String] = [])
     {
@@ -2145,6 +2250,42 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func refreshArchiveAfterMutation(selectingPath path: String? = nil) {
         refreshArchiveAfterMutation(selectingPaths: path.map { [$0] } ?? [])
+    }
+
+    private func reloadCurrentArchiveEntries(selectingPaths paths: [String],
+                                             preservingSubdir subdir: String)
+    {
+        guard let level = archiveStack.last else { return }
+
+        let refreshedEntries = level.archive.entries().map { ArchiveItem(from: $0) }
+        archiveStack[archiveStack.count - 1] = ArchiveLevel(
+            filesystemDirectory: level.filesystemDirectory,
+            archivePath: level.archivePath,
+            displayPathPrefix: level.displayPathPrefix,
+            archive: level.archive,
+            allEntries: refreshedEntries,
+            currentSubdir: subdir,
+            temporaryDirectory: level.temporaryDirectory,
+            nestedWriteBackInfo: level.nestedWriteBackInfo
+        )
+
+        navigateArchiveSubdir(subdir)
+
+        guard !paths.isEmpty else { return }
+
+        let selectedPaths = Set(paths.map(normalizeArchivePath))
+        var rows = IndexSet()
+        for (index, item) in archiveDisplayItems.enumerated() {
+            if selectedPaths.contains(normalizeArchivePath(item.path)) {
+                rows.insert(index + (showsParentRow ? 1 : 0))
+            }
+        }
+
+        guard !rows.isEmpty else { return }
+        tableView.selectRowIndexes(rows, byExtendingSelection: false)
+        if let firstRow = rows.first {
+            tableView.scrollRowToVisible(firstRow)
+        }
     }
 
     private func archiveSelectionPaths(for urls: [URL],
@@ -3249,6 +3390,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
                 self.refreshArchiveAfterMutation(targetSubdir: target.subdir,
                                                  selectingPaths: selectionPaths)
+                self.publishArchiveMutationIfNeeded(targetSubdir: target.subdir,
+                                                    selectingPaths: selectionPaths)
                 if operation == .move,
                    let sourcePane,
                    sourcePane !== self
@@ -3860,6 +4003,7 @@ extension FileManagerPaneController {
                                                           session: session)
                         }
                         self.refreshArchiveAfterMutation(selectingPath: renamedPath)
+                        self.publishArchiveMutationIfNeeded(selectingPaths: [renamedPath])
                     } catch {
                         self.showErrorAlert(error)
                     }
@@ -3922,6 +4066,7 @@ extension FileManagerPaneController {
                                                            session: session)
                         }
                         self.refreshArchiveAfterMutation()
+                        self.publishArchiveMutationIfNeeded(targetSubdir: target.subdir)
                     } catch {
                         self.showErrorAlert(error)
                     }

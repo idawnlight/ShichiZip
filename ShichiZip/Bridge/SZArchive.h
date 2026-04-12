@@ -277,6 +277,10 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 /// Close the archive
 - (void)close;
 
+/// Reopen the current archive after another handle mutated the backing file.
+- (BOOL)reopenAfterExternalMutationWithSession:(nullable SZOperationSession*)session
+                                         error:(NSError**)error;
+
 /// Get the detected format name
 @property (nonatomic, readonly, nullable) NSString* formatName;
 

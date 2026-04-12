@@ -1037,6 +1037,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                          session: session)
                 }
                 activePane.refresh()
+                self.refreshPaneDisplayingDirectory(result.archiveURL.deletingLastPathComponent())
             } catch {
                 self.showErrorAlert(error)
             }
@@ -2125,9 +2126,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                          session: session)
                 }
 
-                self.refreshOpenArchiveDestinations(archiveURL: archiveURL,
-                                                    targetSubdir: subdir,
-                                                    selectingPaths: selectionPaths)
+                FileManagerArchiveChangeCoordinator.publish(
+                    FileManagerArchiveChange(archiveURL: archiveURL,
+                                             targetSubdir: subdir,
+                                             selectingPaths: selectionPaths)
+                )
                 if move {
                     sourcePane.refresh()
                 }
@@ -2169,23 +2172,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
 
         return selectionPaths
-    }
-
-    private func refreshOpenArchiveDestinations(archiveURL: URL,
-                                                targetSubdir: String,
-                                                selectingPaths: [String])
-    {
-        if leftPane.currentArchiveMutationTarget(for: archiveURL, subdir: targetSubdir) != nil {
-            leftPane.refreshArchiveAfterMutation(targetSubdir: targetSubdir,
-                                                 selectingPaths: selectingPaths)
-        }
-
-        if isDualPane,
-           rightPane.currentArchiveMutationTarget(for: archiveURL, subdir: targetSubdir) != nil
-        {
-            rightPane.refreshArchiveAfterMutation(targetSubdir: targetSubdir,
-                                                  selectingPaths: selectingPaths)
-        }
     }
 
     private func refreshPaneDisplayingDirectory(_ directoryURL: URL) {

@@ -8,7 +8,6 @@ final class QuarantineRegressionTests: XCTestCase {
 
     func testNormalExtractionShouldInheritSourceArchiveQuarantine() throws {
         let tempRoot = try makeTemporaryDirectory(named: "normal-extract")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let payloadURL = tempRoot.appendingPathComponent("payload.txt")
         let archiveURL = tempRoot.appendingPathComponent("payload.7z")
@@ -18,13 +17,7 @@ final class QuarantineRegressionTests: XCTestCase {
         try FileManager.default.createDirectory(
             at: destinationURL, withIntermediateDirectories: true)
 
-        let compressionSettings = SZCompressionSettings()
-        compressionSettings.pathMode = .relativePaths
-        try SZArchive.create(
-            atPath: archiveURL.path,
-            fromPaths: [payloadURL.path],
-            settings: compressionSettings,
-            session: nil)
+        try createArchive(at: archiveURL, from: [payloadURL])
 
         let quarantineData = Data("0081;661aaff0;ShichiZipTests;".utf8)
         try setExtendedAttribute(quarantineAttributeName, data: quarantineData, on: archiveURL)
@@ -49,7 +42,6 @@ final class QuarantineRegressionTests: XCTestCase {
 
     func testNormalExtractionShouldInheritSourceArchiveQuarantineForExtractedDirectories() throws {
         let tempRoot = try makeTemporaryDirectory(named: "normal-extract-directory")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let payloadDirectoryURL = tempRoot.appendingPathComponent("payload-directory", isDirectory: true)
         let nestedPayloadURL = payloadDirectoryURL.appendingPathComponent("payload.txt")
@@ -62,13 +54,7 @@ final class QuarantineRegressionTests: XCTestCase {
         try FileManager.default.createDirectory(
             at: destinationURL, withIntermediateDirectories: true)
 
-        let compressionSettings = SZCompressionSettings()
-        compressionSettings.pathMode = .relativePaths
-        try SZArchive.create(
-            atPath: archiveURL.path,
-            fromPaths: [payloadDirectoryURL.path],
-            settings: compressionSettings,
-            session: nil)
+        try createArchive(at: archiveURL, from: [payloadDirectoryURL])
 
         let quarantineData = Data("0081;661aaff0;ShichiZipTests;".utf8)
         try setExtendedAttribute(quarantineAttributeName, data: quarantineData, on: archiveURL)
@@ -100,7 +86,6 @@ final class QuarantineRegressionTests: XCTestCase {
 
     func testStagedArchiveItemsShouldInheritSourceArchiveQuarantine() throws {
         let tempRoot = try makeTemporaryDirectory(named: "quarantine")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let payloadURL = tempRoot.appendingPathComponent("payload.txt")
         let archiveURL = tempRoot.appendingPathComponent("payload.7z")
@@ -108,13 +93,7 @@ final class QuarantineRegressionTests: XCTestCase {
 
         try "payload".write(to: payloadURL, atomically: true, encoding: .utf8)
 
-        let settings = SZCompressionSettings()
-        settings.pathMode = .relativePaths
-        try SZArchive.create(
-            atPath: archiveURL.path,
-            fromPaths: [payloadURL.path],
-            settings: settings,
-            session: nil)
+        try createArchive(at: archiveURL, from: [payloadURL])
 
         let quarantineData = Data("0081;661aaff0;ShichiZipTests;".utf8)
         try setExtendedAttribute(quarantineAttributeName, data: quarantineData, on: archiveURL)
@@ -148,7 +127,6 @@ final class QuarantineRegressionTests: XCTestCase {
 
     func testNestedArchiveExtractionShouldInheritOriginalSourceArchiveQuarantine() throws {
         let tempRoot = try makeTemporaryDirectory(named: "nested-extract")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let innerPayloadURL = tempRoot.appendingPathComponent("inner-payload.txt")
         let innerArchiveURL = tempRoot.appendingPathComponent("inner.7z")
@@ -159,18 +137,8 @@ final class QuarantineRegressionTests: XCTestCase {
 
         try "nested payload".write(to: innerPayloadURL, atomically: true, encoding: .utf8)
 
-        let compressionSettings = SZCompressionSettings()
-        compressionSettings.pathMode = .relativePaths
-        try SZArchive.create(
-            atPath: innerArchiveURL.path,
-            fromPaths: [innerPayloadURL.path],
-            settings: compressionSettings,
-            session: nil)
-        try SZArchive.create(
-            atPath: outerArchiveURL.path,
-            fromPaths: [innerArchiveURL.path],
-            settings: compressionSettings,
-            session: nil)
+        try createArchive(at: innerArchiveURL, from: [innerPayloadURL])
+        try createArchive(at: outerArchiveURL, from: [innerArchiveURL])
 
         let quarantineData = Data("0081;661aaff0;ShichiZipTests;".utf8)
         try setExtendedAttribute(quarantineAttributeName, data: quarantineData, on: outerArchiveURL)
@@ -219,15 +187,6 @@ final class QuarantineRegressionTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: extractedURL.path))
         XCTAssertEqual(
             try extendedAttributeData(quarantineAttributeName, on: extractedURL), quarantineData)
-    }
-
-    private func makeTemporaryDirectory(named name: String) throws -> URL {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(
-                "ShichiZipSecurityTests-\(name)-\(UUID().uuidString)",
-                isDirectory: true)
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
     }
 
     private func setExtendedAttribute(_ name: String, data: Data, on url: URL) throws {

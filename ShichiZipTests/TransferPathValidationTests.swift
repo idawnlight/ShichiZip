@@ -4,7 +4,6 @@ import XCTest
 final class TransferPathValidationTests: XCTestCase {
     func testAncestryConflictRejectsDestinationInsideSelectedFolder() throws {
         let tempRoot = try makeTemporaryDirectory(named: "descendant-destination")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let sourceFolder = tempRoot.appendingPathComponent("Source", isDirectory: true)
         let nestedDestination = sourceFolder.appendingPathComponent("Nested/Destination", isDirectory: true)
@@ -23,7 +22,6 @@ final class TransferPathValidationTests: XCTestCase {
 
     func testAncestryConflictRejectsDestinationMatchingSelectedFolder() throws {
         let tempRoot = try makeTemporaryDirectory(named: "same-folder-destination")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let sourceFolder = tempRoot.appendingPathComponent("Source", isDirectory: true)
         try FileManager.default.createDirectory(at: sourceFolder,
@@ -40,7 +38,6 @@ final class TransferPathValidationTests: XCTestCase {
 
     func testAncestryConflictIgnoresFilesInMixedSelection() throws {
         let tempRoot = try makeTemporaryDirectory(named: "mixed-selection")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let fileURL = tempRoot.appendingPathComponent("payload.txt")
         let sourceFolder = tempRoot.appendingPathComponent("Source", isDirectory: true)
@@ -60,7 +57,6 @@ final class TransferPathValidationTests: XCTestCase {
 
     func testAncestryConflictAllowsSiblingDestination() throws {
         let tempRoot = try makeTemporaryDirectory(named: "sibling-destination")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let sourceFolder = tempRoot.appendingPathComponent("Source", isDirectory: true)
         let siblingDestination = tempRoot.appendingPathComponent("Destination", isDirectory: true)
@@ -76,7 +72,6 @@ final class TransferPathValidationTests: XCTestCase {
 
     func testAncestryConflictAllowsFileSelectionIntoDifferentDirectory() throws {
         let tempRoot = try makeTemporaryDirectory(named: "file-different-destination")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let sourceFile = tempRoot.appendingPathComponent("payload.txt")
         let destinationDirectory = tempRoot.appendingPathComponent("Destination", isDirectory: true)
@@ -91,7 +86,6 @@ final class TransferPathValidationTests: XCTestCase {
 
     func testAncestryConflictAllowsMixedSelectionIntoSiblingDirectory() throws {
         let tempRoot = try makeTemporaryDirectory(named: "mixed-sibling-destination")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let sourceFile = tempRoot.appendingPathComponent("payload.txt")
         let sourceFolder = tempRoot.appendingPathComponent("Source", isDirectory: true)
@@ -109,7 +103,6 @@ final class TransferPathValidationTests: XCTestCase {
 
     func testAncestryConflictRejectsSameDirectoryForFileSelection() throws {
         let tempRoot = try makeTemporaryDirectory(named: "same-dir-file-selection")
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
 
         let sourceFile = tempRoot.appendingPathComponent("payload.txt")
         try Data("payload".utf8).write(to: sourceFile)
@@ -121,13 +114,5 @@ final class TransferPathValidationTests: XCTestCase {
         XCTAssertEqual(conflict?.destinationURL, tempRoot.standardizedFileURL)
         XCTAssertEqual(conflict?.sourceIsDirectory, false)
         XCTAssertEqual(conflict?.kind, .sameDestination)
-    }
-
-    private func makeTemporaryDirectory(named name: String) throws -> URL {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ShichiZipTransferTests-\(name)-\(UUID().uuidString)",
-                                    isDirectory: true)
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
     }
 }

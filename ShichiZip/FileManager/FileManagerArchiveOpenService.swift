@@ -27,6 +27,7 @@ enum FileManagerArchiveOpenResult {
 struct FileManagerArchiveMutationTarget {
     let archive: SZArchive
     let subdir: String
+    let topLevelArchiveURL: URL?
 }
 
 struct FileManagerArchiveFileFingerprint: Equatable {

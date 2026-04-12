@@ -21,6 +21,8 @@
 		1F4FA2F4EBF56D3C51E1ABA5 /* ExtractDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1063FC95805225AC501608 /* ExtractDialogController.swift */; };
 		1F5A95E542D55CE4B86982D2 /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
 		20A344F10BF19FA853E7015E /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15AF94624BC55B258E21F044 /* main.swift */; };
+		21E9CDA741BD19129B87AE3B /* FileManagerArchiveChangeCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704050D2B82A77BADCD9197F /* FileManagerArchiveChangeCoordinatorTests.swift */; };
+		254CE9EDE601C65FBDAC3E2B /* FileManagerArchiveChangeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07CC46E9F69C5C445FFC06DA /* FileManagerArchiveChangeCoordinator.swift */; };
 		26FBCDAE7985FA01FA96BE26 /* BenchmarkWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA525BE71BEC9ED6FA806C10 /* BenchmarkWindowController.swift */; };
 		2754EF55454FEC5CEE4E1E33 /* SZArchive.mm in Sources */ = {isa = PBXBuildFile; fileRef = FC8109FC18679384CCE1FCC9 /* SZArchive.mm */; };
 		27AAAB1352382FE609A3B393 /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */; };
@@ -40,6 +42,7 @@
 		4F7418E2CB43A17B0BB5D6DB /* FileManagerDirectoryListing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF12616F99B5BC0BECF7D3BD /* FileManagerDirectoryListing.swift */; };
 		5047A72E9DE6E574585A77E1 /* CompressDialogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB37EA2DD031212A342F87 /* CompressDialogController.swift */; };
 		523834239F9A009DC22B0C0C /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
+		54BA1A1155A7825D47464057 /* ShichiZipTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 882AC50E39BAA37E67E37F3E /* ShichiZipTestSupport.swift */; };
 		5544DF4679FC2E8A56B9C8C5 /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
 		561AEC518507EB7849E83F8E /* SZDialogPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E8962DD7A7A34F21F49446 /* SZDialogPresenter.m */; };
 		57ED9148D94A32AC8683A9ED /* QuarantineRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5960D243CEA7BD8CAC8083 /* QuarantineRegressionTests.swift */; };
@@ -82,6 +85,7 @@
 		AA261563B50B35EE2B312E27 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15AF94624BC55B258E21F044 /* main.swift */; };
 		B0A9836EF7F1152F96BAF8F7 /* ShichiZipSmartQuickExtractAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 91C3FAE8FA976852BE2914A1 /* ShichiZipSmartQuickExtractAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B11BF90848B5A2C3BD688684 /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
+		B1AE23F6EC248B3EB4E75EB3 /* FileManagerArchiveChangeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07CC46E9F69C5C445FFC06DA /* FileManagerArchiveChangeCoordinator.swift */; };
 		B2B8116921C374B976FF9283 /* FileManagerWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3D317E3D1D15FB3C768A0 /* FileManagerWindowController.swift */; };
 		B3A8D9FEEB33A73AADDF374F /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
 		B4AE76FC286D96BE3C5BC486 /* DeleteTemporaryFilesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FECEA4ECEDC8A862D8490673 /* DeleteTemporaryFilesWindowController.swift */; };
@@ -203,6 +207,7 @@
 		03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		05E7B2052E228B7A91F2FAC4 /* FileManagerPaneController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerPaneController.swift; sourceTree = "<group>"; };
 		079C800E6F9E105461CEDF6F /* SZCallbacks.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZCallbacks.mm; sourceTree = "<group>"; };
+		07CC46E9F69C5C445FFC06DA /* FileManagerArchiveChangeCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerArchiveChangeCoordinator.swift; sourceTree = "<group>"; };
 		0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionTransport.swift; sourceTree = "<group>"; };
 		0DEB3F8BBDBD6F9E07CBC6B4 /* SZOperationSession.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SZOperationSession.m; sourceTree = "<group>"; };
 		103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZBridgeCommon.mm; sourceTree = "<group>"; };
@@ -229,11 +234,13 @@
 		66C60AB7E758ABD0F2751D95 /* SZCallbacks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZCallbacks.h; sourceTree = "<group>"; };
 		6A27325B4402993E4B3F4F0B /* SZOperationSession.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZOperationSession.h; sourceTree = "<group>"; };
 		6D8FE357C90F014620315B33 /* SmartQuickExtractAction-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "SmartQuickExtractAction-Info.plist"; sourceTree = "<group>"; };
+		704050D2B82A77BADCD9197F /* FileManagerArchiveChangeCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerArchiveChangeCoordinatorTests.swift; sourceTree = "<group>"; };
 		73A6FF9C36DA03A588B9C493 /* ShichiZipZSShowInFileManagerAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShichiZipZSShowInFileManagerAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		73F978AA77CB7237708162BD /* FileManagerArchiveOpenService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerArchiveOpenService.swift; sourceTree = "<group>"; };
 		78EC0F8B9F4DC1C6D26F42CD /* SZBridgeCommon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SZBridgeCommon.h; sourceTree = "<group>"; };
 		80B076D6AC7F0BF7BC2633E8 /* ShichiZip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShichiZip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		851064193250F62DE895FB60 /* ShichiZipZS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShichiZipZS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		882AC50E39BAA37E67E37F3E /* ShichiZipTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShichiZipTestSupport.swift; sourceTree = "<group>"; };
 		8D97DFC28A8EEEC9BBDB51EA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		91C3FAE8FA976852BE2914A1 /* ShichiZipSmartQuickExtractAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShichiZipSmartQuickExtractAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		937563A1E648A0013C4DD0C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -306,6 +313,7 @@
 			isa = PBXGroup;
 			children = (
 				03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */,
+				07CC46E9F69C5C445FFC06DA /* FileManagerArchiveChangeCoordinator.swift */,
 				15AF94624BC55B258E21F044 /* main.swift */,
 				ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */,
 				4B79A5CCE90FE27ABBE045F6 /* ShichiZip-Bridging-Header.h */,
@@ -416,9 +424,11 @@
 			isa = PBXGroup;
 			children = (
 				1C0B9CB3CF605BCEBC554B90 /* ArchiveOpenErrorClassificationTests.swift */,
+				704050D2B82A77BADCD9197F /* FileManagerArchiveChangeCoordinatorTests.swift */,
 				FF7308F2AFDBA865CE6735C2 /* FileManagerViewPreferencesTests.swift */,
 				2B5960D243CEA7BD8CAC8083 /* QuarantineRegressionTests.swift */,
 				98737207F41E39FE2CB71138 /* ShichiZipTests-Bridging-Header.h */,
+				882AC50E39BAA37E67E37F3E /* ShichiZipTestSupport.swift */,
 				2DBD201620236E7E186B4A2F /* TransferPathValidationTests.swift */,
 			);
 			path = ShichiZipTests;
@@ -907,6 +917,7 @@
 				B4AE76FC286D96BE3C5BC486 /* DeleteTemporaryFilesWindowController.swift in Sources */,
 				9FD92DF7516C92C44C5521A0 /* DialogPresenter.swift in Sources */,
 				715C1116BE0352E3331DB1B4 /* ExtractDialogController.swift in Sources */,
+				254CE9EDE601C65FBDAC3E2B /* FileManagerArchiveChangeCoordinator.swift in Sources */,
 				18FFE0D2BD16EC68A07DDBEA /* FileManagerArchiveItemWorkflowService.swift in Sources */,
 				F322B1EF38BEC6C3DD97CB5C /* FileManagerArchiveOpenService.swift in Sources */,
 				4F7418E2CB43A17B0BB5D6DB /* FileManagerDirectoryListing.swift in Sources */,
@@ -940,8 +951,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				583E5205A6A6EF417A465BB2 /* ArchiveOpenErrorClassificationTests.swift in Sources */,
+				21E9CDA741BD19129B87AE3B /* FileManagerArchiveChangeCoordinatorTests.swift in Sources */,
 				CDDB84BFFF6A861C960E54F0 /* FileManagerViewPreferencesTests.swift in Sources */,
 				57ED9148D94A32AC8683A9ED /* QuarantineRegressionTests.swift in Sources */,
+				54BA1A1155A7825D47464057 /* ShichiZipTestSupport.swift in Sources */,
 				B4E90C7FE35737A16B6518E6 /* TransferPathValidationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -971,6 +984,7 @@
 				E536B805338610B9325FDE45 /* DeleteTemporaryFilesWindowController.swift in Sources */,
 				0E083C8C01751D167AA800E1 /* DialogPresenter.swift in Sources */,
 				1F4FA2F4EBF56D3C51E1ABA5 /* ExtractDialogController.swift in Sources */,
+				B1AE23F6EC248B3EB4E75EB3 /* FileManagerArchiveChangeCoordinator.swift in Sources */,
 				5C20141C7403D014630B77AA /* FileManagerArchiveItemWorkflowService.swift in Sources */,
 				586E8349FFE035506C922697 /* FileManagerArchiveOpenService.swift in Sources */,
 				EFD6C6263E7F428FB8939A42 /* FileManagerDirectoryListing.swift in Sources */,
