@@ -1040,7 +1040,11 @@ static UInt32 SZCompressionEstimateAutoThreads(SZCompressionSettings* settings,
 @end
 
 static BOOL SZOpenErrorFlagsIndicateWrongPassword(UInt32 errorFlags) {
-    return (errorFlags & (kpv_ErrorFlags_EncryptedHeadersError | kpv_ErrorFlags_DataError | kpv_ErrorFlags_CrcError)) != 0;
+    return (errorFlags & kpv_ErrorFlags_EncryptedHeadersError) != 0;
+}
+
+static BOOL SZOpenErrorFlagsIndicateUnsupportedArchive(UInt32 errorFlags) {
+    return (errorFlags & (kpv_ErrorFlags_IsNotArc | kpv_ErrorFlags_UnsupportedMethod | kpv_ErrorFlags_UnsupportedFeature)) != 0;
 }
 
 static NSString* SZOpenArchiveFlagDetails(UInt32 errorFlags) {
@@ -1093,8 +1097,7 @@ static NSString* SZOpenArchiveFailureReason(const CArcErrorInfo& errorInfo) {
 }
 
 static NSError* SZOpenArchiveErrorFromPasswordContext(
-    HRESULT result, const CArcErrorInfo& errorInfo, BOOL passwordWasAsked,
-    BOOL passwordIsDefined) {
+    HRESULT result, const CArcErrorInfo& errorInfo, BOOL passwordWasAsked) {
     if (result == E_ABORT) {
         return SZMakeError(SZArchiveErrorCodeUserCancelled,
             @"Operation was cancelled");
@@ -1106,11 +1109,17 @@ static NSError* SZOpenArchiveErrorFromPasswordContext(
     }
 
     const UInt32 errorFlags = errorInfo.GetErrorFlags();
-    const BOOL hadPasswordContext = passwordWasAsked || passwordIsDefined;
-    const BOOL wrongPassword = (hadPasswordContext && (errorFlags & (kpv_ErrorFlags_HeadersError | kpv_ErrorFlags_EncryptedHeadersError | kpv_ErrorFlags_DataError | kpv_ErrorFlags_CrcError)) != 0) || (passwordWasAsked && !errorInfo.ErrorFlags_Defined) || SZOpenErrorFlagsIndicateWrongPassword(errorFlags);
+    const BOOL wrongPassword = SZOpenErrorFlagsIndicateWrongPassword(errorFlags)
+        || (passwordWasAsked && !errorInfo.ErrorFlags_Defined);
     if (wrongPassword) {
         return SZMakeError(SZArchiveErrorCodeWrongPassword,
             @"Cannot open encrypted archive. Wrong password?");
+    }
+
+    if (SZOpenErrorFlagsIndicateUnsupportedArchive(errorFlags)) {
+        return SZMakeDetailedError(SZArchiveErrorCodeUnsupportedArchive,
+            @"Cannot open archive or unsupported format",
+            SZOpenArchiveFailureReason(errorInfo));
     }
 
     if (!errorInfo.IsArc_After_NonOpen() && errorInfo.ErrorMessage.IsEmpty()) {
@@ -1128,8 +1137,7 @@ static NSError*
 SZOpenArchiveErrorFromResult(HRESULT result, const CArcErrorInfo& errorInfo,
     const SZOpenCallbackUI& callbackUI) {
     return SZOpenArchiveErrorFromPasswordContext(result, errorInfo,
-        callbackUI.PasswordWasAsked,
-        callbackUI.PasswordIsDefined);
+        callbackUI.PasswordWasAsked);
 }
 
 static NSString* SZNormalizeArchiveRelativePath(NSString* path) {
@@ -1973,8 +1981,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked,
-                updateSpec->PasswordIsDefined);
+                result, errorInfo, updateSpec->PasswordWasAsked);
         }
         return NO;
     }
@@ -2043,8 +2050,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked,
-                updateSpec->PasswordIsDefined);
+                result, errorInfo, updateSpec->PasswordWasAsked);
         }
         return NO;
     }
@@ -2122,8 +2128,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked,
-                updateSpec->PasswordIsDefined);
+                result, errorInfo, updateSpec->PasswordWasAsked);
         }
         return NO;
     }
@@ -2245,8 +2250,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked,
-                updateSpec->PasswordIsDefined);
+                result, errorInfo, updateSpec->PasswordWasAsked);
         }
         return NO;
     }
@@ -2328,8 +2332,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked,
-                updateSpec->PasswordIsDefined);
+                result, errorInfo, updateSpec->PasswordWasAsked);
         }
         return NO;
     }

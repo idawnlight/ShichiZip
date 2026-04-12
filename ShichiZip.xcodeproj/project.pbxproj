@@ -43,6 +43,7 @@
 		5544DF4679FC2E8A56B9C8C5 /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
 		561AEC518507EB7849E83F8E /* SZDialogPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E8962DD7A7A34F21F49446 /* SZDialogPresenter.m */; };
 		57ED9148D94A32AC8683A9ED /* QuarantineRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5960D243CEA7BD8CAC8083 /* QuarantineRegressionTests.swift */; };
+		583E5205A6A6EF417A465BB2 /* ArchiveOpenErrorClassificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0B9CB3CF605BCEBC554B90 /* ArchiveOpenErrorClassificationTests.swift */; };
 		586E8349FFE035506C922697 /* FileManagerArchiveOpenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F978AA77CB7237708162BD /* FileManagerArchiveOpenService.swift */; };
 		59C09EE81DB70063B69EAD1D /* FileManagerExternalOpenRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F07428E479FD64D8594CBD8 /* FileManagerExternalOpenRouter.swift */; };
 		5C20141C7403D014630B77AA /* FileManagerArchiveItemWorkflowService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E9365E10448902B8CE7660 /* FileManagerArchiveItemWorkflowService.swift */; };
@@ -206,6 +207,7 @@
 		103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZBridgeCommon.mm; sourceTree = "<group>"; };
 		15AF94624BC55B258E21F044 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		17A1A16D1207F4EA60603172 /* SZModalDialogController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SZModalDialogController.m; sourceTree = "<group>"; };
+		1C0B9CB3CF605BCEBC554B90 /* ArchiveOpenErrorClassificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveOpenErrorClassificationTests.swift; sourceTree = "<group>"; };
 		1F07428E479FD64D8594CBD8 /* FileManagerExternalOpenRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerExternalOpenRouter.swift; sourceTree = "<group>"; };
 		21BD5F44EF90F577C1F1EE7F /* ShichiZipZSSmartQuickExtractAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShichiZipZSSmartQuickExtractAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B5960D243CEA7BD8CAC8083 /* QuarantineRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarantineRegressionTests.swift; sourceTree = "<group>"; };
@@ -411,6 +413,7 @@
 		B9DAD67AF6B6486BB14E6D40 /* ShichiZipTests */ = {
 			isa = PBXGroup;
 			children = (
+				1C0B9CB3CF605BCEBC554B90 /* ArchiveOpenErrorClassificationTests.swift */,
 				2B5960D243CEA7BD8CAC8083 /* QuarantineRegressionTests.swift */,
 				98737207F41E39FE2CB71138 /* ShichiZipTests-Bridging-Header.h */,
 				2DBD201620236E7E186B4A2F /* TransferPathValidationTests.swift */,
@@ -473,6 +476,7 @@
 			buildConfigurationList = DA94294D0070065500AB997E /* Build configuration list for PBXNativeTarget "ShichiZipShowInFileManagerAction" */;
 			buildPhases = (
 				020204C866A79445C6E07FB5 /* Sources */,
+				37B5A3F16780157810978899 /* Generate Build Metadata */,
 			);
 			buildRules = (
 			);
@@ -513,6 +517,7 @@
 			buildConfigurationList = 31F771420F79FA710ADF5472 /* Build configuration list for PBXNativeTarget "ShichiZipZSSmartQuickExtractAction" */;
 			buildPhases = (
 				24FD08725C0226A688AC5F4D /* Sources */,
+				6E768B96E4C65EA524CF04BA /* Generate Build Metadata */,
 			);
 			buildRules = (
 			);
@@ -530,6 +535,7 @@
 			buildConfigurationList = 953F6C8D3E6F822E2F359BE3 /* Build configuration list for PBXNativeTarget "ShichiZipOpenInShichiZipAction" */;
 			buildPhases = (
 				8D5151ECBDC604D59E1DCFBB /* Sources */,
+				0F3613D6CDC9B3430B957B0D /* Generate Build Metadata */,
 			);
 			buildRules = (
 			);
@@ -547,6 +553,7 @@
 			buildConfigurationList = 1CF20150580B7A36531C6743 /* Build configuration list for PBXNativeTarget "ShichiZipSmartQuickExtractAction" */;
 			buildPhases = (
 				816F4E1FFB3C4C49150D4FCE /* Sources */,
+				1108C25EC8875C76ABC11B7C /* Generate Build Metadata */,
 			);
 			buildRules = (
 			);
@@ -582,6 +589,7 @@
 			buildConfigurationList = 5E6FC042418F6BFF16072145 /* Build configuration list for PBXNativeTarget "ShichiZipZSOpenInShichiZipAction" */;
 			buildPhases = (
 				57A898B50DCD772DDD2970EC /* Sources */,
+				C3AC7BFCDFFFEAF0EE5685CD /* Generate Build Metadata */,
 			);
 			buildRules = (
 			);
@@ -599,6 +607,7 @@
 			buildConfigurationList = 8EA7AB96A71089370DBAA981 /* Build configuration list for PBXNativeTarget "ShichiZipZSShowInFileManagerAction" */;
 			buildPhases = (
 				BBC7E7D9447AED95E9F12125 /* Sources */,
+				9298F0C49A0C803E034201A6 /* Generate Build Metadata */,
 			);
 			buildRules = (
 			);
@@ -675,6 +684,44 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		0F3613D6CDC9B3430B957B0D /* Generate Build Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Metadata";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh \"${SRCROOT}/build/generate-build-metadata.sh\"\n";
+		};
+		1108C25EC8875C76ABC11B7C /* Generate Build Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Metadata";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh \"${SRCROOT}/build/generate-build-metadata.sh\"\n";
+		};
 		3048E55F7BCCE7F70BE23445 /* Generate Build Metadata */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -692,7 +739,45 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\nsfx_source=\"${SRCROOT}/${SHICHIZIP_SFX_SOURCE_PATH}\"\nsfx_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx\"\n\nset_plist_value() {\n  local plist_path=\"$1\"\n  local key=\"$2\"\n  local value=\"$3\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${plist_path}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${plist_path}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${plist_path}\"\n  fi\n}\n\nset_plist_value \"${info_plist}\" \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"${info_plist}\" \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n\nif [ ! -f \"${sfx_source}\" ]; then\n  echo \"Missing required SFX payload: ${sfx_source}\" >&2\n  exit 1\nfi\n\ncp \"${sfx_source}\" \"${sfx_dest}\"\n";
+			shellScript = "sh \"${SRCROOT}/build/generate-build-metadata.sh\"\n";
+		};
+		37B5A3F16780157810978899 /* Generate Build Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Metadata";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh \"${SRCROOT}/build/generate-build-metadata.sh\"\n";
+		};
+		6E768B96E4C65EA524CF04BA /* Generate Build Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Metadata";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh \"${SRCROOT}/build/generate-build-metadata.sh\"\n";
 		};
 		807B4DC42912EBCC6372573E /* Generate Build Metadata */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -711,7 +796,45 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n\ninfo_plist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit_count=\"$(git -C \"${SRCROOT}\" rev-list --count HEAD 2>/dev/null || printf '0')\"\nshort_hash=\"$(git -C \"${SRCROOT}\" rev-parse --short HEAD 2>/dev/null || printf 'unknown')\"\nlicense_source=\"${SRCROOT}/${SHICHIZIP_LICENSE_SOURCE_PATH}\"\nlicense_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7zip-license.txt\"\nsfx_source=\"${SRCROOT}/${SHICHIZIP_SFX_SOURCE_PATH}\"\nsfx_dest=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/7z.sfx\"\n\nset_plist_value() {\n  local plist_path=\"$1\"\n  local key=\"$2\"\n  local value=\"$3\"\n\n  if /usr/libexec/PlistBuddy -c \"Print :${key}\" \"${plist_path}\" >/dev/null 2>&1; then\n    /usr/libexec/PlistBuddy -c \"Set :${key} ${value}\" \"${plist_path}\"\n  else\n    /usr/libexec/PlistBuddy -c \"Add :${key} string ${value}\" \"${plist_path}\"\n  fi\n}\n\nset_plist_value \"${info_plist}\" \"ShichiZipGitCommitCount\" \"${commit_count}\"\nset_plist_value \"${info_plist}\" \"ShichiZipGitShortHash\" \"${short_hash}\"\n\nmkdir -p \"$(dirname \"${license_dest}\")\"\ncp \"${license_source}\" \"${license_dest}\"\n\nif [ ! -f \"${sfx_source}\" ]; then\n  echo \"Missing required SFX payload: ${sfx_source}\" >&2\n  exit 1\nfi\n\ncp \"${sfx_source}\" \"${sfx_dest}\"\n";
+			shellScript = "sh \"${SRCROOT}/build/generate-build-metadata.sh\"\n";
+		};
+		9298F0C49A0C803E034201A6 /* Generate Build Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Metadata";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh \"${SRCROOT}/build/generate-build-metadata.sh\"\n";
+		};
+		C3AC7BFCDFFFEAF0EE5685CD /* Generate Build Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Metadata";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh \"${SRCROOT}/build/generate-build-metadata.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -813,6 +936,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				583E5205A6A6EF417A465BB2 /* ArchiveOpenErrorClassificationTests.swift in Sources */,
 				57ED9148D94A32AC8683A9ED /* QuarantineRegressionTests.swift in Sources */,
 				B4E90C7FE35737A16B6518E6 /* TransferPathValidationTests.swift in Sources */,
 			);

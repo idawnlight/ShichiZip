@@ -1,7 +1,6 @@
 import Foundation
 
 enum AppBuildInfo {
-    private static let gitCommitCountKey = "ShichiZipGitCommitCount"
     private static let gitShortHashKey = "ShichiZipGitShortHash"
     private static let licenseResourceName = "7zip-license"
     private static let archiveCoreNameKey = "ShichiZipArchiveCoreName"
@@ -28,8 +27,7 @@ enum AppBuildInfo {
 
     static func displayVersion(bundle: Bundle = .main) -> String? {
         let shortVersion = infoString("CFBundleShortVersionString", bundle: bundle)
-        let buildVersion = infoString(gitCommitCountKey, bundle: bundle)
-            ?? infoString("CFBundleVersion", bundle: bundle)
+        let buildVersion = infoString("CFBundleVersion", bundle: bundle)
         let gitHash = infoString(gitShortHashKey, bundle: bundle)
 
         switch (shortVersion, buildVersion, gitHash) {
