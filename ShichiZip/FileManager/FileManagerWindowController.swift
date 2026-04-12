@@ -1075,6 +1075,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                         try archive.open(atPath: archiveURL.path,
                                          password: extractResult.password,
                                          session: session)
+                        defer { archive.close() }
                         let archiveItems = archive.entries().map(ArchiveItem.init)
                         let settings = SZExtractionSettings()
                         settings.overwriteMode = extractResult.overwriteMode
@@ -1092,7 +1093,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                         try archive.extract(toPath: extractResult.destinationURL.path,
                                             settings: settings,
                                             session: session)
-                        archive.close()
                     }
                 }
 
@@ -1142,8 +1142,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                         }
                         let archive = SZArchive()
                         try archive.open(atPath: archiveURL.path, session: session)
+                        defer { archive.close() }
                         try archive.test(with: session)
-                        archive.close()
                     }
                 }
                 szPresentMessage(title: "Test OK",
@@ -2014,7 +2014,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         do {
             try archive.open(atPath: url.path)
-            archive.close()
+            defer { archive.close() }
             return true
         } catch {
             let nsError = error as NSError
