@@ -178,9 +178,11 @@ final class FileManagerArchiveItemWorkflowService {
                 }
 
             case .cancelled:
+                cleanup(stagedItem.temporaryDirectory)
                 return
 
             case let .failed(error):
+                cleanup(stagedItem.temporaryDirectory)
                 throw error
             }
 
@@ -196,9 +198,13 @@ final class FileManagerArchiveItemWorkflowService {
                                      nestedWriteBackInfo,
                                      openMode)
             {
-            case .opened, .cancelled:
+            case .opened:
+                return
+            case .cancelled:
+                cleanup(stagedItem.temporaryDirectory)
                 return
             case let .unsupportedArchive(error), let .failed(error):
+                cleanup(stagedItem.temporaryDirectory)
                 throw error
             }
 
