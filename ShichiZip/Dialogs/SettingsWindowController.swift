@@ -187,6 +187,11 @@ class SettingsWindowController: NSWindowController {
         setupUI()
     }
 
+    override func showWindow(_ sender: Any?) {
+        window?.title = SZL10n.string("settings.options")
+        super.showWindow(sender)
+    }
+
     private func setupUI() {
         guard let contentView = window?.contentView else { return }
 
@@ -686,6 +691,7 @@ class SettingsWindowController: NSWindowController {
         SZL10n.reloadBundle()
 
         // Rebuild UI with new language
+        window?.title = SZL10n.string("settings.options")
         let selectedTab = tabSegmentedControl.selectedSegment
         for subview in window?.contentView?.subviews ?? [] {
             subview.removeFromSuperview()
