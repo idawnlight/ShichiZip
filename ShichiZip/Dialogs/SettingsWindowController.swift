@@ -67,7 +67,7 @@ private final class ShortcutRecorderButton: NSButton {
         fatalError("init(coder:) has not been implemented")
     }
 
-    deinit {
+    isolated deinit {
         stopRecording()
     }
 

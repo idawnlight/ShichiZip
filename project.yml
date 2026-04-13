@@ -57,7 +57,7 @@ targets:
           - $(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)
           - -liconv
           - -lpthread
-        SWIFT_VERSION: "5.9"
+        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: false
@@ -143,7 +143,7 @@ targets:
           - $(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)
           - -liconv
           - -lpthread
-        SWIFT_VERSION: "5.9"
+        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: false

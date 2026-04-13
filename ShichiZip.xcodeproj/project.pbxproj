@@ -1162,7 +1162,7 @@
 					SHICHIZIP_ZS_VARIANT,
 				);
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -1333,7 +1333,7 @@
 					"$(inherited)",
 				);
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -1565,7 +1565,7 @@
 					"$(inherited)",
 				);
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -1716,7 +1716,7 @@
 					SHICHIZIP_ZS_VARIANT,
 				);
 				SWIFT_OBJC_BRIDGING_HEADER = "ShichiZip/App/ShichiZip-Bridging-Header.h";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};

@@ -8,7 +8,7 @@ typedef NS_ENUM(NSInteger, SZDialogStyle) {
     SZDialogStyleCritical,
 };
 
-typedef void (^SZModalDialogCompletionHandler)(NSInteger selectedButtonIndex);
+typedef void (NS_SWIFT_UI_ACTOR ^SZModalDialogCompletionHandler)(NSInteger selectedButtonIndex);
 
 @interface SZModalDialogController : NSWindowController
 

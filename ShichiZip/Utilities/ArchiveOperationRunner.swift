@@ -66,13 +66,9 @@ enum ArchiveOperationRunner {
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
                     let result = try work(session)
-                    DispatchQueue.main.async {
-                        continuation.resume(returning: result)
-                    }
+                    continuation.resume(returning: result)
                 } catch {
-                    DispatchQueue.main.async {
-                        continuation.resume(throwing: error)
-                    }
+                    continuation.resume(throwing: error)
                 }
             }
         }

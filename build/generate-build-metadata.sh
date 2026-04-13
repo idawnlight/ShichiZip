@@ -11,9 +11,7 @@ set_plist_value() {
   local key="$2"
   local value="$3"
 
-  if /usr/libexec/PlistBuddy -c "Print :${key}" "${plist_path}" >/dev/null 2>&1; then
-    /usr/libexec/PlistBuddy -c "Set :${key} ${value}" "${plist_path}"
-  else
+  if ! /usr/libexec/PlistBuddy -c "Set :${key} ${value}" "${plist_path}" >/dev/null 2>&1; then
     /usr/libexec/PlistBuddy -c "Add :${key} string ${value}" "${plist_path}"
   fi
 }

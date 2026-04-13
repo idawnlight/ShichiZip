@@ -16,6 +16,7 @@ private final class FoldersHistoryTableView: NSTableView {
     }
 }
 
+@MainActor
 final class FoldersHistoryWindowController: NSObject, NSTableViewDataSource, NSTableViewDelegate {
     struct Result {
         let selectedURL: URL?

@@ -386,7 +386,7 @@ enum FileManagerShortcuts {
 enum FileManagerFavoriteStore {
     static let slotCount = 10
 
-    private static let defaults = UserDefaults.standard
+    private static var defaults: UserDefaults { .standard }
     private static let defaultsKey = "FileManager.Favorites"
 
     static func url(for slot: Int) -> URL? {
@@ -658,6 +658,7 @@ enum FileManagerMenuFactory {
     }
 }
 
+@MainActor
 private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
     var timeMenuItem: NSMenuItem?
 
@@ -744,6 +745,7 @@ private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
 }
 
 /// Sets up the main application menu bar programmatically.
+@MainActor
 enum MainMenu {
     private static let coordinator = MainMenuCoordinator()
     private static var settingsObserver: NSObjectProtocol?

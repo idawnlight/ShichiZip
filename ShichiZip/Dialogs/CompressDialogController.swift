@@ -5,19 +5,20 @@ struct CompressDialogResult {
     let archiveURL: URL
 }
 
+@MainActor
 final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxDelegate {
-    private struct Option<Value: Equatable>: Equatable {
+    private struct Option<Value: Equatable & Sendable>: Equatable, Sendable {
         let title: String
         let value: Value
     }
 
-    private struct LevelOption: Equatable {
+    private struct LevelOption: Equatable, Sendable {
         let title: String
         let levelValue: Int
         let isDefault: Bool
     }
 
-    private struct MethodOption: Equatable {
+    private struct MethodOption: Equatable, Sendable {
         let title: String
         let enumValue: SZCompressionMethod?
         let methodName: String
@@ -47,7 +48,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         }
     }
 
-    private struct FormatOption: Equatable {
+    private struct FormatOption: Equatable, Sendable {
         let title: String
         let codecName: String
         let format: SZArchiveFormat
@@ -120,7 +121,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     }
 
     private enum ArchivePathHistory {
-        private static let defaults = UserDefaults.standard
+        private static var defaults: UserDefaults { .standard }
         private static let entriesKey = "FileManager.CompressArchivePathHistory"
         private static let maxEntries = 20
 
@@ -140,7 +141,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     }
 
     private enum DialogPreferences {
-        private static let defaults = UserDefaults.standard
+        private static var defaults: UserDefaults { .standard }
         private static let formatKey = "FileManager.CompressFormat"
         private static let updateModeKey = "FileManager.CompressUpdateMode"
         private static let pathModeKey = "FileManager.CompressPathMode"
@@ -349,6 +350,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         }
     }
 
+    @MainActor
     private final class ArchivePathPicker: NSObject {
         private weak var ownerWindow: NSWindow?
         private weak var pathField: NSComboBox?
@@ -425,6 +427,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         }
     }
 
+    @MainActor
     private final class ActionHandler: NSObject {
         private let handler: () -> Void
 

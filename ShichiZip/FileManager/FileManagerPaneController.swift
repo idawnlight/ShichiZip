@@ -45,42 +45,48 @@ private final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate 
                              writePromiseTo url: URL,
                              completionHandler: @escaping (Error?) -> Void)
     {
-        let semaphore = DispatchSemaphore(value: 0)
-        var result: Result<Void, Error>?
-
-        Task { @MainActor in
-            do {
-                try await ArchiveOperationRunner.run(operationTitle: "Extracting...",
-                                                     initialFileName: self.item.path,
-                                                     deferredDisplay: true)
-                { session in
-                    try self.workflowService.writePromise(for: self.item,
-                                                          context: self.context,
-                                                          to: url,
-                                                          session: session)
-                }
-                result = .success(())
-            } catch {
-                result = .failure(error)
+        let result: Result<Void, Error>
+        if Thread.isMainThread {
+            result = MainActor.assumeIsolated {
+                writePromiseResult(to: url)
             }
-            semaphore.signal()
+        } else {
+            result = DispatchQueue.main.sync { [self] in
+                MainActor.assumeIsolated {
+                    writePromiseResult(to: url)
+                }
+            }
         }
 
-        semaphore.wait()
         switch result {
-        case .success?:
+        case .success:
             completionHandler(nil)
-        case let .failure(error)?:
+        case let .failure(error):
             completionHandler(error)
-        case nil:
-            completionHandler(nil)
         }
     }
 
     func operationQueue(for _: NSFilePromiseProvider) -> OperationQueue {
         promiseQueue
     }
+
+    @MainActor
+    private func writePromiseResult(to url: URL) -> Result<Void, Error> {
+        Result {
+            try ArchiveOperationRunner.runSynchronously(operationTitle: "Extracting...",
+                                                        initialFileName: self.item.path,
+                                                        deferredDisplay: true)
+            { session in
+                try self.workflowService.writePromise(for: self.item,
+                                                      context: self.context,
+                                                 to: url,
+                                                 session: session)
+            }
+        }
+    }
 }
+
+extension ArchiveDragPromise: @unchecked Sendable {}
 
 private final class FileManagerTableView: NSTableView {
     var contextMenuPreparationHandler: ((Int) -> Void)?
@@ -266,7 +272,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     // MARK: - Lifecycle
 
-    deinit {
+    isolated deinit {
         if let settingsObserver {
             NotificationCenter.default.removeObserver(settingsObserver)
         }
@@ -409,7 +415,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             object: scrollView,
             queue: .main
         ) { [weak self] _ in
-            self?.isLiveScrolling = true
+            MainActor.assumeIsolated {
+                self?.isLiveScrolling = true
+            }
         }
 
         liveScrollEndObserver = NotificationCenter.default.addObserver(
@@ -417,12 +425,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             object: scrollView,
             queue: .main
         ) { [weak self] _ in
-            guard let self else { return }
-            self.isLiveScrolling = false
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.isLiveScrolling = false
 
-            guard self.pendingAutoRefresh else { return }
-            self.pendingAutoRefresh = false
-            self.autoRefreshIfPossible()
+                guard self.pendingAutoRefresh else { return }
+                self.pendingAutoRefresh = false
+                self.autoRefreshIfPossible()
+            }
         }
 
         // Status bar
@@ -461,7 +471,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            self?.handleSettingsDidChange(notification)
+            let settingsKey = (notification.userInfo?["key"] as? String)
+                .flatMap(SZSettingsKey.init(rawValue:))
+            MainActor.assumeIsolated {
+                guard let settingsKey else { return }
+                self?.handleSettingsDidChange(settingsKey)
+            }
         }
 
         viewPreferencesObserver = NotificationCenter.default.addObserver(
@@ -469,7 +484,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.reloadPresentedValues()
+            MainActor.assumeIsolated {
+                self?.reloadPresentedValues()
+            }
         }
 
         archiveChangeObserver = NotificationCenter.default.addObserver(
@@ -477,12 +494,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let self,
-                  let change = FileManagerArchiveChange(notification: notification)
-            else {
-                return
+            let change = FileManagerArchiveChange(notification: notification)
+            MainActor.assumeIsolated {
+                guard let self,
+                      let change
+                else {
+                    return
+                }
+                self.handlePublishedArchiveChange(change)
             }
-            self.handlePublishedArchiveChange(change)
         }
 
         applyFileManagerSettings()
@@ -1566,13 +1586,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    private func handleSettingsDidChange(_ notification: Notification) {
-        guard let key = notification.userInfo?["key"] as? String,
-              let settingsKey = SZSettingsKey(rawValue: key)
-        else {
-            return
-        }
-
+    private func handleSettingsDidChange(_ settingsKey: SZSettingsKey) {
         switch settingsKey {
         case .showDots, .showRealFileIcons, .showGridLines, .singleClickOpen:
             if settingsKey == .showRealFileIcons {

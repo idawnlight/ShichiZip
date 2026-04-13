@@ -1,5 +1,6 @@
 import Cocoa
-import QuickLookUI
+import os
+@preconcurrency import QuickLookUI
 
 func szPresentTransferAncestryConflict(_ conflict: FileManagerTransferPathValidation.Conflict,
                                        move: Bool,
@@ -63,6 +64,7 @@ private final class FileManagerQuickLookItem: NSObject, QLPreviewItem {
     }
 }
 
+@MainActor
 private final class FileOperationDestinationPicker: NSObject {
     private weak var ownerWindow: NSWindow?
     private weak var pathField: NSComboBox?
@@ -142,9 +144,8 @@ private func szNormalizedDestinationDisplayPath(_ path: String) -> String {
 }
 
 enum FileManagerViewPreferences {
-    private static let formatterCacheLock = NSLock()
-    private static var fixedFormatFormatterCache: [String: DateFormatter] = [:]
-    private static var styleFormatterCache: [String: DateFormatter] = [:]
+    private static let fixedFormatFormatterCache = OSAllocatedUnfairLock(initialState: [String: DateFormatter]())
+    private static let styleFormatterCache = OSAllocatedUnfairLock(initialState: [String: DateFormatter]())
 
     enum TimestampDisplayLevel: Int, CaseIterable {
         case day
@@ -169,7 +170,7 @@ enum FileManagerViewPreferences {
         }
     }
 
-    private static let defaults = UserDefaults.standard
+    private static var defaults: UserDefaults { .standard }
     private static let timestampUTCKey = "FileManager.TimestampUTC"
     private static let timestampLevelKey = "FileManager.TimestampLevel"
     private static let autoRefreshKey = "FileManager.AutoRefresh"
@@ -212,7 +213,7 @@ enum FileManagerViewPreferences {
     {
         let usesUTC = usesUTCTimestamps
         let cacheKey = "\(dateStyle.rawValue)|\(timeStyle.rawValue)|\(usesUTC ? 1 : 0)"
-        return cachedFormatter(forKey: cacheKey, cache: &styleFormatterCache) {
+        return cachedFormatter(forKey: cacheKey, in: styleFormatterCache) {
             let formatter = DateFormatter()
             formatter.dateStyle = dateStyle
             formatter.timeStyle = timeStyle
@@ -250,7 +251,7 @@ enum FileManagerViewPreferences {
     private static func makeFixedFormatFormatter(format: String) -> DateFormatter {
         let usesUTC = usesUTCTimestamps
         let cacheKey = "\(format)|\(usesUTC ? 1 : 0)"
-        return cachedFormatter(forKey: cacheKey, cache: &fixedFormatFormatterCache) {
+        return cachedFormatter(forKey: cacheKey, in: fixedFormatFormatterCache) {
             let formatter = DateFormatter()
             formatter.calendar = Calendar(identifier: .gregorian)
             formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -261,35 +262,27 @@ enum FileManagerViewPreferences {
     }
 
     private static func resetFormatterCaches() {
-        withFormatterCacheLock {
-            fixedFormatFormatterCache.removeAll()
-            styleFormatterCache.removeAll()
-        }
+        fixedFormatFormatterCache.withLock { $0.removeAll() }
+        styleFormatterCache.withLock { $0.removeAll() }
     }
 
     private static func cachedFormatter(forKey key: String,
-                                        cache: inout [String: DateFormatter],
-                                        builder: () -> DateFormatter) -> DateFormatter
+                                        in cache: OSAllocatedUnfairLock<[String: DateFormatter]>,
+                                        builder: @Sendable () -> DateFormatter) -> DateFormatter
     {
         // DateFormatter is mutable and not thread-safe, so the cache stores
         // prototypes and each caller gets an independent copy.
-        withFormatterCacheLock {
+        cache.withLock { store in
             let formatter: DateFormatter
-            if let cached = cache[key] {
+            if let cached = store[key] {
                 formatter = cached
             } else {
                 let created = builder()
-                cache[key] = created
+                store[key] = created
                 formatter = created
             }
             return formatter.copy() as! DateFormatter
         }
-    }
-
-    private static func withFormatterCacheLock<T>(_ body: () -> T) -> T {
-        formatterCacheLock.lock()
-        defer { formatterCacheLock.unlock() }
-        return body()
     }
 }
 
@@ -354,13 +347,14 @@ private enum FileManagerHashAlgorithm {
 }
 
 /// Dual-pane file manager window replicating 7-Zip File Manager
+@MainActor
 class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserInterfaceValidations, NSMenuItemValidation {
     private static let maxArchiveQuickLookItemSize: UInt64 = 128 * 1024 * 1024
     private static let maxArchiveQuickLookCombinedSize: UInt64 = 256 * 1024 * 1024
     private static let maxSolidArchiveQuickLookSize: UInt64 = 512 * 1024 * 1024
 
     private enum PanePreferences {
-        private static let defaults = UserDefaults.standard
+        private static var defaults: UserDefaults { .standard }
         private static let dualPaneKey = "FileManager.IsDualPane"
 
         static var showsDualPane: Bool {
@@ -380,7 +374,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     private enum ToolbarPreferences {
-        private static let defaults = UserDefaults.standard
+        private static var defaults: UserDefaults { .standard }
         private static let archiveToolbarKey = "FileManager.ShowArchiveToolbar"
         private static let standardToolbarKey = "FileManager.ShowStandardToolbar"
         private static let showTextKey = "FileManager.ToolbarShowButtonText"
@@ -418,7 +412,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     private enum FileOperationDestinationHistory {
-        private static let defaults = UserDefaults.standard
+        private static var defaults: UserDefaults { .standard }
         private static let entriesKey = "FileManager.CopyMoveDestinationHistory"
         private static let maxEntries = 20
 
@@ -501,7 +495,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         self.window?.makeFirstResponder(leftPane.preferredInitialFirstResponder)
     }
 
-    deinit {
+    isolated deinit {
         if let viewPreferencesObserver {
             NotificationCenter.default.removeObserver(viewPreferencesObserver)
         }
@@ -2269,6 +2263,7 @@ extension FileManagerWindowController: NSToolbarDelegate {
 
 // MARK: - FileManagerPaneDelegate
 
+@MainActor
 protocol FileManagerPaneDelegate: AnyObject {
     func paneDidRequestOpenArchiveInNewWindow(_ url: URL)
     func paneDidBecomeActive(_ pane: FileManagerPaneController)
@@ -2334,7 +2329,7 @@ extension FileManagerWindowController: FileManagerPaneDelegate {
     }
 }
 
-extension FileManagerWindowController: QLPreviewPanelDataSource, QLPreviewPanelDelegate {
+extension FileManagerWindowController: @preconcurrency QLPreviewPanelDataSource, @preconcurrency QLPreviewPanelDelegate {
     override func acceptsPreviewPanelControl(_: QLPreviewPanel!) -> Bool {
         !quickLookPreviewItems.isEmpty
     }

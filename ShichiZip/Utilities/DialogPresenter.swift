@@ -76,12 +76,13 @@ func szPromptForPasswordSync(title: String,
     return password as String?
 }
 
+@MainActor
 func szBeginConfirmation(on window: NSWindow,
                          title: String,
                          message: String,
                          confirmTitle: String,
                          style: SZDialogStyle = .warning,
-                         completion: @escaping (Bool) -> Void)
+                         completion: @escaping @MainActor @Sendable (Bool) -> Void)
 {
     let controller = SZModalDialogController(style: style,
                                              title: title,
@@ -95,6 +96,7 @@ func szBeginConfirmation(on window: NSWindow,
     }
 }
 
+@MainActor
 func szBeginTextInput(on window: NSWindow,
                       title: String,
                       message: String? = nil,
@@ -102,7 +104,7 @@ func szBeginTextInput(on window: NSWindow,
                       placeholder: String? = nil,
                       confirmTitle: String,
                       style: SZDialogStyle = .informational,
-                      completion: @escaping (String?) -> Void)
+                      completion: @escaping @MainActor @Sendable (String?) -> Void)
 {
     let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
     inputField.stringValue = initialValue

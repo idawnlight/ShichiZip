@@ -22,6 +22,7 @@ enum ArchiveExtractionPostProcessor {
     }
 }
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     private struct SmartQuickExtractPlan {
         let destinationURL: URL

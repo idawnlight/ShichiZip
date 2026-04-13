@@ -33,7 +33,7 @@ enum SZSettingsKey: String {
 // MARK: - Settings Access
 
 enum SZSettings {
-    static let defaults = UserDefaults.standard
+    private static var defaults: UserDefaults { .standard }
 
     private static func defaultBool(for key: SZSettingsKey) -> Bool {
         switch key {

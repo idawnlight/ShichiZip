@@ -1,5 +1,6 @@
 import Cocoa
 
+@MainActor
 final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDelegate, NSTableViewDataSource, NSTableViewDelegate {
     private enum Column: String, CaseIterable {
         case name
@@ -257,7 +258,8 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
         isLoading = true
         updateControls()
 
-        DispatchQueue.global(qos: .userInitiated).async { [fileManager, tempRoot] in
+        DispatchQueue.global(qos: .userInitiated).async { [tempRoot] in
+            let fileManager = FileManager()
             let result: Result<[BrowserItem], Error>
             do {
                 let loadedItems = try Self.loadItems(in: directory,
@@ -546,7 +548,8 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
         updateControls()
 
         let urls = itemsToDelete.map(\.url)
-        DispatchQueue.global(qos: .userInitiated).async { [fileManager] in
+        DispatchQueue.global(qos: .userInitiated).async {
+            let fileManager = FileManager()
             let result: Result<Void, Error>
             do {
                 for url in urls {

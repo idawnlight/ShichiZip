@@ -19,6 +19,7 @@ struct ExtractQuickActionDefaults {
     let inheritDownloadedFileQuarantine: Bool
 }
 
+@MainActor
 final class ExtractDialogController: NSObject {
     private struct ModeOption<Value: Equatable> {
         let title: String
@@ -26,7 +27,7 @@ final class ExtractDialogController: NSObject {
     }
 
     private enum DestinationHistory {
-        private static let defaults = UserDefaults.standard
+        private static var defaults: UserDefaults { .standard }
         private static let entriesKey = "FileManager.ExtractDestinationHistory"
         private static let maxEntries = 20
 
@@ -46,7 +47,7 @@ final class ExtractDialogController: NSObject {
     }
 
     private enum DialogPreferences {
-        private static let defaults = UserDefaults.standard
+        private static var defaults: UserDefaults { .standard }
         private static let pathModeKey = "FileManager.ExtractPathMode"
         private static let overwriteModeKey = "FileManager.ExtractOverwriteMode"
         private static let preserveNtSecurityKey = "FileManager.ExtractPreserveNtSecurity"
@@ -119,6 +120,7 @@ final class ExtractDialogController: NSObject {
         }
     }
 
+    @MainActor
     private final class DestinationPicker: NSObject {
         private weak var ownerWindow: NSWindow?
         private weak var pathField: NSComboBox?
