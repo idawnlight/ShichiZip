@@ -21,25 +21,21 @@ jobs:
         include:
           - scheme: ShichiZip
             make_target: lib-mainline
-            test_scheme: ShichiZipTests
             app_bundle: ShichiZip.app
             artifact_prefix: ShichiZip
             target_arch: arm64
           - scheme: ShichiZip
             make_target: lib-mainline
-            test_scheme: ShichiZipTests
             app_bundle: ShichiZip.app
             artifact_prefix: ShichiZip
             target_arch: x86_64
           - scheme: ShichiZipZS
             make_target: lib-zs
-            test_scheme: ""
             app_bundle: ShichiZip ZS.app
             artifact_prefix: ShichiZipZS
             target_arch: arm64
           - scheme: ShichiZipZS
             make_target: lib-zs
-            test_scheme: ""
             app_bundle: ShichiZip ZS.app
             artifact_prefix: ShichiZipZS
             target_arch: x86_64
@@ -81,22 +77,6 @@ jobs:
             ARCHS="${{ matrix.target_arch }}" \
             VALID_ARCHS="${{ matrix.target_arch }}" \
             build
-
-      - name: Run tests
-        if: ${{ matrix.test_scheme != '' }}
-        run: |
-          derived_data_path="build/DerivedData/${{ matrix.test_scheme }}"
-
-          xcodebuild \
-            -project "$XCODE_PROJECT" \
-            -scheme "${{ matrix.test_scheme }}" \
-            -configuration Debug \
-            -derivedDataPath "$derived_data_path" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            ARCHS="${{ matrix.target_arch }}" \
-            VALID_ARCHS="${{ matrix.target_arch }}" \
-            test
 
       - name: Ad hoc sign app bundle
         run: |

@@ -1150,6 +1150,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             accessoryView.alignment = .leading
             accessoryView.spacing = 16
             accessoryView.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+            accessoryView.widthAnchor.constraint(equalToConstant: Self.leftColumnWidth + Self.rightColumnWidth + Self.columnSpacing).isActive = true
 
             let controller = SZModalDialogController(style: .informational,
                                                      title: "Add to Archive",

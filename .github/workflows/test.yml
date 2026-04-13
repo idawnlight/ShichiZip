@@ -1,0 +1,90 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Unit Tests (arm64)
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      XCODE_PROJECT: ShichiZip.xcodeproj
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install build tools
+        run: brew install xcodegen zig
+
+      - name: Select Xcode 26.4
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
+
+      - name: Build lib7zip
+        run: make -j"$(sysctl -n hw.ncpu)" TARGET_ARCH=arm64 lib-mainline
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Run unit tests
+        run: |
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme ShichiZip \
+            -configuration Debug \
+            -destination 'platform=macOS,arch=arm64' \
+            -only-testing:ShichiZipTests \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            test
+
+  ui-tests:
+    name: UI Tests (arm64)
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      XCODE_PROJECT: ShichiZip.xcodeproj
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install build tools
+        run: brew install xcodegen zig
+
+      - name: Select Xcode 26.4
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
+
+      - name: Build lib7zip
+        run: make -j"$(sysctl -n hw.ncpu)" TARGET_ARCH=arm64 lib-mainline
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Run UI tests
+        run: |
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme ShichiZip \
+            -configuration Debug \
+            -destination 'platform=macOS,arch=arm64' \
+            -only-testing:ShichiZipUITests \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            test

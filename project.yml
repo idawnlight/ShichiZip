@@ -93,6 +93,22 @@ targets:
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/ShichiZip.app/Contents/MacOS/ShichiZip
         BUNDLE_LOADER: $(TEST_HOST)
 
+  ShichiZipUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: ShichiZipUITests
+    dependencies:
+      - target: ShichiZip
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipUITests
+        PRODUCT_NAME: ShichiZipUITests
+        GENERATE_INFOPLIST_FILE: true
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        TEST_TARGET_NAME: ShichiZip
+
   ShichiZipZS:
     type: application
     platform: macOS
