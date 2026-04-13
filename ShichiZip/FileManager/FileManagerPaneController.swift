@@ -14,6 +14,18 @@ struct FileManagerQuickLookPreparedPreview {
     let temporaryDirectories: [URL]
 }
 
+private final class ArchiveDragPromiseCompletionHandler: @unchecked Sendable {
+    private let handler: (Error?) -> Void
+
+    init(_ handler: @escaping (Error?) -> Void) {
+        self.handler = handler
+    }
+
+    func finish(_ error: Error?) {
+        handler(error)
+    }
+}
+
 private final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate {
     private let item: ArchiveItem
     private let context: FileManagerArchiveItemWorkflowContext
@@ -45,41 +57,49 @@ private final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate 
                              writePromiseTo url: URL,
                              completionHandler: @escaping (Error?) -> Void)
     {
-        let result: Result<Void, Error> = if Thread.isMainThread {
-            MainActor.assumeIsolated {
-                writePromiseResult(to: url)
-            }
-        } else {
-            DispatchQueue.main.sync { [self] in
-                MainActor.assumeIsolated {
-                    writePromiseResult(to: url)
-                }
-            }
-        }
-
-        switch result {
-        case .success:
-            completionHandler(nil)
-        case let .failure(error):
-            completionHandler(error)
-        }
+        let completion = ArchiveDragPromiseCompletionHandler(completionHandler)
+        writePromiseAsync(to: url,
+                          completionHandler: completion)
     }
 
     func operationQueue(for _: NSFilePromiseProvider) -> OperationQueue {
         promiseQueue
     }
 
-    @MainActor
-    private func writePromiseResult(to url: URL) -> Result<Void, Error> {
-        Result {
-            try ArchiveOperationRunner.runSynchronously(operationTitle: SZL10n.string("app.progress.extracting"),
-                                                        initialFileName: self.item.path,
-                                                        deferredDisplay: true)
-            { session in
-                try self.workflowService.writePromise(for: self.item,
-                                                      context: self.context,
-                                                      to: url,
-                                                      session: session)
+    private func writePromiseAsync(to url: URL,
+                                   completionHandler: ArchiveDragPromiseCompletionHandler)
+    {
+        // File promise writes are expected to complete asynchronously. Blocking this
+        // callback while the destination resolves the promised file can deadlock drag-out.
+        DispatchQueue.main.async { [self] in
+            MainActor.assumeIsolated {
+                let coordinator = ArchiveOperationCoordinator(operationTitle: SZL10n.string("app.progress.extracting"),
+                                                              initialFileName: self.item.path,
+                                                              deferredDisplay: true)
+                coordinator.start()
+                let session = coordinator.session
+
+                DispatchQueue.global(qos: .userInitiated).async { [self] in
+                    let result: Result<Void, Error> = Result {
+                        try self.workflowService.writePromise(for: self.item,
+                                                              context: self.context,
+                                                              to: url,
+                                                              session: session)
+                    }
+
+                    DispatchQueue.main.async {
+                        MainActor.assumeIsolated {
+                            coordinator.finish()
+
+                            switch result {
+                            case .success:
+                                completionHandler.finish(nil)
+                            case let .failure(error):
+                                completionHandler.finish(error)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
