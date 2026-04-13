@@ -2,6 +2,7 @@ import Foundation
 
 extension Notification.Name {
     static let szSettingsDidChange = Notification.Name("SZSettingsDidChange")
+    static let szLanguageDidChange = Notification.Name("SZLanguageDidChange")
 }
 
 // MARK: - Settings Keys (maps to Windows 7-Zip registry keys)

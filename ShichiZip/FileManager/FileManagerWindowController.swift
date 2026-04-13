@@ -469,6 +469,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     private weak var trackedActivePane: FileManagerPaneController?
     private var fileOperationDestinationPicker: FileOperationDestinationPicker?
     private var viewPreferencesObserver: NSObjectProtocol?
+    private var languageObserver: NSObjectProtocol?
     private var autoRefreshTimer: Timer?
     private var foldersHistoryWindowController: FoldersHistoryWindowController?
     private var pendingEvenSplitLayout = false
@@ -509,6 +510,9 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     isolated deinit {
         if let viewPreferencesObserver {
             NotificationCenter.default.removeObserver(viewPreferencesObserver)
+        }
+        if let languageObserver {
+            NotificationCenter.default.removeObserver(languageObserver)
         }
         if let quickLookPanelKeyObserver {
             NotificationCenter.default.removeObserver(quickLookPanelKeyObserver)
@@ -618,45 +622,45 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         switch item.itemIdentifier {
         case Self.addItem:
-            item.label = "Add"
-            item.toolTip = "Add files to archive"
-            item.image = toolbarImage(systemSymbolName: "plus.circle", accessibilityDescription: "Add")
+            item.label = SZL10n.string("toolbar.add")
+            item.toolTip = SZL10n.string("toolbar.add")
+            item.image = toolbarImage(systemSymbolName: "plus.circle", accessibilityDescription: SZL10n.string("toolbar.add"))
             item.action = #selector(addToArchive(_:))
 
         case Self.extractItem:
-            item.label = "Extract"
-            item.toolTip = "Extract archive"
-            item.image = toolbarImage(systemSymbolName: "arrow.down.doc", accessibilityDescription: "Extract")
+            item.label = SZL10n.string("toolbar.extract")
+            item.toolTip = SZL10n.string("toolbar.extract")
+            item.image = toolbarImage(systemSymbolName: "arrow.down.doc", accessibilityDescription: SZL10n.string("toolbar.extract"))
             item.action = #selector(extractArchive(_:))
 
         case Self.testItem:
-            item.label = "Test"
-            item.toolTip = "Test archive integrity"
-            item.image = toolbarImage(systemSymbolName: "checkmark.shield", accessibilityDescription: "Test")
+            item.label = SZL10n.string("toolbar.test")
+            item.toolTip = SZL10n.string("toolbar.test")
+            item.image = toolbarImage(systemSymbolName: "checkmark.shield", accessibilityDescription: SZL10n.string("toolbar.test"))
             item.action = #selector(testArchive(_:))
 
         case Self.copyItem:
-            item.label = "Copy"
-            item.toolTip = "Copy files"
-            item.image = toolbarImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "Copy")
+            item.label = SZL10n.string("toolbar.copy")
+            item.toolTip = SZL10n.string("toolbar.copy")
+            item.image = toolbarImage(systemSymbolName: "doc.on.doc", accessibilityDescription: SZL10n.string("toolbar.copy"))
             item.action = #selector(copyFiles(_:))
 
         case Self.moveItem:
-            item.label = "Move"
-            item.toolTip = "Move files"
-            item.image = toolbarImage(systemSymbolName: "arrow.right.circle", accessibilityDescription: "Move")
+            item.label = SZL10n.string("toolbar.move")
+            item.toolTip = SZL10n.string("toolbar.move")
+            item.image = toolbarImage(systemSymbolName: "arrow.right.circle", accessibilityDescription: SZL10n.string("toolbar.move"))
             item.action = #selector(moveFiles(_:))
 
         case Self.deleteItem:
-            item.label = "Delete"
-            item.toolTip = "Delete files"
-            item.image = toolbarImage(systemSymbolName: "trash", accessibilityDescription: "Delete")
+            item.label = SZL10n.string("toolbar.delete")
+            item.toolTip = SZL10n.string("toolbar.delete")
+            item.image = toolbarImage(systemSymbolName: "trash", accessibilityDescription: SZL10n.string("toolbar.delete"))
             item.action = #selector(deleteFiles(_:))
 
         case Self.infoItem:
-            item.label = "Info"
-            item.toolTip = "Show item properties"
-            item.image = toolbarImage(systemSymbolName: "info.circle", accessibilityDescription: "Info")
+            item.label = SZL10n.string("toolbar.info")
+            item.toolTip = SZL10n.string("toolbar.info")
+            item.image = toolbarImage(systemSymbolName: "info.circle", accessibilityDescription: SZL10n.string("toolbar.info"))
             item.action = #selector(showProperties(_:))
 
         default:
@@ -671,6 +675,14 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             queue: .main,
         ) { [weak self] _ in
             self?.handleViewPreferencesDidChange()
+        }
+
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: .szLanguageDidChange,
+            object: nil,
+            queue: .main,
+        ) { [weak self] _ in
+            self?.refreshToolbarItemPresentation()
         }
     }
 

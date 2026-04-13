@@ -695,6 +695,8 @@ class SettingsWindowController: NSWindowController {
         tabSegmentedControl.selectedSegment = selectedTab
         tabView.selectTabViewItem(at: selectedTab)
         resizeWindowToFitSelectedTab(animated: false)
+
+        NotificationCenter.default.post(name: .szLanguageDidChange, object: nil)
     }
 
     @objc private func memLimitCheckChanged(_ sender: NSButton) {

@@ -476,7 +476,7 @@ enum FileManagerMenuFactory {
     }
 
     static func makeFileMenu(appTarget: AnyObject?) -> NSMenu {
-        let menu = NSMenu(title: "File")
+        let menu = NSMenu(title: SZL10n.string("menu.file"))
         populate(menu,
                  with: fileMenuNodes,
                  windowTarget: nil,
@@ -485,7 +485,7 @@ enum FileManagerMenuFactory {
     }
 
     static func makeContextMenu(windowTarget: AnyObject?) -> NSMenu {
-        let menu = NSMenu(title: "File")
+        let menu = NSMenu(title: SZL10n.string("menu.file"))
         populate(menu,
                  with: contextMenuNodes,
                  windowTarget: windowTarget,
@@ -500,21 +500,24 @@ enum FileManagerMenuFactory {
         return Shortcut(shortcut)
     }
 
-    private static let openNodes: [Node] = [
-        .item(title: "Open",
+    private static var openNodes: [Node] {
+        [
+        .item(title: SZL10n.string("menu.open"),
               action: #selector(FileManagerWindowController.openSelectedItem(_:)),
               shortcut: shortcut(.openSelectedItem)),
-        .item(title: "Open Inside",
+        .item(title: SZL10n.string("menu.openInside"),
               action: #selector(FileManagerWindowController.openSelectedItemInside(_:))),
-        .item(title: "Open Inside *",
+        .item(title: SZL10n.string("menu.openInside") + " *",
               action: #selector(FileManagerWindowController.openSelectedItemInsideWildcard(_:))),
-        .item(title: "Open Inside #",
+        .item(title: SZL10n.string("menu.openInside") + " #",
               action: #selector(FileManagerWindowController.openSelectedItemInsideParser(_:))),
-        .item(title: "Open Outside",
+        .item(title: SZL10n.string("menu.openOutside"),
               action: #selector(FileManagerWindowController.openSelectedItemOutside(_:))),
-    ]
+        ]
+    }
 
-    private static let hashNodes: [Node] = [
+    private static var hashNodes: [Node] {
+        [
         .item(title: "*",
               action: #selector(FileManagerWindowController.showAllHashes(_:))),
         .item(title: "CRC-32",
@@ -537,48 +540,49 @@ enum FileManagerMenuFactory {
               action: #selector(FileManagerWindowController.showSHA3256Hash(_:))),
         .item(title: "BLAKE2sp",
               action: #selector(FileManagerWindowController.showBLAKE2spHash(_:))),
-    ]
+        ]
+    }
 
     private static var fileMenuNodes: [Node] {
         openNodes + [
-            .item(title: "Open Archive…",
+            .item(title: SZL10n.string("app.fileManager.openArchive"),
                   action: #selector(AppDelegate.openArchives(_:)),
                   shortcut: Shortcut("o"),
                   target: .appDelegate),
             .separator,
-            .item(title: "Add",
+            .item(title: SZL10n.string("toolbar.add"),
                   action: #selector(FileManagerWindowController.addToArchive(_:))),
-            .item(title: "Extract…",
+            .item(title: SZL10n.string("toolbar.extract") + "…",
                   action: #selector(FileManagerWindowController.extractArchive(_:))),
-            .item(title: "Extract Here",
+            .item(title: SZL10n.string("app.fileManager.extractHere"),
                   action: #selector(FileManagerWindowController.extractHere(_:))),
-            .item(title: "Test",
+            .item(title: SZL10n.string("toolbar.test"),
                   action: #selector(FileManagerWindowController.testArchive(_:))),
             .separator,
-            .item(title: "Rename",
+            .item(title: SZL10n.string("menu.rename"),
                   action: #selector(FileManagerWindowController.renameSelection(_:)),
                   shortcut: shortcut(.renameSelection)),
-            .item(title: "Copy To…",
+            .item(title: SZL10n.string("menu.copyTo"),
                   action: #selector(FileManagerWindowController.copyFiles(_:)),
                   shortcut: shortcut(.copyFiles)),
-            .item(title: "Move To…",
+            .item(title: SZL10n.string("menu.moveTo"),
                   action: #selector(FileManagerWindowController.moveFiles(_:)),
                   shortcut: shortcut(.moveFiles)),
-            .item(title: "Delete",
+            .item(title: SZL10n.string("menu.delete"),
                   action: #selector(FileManagerWindowController.deleteFiles(_:)),
                   shortcut: shortcut(.deleteFiles)),
             .separator,
-            .item(title: "Properties",
+            .item(title: SZL10n.string("menu.properties"),
                   action: #selector(FileManagerWindowController.showProperties(_:))),
-            .submenu(title: "CRC", children: hashNodes),
+            .submenu(title: SZL10n.string("menu.calculateChecksum"), children: hashNodes),
             .separator,
-            .item(title: "Create Folder",
+            .item(title: SZL10n.string("menu.createFolder"),
                   action: #selector(FileManagerWindowController.createFolder(_:)),
                   shortcut: shortcut(.createFolder)),
-            .item(title: "Create File",
+            .item(title: SZL10n.string("menu.createFile"),
                   action: #selector(FileManagerWindowController.createFile(_:))),
             .separator,
-            .item(title: "Close",
+            .item(title: SZL10n.string("common.close"),
                   action: #selector(NSWindow.performClose(_:)),
                   shortcut: Shortcut("w")),
         ]
@@ -587,37 +591,37 @@ enum FileManagerMenuFactory {
     private static var contextMenuNodes: [Node] {
         openNodes + [
             .separator,
-            .item(title: "Compress…",
+            .item(title: SZL10n.string("app.fileManager.compress"),
                   action: #selector(FileManagerWindowController.addToArchive(_:))),
-            .item(title: "Extract…",
+            .item(title: SZL10n.string("toolbar.extract") + "…",
                   action: #selector(FileManagerWindowController.extractArchive(_:))),
-            .item(title: "Extract Here",
+            .item(title: SZL10n.string("app.fileManager.extractHere"),
                   action: #selector(FileManagerWindowController.extractHere(_:))),
-            .item(title: "Test",
+            .item(title: SZL10n.string("toolbar.test"),
                   action: #selector(FileManagerWindowController.testArchive(_:))),
             .separator,
-            .item(title: "Rename",
+            .item(title: SZL10n.string("menu.rename"),
                   action: #selector(FileManagerWindowController.renameSelection(_:)),
                   shortcut: shortcut(.renameSelection)),
-            .item(title: "Copy To…",
+            .item(title: SZL10n.string("menu.copyTo"),
                   action: #selector(FileManagerWindowController.copyFiles(_:)),
                   shortcut: shortcut(.copyFiles)),
-            .item(title: "Move To…",
+            .item(title: SZL10n.string("menu.moveTo"),
                   action: #selector(FileManagerWindowController.moveFiles(_:)),
                   shortcut: shortcut(.moveFiles)),
-            .item(title: "Delete",
+            .item(title: SZL10n.string("menu.delete"),
                   action: #selector(FileManagerWindowController.deleteFiles(_:)),
                   shortcut: shortcut(.deleteFiles)),
             .separator,
-            .submenu(title: "CRC", children: hashNodes),
+            .submenu(title: SZL10n.string("menu.calculateChecksum"), children: hashNodes),
             .separator,
-            .item(title: "Create Folder",
+            .item(title: SZL10n.string("menu.createFolder"),
                   action: #selector(FileManagerWindowController.createFolder(_:)),
                   shortcut: shortcut(.createFolder)),
-            .item(title: "Create File",
+            .item(title: SZL10n.string("menu.createFile"),
                   action: #selector(FileManagerWindowController.createFile(_:))),
             .separator,
-            .item(title: "Properties",
+            .item(title: SZL10n.string("menu.properties"),
                   action: #selector(FileManagerWindowController.showProperties(_:))),
         ]
     }
@@ -707,7 +711,7 @@ private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
     private func rebuildFavoritesMenu(_ menu: NSMenu) {
         menu.removeAllItems()
 
-        let addToFavoritesItem = NSMenuItem(title: "Add Folder to Favorites As", action: nil, keyEquivalent: "")
+        let addToFavoritesItem = NSMenuItem(title: SZL10n.string("favorites.addFolder"), action: nil, keyEquivalent: "")
         let addToFavoritesMenu = NSMenu(title: addToFavoritesItem.title)
 
         for slot in 0 ..< FileManagerFavoriteStore.slotCount {
@@ -761,18 +765,18 @@ enum MainMenu {
         let appMenu = NSMenu(title: appName)
         addTopLevelMenu(appMenu, to: mainMenu)
         addItem(to: appMenu,
-                title: "About \(appName)",
+                title: "\(SZL10n.string("app.menu.about", appName))",
                 action: #selector(AppDelegate.showAbout(_:)),
                 target: NSApp.delegate)
         appMenu.addItem(.separator())
         addItem(to: appMenu,
-                title: "Preferences…",
+                title: SZL10n.string("app.menu.preferences"),
                 action: #selector(AppDelegate.showPreferences(_:)),
                 keyEquivalent: ",",
                 target: NSApp.delegate)
         appMenu.addItem(.separator())
 
-        let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
+        let servicesItem = NSMenuItem(title: SZL10n.string("app.menu.services"), action: nil, keyEquivalent: "")
         let servicesMenu = NSMenu(title: "Services")
         servicesItem.submenu = servicesMenu
         NSApp.servicesMenu = servicesMenu
@@ -780,23 +784,23 @@ enum MainMenu {
 
         appMenu.addItem(.separator())
         addItem(to: appMenu,
-                title: "Hide \(appName)",
+                title: SZL10n.string("app.menu.hide", appName),
                 action: #selector(NSApplication.hide(_:)),
                 keyEquivalent: "h",
                 target: NSApp)
         addItem(to: appMenu,
-                title: "Hide Others",
+                title: SZL10n.string("app.menu.hideOthers"),
                 action: #selector(NSApplication.hideOtherApplications(_:)),
                 keyEquivalent: "h",
                 modifiers: [.command, .option],
                 target: NSApp)
         addItem(to: appMenu,
-                title: "Show All",
+                title: SZL10n.string("app.menu.showAll"),
                 action: #selector(NSApplication.unhideAllApplications(_:)),
                 target: NSApp)
         appMenu.addItem(.separator())
         addItem(to: appMenu,
-                title: "Quit \(appName)",
+                title: SZL10n.string("app.menu.quit", appName),
                 action: #selector(NSApplication.terminate(_:)),
                 keyEquivalent: "q",
                 target: NSApp)
@@ -804,61 +808,61 @@ enum MainMenu {
         let fileMenu = FileManagerMenuFactory.makeFileMenu(appTarget: NSApp.delegate as AnyObject?)
         addTopLevelMenu(fileMenu, to: mainMenu)
 
-        let editMenu = NSMenu(title: "Edit")
+        let editMenu = NSMenu(title: SZL10n.string("menu.edit"))
         addTopLevelMenu(editMenu, to: mainMenu)
         addItem(to: editMenu,
-                title: "Cut",
+                title: SZL10n.string("app.menu.cut"),
                 action: #selector(NSText.cut(_:)),
                 keyEquivalent: "x")
         addItem(to: editMenu,
-                title: "Copy",
+                title: SZL10n.string("app.menu.copy"),
                 action: #selector(NSText.copy(_:)),
                 keyEquivalent: "c")
         addItem(to: editMenu,
-                title: "Paste",
+                title: SZL10n.string("app.menu.paste"),
                 action: #selector(NSText.paste(_:)),
                 keyEquivalent: "v")
         editMenu.addItem(.separator())
         addItem(to: editMenu,
-                title: "Select All",
+                title: SZL10n.string("edit.selectAll"),
                 action: #selector(FileManagerWindowController.selectAllItems(_:)),
                 keyEquivalent: "a")
         addItem(to: editMenu,
-                title: "Deselect All",
+                title: SZL10n.string("edit.deselectAll"),
                 action: #selector(FileManagerWindowController.deselectAllItems(_:)),
                 keyEquivalent: "a",
                 modifiers: [.command, .shift])
         addItem(to: editMenu,
-                title: "Invert Selection",
+                title: SZL10n.string("edit.invertSelection"),
                 action: #selector(FileManagerWindowController.invertSelection(_:)))
 
-        let viewMenu = NSMenu(title: "View")
+        let viewMenu = NSMenu(title: SZL10n.string("menu.view"))
         viewMenu.identifier = MainMenuIdentifiers.viewMenu
         viewMenu.delegate = coordinator
         addTopLevelMenu(viewMenu, to: mainMenu)
-        addDisabledItem(to: viewMenu, title: "Large Icons")
-        addDisabledItem(to: viewMenu, title: "Small Icons")
-        addDisabledItem(to: viewMenu, title: "List")
-        let detailsItem = addDisabledItem(to: viewMenu, title: "Details")
+        addDisabledItem(to: viewMenu, title: SZL10n.string("view.largeIcons"))
+        addDisabledItem(to: viewMenu, title: SZL10n.string("view.smallIcons"))
+        addDisabledItem(to: viewMenu, title: SZL10n.string("view.list"))
+        let detailsItem = addDisabledItem(to: viewMenu, title: SZL10n.string("view.details"))
         detailsItem.state = .on
         viewMenu.addItem(.separator())
         addItem(to: viewMenu,
-                title: "Name",
+                title: SZL10n.string("column.name"),
                 action: #selector(FileManagerWindowController.sortByName(_:)))
         addItem(to: viewMenu,
-                title: "Type",
+                title: SZL10n.string("column.type"),
                 action: #selector(FileManagerWindowController.sortByType(_:)))
         addItem(to: viewMenu,
-                title: "Date",
+                title: SZL10n.string("column.modified"),
                 action: #selector(FileManagerWindowController.sortByModifiedDate(_:)))
         addItem(to: viewMenu,
-                title: "Size",
+                title: SZL10n.string("column.size"),
                 action: #selector(FileManagerWindowController.sortBySize(_:)))
-        addDisabledItem(to: viewMenu, title: "Unsorted")
+        addDisabledItem(to: viewMenu, title: SZL10n.string("view.unsorted"))
         viewMenu.addItem(.separator())
-        addDisabledItem(to: viewMenu, title: "Flat View")
+        addDisabledItem(to: viewMenu, title: SZL10n.string("view.flatView"))
         addItem(to: viewMenu,
-                title: "2 Panels",
+                title: SZL10n.string("view.twoPanels"),
                 action: #selector(FileManagerWindowController.toggleDualPane(_:)),
                 keyEquivalent: FileManagerShortcuts.menuShortcut(for: .toggleDualPane)?.keyEquivalent ?? "",
                 modifiers: FileManagerShortcuts.menuShortcut(for: .toggleDualPane)?.modifiers ?? [.command])
@@ -873,93 +877,93 @@ enum MainMenu {
         timeMenuItem.submenu = timeMenu
         viewMenu.addItem(timeMenuItem)
 
-        let toolbarsMenuItem = NSMenuItem(title: "Toolbars", action: nil, keyEquivalent: "")
-        let toolbarsMenu = NSMenu(title: "Toolbars")
+        let toolbarsMenuItem = NSMenuItem(title: SZL10n.string("view.toolbars"), action: nil, keyEquivalent: "")
+        let toolbarsMenu = NSMenu(title: SZL10n.string("view.toolbars"))
         addItem(to: toolbarsMenu,
-                title: "Archive Toolbar",
+                title: SZL10n.string("view.archiveToolbar"),
                 action: #selector(FileManagerWindowController.toggleArchiveToolbar(_:)))
         addItem(to: toolbarsMenu,
-                title: "Standard Toolbar",
+                title: SZL10n.string("view.standardToolbar"),
                 action: #selector(FileManagerWindowController.toggleStandardToolbar(_:)))
         toolbarsMenu.addItem(.separator())
         addItem(to: toolbarsMenu,
-                title: "Show Buttons Text",
+                title: SZL10n.string("view.showButtonsText"),
                 action: #selector(FileManagerWindowController.toggleToolbarButtonText(_:)))
         toolbarsMenuItem.submenu = toolbarsMenu
         viewMenu.addItem(toolbarsMenuItem)
 
         addItem(to: viewMenu,
-                title: "Open Root Folder",
+                title: SZL10n.string("view.openRootFolder"),
                 action: #selector(FileManagerWindowController.openRootFolder(_:)))
         addItem(to: viewMenu,
-                title: "Up One Level",
+                title: SZL10n.string("view.upOneLevel"),
                 action: #selector(FileManagerWindowController.goUpOneLevel(_:)),
                 keyEquivalent: FileManagerShortcuts.menuShortcut(for: .goUpOneLevel)?.keyEquivalent ?? "",
                 modifiers: FileManagerShortcuts.menuShortcut(for: .goUpOneLevel)?.modifiers ?? [.command])
         addItem(to: viewMenu,
-                title: "Folders History…",
+                title: SZL10n.string("view.foldersHistory"),
                 action: #selector(FileManagerWindowController.showFoldersHistory(_:)))
         addItem(to: viewMenu,
-                title: "Refresh",
+                title: SZL10n.string("view.refresh"),
                 action: #selector(FileManagerWindowController.refreshActivePane(_:)),
                 keyEquivalent: FileManagerShortcuts.menuShortcut(for: .refreshActivePane)?.keyEquivalent ?? "r",
                 modifiers: FileManagerShortcuts.menuShortcut(for: .refreshActivePane)?.modifiers ?? [.command])
         addItem(to: viewMenu,
-                title: "Auto Refresh",
+                title: SZL10n.string("view.autoRefresh"),
                 action: #selector(FileManagerWindowController.toggleAutoRefresh(_:)))
         viewMenu.addItem(.separator())
         addItem(to: viewMenu,
-                title: "Enter Full Screen",
+                title: SZL10n.string("app.fileManager.enterFullScreen"),
                 action: #selector(NSWindow.toggleFullScreen(_:)),
                 keyEquivalent: "f",
                 modifiers: [.command, .control])
 
-        let favoritesMenu = NSMenu(title: "Favorites")
+        let favoritesMenu = NSMenu(title: SZL10n.string("menu.favorites"))
         favoritesMenu.identifier = MainMenuIdentifiers.favoritesMenu
         favoritesMenu.delegate = coordinator
         addTopLevelMenu(favoritesMenu, to: mainMenu)
 
-        let toolsMenu = NSMenu(title: "Tools")
+        let toolsMenu = NSMenu(title: SZL10n.string("menu.tools"))
         addTopLevelMenu(toolsMenu, to: mainMenu)
         addItem(to: toolsMenu,
-                title: "Options…",
+                title: SZL10n.string("settings.options"),
                 action: #selector(AppDelegate.showPreferences(_:)),
                 target: NSApp.delegate)
         toolsMenu.addItem(.separator())
         addItem(to: toolsMenu,
-                title: "Benchmark",
+                title: SZL10n.string("tools.benchmark"),
                 action: #selector(AppDelegate.showBenchmark(_:)),
                 keyEquivalent: "b",
                 modifiers: [.command, .shift],
                 target: NSApp.delegate)
         toolsMenu.addItem(.separator())
         addItem(to: toolsMenu,
-                title: "Delete Temporary Files…",
+                title: SZL10n.string("tools.deleteTempFiles"),
                 action: #selector(AppDelegate.showDeleteTemporaryFiles(_:)),
                 target: NSApp.delegate)
 
-        let windowMenu = NSMenu(title: "Window")
+        let windowMenu = NSMenu(title: SZL10n.string("app.menu.window"))
         addTopLevelMenu(windowMenu, to: mainMenu)
         addItem(to: windowMenu,
-                title: "File Manager",
+                title: SZL10n.string("app.fileManager.fileManager"),
                 action: #selector(AppDelegate.showFileManager(_:)),
                 target: NSApp.delegate)
         windowMenu.addItem(.separator())
         addItem(to: windowMenu,
-                title: "Minimize",
+                title: SZL10n.string("app.menu.minimize"),
                 action: #selector(NSWindow.performMiniaturize(_:)),
                 keyEquivalent: "m")
         addItem(to: windowMenu,
-                title: "Zoom",
+                title: SZL10n.string("app.menu.zoom"),
                 action: #selector(NSWindow.performZoom(_:)))
         windowMenu.addItem(.separator())
         addItem(to: windowMenu,
-                title: "Bring All to Front",
+                title: SZL10n.string("app.menu.bringAllToFront"),
                 action: #selector(NSApplication.arrangeInFront(_:)),
                 target: NSApp)
         NSApp.windowsMenu = windowMenu
 
-        let helpMenu = NSMenu(title: "Help")
+        let helpMenu = NSMenu(title: SZL10n.string("menu.help"))
         addTopLevelMenu(helpMenu, to: mainMenu)
         addItem(to: helpMenu,
                 title: "\(appName) Help",
@@ -991,6 +995,14 @@ enum MainMenu {
                 return
             }
 
+            setup()
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: .szLanguageDidChange,
+            object: nil,
+            queue: .main,
+        ) { _ in
             setup()
         }
     }
