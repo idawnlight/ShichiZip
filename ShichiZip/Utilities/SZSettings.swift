@@ -30,7 +30,7 @@ enum SZSettingsKey: String {
     case workDirPath = "WorkDirPath"
     case workDirRemovableOnly = "WorkDirForRemovableOnly"
 
-    // Language
+    /// Language
     case languageOverride = "LanguageOverride" // "" or locale code (e.g. "ja", "zh-Hans")
 }
 

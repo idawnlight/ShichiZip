@@ -569,33 +569,63 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         return options
     }
 
-    private static var levelOptions: [LevelOption] { makeStandardLevelOptions(includeStore: true) }
-    private static var nonStoreLevelOptions: [LevelOption] { makeStandardLevelOptions(includeStore: false) }
+    private static var levelOptions: [LevelOption] {
+        makeStandardLevelOptions(includeStore: true)
+    }
+
+    private static var nonStoreLevelOptions: [LevelOption] {
+        makeStandardLevelOptions(includeStore: false)
+    }
+
     private static var storeOnlyLevelOptions: [LevelOption] {
         [levelOption(title: SZL10n.string("level.store"), value: 0, isDefault: true)]
     }
-    private static var zstdLevelOptions: [LevelOption] { makeZstdLevelOptions() }
-    private static var brotliLevelOptions: [LevelOption] { makeNumberedLevelOptions(range: 0 ... 11,
-                                                                                    namedLabels: localizedLevelLabels([0: "level.store", 1: "level.fastest", 3: "level.fast", 6: "level.normal", 9: "level.maximum", 11: "level.ultra"]),
-                                                                                    defaultValue: 6) }
-    private static var lz4LevelOptions: [LevelOption] { makeNumberedLevelOptions(range: 1 ... 12,
-                                                                                 namedLabels: localizedLevelLabels([1: "level.fastest", 3: "level.fast", 6: "level.normal", 9: "level.maximum", 12: "level.ultra"]),
-                                                                                 defaultValue: 6) }
-    private static var lz5LevelOptions: [LevelOption] { makeNumberedLevelOptions(range: 1 ... 15,
-                                                                                 namedLabels: localizedLevelLabels([1: "level.fastest", 3: "level.fast", 7: "level.normal", 11: "level.maximum", 15: "level.ultra"]),
-                                                                                 defaultValue: 7) }
-    private static var lizardMethod1LevelOptions: [LevelOption] { makeNumberedLevelOptions(range: 10 ... 19,
-                                                                                           namedLabels: localizedLevelLabels([10: "level.fastest", 13: "level.fast", 15: "level.normal", 17: "level.maximum", 19: "level.ultra"]),
-                                                                                           defaultValue: 15) }
-    private static var lizardMethod2LevelOptions: [LevelOption] { makeNumberedLevelOptions(range: 20 ... 29,
-                                                                                           namedLabels: localizedLevelLabels([20: "level.fastest", 23: "level.fast", 25: "level.normal", 27: "level.maximum", 29: "level.ultra"]),
-                                                                                           defaultValue: 25) }
-    private static var lizardMethod3LevelOptions: [LevelOption] { makeNumberedLevelOptions(range: 30 ... 39,
-                                                                                           namedLabels: localizedLevelLabels([30: "level.fastest", 33: "level.fast", 35: "level.normal", 37: "level.maximum", 39: "level.ultra"]),
-                                                                                           defaultValue: 35) }
-    private static var lizardMethod4LevelOptions: [LevelOption] { makeNumberedLevelOptions(range: 40 ... 49,
-                                                                                           namedLabels: localizedLevelLabels([40: "level.fastest", 43: "level.fast", 45: "level.normal", 47: "level.maximum", 49: "level.ultra"]),
-                                                                                           defaultValue: 45) }
+
+    private static var zstdLevelOptions: [LevelOption] {
+        makeZstdLevelOptions()
+    }
+
+    private static var brotliLevelOptions: [LevelOption] {
+        makeNumberedLevelOptions(range: 0 ... 11,
+                                 namedLabels: localizedLevelLabels([0: "level.store", 1: "level.fastest", 3: "level.fast", 6: "level.normal", 9: "level.maximum", 11: "level.ultra"]),
+                                 defaultValue: 6)
+    }
+
+    private static var lz4LevelOptions: [LevelOption] {
+        makeNumberedLevelOptions(range: 1 ... 12,
+                                 namedLabels: localizedLevelLabels([1: "level.fastest", 3: "level.fast", 6: "level.normal", 9: "level.maximum", 12: "level.ultra"]),
+                                 defaultValue: 6)
+    }
+
+    private static var lz5LevelOptions: [LevelOption] {
+        makeNumberedLevelOptions(range: 1 ... 15,
+                                 namedLabels: localizedLevelLabels([1: "level.fastest", 3: "level.fast", 7: "level.normal", 11: "level.maximum", 15: "level.ultra"]),
+                                 defaultValue: 7)
+    }
+
+    private static var lizardMethod1LevelOptions: [LevelOption] {
+        makeNumberedLevelOptions(range: 10 ... 19,
+                                 namedLabels: localizedLevelLabels([10: "level.fastest", 13: "level.fast", 15: "level.normal", 17: "level.maximum", 19: "level.ultra"]),
+                                 defaultValue: 15)
+    }
+
+    private static var lizardMethod2LevelOptions: [LevelOption] {
+        makeNumberedLevelOptions(range: 20 ... 29,
+                                 namedLabels: localizedLevelLabels([20: "level.fastest", 23: "level.fast", 25: "level.normal", 27: "level.maximum", 29: "level.ultra"]),
+                                 defaultValue: 25)
+    }
+
+    private static var lizardMethod3LevelOptions: [LevelOption] {
+        makeNumberedLevelOptions(range: 30 ... 39,
+                                 namedLabels: localizedLevelLabels([30: "level.fastest", 33: "level.fast", 35: "level.normal", 37: "level.maximum", 39: "level.ultra"]),
+                                 defaultValue: 35)
+    }
+
+    private static var lizardMethod4LevelOptions: [LevelOption] {
+        makeNumberedLevelOptions(range: 40 ... 49,
+                                 namedLabels: localizedLevelLabels([40: "level.fastest", 43: "level.fast", 45: "level.normal", 47: "level.maximum", 49: "level.ultra"]),
+                                 defaultValue: 45)
+    }
 
     private static let standardDictionaryOptions: [Option<UInt64>] = [
         Option(title: "Auto", value: 0),
@@ -645,25 +675,25 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
 
     private static var updateModeOptions: [Option<SZCompressionUpdateMode>] {
         [
-        Option(title: SZL10n.string("update.addReplace"), value: .add),
-        Option(title: SZL10n.string("update.updateAdd"), value: .update),
-        Option(title: SZL10n.string("update.freshen"), value: .fresh),
-        Option(title: SZL10n.string("update.synchronize"), value: .sync),
+            Option(title: SZL10n.string("update.addReplace"), value: .add),
+            Option(title: SZL10n.string("update.updateAdd"), value: .update),
+            Option(title: SZL10n.string("update.freshen"), value: .fresh),
+            Option(title: SZL10n.string("update.synchronize"), value: .sync),
         ]
     }
 
     private static var pathModeOptions: [Option<SZCompressionPathMode>] {
         [
-        Option(title: SZL10n.string("extract.relativePathnames"), value: .relativePaths),
-        Option(title: SZL10n.string("extract.fullPathnames"), value: .fullPaths),
-        Option(title: SZL10n.string("extract.absolutePathnames"), value: .absolutePaths),
+            Option(title: SZL10n.string("extract.relativePathnames"), value: .relativePaths),
+            Option(title: SZL10n.string("extract.fullPathnames"), value: .fullPaths),
+            Option(title: SZL10n.string("extract.absolutePathnames"), value: .absolutePaths),
         ]
     }
 
     private static var solidOptions: [Option<Bool>] {
         [
-        Option(title: SZL10n.string("compress.nonSolid"), value: false),
-        Option(title: SZL10n.string("compress.solid"), value: true),
+            Option(title: SZL10n.string("compress.nonSolid"), value: false),
+            Option(title: SZL10n.string("compress.solid"), value: true),
         ]
     }
 
@@ -679,10 +709,21 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         "23040M - BD",
     ]
 
-    private static var dictLabel: String { SZL10n.string("compress.dictionarySize") }
-    private static var wordLbl: String { SZL10n.string("compress.wordSize") }
-    private static var ppmdDictLabel: String { SZL10n.string("app.compress.memoryUsage") }
-    private static var ppmdWordLabel: String { SZL10n.string("app.compress.order") }
+    private static var dictLabel: String {
+        SZL10n.string("compress.dictionarySize")
+    }
+
+    private static var wordLbl: String {
+        SZL10n.string("compress.wordSize")
+    }
+
+    private static var ppmdDictLabel: String {
+        SZL10n.string("app.compress.memoryUsage")
+    }
+
+    private static var ppmdWordLabel: String {
+        SZL10n.string("app.compress.order")
+    }
 
     private static var sevenZipMethods: [MethodOption] {
         var methods: [MethodOption] = [

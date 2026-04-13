@@ -68,9 +68,9 @@ enum SZL10n {
     // MARK: - Available languages
 
     /// A single entry in the language picker.
-    struct Language: Sendable {
-        let localeCode: String   // e.g. "ja", "zh-Hans"
-        let displayName: String  // e.g. "日本語 – Japanese"
+    struct Language {
+        let localeCode: String // e.g. "ja", "zh-Hans"
+        let displayName: String // e.g. "日本語 – Japanese"
     }
 
     /// Returns all available languages sorted by display name,
