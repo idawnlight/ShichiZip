@@ -324,9 +324,9 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
         }
     }
 
-    private static func loadItems(in directory: URL,
-                                  tempRoot: URL,
-                                  fileManager: FileManager) throws -> [BrowserItem]
+    private nonisolated static func loadItems(in directory: URL,
+                                              tempRoot: URL,
+                                              fileManager: FileManager) throws -> [BrowserItem]
     {
         let resourceKeys: Set<URLResourceKey> = [.isDirectoryKey,
                                                  .isSymbolicLinkKey,
@@ -344,8 +344,8 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
         return try filteredContents.map { try makeBrowserItem(for: $0, fileManager: fileManager) }
     }
 
-    private static func makeBrowserItem(for url: URL,
-                                        fileManager: FileManager) throws -> BrowserItem
+    private nonisolated static func makeBrowserItem(for url: URL,
+                                                    fileManager: FileManager) throws -> BrowserItem
     {
         let values = try url.resourceValues(forKeys: [.isDirectoryKey,
                                                       .isSymbolicLinkKey,
@@ -371,8 +371,8 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
                            previewName: summary?.previewName)
     }
 
-    private static func summarizeDirectory(at url: URL,
-                                           fileManager: FileManager) -> DirectorySummary
+    private nonisolated static func summarizeDirectory(at url: URL,
+                                                       fileManager: FileManager) -> DirectorySummary
     {
         let childKeys: Set<URLResourceKey> = [.isDirectoryKey, .fileSizeKey]
         guard let enumerator = fileManager.enumerator(at: url,

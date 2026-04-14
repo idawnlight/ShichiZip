@@ -1,6 +1,7 @@
 import AppKit
 import Darwin
 import Foundation
+import os
 
 struct FileManagerArchiveItemWorkflowContext {
     let archive: SZArchive
@@ -22,7 +23,7 @@ enum FileManagerArchiveItemOpenStrategy {
 }
 
 final class FileManagerArchiveItemWorkflowService {
-    private final class TemporaryDirectoryCleanupObserver {
+    private final class TemporaryDirectoryCleanupObserver: @unchecked Sendable {
         private weak var owner: FileManagerArchiveItemWorkflowService?
         private let applicationProcessIdentifier: pid_t
         let temporaryDirectory: URL
@@ -74,10 +75,8 @@ final class FileManagerArchiveItemWorkflowService {
 
     private let fileManager: FileManager
     private let quarantineInheritanceEnabled: () -> Bool
-    private let temporaryDirectoriesLock = NSLock()
-    private var temporaryDirectories: Set<URL> = []
-    private let cleanupObserversLock = NSLock()
-    private var cleanupObservers: [ObjectIdentifier: TemporaryDirectoryCleanupObserver] = [:]
+    private let temporaryDirectoriesState = OSAllocatedUnfairLock(initialState: Set<URL>())
+    private let cleanupObserversState = OSAllocatedUnfairLock(initialState: [ObjectIdentifier: TemporaryDirectoryCleanupObserver]())
 
     init(fileManager: FileManager = .default,
          quarantineInheritanceEnabled: @escaping () -> Bool = { SZSettings.bool(.inheritDownloadedFileQuarantine) })
@@ -114,9 +113,7 @@ final class FileManagerArchiveItemWorkflowService {
         let observer = TemporaryDirectoryCleanupObserver(owner: self,
                                                          application: application,
                                                          temporaryDirectory: url)
-        cleanupObserversLock.lock()
-        cleanupObservers[ObjectIdentifier(observer)] = observer
-        cleanupObserversLock.unlock()
+        cleanupObserversState.withLock { $0[ObjectIdentifier(observer)] = observer }
     }
 
     func open(_ item: ArchiveItem,
@@ -511,41 +508,35 @@ final class FileManagerArchiveItemWorkflowService {
     }
 
     private func rememberTemporaryDirectory(_ url: URL) {
-        temporaryDirectoriesLock.lock()
-        temporaryDirectories.insert(url.standardizedFileURL)
-        temporaryDirectoriesLock.unlock()
+        temporaryDirectoriesState.withLock { $0.insert(url.standardizedFileURL) }
     }
 
     private func forgetTemporaryDirectory(_ url: URL) {
-        temporaryDirectoriesLock.lock()
-        temporaryDirectories.remove(url.standardizedFileURL)
-        temporaryDirectories.remove(url)
-        temporaryDirectoriesLock.unlock()
+        temporaryDirectoriesState.withLock {
+            $0.remove(url.standardizedFileURL)
+            $0.remove(url)
+        }
     }
 
     private func trackedTemporaryDirectories() -> [URL] {
-        temporaryDirectoriesLock.lock()
-        let urls = Array(temporaryDirectories)
-        temporaryDirectoriesLock.unlock()
-        return urls
+        temporaryDirectoriesState.withLock { Array($0) }
     }
 
     private func removeCleanupObserver(_ observer: TemporaryDirectoryCleanupObserver) {
-        cleanupObserversLock.lock()
-        cleanupObservers.removeValue(forKey: ObjectIdentifier(observer))
-        cleanupObserversLock.unlock()
+        cleanupObserversState.withLock { $0.removeValue(forKey: ObjectIdentifier(observer)) }
         observer.invalidate()
     }
 
     private func removeCleanupObservers(for temporaryDirectory: URL) {
         let standardizedURL = temporaryDirectory.standardizedFileURL
 
-        cleanupObserversLock.lock()
-        let matching = cleanupObservers.filter { $0.value.temporaryDirectory == standardizedURL }
-        for key in matching.keys {
-            cleanupObservers.removeValue(forKey: key)
+        let matching = cleanupObserversState.withLock { observers -> [ObjectIdentifier: TemporaryDirectoryCleanupObserver] in
+            let matched = observers.filter { $0.value.temporaryDirectory == standardizedURL }
+            for key in matched.keys {
+                observers.removeValue(forKey: key)
+            }
+            return matched
         }
-        cleanupObserversLock.unlock()
 
         for observer in matching.values {
             observer.invalidate()
@@ -553,10 +544,11 @@ final class FileManagerArchiveItemWorkflowService {
     }
 
     private func invalidateCleanupObservers() {
-        cleanupObserversLock.lock()
-        let observers = Array(cleanupObservers.values)
-        cleanupObservers.removeAll()
-        cleanupObserversLock.unlock()
+        let observers = cleanupObserversState.withLock { observers -> [TemporaryDirectoryCleanupObserver] in
+            let values = Array(observers.values)
+            observers.removeAll()
+            return values
+        }
 
         for observer in observers {
             observer.invalidate()
