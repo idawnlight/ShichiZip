@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-build:
+    name: Release (${{ matrix.artifact_prefix }}, ${{ matrix.target_arch }})
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scheme: ShichiZip
+            make_target: lib-mainline
+            app_bundle: ShichiZip.app
+            artifact_prefix: ShichiZip
+            target_arch: arm64
+          - scheme: ShichiZip
+            make_target: lib-mainline
+            app_bundle: ShichiZip.app
+            artifact_prefix: ShichiZip
+            target_arch: x86_64
+          - scheme: ShichiZipZS
+            make_target: lib-zs
+            app_bundle: ShichiZip ZS.app
+            artifact_prefix: ShichiZipZS
+            target_arch: arm64
+          - scheme: ShichiZipZS
+            make_target: lib-zs
+            app_bundle: ShichiZip ZS.app
+            artifact_prefix: ShichiZipZS
+            target_arch: x86_64
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      XCODE_PROJECT: ShichiZip.xcodeproj
+      XCODE_CONFIGURATION: Release
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install build tools
+        run: brew install xcodegen zig
+
+      - name: Select Xcode 26.4
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
+
+      # --- Import signing certificate ---
+      - name: Install signing certificate
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_P12_PASSWORD }}
+        run: |
+          # Create a temporary keychain
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import the certificate
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          echo "$CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security import "$CERT_PATH" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productsign
+
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          rm -f "$CERT_PATH"
+
+      - name: Build lib7zip
+        run: make -j"$(sysctl -n hw.ncpu)" TARGET_ARCH="${{ matrix.target_arch }}" "${{ matrix.make_target }}"
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build app bundle
+        run: |
+          derived_data_path="build/DerivedData/${{ matrix.scheme }}"
+
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "${{ matrix.scheme }}" \
+            -configuration "$XCODE_CONFIGURATION" \
+            -derivedDataPath "$derived_data_path" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            ARCHS="${{ matrix.target_arch }}" \
+            VALID_ARCHS="${{ matrix.target_arch }}" \
+            build
+
+      # --- Code signing ---
+      - name: Sign app bundle
+        env:
+          SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+        run: |
+          derived_data_path="build/DerivedData/${{ matrix.scheme }}"
+          app_path="${derived_data_path}/Build/Products/${XCODE_CONFIGURATION}/${{ matrix.app_bundle }}"
+          quick_action_entitlements="ShichiZip/QuickActions/Resources/QuickAction.entitlements"
+          app_entitlements="ShichiZip/Resources/ShichiZip.entitlements"
+
+          test -d "$app_path"
+
+          # Sign nested dylibs (e.g. .debug.dylib on x86_64 Debug builds)
+          find "$app_path" -name '*.dylib' -print0 | while IFS= read -r -d '' dylib; do
+            codesign --force --options runtime --timestamp \
+              --sign "$SIGNING_IDENTITY" \
+              "$dylib"
+          done
+
+          # Sign nested components (inside-out)
+          for appex in "$app_path"/Contents/PlugIns/*.appex; do
+            codesign --force --options runtime --timestamp \
+              --sign "$SIGNING_IDENTITY" \
+              --entitlements "$quick_action_entitlements" \
+              "$appex"
+          done
+
+          # Sign the main app
+          codesign --force --options runtime --timestamp \
+            --sign "$SIGNING_IDENTITY" \
+            --entitlements "$app_entitlements" \
+            "$app_path"
+
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+
+      # --- Notarization ---
+      - name: Package for notarization
+        id: package
+        run: |
+          derived_data_path="build/DerivedData/${{ matrix.scheme }}"
+          app_path="${derived_data_path}/Build/Products/${XCODE_CONFIGURATION}/${{ matrix.app_bundle }}"
+          zip_path="$RUNNER_TEMP/${{ matrix.artifact_prefix }}-${{ matrix.target_arch }}.zip"
+
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$zip_path"
+          echo "zip_path=$zip_path" >> "$GITHUB_OUTPUT"
+          echo "app_path=$app_path" >> "$GITHUB_OUTPUT"
+
+      - name: Submit for notarization
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit "${{ steps.package.outputs.zip_path }}" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+      - name: Staple notarization ticket
+        run: |
+          xcrun stapler staple "${{ steps.package.outputs.app_path }}"
+          xcrun stapler validate "${{ steps.package.outputs.app_path }}"
+
+      # --- Final artifact ---
+      - name: Package release artifact
+        id: release_artifact
+        run: |
+          app_path="${{ steps.package.outputs.app_path }}"
+          artifact_dir="build/artifacts/${{ matrix.scheme }}"
+          artifact_name="${{ matrix.artifact_prefix }}-${XCODE_CONFIGURATION}-${{ matrix.target_arch }}.zip"
+          artifact_path="${artifact_dir}/${artifact_name}"
+
+          mkdir -p "$artifact_dir"
+          rm -f "$artifact_path"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$artifact_path"
+          echo "path=$artifact_path" >> "$GITHUB_OUTPUT"
+          echo "name=$artifact_name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact_prefix }}-Release-macOS-${{ matrix.target_arch }}
+          path: ${{ steps.release_artifact.outputs.path }}
+          if-no-files-found: error
+          archive: false
+
+  # --- Create GitHub Release ---
+  create-release:
+    name: Create GitHub Release
+    needs: release-build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: artifacts/**/*.zip

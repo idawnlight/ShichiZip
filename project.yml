@@ -3,8 +3,13 @@ options:
   bundleIdPrefix: ee.dawn
   deploymentTarget:
     macOS: "13.0"
-  xcodeVersion: "16.0"
+  xcodeVersion: "26.0"
   createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "0.0.1"
+    CURRENT_PROJECT_VERSION: "1" # placeholder, will be overridden by build script
 
 targets:
   ShichiZip:
@@ -31,8 +36,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip
         PRODUCT_NAME: ShichiZip
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
         SHICHIZIP_APP_DISPLAY_NAME: ShichiZip
         SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip
         SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip based."
@@ -133,8 +136,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS
         PRODUCT_NAME: ShichiZip ZS
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
         SHICHIZIP_APP_DISPLAY_NAME: ShichiZip ZS
         SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip-zstd
         SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip ZS (mcmilk/7-Zip-zstd) based."
@@ -194,11 +195,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.ShowInFileManagerAction
         PRODUCT_NAME: ShichiZipShowInFileManagerAction
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
         SHICHIZIP_HOST_APP_DISPLAY_NAME: ShichiZip
-        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Show in File Manager"
-        SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Show in File Manager"
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Reveal in File Manager"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Reveal in File Manager"
         SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/ShowInFileManagerAction-Info.plist
@@ -228,8 +227,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.OpenInShichiZipAction
         PRODUCT_NAME: ShichiZipOpenInShichiZipAction
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
         SHICHIZIP_HOST_APP_DISPLAY_NAME: ShichiZip
         SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Open in ShichiZip"
         SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Open in ShichiZip"
@@ -262,8 +259,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.SmartQuickExtractAction
         PRODUCT_NAME: ShichiZipSmartQuickExtractAction
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
         SHICHIZIP_HOST_APP_DISPLAY_NAME: ShichiZip
         SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Smart Quick Extract"
         SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Smart Quick Extract"
@@ -296,11 +291,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.ShowInFileManagerAction
         PRODUCT_NAME: ShichiZipZSShowInFileManagerAction
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
         SHICHIZIP_HOST_APP_DISPLAY_NAME: "ShichiZip ZS"
-        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Show in File Manager"
-        SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Show in File Manager"
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Reveal in File Manager"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Reveal in File Manager"
         SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/ShowInFileManagerAction-Info.plist
@@ -330,8 +323,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.OpenInShichiZipAction
         PRODUCT_NAME: ShichiZipZSOpenInShichiZipAction
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
         SHICHIZIP_HOST_APP_DISPLAY_NAME: "ShichiZip ZS"
         SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Open in ShichiZip ZS"
         SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Open in ShichiZip ZS"
@@ -364,8 +355,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.SmartQuickExtractAction
         PRODUCT_NAME: ShichiZipZSSmartQuickExtractAction
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
         SHICHIZIP_HOST_APP_DISPLAY_NAME: "ShichiZip ZS"
         SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Smart Quick Extract"
         SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Smart Quick Extract"
