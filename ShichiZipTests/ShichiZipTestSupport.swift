@@ -1,6 +1,13 @@
 import Foundation
 import XCTest
 
+/// A mutable box that can be captured in `@Sendable` closures.
+/// Only for use in tests where the access pattern is sequential
+/// (write in callback, read after `wait(for:)`).
+final class UncheckedSendableBox<T>: @unchecked Sendable {
+    var value: T?
+}
+
 extension XCTestCase {
     @discardableResult
     func makeTemporaryDirectory(named name: String,

@@ -9,19 +9,15 @@ import XCTest
 class ShichiZipUITestCase: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
-        MainActor.assumeIsolated {
-            continueAfterFailure = false
-            app = XCUIApplication()
-            app.launch()
-        }
+    override func setUp() async throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launch()
     }
 
-    override func tearDownWithError() throws {
-        MainActor.assumeIsolated {
-            app.terminate()
-            app = nil
-        }
+    override func tearDown() async throws {
+        app.terminate()
+        app = nil
     }
 
     // MARK: - Helpers

@@ -10,13 +10,13 @@ final class FileManagerArchiveChangeCoordinatorTests: XCTestCase {
         let change = FileManagerArchiveChange(archiveURL: archiveURL,
                                               targetSubdir: "folder",
                                               selectingPaths: ["folder/file.txt"])
-        var receivedChange: FileManagerArchiveChange?
+        let box = UncheckedSendableBox<FileManagerArchiveChange>()
 
         let observer = NotificationCenter.default.addObserver(forName: .fileManagerArchiveDidChange,
                                                               object: nil,
                                                               queue: nil)
         { notification in
-            receivedChange = FileManagerArchiveChange(notification: notification)
+            box.value = FileManagerArchiveChange(notification: notification)
             expectation.fulfill()
         }
         defer { NotificationCenter.default.removeObserver(observer) }
@@ -24,7 +24,7 @@ final class FileManagerArchiveChangeCoordinatorTests: XCTestCase {
         FileManagerArchiveChangeCoordinator.publish(change)
 
         wait(for: [expectation], timeout: 1)
-        XCTAssertEqual(receivedChange, change)
+        XCTAssertEqual(box.value, change)
     }
 
     func testNotificationRoundTripPreservesNormalizedArchiveChange() throws {

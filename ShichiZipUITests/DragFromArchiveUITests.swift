@@ -11,15 +11,13 @@ import XCTest
 final class DragFromArchiveUITests: ShichiZipUITestCase {
     // MARK: - Launch with dual-pane mode
 
-    override func setUpWithError() throws {
-        try MainActor.assumeIsolated {
-            continueAfterFailure = false
-            app = XCUIApplication()
-            // NSUserDefaults picks up launch arguments as `-key value` pairs,
-            // so this forces the file manager into two-column mode.
-            app.launchArguments += ["-FileManager.IsDualPane", "YES"]
-            app.launch()
-        }
+    override func setUp() async throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        // NSUserDefaults picks up launch arguments as `-key value` pairs,
+        // so this forces the file manager into two-column mode.
+        app.launchArguments += ["-FileManager.IsDualPane", "YES"]
+        app.launch()
     }
 
     // MARK: - Pane-scoped element accessors
