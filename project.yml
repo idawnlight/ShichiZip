@@ -8,7 +8,7 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "0.0.1"
+    MARKETING_VERSION: "0.0.2"
     CURRENT_PROJECT_VERSION: "1" # placeholder, will be overridden by build script
   configs:
     Debug:
