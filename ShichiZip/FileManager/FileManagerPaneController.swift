@@ -1338,7 +1338,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         tableView.selectRowIndexes(selectedRows, byExtendingSelection: false)
         if let firstRow = selectedRows.first {
-            tableView.scrollRowToVisible(firstRow)
+            let rowRect = tableView.rect(ofRow: firstRow)
+            if let clipView = tableView.enclosingScrollView?.contentView {
+                let visibleHeight = clipView.bounds.height
+                let y = rowRect.midY - visibleHeight / 2
+                let clampedY = max(0, min(y, tableView.bounds.height - visibleHeight))
+                clipView.setBoundsOrigin(NSPoint(x: clipView.bounds.origin.x, y: clampedY))
+            }
         }
         focusFileList()
         return true
