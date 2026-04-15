@@ -761,6 +761,26 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return
         }
 
+        // Fast synchronous path for local filesystem items — avoids the Task
+        // hop that would otherwise cause QL to flash a loading spinner.
+        do {
+            if let filesystemPreview = try pane.prepareQuickLookPreviewForFileSystem() {
+                quickLookPreviewTask?.cancel()
+                quickLookPreviewTask = nil
+                _ = nextQuickLookGeneration()
+                applyQuickLookPreview(filesystemPreview,
+                                      sourcePane: pane,
+                                      shouldPresentPanel: shouldPresentPanel)
+                return
+            }
+        } catch {
+            closeQuickLookPreview()
+            if userInitiated {
+                showErrorAlert(error)
+            }
+            return
+        }
+
         let generation = nextQuickLookGeneration()
         quickLookPreviewTask?.cancel()
         quickLookPreviewTask = Task { @MainActor [weak self, weak pane] in
@@ -794,7 +814,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                        sourcePane: FileManagerPaneController,
                                        shouldPresentPanel: Bool)
     {
-        clearQuickLookPreviewResources()
+        // Swap items atomically instead of clear-then-set, so QL never sees
+        // an empty data source and avoids a full loading-state reset.
+        let oldTemporaryDirectories = quickLookPreviewTemporaryDirectories
+        let oldSourcePane = quickLookPreviewSourcePane
+
         quickLookPreviewSourcePane = sourcePane
         quickLookPreviewTemporaryDirectories = preview.temporaryDirectories
         quickLookPreviewItems = preview.items.map { FileManagerQuickLookItem(url: $0.url,
@@ -802,6 +826,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                                              sourceFrameOnScreen: $0.sourceFrameOnScreen,
                                                                              transitionImage: $0.transitionImage,
                                                                              transitionContentRect: $0.transitionContentRect) }
+
+        // Clean up old temp directories after new items are in place.
+        if !oldTemporaryDirectories.isEmpty {
+            let cleanupPane = oldSourcePane ?? sourcePane
+            cleanupPane.cleanupQuickLookTemporaryDirectories(oldTemporaryDirectories)
+        }
 
         guard shouldPresentPanel,
               let panel = QLPreviewPanel.shared() else { return }

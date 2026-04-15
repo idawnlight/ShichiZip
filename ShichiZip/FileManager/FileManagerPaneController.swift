@@ -1154,31 +1154,42 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    @MainActor
-    func prepareQuickLookPreview(maxArchiveItemSize: UInt64,
-                                 maxArchiveCombinedSize: UInt64,
-                                 maxSolidArchiveSize: UInt64) async throws -> FileManagerQuickLookPreparedPreview
-    {
+    func prepareQuickLookPreviewForFileSystem() throws -> FileManagerQuickLookPreparedPreview? {
+        guard !isInsideArchive else { return nil }
+
         let selectedEntries = selectedQuickLookRowsAndItems()
         guard !selectedEntries.isEmpty else {
             throw quickLookPreparationError("Select one or more items to preview.")
         }
 
-        if !isInsideArchive {
-            let previewItems = selectedEntries.compactMap { entry -> FileManagerQuickLookPreparedItem? in
-                guard case let .filesystem(item) = entry.item else { return nil }
-                let source = quickLookSourceInfo(forRow: entry.row, paneItem: entry.item)
-                return FileManagerQuickLookPreparedItem(url: item.url.standardizedFileURL,
-                                                        title: item.name,
-                                                        sourceFrameOnScreen: source.frameOnScreen,
-                                                        transitionImage: source.transitionImage,
-                                                        transitionContentRect: source.transitionContentRect)
-            }
-            guard !previewItems.isEmpty else {
-                throw quickLookPreparationError("The current selection cannot be previewed.")
-            }
-            return FileManagerQuickLookPreparedPreview(items: previewItems,
-                                                       temporaryDirectories: [])
+        let previewItems = selectedEntries.compactMap { entry -> FileManagerQuickLookPreparedItem? in
+            guard case let .filesystem(item) = entry.item else { return nil }
+            let source = quickLookSourceInfo(forRow: entry.row, paneItem: entry.item)
+            return FileManagerQuickLookPreparedItem(url: item.url.standardizedFileURL,
+                                                    title: item.name,
+                                                    sourceFrameOnScreen: source.frameOnScreen,
+                                                    transitionImage: source.transitionImage,
+                                                    transitionContentRect: source.transitionContentRect)
+        }
+        guard !previewItems.isEmpty else {
+            throw quickLookPreparationError("The current selection cannot be previewed.")
+        }
+        return FileManagerQuickLookPreparedPreview(items: previewItems,
+                                                   temporaryDirectories: [])
+    }
+
+    @MainActor
+    func prepareQuickLookPreview(maxArchiveItemSize: UInt64,
+                                 maxArchiveCombinedSize: UInt64,
+                                 maxSolidArchiveSize: UInt64) async throws -> FileManagerQuickLookPreparedPreview
+    {
+        if let filesystemPreview = try prepareQuickLookPreviewForFileSystem() {
+            return filesystemPreview
+        }
+
+        let selectedEntries = selectedQuickLookRowsAndItems()
+        guard !selectedEntries.isEmpty else {
+            throw quickLookPreparationError("Select one or more items to preview.")
         }
 
         guard let context = currentArchiveItemWorkflowContext(),
