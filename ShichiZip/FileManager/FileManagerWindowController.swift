@@ -702,7 +702,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         guard FileManagerViewPreferences.autoRefreshEnabled else { return }
 
-        let timer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 10.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.performAutoRefreshTick()
             }

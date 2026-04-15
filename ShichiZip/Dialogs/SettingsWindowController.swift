@@ -267,7 +267,7 @@ private final class IntegrationStatusView: NSView {
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) {
+    required init?(coder _: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -326,7 +326,7 @@ private final class IntegrationRowTableCellView: NSTableCellView {
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) {
+    required init?(coder _: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -978,20 +978,19 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
                 }
             }
 
-            let displayStatus: IntegrationFileAssociationDisplayStatus
-            switch defaultApplications.count {
+            let displayStatus: IntegrationFileAssociationDisplayStatus = switch defaultApplications.count {
             case 0:
-                displayStatus = .noDefaultApp
+                .noDefaultApp
             case 1:
-                displayStatus = .defaultApp(Self.applicationDisplayName(at: defaultApplications[0].url))
+                .defaultApp(Self.applicationDisplayName(at: defaultApplications[0].url))
             default:
-                displayStatus = .multipleDefaultApps
+                .multipleDefaultApps
             }
 
             updatedStates[association.primaryTypeIdentifier] = IntegrationFileAssociationState(
                 displayStatus: displayStatus,
                 isCurrentDefault: isCurrentDefault,
-                isPendingUpdate: pendingFileAssociationUpdates.contains(association.primaryTypeIdentifier)
+                isPendingUpdate: pendingFileAssociationUpdates.contains(association.primaryTypeIdentifier),
             )
         }
 
@@ -1016,7 +1015,7 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
         let state = integrationFileAssociationStates[association.primaryTypeIdentifier] ?? IntegrationFileAssociationState(
             displayStatus: .noDefaultApp,
             isCurrentDefault: false,
-            isPendingUpdate: false
+            isPendingUpdate: false,
         )
 
         let identifier = NSUserInterfaceItemIdentifier("IntegrationRowCell")
@@ -1257,7 +1256,7 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
 
         for entry in allContentTypes {
             NSWorkspace.shared.setDefaultApplication(at: currentApplicationURL,
-                                                    toOpen: entry.contentType)
+                                                     toOpen: entry.contentType)
             { [weak self] error in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
@@ -1268,12 +1267,12 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
                     }
 
                     for association in nonDefaultAssociations {
-                        self.pendingFileAssociationUpdates.remove(association.primaryTypeIdentifier)
+                        pendingFileAssociationUpdates.remove(association.primaryTypeIdentifier)
                     }
-                    self.refreshIntegrationFileAssociationRows()
+                    refreshIntegrationFileAssociationRows()
 
                     if result.failureCount > 0 {
-                        self.presentDefaultOpenerFailureAlert(failureCount: result.failureCount)
+                        presentDefaultOpenerFailureAlert(failureCount: result.failureCount)
                     }
                 }
             }
@@ -1295,7 +1294,7 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
 
         for contentType in association.contentTypes {
             NSWorkspace.shared.setDefaultApplication(at: currentApplicationURL,
-                                                    toOpen: contentType)
+                                                     toOpen: contentType)
             { [weak self] error in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
@@ -1305,11 +1304,11 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
                         return
                     }
 
-                    self.pendingFileAssociationUpdates.remove(typeIdentifier)
-                    self.refreshIntegrationFileAssociationRows()
+                    pendingFileAssociationUpdates.remove(typeIdentifier)
+                    refreshIntegrationFileAssociationRows()
 
                     if result.failureCount > 0 {
-                        self.presentDefaultOpenerFailureAlert(failureCount: result.failureCount)
+                        presentDefaultOpenerFailureAlert(failureCount: result.failureCount)
                     }
                 }
             }

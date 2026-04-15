@@ -215,6 +215,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var recentDirectories: [URL] = []
     private var isLiveScrolling = false
     private var pendingAutoRefresh = false
+    private var directoryWatcher: DirectoryWatcher?
     private var pendingDropOperation: (sequenceNumber: Int, operation: NSDragOperation)?
     private let iconCache = NSCache<NSString, NSImage>()
     private let iconSize = NSSize(width: 16, height: 16)
@@ -312,6 +313,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         if let liveScrollEndObserver {
             NotificationCenter.default.removeObserver(liveScrollEndObserver)
         }
+
+        tearDownDirectoryWatcher()
 
         let preservedTemporaryDirectories = preserveNestedArchiveTemporaryDirectories()
         let didCloseAllArchives = closeAllArchives(showError: false)
@@ -458,7 +461,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
                 guard self.pendingAutoRefresh else { return }
                 self.pendingAutoRefresh = false
-                self.autoRefreshIfPossible()
+                self.autoRefreshCurrentDirectoryIfNeeded()
             }
         }
 
@@ -685,6 +688,17 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         sortCurrentItems(by: tableView.sortDescriptors)
         tableView.reloadData()
         updateStatusBar()
+        installDirectoryWatcher(for: url)
+    }
+
+    private func installDirectoryWatcher(for url: URL) {
+        directoryWatcher?.stop()
+        directoryWatcher = DirectoryWatcher(directory: url)
+    }
+
+    private func tearDownDirectoryWatcher() {
+        directoryWatcher?.stop()
+        directoryWatcher = nil
     }
 
     // MARK: - Public Interface
@@ -701,6 +715,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     func autoRefreshIfPossible() {
         guard isViewLoaded else { return }
         guard !isInsideArchive else { return }
+        guard directoryWatcher?.wasChanged() == true else { return }
         guard !isLiveScrolling else {
             pendingAutoRefresh = true
             return
@@ -4017,6 +4032,7 @@ extension FileManagerPaneController {
 
         currentDirectory = prepared.hostDirectory
         recordDirectoryVisit(prepared.hostDirectory)
+        tearDownDirectoryWatcher()
         if let temporaryDirectory = prepared.temporaryDirectory {
             archiveItemWorkflowService.register(temporaryDirectory)
         }
