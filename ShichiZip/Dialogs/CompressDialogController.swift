@@ -1025,18 +1025,28 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             memoryUsagePopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 180).isActive = true
             memoryUsagePopup.setAccessibilityIdentifier("compress.memoryUsage")
 
+            let memoryLabelTexts = [
+                SZL10n.string("benchmark.memoryUsage"),
+                SZL10n.string("compress.memoryCompressing"),
+                SZL10n.string("compress.memoryDecompressing"),
+            ]
+            let memoryLabelFont = NSFont.systemFont(ofSize: 12)
+            let memoryLabelWidth = ceil(memoryLabelTexts.map {
+                ($0 as NSString).size(withAttributes: [.font: memoryLabelFont]).width
+            }.max() ?? 152) + 4
+
             let memoryUsageRow = makeFormRow(label: SZL10n.string("benchmark.memoryUsage"),
                                              control: memoryUsagePopup,
-                                             labelWidth: 152)
+                                             labelWidth: memoryLabelWidth)
 
             let compressionMemoryLabel = makeInfoLabel(minWidth: 132)
             let decompressionMemoryLabel = makeInfoLabel(minWidth: 132)
             let compressionMemoryRow = makeFormRow(label: SZL10n.string("compress.memoryCompressing"),
                                                    control: compressionMemoryLabel,
-                                                   labelWidth: 152)
+                                                   labelWidth: memoryLabelWidth)
             let decompressionMemoryRow = makeFormRow(label: SZL10n.string("compress.memoryDecompressing"),
                                                      control: decompressionMemoryLabel,
-                                                     labelWidth: 152)
+                                                     labelWidth: memoryLabelWidth)
 
             let splitVolumesField = NSComboBox(frame: NSRect(x: 0, y: 0, width: 180, height: 26))
             splitVolumesField.usesDataSource = false
