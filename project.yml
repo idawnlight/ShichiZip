@@ -10,6 +10,7 @@ settings:
   base:
     MARKETING_VERSION: "0.0.2"
     CURRENT_PROJECT_VERSION: "1" # placeholder, will be overridden by build script
+    SWIFT_VERSION: "6.0"
   configs:
     Debug:
       ENABLE_HARDENED_RUNTIME: false
@@ -68,9 +69,7 @@ targets:
           - $(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)
           - -liconv
           - -lpthread
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: false
         CLANG_ENABLE_OBJC_ARC: true
         GCC_PREPROCESSOR_DEFINITIONS:
@@ -93,7 +92,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipTests
         PRODUCT_NAME: ShichiZipTests
         GENERATE_INFOPLIST_FILE: true
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         SWIFT_OBJC_BRIDGING_HEADER: ShichiZipTests/ShichiZipTests-Bridging-Header.h
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/ShichiZip.app/Contents/MacOS/ShichiZip
@@ -111,7 +109,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipUITests
         PRODUCT_NAME: ShichiZipUITests
         GENERATE_INFOPLIST_FILE: true
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         TEST_TARGET_NAME: ShichiZip
 
@@ -163,9 +160,7 @@ targets:
           - $(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)
           - -liconv
           - -lpthread
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: false
         CLANG_ENABLE_OBJC_ARC: true
         GCC_PREPROCESSOR_DEFINITIONS:
@@ -200,7 +195,6 @@ targets:
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/ShowInFileManagerAction-Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         GENERATE_INFOPLIST_FILE: false
         APPLICATION_EXTENSION_API_ONLY: true
@@ -228,7 +222,6 @@ targets:
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/OpenInShichiZipAction-Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         GENERATE_INFOPLIST_FILE: false
         APPLICATION_EXTENSION_API_ONLY: true
@@ -256,7 +249,6 @@ targets:
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/SmartQuickExtractAction-Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         GENERATE_INFOPLIST_FILE: false
         APPLICATION_EXTENSION_API_ONLY: true
@@ -284,7 +276,6 @@ targets:
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/ShowInFileManagerAction-Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         GENERATE_INFOPLIST_FILE: false
         APPLICATION_EXTENSION_API_ONLY: true
@@ -312,7 +303,6 @@ targets:
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/OpenInShichiZipAction-Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         GENERATE_INFOPLIST_FILE: false
         APPLICATION_EXTENSION_API_ONLY: true
@@ -340,7 +330,6 @@ targets:
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
         INFOPLIST_FILE: ShichiZip/QuickActions/Resources/SmartQuickExtractAction-Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
-        SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         GENERATE_INFOPLIST_FILE: false
         APPLICATION_EXTENSION_API_ONLY: true

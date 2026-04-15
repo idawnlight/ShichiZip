@@ -18,8 +18,9 @@ enum ArchiveOperationRunner {
         coordinator.start()
 
         let resultLock = NSLock()
-        var result: Result<T, Error>?
+        nonisolated(unsafe) var result: Result<T, Error>?
         let session = coordinator.session
+        nonisolated(unsafe) let work = work
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 let value = try work(session)
@@ -63,6 +64,7 @@ enum ArchiveOperationRunner {
 
         return try await withCheckedThrowingContinuation { continuation in
             let session = coordinator.session
+            nonisolated(unsafe) let work = work
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
                     let result = try work(session)

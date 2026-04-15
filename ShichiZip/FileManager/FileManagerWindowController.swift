@@ -674,7 +674,9 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             object: nil,
             queue: .main,
         ) { [weak self] _ in
-            self?.handleViewPreferencesDidChange()
+            MainActor.assumeIsolated {
+                self?.handleViewPreferencesDidChange()
+            }
         }
 
         languageObserver = NotificationCenter.default.addObserver(
@@ -682,7 +684,9 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             object: nil,
             queue: .main,
         ) { [weak self] _ in
-            self?.refreshToolbarItemPresentation()
+            MainActor.assumeIsolated {
+                self?.refreshToolbarItemPresentation()
+            }
         }
     }
 
@@ -703,7 +707,9 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         guard FileManagerViewPreferences.autoRefreshEnabled else { return }
 
         let timer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
-            self?.performAutoRefreshTick()
+            MainActor.assumeIsolated {
+                self?.performAutoRefreshTick()
+            }
         }
         RunLoop.main.add(timer, forMode: .common)
         autoRefreshTimer = timer
@@ -834,9 +840,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             object: panel,
             queue: .main,
         ) { [weak self, weak sourcePane] _ in
-            guard let self, let sourcePane else { return }
-            guard quickLookPreviewSourcePane === sourcePane else { return }
-            DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                guard let self, let sourcePane else { return }
                 guard self.quickLookPreviewSourcePane === sourcePane else { return }
                 self.window?.makeKeyAndOrderFront(nil)
                 sourcePane.focusFileList()
@@ -2371,26 +2376,34 @@ extension FileManagerWindowController: FileManagerPaneDelegate {
     }
 }
 
-extension FileManagerWindowController: @preconcurrency QLPreviewPanelDataSource, @preconcurrency QLPreviewPanelDelegate {
+extension FileManagerWindowController {
     override func acceptsPreviewPanelControl(_: QLPreviewPanel!) -> Bool {
-        !quickLookPreviewItems.isEmpty
+        MainActor.assumeIsolated {
+            !quickLookPreviewItems.isEmpty
+        }
     }
 
     override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        panel.dataSource = self
-        panel.delegate = self
+        MainActor.assumeIsolated {
+            panel.dataSource = self
+            panel.delegate = self
+        }
     }
 
     override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        if panel.dataSource as AnyObject? === self {
-            panel.dataSource = nil
+        MainActor.assumeIsolated {
+            if panel.dataSource as AnyObject? === self {
+                panel.dataSource = nil
+            }
+            if panel.delegate as AnyObject? === self {
+                panel.delegate = nil
+            }
+            clearQuickLookPreviewResources()
         }
-        if panel.delegate as AnyObject? === self {
-            panel.delegate = nil
-        }
-        clearQuickLookPreviewResources()
     }
+}
 
+extension FileManagerWindowController: @preconcurrency QLPreviewPanelDataSource, @preconcurrency QLPreviewPanelDelegate {
     func numberOfPreviewItems(in _: QLPreviewPanel!) -> Int {
         quickLookPreviewItems.count
     }

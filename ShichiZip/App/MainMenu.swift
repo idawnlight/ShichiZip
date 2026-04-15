@@ -858,9 +858,7 @@ enum MainMenu {
         addItem(to: viewMenu,
                 title: SZL10n.string("column.size"),
                 action: #selector(FileManagerWindowController.sortBySize(_:)))
-        addDisabledItem(to: viewMenu, title: SZL10n.string("view.unsorted"))
         viewMenu.addItem(.separator())
-        addDisabledItem(to: viewMenu, title: SZL10n.string("view.flatView"))
         addItem(to: viewMenu,
                 title: SZL10n.string("view.twoPanels"),
                 action: #selector(FileManagerWindowController.toggleDualPane(_:)),
@@ -995,7 +993,9 @@ enum MainMenu {
                 return
             }
 
-            setup()
+            MainActor.assumeIsolated {
+                setup()
+            }
         }
 
         NotificationCenter.default.addObserver(
@@ -1003,7 +1003,9 @@ enum MainMenu {
             object: nil,
             queue: .main,
         ) { _ in
-            setup()
+            MainActor.assumeIsolated {
+                setup()
+            }
         }
     }
 

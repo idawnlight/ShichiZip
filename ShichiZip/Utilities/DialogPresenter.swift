@@ -21,14 +21,13 @@ func szIsUnsupportedArchive(_ error: Error) -> Bool {
 func szPresentError(_ error: Error, for window: NSWindow?) {
     guard !szIsUserCancellation(error) else { return }
 
-    let present = {
-        SZDialogPresenter.presentError(error as NSError, for: window)
-    }
-
     if Thread.isMainThread {
-        present()
+        SZDialogPresenter.presentError(error as NSError, for: window)
     } else {
-        DispatchQueue.main.async(execute: present)
+        let window = window
+        DispatchQueue.main.async {
+            SZDialogPresenter.presentError(error as NSError, for: window)
+        }
     }
 }
 
@@ -37,18 +36,21 @@ func szPresentMessage(title: String,
                       style: SZDialogStyle = .informational,
                       for window: NSWindow?)
 {
-    let present = {
+    if Thread.isMainThread {
         SZDialogPresenter.presentMessage(with: style,
                                          title: title,
                                          message: message,
                                          buttonTitle: SZL10n.string("common.ok"),
                                          for: window)
-    }
-
-    if Thread.isMainThread {
-        present()
     } else {
-        DispatchQueue.main.async(execute: present)
+        let window = window
+        DispatchQueue.main.async {
+            SZDialogPresenter.presentMessage(with: style,
+                                             title: title,
+                                             message: message,
+                                             buttonTitle: SZL10n.string("common.ok"),
+                                             for: window)
+        }
     }
 }
 
@@ -129,33 +131,35 @@ func szShowDetailsDialog(title: String,
                          style: SZDialogStyle = .informational,
                          for window: NSWindow?)
 {
-    let present = {
-        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 380, height: detailsHeight))
-        textView.string = details
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 0, height: 4)
-        textView.font = .systemFont(ofSize: 12)
+    let present: @Sendable () -> Void = {
+        MainActor.assumeIsolated {
+            let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 380, height: detailsHeight))
+            textView.string = details
+            textView.isEditable = false
+            textView.isSelectable = true
+            textView.drawsBackground = false
+            textView.textContainerInset = NSSize(width: 0, height: 4)
+            textView.font = .systemFont(ofSize: 12)
 
-        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 380, height: detailsHeight))
-        scrollView.hasVerticalScroller = true
-        scrollView.borderType = .bezelBorder
-        scrollView.documentView = textView
-        scrollView.heightAnchor.constraint(equalToConstant: detailsHeight).isActive = true
+            let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 380, height: detailsHeight))
+            scrollView.hasVerticalScroller = true
+            scrollView.borderType = .bezelBorder
+            scrollView.documentView = textView
+            scrollView.heightAnchor.constraint(equalToConstant: detailsHeight).isActive = true
 
-        let controller = SZModalDialogController(style: style,
-                                                 title: title,
-                                                 message: summary,
-                                                 buttonTitles: [SZL10n.string("common.ok")],
-                                                 accessoryView: scrollView,
-                                                 preferredFirstResponder: nil,
-                                                 cancelButtonIndex: 0)
+            let controller = SZModalDialogController(style: style,
+                                                     title: title,
+                                                     message: summary,
+                                                     buttonTitles: [SZL10n.string("common.ok")],
+                                                     accessoryView: scrollView,
+                                                     preferredFirstResponder: nil,
+                                                     cancelButtonIndex: 0)
 
-        if let window {
-            controller.beginSheetModal(for: window) { _ in }
-        } else {
-            _ = controller.runModal()
+            if let window {
+                controller.beginSheetModal(for: window) { _ in }
+            } else {
+                _ = controller.runModal()
+            }
         }
     }
 

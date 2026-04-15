@@ -480,7 +480,9 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
                 self?.apply(snapshot: snapshot)
             },
             completion: { [weak self] success, errorMessage in
-                self?.finishBenchmark(success: success, errorMessage: errorMessage)
+                MainActor.assumeIsolated {
+                    self?.finishBenchmark(success: success, errorMessage: errorMessage)
+                }
             },
         )
     }
@@ -488,8 +490,10 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
     private func startElapsedTimer() {
         elapsedTimer?.invalidate()
         elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self, let startTime else { return }
-            elapsedL.stringValue = "\(Int(Date().timeIntervalSince(startTime))) s"
+            MainActor.assumeIsolated {
+                guard let self, let startTime = self.startTime else { return }
+                self.elapsedL.stringValue = "\(Int(Date().timeIntervalSince(startTime))) s"
+            }
         }
     }
 
@@ -724,7 +728,9 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
             return nil
         }
 
-        let value = String(cString: buffer).trimmingCharacters(in: .whitespacesAndNewlines)
+        let cchars = buffer.prefix(while: { $0 != 0 })
+        let value = String(decoding: cchars.map { UInt8(bitPattern: $0) }, as: UTF8.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
     }
 }

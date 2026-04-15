@@ -126,30 +126,21 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     func beginWaitingMode(fileName: String? = nil) {
-        let applyWaitingMode = { [weak self] in
-            guard let self else { return }
-            isWaitingForProgress = true
-            startTime = nil
-            lastMetricsUpdateTime = 0
-            cancelled = false
-            cancelButton.isEnabled = true
-            cancelButton.title = SZL10n.string("common.cancel")
-            progressBar.stopAnimation(nil)
-            progressBar.isIndeterminate = false
-            progressBar.doubleValue = 0
-            if let fileName {
-                fileNameLabel.stringValue = fileName
-            }
-            bytesLabel.stringValue = ""
-            speedLabel.stringValue = ""
-            elapsedLabel.stringValue = ""
+        isWaitingForProgress = true
+        startTime = nil
+        lastMetricsUpdateTime = 0
+        cancelled = false
+        cancelButton.isEnabled = true
+        cancelButton.title = SZL10n.string("common.cancel")
+        progressBar.stopAnimation(nil)
+        progressBar.isIndeterminate = false
+        progressBar.doubleValue = 0
+        if let fileName {
+            fileNameLabel.stringValue = fileName
         }
-
-        if Thread.isMainThread {
-            applyWaitingMode()
-        } else {
-            DispatchQueue.main.async(execute: applyWaitingMode)
-        }
+        bytesLabel.stringValue = ""
+        speedLabel.stringValue = ""
+        elapsedLabel.stringValue = ""
     }
 
     private func ensureDeterminateProgress() {

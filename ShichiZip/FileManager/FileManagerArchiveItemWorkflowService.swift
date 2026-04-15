@@ -508,13 +508,13 @@ final class FileManagerArchiveItemWorkflowService {
     }
 
     private func rememberTemporaryDirectory(_ url: URL) {
-        temporaryDirectoriesState.withLock { $0.insert(url.standardizedFileURL) }
+        temporaryDirectoriesState.withLock { _ = $0.insert(url.standardizedFileURL) }
     }
 
     private func forgetTemporaryDirectory(_ url: URL) {
         temporaryDirectoriesState.withLock {
-            $0.remove(url.standardizedFileURL)
-            $0.remove(url)
+            _ = $0.remove(url.standardizedFileURL)
+            _ = $0.remove(url)
         }
     }
 
@@ -523,7 +523,7 @@ final class FileManagerArchiveItemWorkflowService {
     }
 
     private func removeCleanupObserver(_ observer: TemporaryDirectoryCleanupObserver) {
-        cleanupObserversState.withLock { $0.removeValue(forKey: ObjectIdentifier(observer)) }
+        cleanupObserversState.withLock { _ = $0.removeValue(forKey: ObjectIdentifier(observer)) }
         observer.invalidate()
     }
 
