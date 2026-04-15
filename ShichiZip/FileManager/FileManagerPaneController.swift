@@ -693,7 +693,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func installDirectoryWatcher(for url: URL) {
         directoryWatcher?.stop()
-        directoryWatcher = DirectoryWatcher(directory: url)
+        let watcher = DirectoryWatcher(directory: url)
+        watcher.onChange = { [weak self] in
+            self?.autoRefreshIfPossible()
+        }
+        directoryWatcher = watcher
     }
 
     private func tearDownDirectoryWatcher() {
@@ -714,6 +718,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     func autoRefreshIfPossible() {
         guard isViewLoaded else { return }
+        guard FileManagerViewPreferences.autoRefreshEnabled else { return }
         guard !isInsideArchive else { return }
         guard directoryWatcher?.wasChanged() == true else { return }
         guard !isLiveScrolling else {

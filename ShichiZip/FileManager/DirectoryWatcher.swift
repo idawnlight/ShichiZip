@@ -10,6 +10,7 @@ import Foundation
 final class DirectoryWatcher {
     private var stream: FSEventStreamRef?
     private var changed = false
+    var onChange: (() -> Void)?
 
     init(directory: URL) {
         let pathString = directory.path as CFString
@@ -24,6 +25,7 @@ final class DirectoryWatcher {
                 guard let info else { return }
                 let watcher = Unmanaged<DirectoryWatcher>.fromOpaque(info).takeUnretainedValue()
                 watcher.changed = true
+                watcher.onChange?()
             },
             &context,
             paths,
