@@ -52,19 +52,150 @@
 	<key>NSSupportsSuddenTermination</key>
 	<true/>
 	<key>CFBundleDocumentTypes</key>
-	<array>
+<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>7-Zip Archive</string>
+			<string>7Z Archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Owner</string>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>7z</string>
+			</array>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>org.7-zip.7-zip-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LZMA Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>lzma</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.tukaani.lzma-archive</string>
+				<string>public.lzma-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LZOP Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>lzo</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.lzop-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LZOP Tarball Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>tzo</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.lzop-tar-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LZIP Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>lz</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.lzip-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LZIP Tarball Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>tlz</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.lzip-tar-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LZ4 Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>lz4</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.lz4-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LZ4 Tarball Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>tlz4</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.lz4-tar-archive</string>
 			</array>
 		</dict>
 		<dict>
@@ -75,52 +206,34 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Alternate</string>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>zip</string>
+			</array>
 			<key>LSItemContentTypes</key>
 			<array>
+				<string>com.pkware.zip-archive</string>
 				<string>public.zip-archive</string>
+				<string>public.zip-archive.first-part</string>
 			</array>
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>TAR Archive</string>
+			<string>ZIPX Archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Alternate</string>
-			<key>LSItemContentTypes</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
 			<array>
-				<string>public.tar-archive</string>
+				<string>zipx</string>
 			</array>
-		</dict>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string>GZip Archive</string>
-			<key>NSDocumentClass</key>
-			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
-			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
-			<key>LSHandlerRank</key>
-			<string>Alternate</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>org.gnu.gnu-zip-archive</string>
-			</array>
-		</dict>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string>BZip2 Archive</string>
-			<key>NSDocumentClass</key>
-			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
-			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
-			<key>LSHandlerRank</key>
-			<string>Alternate</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>public.bzip2-archive</string>
+				<string>com.winzip.zipx-archive</string>
 			</array>
 		</dict>
 		<dict>
@@ -131,10 +244,111 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Alternate</string>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>xz</string>
+			</array>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>org.tukaani.xz-archive</string>
+				<string>public.xz-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>XZ Tarball Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>txz</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.tukaani.tar-xz-archive</string>
+				<string>org.tukaani.xz-tar-archive</string>
+				<string>public.tar-xz-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Brotli Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>br</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.google.brotli-archive</string>
+				<string>public.brotli-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Brotli Tarball Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>tbr</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.google.brotli-tar-archive</string>
+				<string>public.brotli-tar-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Zstandard Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>zst</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.facebook.zstandard-archive</string>
+				<string>public.zstandard-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Zstandard Tarball Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>tzst</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.facebook.zstandard-tar-archive</string>
+				<string>public.zstandard-tar-archive</string>
 			</array>
 		</dict>
 		<dict>
@@ -145,7 +359,11 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Alternate</string>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>rar</string>
+			</array>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>com.rarlab.rar-archive</string>
@@ -153,13 +371,248 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>ISO Image</string>
+			<string>BZIP2 Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>bz2</string>
+				<string>bzip2</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.bzip2-archive</string>
+				<string>org.bzip.bzip2-archive</string>
+				<string>com.redhat.bzip2-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>BZIP2 Tarball Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>tbz2</string>
+				<string>tbzip2</string>
+				<string>tb2</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.tar-bzip2-archive</string>
+				<string>org.bzip.bzip2-tar-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>BZIP Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>bz</string>
+				<string>bzip</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.bzip-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>GZIP Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>gz</string>
+				<string>gzip</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.gnu.gnu-zip-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>GZIP Tarball Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>tgz</string>
+				<string>tgzip</string>
+				<string>tar-gz</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.gnu.gnu-zip-tar-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>TAR Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>tar</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.tar-archive</string>
+				<string>org.gnu.gnu-tar-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LRZIP Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>lrz</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.lrzip-archive</string>
+				<string>org.kolivas.lrzip-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LRZIP Tarball Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>tlrz</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.lrzip-tar-archive</string>
+				<string>org.kolivas.lrzip-tar-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>CPIO Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>cpio</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.cpio-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>CPGZ Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>cpgz</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.apple.bom-compressed-cpio</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>PAX Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>pax</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>cx.c3.pax-archive</string>
+				<string>public.pax-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>DMG Disk Image</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
 			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>dmg</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.apple.disk-image</string>
+				<string>com.apple.disk-image-smi</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>ISO Disk Image</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>iso</string>
+			</array>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.iso-image</string>
@@ -167,27 +620,382 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Archive</string>
+			<string>LHA Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>lha</string>
+				<string>lzh</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.archive.lha</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Windows EXE File</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>exe</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.microsoft.windows-executable</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Windows Cabinet File</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>cab</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.microsoft.cab-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Windows Installer Package</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>msi</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.microsoft.msi-installer</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>WIM Disk Image</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>wim</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.microsoft.wim-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>iOS App</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
 			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>ipa</string>
+			</array>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>public.archive</string>
-				<string>public.data</string>
+				<string>com.apple.iTunes.ipa</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>JAR Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>jar</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.sun.java-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>WAR Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>war</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.sun.java-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Compact Pro Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>cpt</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.cyclos.cpt-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Synology Package Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>spk</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.synology.spk-archive</string>
+				<string>cx.c3.arc-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Android Application Package</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>apk</string>
+				<string>xapk</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.archive.apk</string>
+				<string>com.android.package-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>APPX Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>appx</string>
+				<string>appxbundle</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.microsoft.appx-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>ACE Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>ace</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.winace.ace-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>XAR Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>xar</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.apple.xar-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Apple Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>aar</string>
+				<string>yaa</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.apple.archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Apple Encrypted Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>aea</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.apple.encrypted-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Squashfs Filesystem Archive</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>sqsh</string>
+				<string>sqfs</string>
+				<string>sfs</string>
+				<string>squashfs</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.plougher.squashfs-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>WordPress All-in-One Backup</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>wpress</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.servmask.wpress-backup</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Delta Controller Skin</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>deltaskin</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.rileytestut.delta.skin</string>
 			</array>
 		</dict>
 	</array>
+
 	<key>UTImportedTypeDeclarations</key>
-	<array>
+<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.winzip.zipx-archive</string>
+			<key>UTTypeDescription</key>
+			<string>ZIPX Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>zipx</string>
+				</array>
+			</dict>
+		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
 			<string>org.7-zip.7-zip-archive</string>
 			<key>UTTypeDescription</key>
-			<string>7-Zip Archive</string>
+			<string>7Z Archive</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
@@ -207,13 +1015,35 @@
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
+			<string>org.tukaani.lzma-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LZMA Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>lzma</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-lzma</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
 			<string>org.tukaani.xz-archive</string>
 			<key>UTTypeDescription</key>
 			<string>XZ Archive</string>
 			<key>UTTypeConformsTo</key>
 			<array>
-				<string>public.data</string>
 				<string>public.archive</string>
+				<string>public.data</string>
 			</array>
 			<key>UTTypeTagSpecification</key>
 			<dict>
@@ -224,6 +1054,232 @@
 				<key>public.mime-type</key>
 				<array>
 					<string>application/x-xz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.tukaani.tar-xz-archive</string>
+			<key>UTTypeDescription</key>
+			<string>XZ Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>txz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.lzip-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LZIP Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>lz</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-lzip</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.lzip-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LZIP Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tlz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.lz4-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LZ4 Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>lz4</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-lz4</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.lz4-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LZ4 Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tlz4</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.lzop-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LZOP Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>lzop</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-lzop</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.lzop-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LZOP Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tzo</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.lrzip-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LRZIP Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>lrz</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-lrzip</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.lrzip-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LRZIP Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tlrz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.archive.lha</string>
+			<key>UTTypeDescription</key>
+			<string>LHA Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>lha</string>
+					<string>lzh</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-lzh-compressed</string>
+					<string>application/x-lha</string>
+					<string>application/x-lzh</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.archive.apk</string>
+			<key>UTTypeDescription</key>
+			<string>Android Application Package</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>apk</string>
+					<string>xapk</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.android.package-archive</string>
 				</array>
 			</dict>
 		</dict>
@@ -242,18 +1298,119 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>rar</string>
+					<string>r00</string>
+					<string>r01</string>
+					<string>r02</string>
+					<string>r03</string>
+					<string>r04</string>
+					<string>r05</string>
+					<string>r06</string>
+					<string>r07</string>
+					<string>r08</string>
+					<string>r09</string>
+					<string>r10</string>
+					<string>r11</string>
+					<string>r12</string>
+					<string>r13</string>
+					<string>r14</string>
+					<string>r15</string>
+					<string>r16</string>
+					<string>r17</string>
+					<string>r18</string>
+					<string>r19</string>
+					<string>r20</string>
+					<string>r21</string>
+					<string>r22</string>
+					<string>r23</string>
+					<string>r24</string>
+					<string>r25</string>
+					<string>r26</string>
+					<string>r27</string>
+					<string>r28</string>
+					<string>r29</string>
+					<string>r30</string>
+					<string>r31</string>
+					<string>r32</string>
+					<string>r33</string>
+					<string>r34</string>
+					<string>r35</string>
+					<string>r36</string>
+					<string>r37</string>
+					<string>r38</string>
+					<string>r39</string>
+					<string>r40</string>
+					<string>r41</string>
+					<string>r42</string>
+					<string>r43</string>
+					<string>r44</string>
+					<string>r45</string>
+					<string>r46</string>
+					<string>r47</string>
+					<string>r48</string>
+					<string>r49</string>
+					<string>r50</string>
+					<string>r51</string>
+					<string>r52</string>
+					<string>r53</string>
+					<string>r54</string>
+					<string>r55</string>
+					<string>r56</string>
+					<string>r57</string>
+					<string>r58</string>
+					<string>r59</string>
+					<string>r60</string>
+					<string>r61</string>
+					<string>r62</string>
+					<string>r63</string>
+					<string>r64</string>
+					<string>r65</string>
+					<string>r66</string>
+					<string>r67</string>
+					<string>r68</string>
+					<string>r69</string>
+					<string>r70</string>
+					<string>r71</string>
+					<string>r72</string>
+					<string>r73</string>
+					<string>r74</string>
+					<string>r75</string>
+					<string>r76</string>
+					<string>r77</string>
+					<string>r78</string>
+					<string>r79</string>
+					<string>r80</string>
+					<string>r81</string>
+					<string>r82</string>
+					<string>r83</string>
+					<string>r84</string>
+					<string>r85</string>
+					<string>r86</string>
+					<string>r87</string>
+					<string>r88</string>
+					<string>r89</string>
+					<string>r90</string>
+					<string>r91</string>
+					<string>r92</string>
+					<string>r93</string>
+					<string>r94</string>
+					<string>r95</string>
+					<string>r96</string>
+					<string>r97</string>
+					<string>r98</string>
+					<string>r99</string>
 				</array>
 				<key>public.mime-type</key>
 				<array>
+					<string>application/x-rar</string>
 					<string>application/x-rar-compressed</string>
 				</array>
 			</dict>
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>com.facebook.zstd-archive</string>
+			<string>com.microsoft.cab-archive</string>
 			<key>UTTypeDescription</key>
-			<string>Zstandard Archive</string>
+			<string>Windows Cabinet File</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
@@ -263,11 +1420,701 @@
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
+					<string>msi</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.ms-cab-compressed</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.microsoft.msi-installer</string>
+			<key>UTTypeDescription</key>
+			<string>Windows Installer Package</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>cab</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.ms-cab-compressed</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.microsoft.wim-archive</string>
+			<key>UTTypeDescription</key>
+			<string>WIM Disk Image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>wim</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.microsoft.appx-archive</string>
+			<key>UTTypeDescription</key>
+			<string>APPX Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>appx</string>
+					<string>appxbundle</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vns.ms-appx</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.google.brotli-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Brotli Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>br</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.google.brotli-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Brotli Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tbr</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.facebook.zstandard-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Zstandard Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
 					<string>zst</string>
-					<string>zstd</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/zstd</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.facebook.zstandard-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Zstandard Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tzst</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.winace.ace-archive</string>
+			<key>UTTypeDescription</key>
+			<string>ACE Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>ace</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-ace-compressed</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.servmask.wpress-backup</string>
+			<key>UTTypeDescription</key>
+			<string>WordPress All-in-One Backup</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>wpress</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.plougher.squashfs-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Squashfs Filesystem Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>sqsh</string>
+					<string>sqfs</string>
+					<string>sfs</string>
+					<string>squashfs</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.lzma-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LZMA Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>lzma</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-lzma</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.cyclos.cpt-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Compact Pro Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>cpt</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.synology.spk-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Synology Package Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>spk</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>cx.c3.arc-archive</string>
+			<key>UTTypeDescription</key>
+			<string>ARC Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>arc</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.pkware.zip-archive</string>
+			<key>UTTypeDescription</key>
+			<string>ZIP Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>zip</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/zip</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.zip-archive.first-part</string>
+			<key>UTTypeDescription</key>
+			<string>ZIP Archive (First Part)</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>z01</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.xz-archive</string>
+			<key>UTTypeDescription</key>
+			<string>XZ Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>xz</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-xz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.tar-xz-archive</string>
+			<key>UTTypeDescription</key>
+			<string>XZ Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>txz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.tukaani.xz-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>XZ Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>txz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.brotli-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Brotli Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>br</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.brotli-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Brotli Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tbr</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.zstandard-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Zstandard Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>zst</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/zstd</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.zstandard-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Zstandard Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tzst</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.bzip.bzip2-archive</string>
+			<key>UTTypeDescription</key>
+			<string>BZIP2 Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>bz2</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-bzip2</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.redhat.bzip2-archive</string>
+			<key>UTTypeDescription</key>
+			<string>BZIP2 Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>bz2</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-bzip2</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.tar-bzip2-archive</string>
+			<key>UTTypeDescription</key>
+			<string>BZIP2 Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tbz2</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.bzip.bzip2-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>BZIP2 Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tbz2</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.bzip-archive</string>
+			<key>UTTypeDescription</key>
+			<string>BZIP Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>bz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.gnu.gnu-zip-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>GZIP Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tgz</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-gtar</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.gnu.gnu-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>TAR Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tar</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-tar</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.kolivas.lrzip-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LRZIP Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>lrz</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-lrzip</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.kolivas.lrzip-tar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>LRZIP Tarball Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tlrz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>cx.c3.pax-archive</string>
+			<key>UTTypeDescription</key>
+			<string>PAX Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>pax</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.pax-archive</string>
+			<key>UTTypeDescription</key>
+			<string>PAX Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>pax</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.rileytestut.delta.skin</string>
+			<key>UTTypeDescription</key>
+			<string>Delta Controller Skin</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.content</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>deltaskin</string>
 				</array>
 			</dict>
 		</dict>
 	</array>
+
 </dict>
 </plist>

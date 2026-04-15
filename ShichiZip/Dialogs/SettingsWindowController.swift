@@ -1,4 +1,5 @@
 import Cocoa
+import UniformTypeIdentifiers
 
 // MARK: - Settings Window Controller (matches Windows 7-Zip Options dialog)
 
@@ -158,10 +159,233 @@ private final class ShortcutRecorderButton: NSButton {
     }
 }
 
-class SettingsWindowController: NSWindowController {
+private struct IntegrationFileAssociation {
+    let displayName: String
+    let handlerRank: String
+    let contentTypeIdentifiers: [String]
+
+    var primaryTypeIdentifier: String {
+        contentTypeIdentifiers[0]
+    }
+
+    var contentTypes: [UTType] {
+        contentTypeIdentifiers.map { UTType(importedAs: $0) }
+    }
+
+    var isDefaultRanked: Bool {
+        handlerRank == "Default"
+    }
+
+    private static let excludedTypeIdentifiers: Set<String> = [
+        "public.data",
+        "com.aone.keka-extraction",
+    ]
+
+    static func supportedDocumentTypes(bundle: Bundle = .main) -> [IntegrationFileAssociation] {
+        guard let documentTypes = bundle.object(forInfoDictionaryKey: "CFBundleDocumentTypes") as? [[String: Any]] else {
+            return []
+        }
+
+        return documentTypes.compactMap { documentType in
+            guard let displayName = documentType["CFBundleTypeName"] as? String,
+                  let declaredContentTypes = documentType["LSItemContentTypes"] as? [String]
+            else {
+                return nil
+            }
+
+            let contentTypeIdentifiers = declaredContentTypes.filter { !excludedTypeIdentifiers.contains($0) }
+            guard !contentTypeIdentifiers.isEmpty else {
+                return nil
+            }
+
+            return IntegrationFileAssociation(displayName: displayName,
+                                              handlerRank: documentType["LSHandlerRank"] as? String ?? "Alternate",
+                                              contentTypeIdentifiers: contentTypeIdentifiers)
+        }
+    }
+
+    static func integrationDocumentTypes(bundle: Bundle = .main) -> [IntegrationFileAssociation] {
+        supportedDocumentTypes(bundle: bundle).filter(\.isDefaultRanked)
+    }
+}
+
+private enum IntegrationFileAssociationDisplayStatus {
+    case noDefaultApp
+    case defaultApp(String)
+    case multipleDefaultApps
+}
+
+private struct IntegrationFileAssociationState {
+    let displayStatus: IntegrationFileAssociationDisplayStatus
+    let isCurrentDefault: Bool
+    let isPendingUpdate: Bool
+}
+
+private actor IntegrationFileAssociationUpdateState {
+    var remainingUpdates: Int
+    var failureCount: Int = 0
+
+    init(remainingUpdates: Int) {
+        self.remainingUpdates = remainingUpdates
+    }
+
+    func recordCompletion(error: Error?) -> (isFinished: Bool, failureCount: Int) {
+        if let error {
+            let nsError = error as NSError
+            if nsError.code != NSUserCancelledError {
+                failureCount += 1
+            }
+        }
+
+        remainingUpdates -= 1
+        return (remainingUpdates == 0, failureCount)
+    }
+}
+
+private final class IntegrationStatusView: NSView {
+    let label = NSTextField(labelWithString: "")
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.alignment = .center
+        label.lineBreakMode = .byTruncatingMiddle
+        label.maximumNumberOfLines = 1
+        addSubview(label)
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 28),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func apply(displayStatus: IntegrationFileAssociationDisplayStatus) {
+        switch displayStatus {
+        case .noDefaultApp:
+            label.stringValue = SZL10n.string("app.settings.noDefaultApp")
+            label.textColor = .placeholderTextColor
+
+        case let .defaultApp(displayName):
+            label.stringValue = displayName
+            label.textColor = .labelColor
+
+        case .multipleDefaultApps:
+            label.stringValue = SZL10n.string("app.settings.multipleDefaultApps")
+            label.textColor = .secondaryLabelColor
+        }
+    }
+}
+
+private final class IntegrationRowTableCellView: NSTableCellView {
+    private let rowStack = NSStackView()
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let statusView = IntegrationStatusView()
+    let actionButton = NSButton(title: "", target: nil, action: nil)
+    private var titleWidthConstraint: NSLayoutConstraint?
+    private var statusWidthConstraint: NSLayoutConstraint?
+    private var actionWidthConstraint: NSLayoutConstraint?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+
+        rowStack.translatesAutoresizingMaskIntoConstraints = false
+        rowStack.orientation = .horizontal
+        rowStack.alignment = .centerY
+        rowStack.spacing = 12
+        addSubview(rowStack)
+
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.maximumNumberOfLines = 1
+        titleLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        rowStack.addArrangedSubview(titleLabel)
+
+        statusView.setContentCompressionResistancePriority(.required, for: .horizontal)
+        rowStack.addArrangedSubview(statusView)
+
+        actionButton.bezelStyle = .rounded
+        actionButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        rowStack.addArrangedSubview(actionButton)
+
+        NSLayoutConstraint.activate([
+            rowStack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            rowStack.topAnchor.constraint(equalTo: topAnchor),
+            rowStack.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configureLayout(titleWidth: CGFloat,
+                         statusWidth: CGFloat,
+                         actionWidth: CGFloat)
+    {
+        if let titleWidthConstraint {
+            titleWidthConstraint.constant = titleWidth
+        } else {
+            let constraint = titleLabel.widthAnchor.constraint(equalToConstant: titleWidth)
+            constraint.isActive = true
+            titleWidthConstraint = constraint
+        }
+
+        if let statusWidthConstraint {
+            statusWidthConstraint.constant = statusWidth
+        } else {
+            let constraint = statusView.widthAnchor.constraint(equalToConstant: statusWidth)
+            constraint.isActive = true
+            statusWidthConstraint = constraint
+        }
+
+        if let actionWidthConstraint {
+            actionWidthConstraint.constant = actionWidth
+        } else {
+            let constraint = actionButton.widthAnchor.constraint(equalToConstant: actionWidth)
+            constraint.isActive = true
+            actionWidthConstraint = constraint
+        }
+    }
+
+    func apply(association: IntegrationFileAssociation,
+               state: IntegrationFileAssociationState,
+               target: AnyObject?,
+               action: Selector)
+    {
+        titleLabel.stringValue = association.displayName
+        statusView.apply(displayStatus: state.displayStatus)
+        actionButton.title = state.isCurrentDefault
+            ? SZL10n.string("app.settings.currentDefault")
+            : SZL10n.string("app.settings.makeDefault")
+        actionButton.isEnabled = !state.isCurrentDefault && !state.isPendingUpdate
+        actionButton.identifier = NSUserInterfaceItemIdentifier(association.primaryTypeIdentifier)
+        actionButton.setAccessibilityIdentifier("settings.makeDefault.\(association.primaryTypeIdentifier)")
+        actionButton.target = target
+        actionButton.action = action
+    }
+}
+
+class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate {
     private enum LayoutMetrics {
         static let outerInset: CGFloat = 12
         static let segmentSpacing: CGFloat = 12
+        static let integrationContentWidth: CGFloat = 480
+        static let integrationListHeight: CGFloat = 240
+        static let integrationArchiveTypeWidth: CGFloat = 200
+        static let integrationDefaultApplicationWidth: CGFloat = 120
+        static let integrationActionButtonWidth: CGFloat = 124
     }
 
     private var tabView: NSTabView!
@@ -170,13 +394,17 @@ class SettingsWindowController: NSWindowController {
     private var shortcutPresetDescriptionLabel: NSTextField?
     private var shortcutBindingsStack: NSStackView?
     private var shortcutRecorders: [FileManagerShortcutCommand: ShortcutRecorderButton] = [:]
+    private var integrationFileAssociationStates: [String: IntegrationFileAssociationState] = [:]
+    private weak var integrationTableView: NSTableView?
+    private var pendingFileAssociationUpdates: Set<String> = []
     private var isUpdatingShortcutControls = false
 
+    private static let supportedFileAssociations = IntegrationFileAssociation.integrationDocumentTypes()
     private static let finderQuickActionsSettingsURL = URL(string: "x-apple.systempreferences:com.apple.ExtensionsPreferences?extensionPointIdentifier=com.apple.services")
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 440),
+            contentRect: NSRect(x: 0, y: 0, width: 536, height: 440),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false,
@@ -250,6 +478,9 @@ class SettingsWindowController: NSWindowController {
 
     @objc private func tabSegmentChanged(_ sender: NSSegmentedControl) {
         tabView.selectTabViewItem(at: sender.selectedSegment)
+        if tabView.selectedTabViewItem?.identifier as? String == "integration" {
+            refreshIntegrationFileAssociationRows()
+        }
         resizeWindowToFitSelectedTab(animated: true)
     }
 
@@ -586,12 +817,71 @@ class SettingsWindowController: NSWindowController {
         stack.alignment = .leading
         stack.spacing = 10
 
+        integrationFileAssociationStates.removeAll()
+
+        stack.addArrangedSubview(makeSectionLabel(SZL10n.string("app.settings.defaultOpeners")))
+
+        let associationDescriptionLabel = NSTextField(wrappingLabelWithString: SZL10n.string("app.settings.defaultOpenersDescription", AppBuildInfo.appDisplayName()))
+        associationDescriptionLabel.textColor = .secondaryLabelColor
+        associationDescriptionLabel.maximumNumberOfLines = 0
+        associationDescriptionLabel.preferredMaxLayoutWidth = LayoutMetrics.integrationContentWidth
+        stack.addArrangedSubview(associationDescriptionLabel)
+
+        let scrollView = NSScrollView()
+        scrollView.borderType = .bezelBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.heightAnchor.constraint(equalToConstant: LayoutMetrics.integrationListHeight).isActive = true
+        stack.addArrangedSubview(scrollView)
+        let preferredWidthConstraint = scrollView.widthAnchor.constraint(equalToConstant: LayoutMetrics.integrationContentWidth)
+        preferredWidthConstraint.priority = .defaultHigh
+        preferredWidthConstraint.isActive = true
+        scrollView.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor).isActive = true
+
+        let tableView = NSTableView()
+        tableView.usesAlternatingRowBackgroundColors = false
+        tableView.focusRingType = .none
+        tableView.headerView = nil
+        tableView.selectionHighlightStyle = .none
+        tableView.rowHeight = 28
+        tableView.intercellSpacing = NSSize(width: 0, height: 6)
+        tableView.backgroundColor = .clear
+        tableView.gridStyleMask = []
+        tableView.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.allowsColumnSelection = false
+        tableView.allowsTypeSelect = false
+
+        let rowColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("IntegrationRowColumn"))
+        rowColumn.resizingMask = .autoresizingMask
+        tableView.addTableColumn(rowColumn)
+
+        scrollView.documentView = tableView
+        integrationTableView = tableView
+
+        let setAllButton = NSButton(title: SZL10n.string("app.settings.setAllAsDefault"), target: self, action: #selector(makeDefaultApplicationForAllFileAssociations(_:)))
+        setAllButton.setAccessibilityIdentifier("settings.setAllAsDefault")
+        stack.addArrangedSubview(setAllButton)
+
+        let associationsNoteLabel = NSTextField(wrappingLabelWithString: SZL10n.string("app.settings.defaultOpenersNote"))
+        associationsNoteLabel.textColor = .secondaryLabelColor
+        associationsNoteLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        associationsNoteLabel.maximumNumberOfLines = 0
+        associationsNoteLabel.preferredMaxLayoutWidth = LayoutMetrics.integrationContentWidth
+        stack.addArrangedSubview(associationsNoteLabel)
+
+        let fileAssociationSeparator = makeSettingsSeparator()
+        stack.addArrangedSubview(fileAssociationSeparator)
+        fileAssociationSeparator.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
         stack.addArrangedSubview(makeSectionLabel(SZL10n.string("app.settings.finderQuickActions")))
 
         let descriptionLabel = NSTextField(wrappingLabelWithString: SZL10n.string("app.settings.quickActionsDescription", AppBuildInfo.appDisplayName()))
         descriptionLabel.textColor = .secondaryLabelColor
         descriptionLabel.maximumNumberOfLines = 0
-        descriptionLabel.preferredMaxLayoutWidth = 440
+        descriptionLabel.preferredMaxLayoutWidth = LayoutMetrics.integrationContentWidth
         stack.addArrangedSubview(descriptionLabel)
 
         let openSettingsButton = NSButton(title: SZL10n.string("app.settings.openFinderQuickActionsSettings"), target: self, action: #selector(openFinderQuickActionsSettings(_:)))
@@ -602,10 +892,148 @@ class SettingsWindowController: NSWindowController {
         noteLabel.textColor = .secondaryLabelColor
         noteLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         noteLabel.maximumNumberOfLines = 0
-        noteLabel.preferredMaxLayoutWidth = 440
+        noteLabel.preferredMaxLayoutWidth = LayoutMetrics.integrationContentWidth
         stack.addArrangedSubview(noteLabel)
 
+        refreshIntegrationFileAssociationRows()
+
         return makePageView(containing: stack)
+    }
+
+    private static func currentApplicationURL(bundle: Bundle = .main) -> URL {
+        bundle.bundleURL.resolvingSymlinksInPath().standardizedFileURL
+    }
+
+    private static func applicationBundleIdentifier(at applicationURL: URL) -> String? {
+        Bundle(url: applicationURL)?.bundleIdentifier?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func isCurrentApplication(_ applicationURL: URL,
+                                             currentBundle: Bundle = .main) -> Bool
+    {
+        let normalizedApplicationURL = applicationURL.resolvingSymlinksInPath().standardizedFileURL
+        let currentApplicationURL = currentApplicationURL(bundle: currentBundle)
+        if normalizedApplicationURL == currentApplicationURL {
+            return true
+        }
+
+        guard let currentBundleIdentifier = currentBundle.bundleIdentifier?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !currentBundleIdentifier.isEmpty,
+            let applicationBundleIdentifier = applicationBundleIdentifier(at: normalizedApplicationURL),
+            !applicationBundleIdentifier.isEmpty
+        else {
+            return false
+        }
+
+        return applicationBundleIdentifier == currentBundleIdentifier
+    }
+
+    private static func applicationDisplayName(at applicationURL: URL) -> String {
+        let displayName = FileManager.default.displayName(atPath: applicationURL.path)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if !displayName.isEmpty {
+            return displayName
+        }
+
+        return applicationURL.deletingPathExtension().lastPathComponent
+    }
+
+    private static func applicationIdentity(for applicationURL: URL) -> String {
+        let normalizedApplicationURL = applicationURL.resolvingSymlinksInPath().standardizedFileURL
+        if let bundleIdentifier = applicationBundleIdentifier(at: normalizedApplicationURL),
+           !bundleIdentifier.isEmpty
+        {
+            return "bundle:\(bundleIdentifier)"
+        }
+
+        return "path:\(normalizedApplicationURL.path)"
+    }
+
+    private func refreshIntegrationFileAssociationRows() {
+        var updatedStates: [String: IntegrationFileAssociationState] = [:]
+
+        for association in Self.supportedFileAssociations {
+            var defaultApplications: [(identity: String, url: URL)] = []
+            var seenApplicationIdentities: Set<String> = []
+            var isCurrentDefault = !association.contentTypes.isEmpty
+
+            for contentType in association.contentTypes {
+                guard let applicationURL = NSWorkspace.shared.urlForApplication(toOpen: contentType)?
+                    .resolvingSymlinksInPath()
+                    .standardizedFileURL
+                else {
+                    isCurrentDefault = false
+                    continue
+                }
+
+                if !Self.isCurrentApplication(applicationURL) {
+                    isCurrentDefault = false
+                }
+
+                let identity = Self.applicationIdentity(for: applicationURL)
+                if seenApplicationIdentities.insert(identity).inserted {
+                    defaultApplications.append((identity, applicationURL))
+                }
+            }
+
+            let displayStatus: IntegrationFileAssociationDisplayStatus
+            switch defaultApplications.count {
+            case 0:
+                displayStatus = .noDefaultApp
+            case 1:
+                displayStatus = .defaultApp(Self.applicationDisplayName(at: defaultApplications[0].url))
+            default:
+                displayStatus = .multipleDefaultApps
+            }
+
+            updatedStates[association.primaryTypeIdentifier] = IntegrationFileAssociationState(
+                displayStatus: displayStatus,
+                isCurrentDefault: isCurrentDefault,
+                isPendingUpdate: pendingFileAssociationUpdates.contains(association.primaryTypeIdentifier)
+            )
+        }
+
+        integrationFileAssociationStates = updatedStates
+        integrationTableView?.reloadData()
+    }
+
+    func numberOfRows(in _: NSTableView) -> Int {
+        Self.supportedFileAssociations.count
+    }
+
+    func tableView(_: NSTableView, shouldSelectRow _: Int) -> Bool {
+        false
+    }
+
+    func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
+        guard row >= 0, row < Self.supportedFileAssociations.count else {
+            return nil
+        }
+
+        let association = Self.supportedFileAssociations[row]
+        let state = integrationFileAssociationStates[association.primaryTypeIdentifier] ?? IntegrationFileAssociationState(
+            displayStatus: .noDefaultApp,
+            isCurrentDefault: false,
+            isPendingUpdate: false
+        )
+
+        let identifier = NSUserInterfaceItemIdentifier("IntegrationRowCell")
+        let cellView = (tableView.makeView(withIdentifier: identifier, owner: self) as? IntegrationRowTableCellView)
+            ?? {
+                let view = IntegrationRowTableCellView()
+                view.identifier = identifier
+                return view
+            }()
+        cellView.configureLayout(titleWidth: LayoutMetrics.integrationArchiveTypeWidth,
+                                 statusWidth: LayoutMetrics.integrationDefaultApplicationWidth,
+                                 actionWidth: LayoutMetrics.integrationActionButtonWidth)
+        cellView.apply(association: association,
+                       state: state,
+                       target: self,
+                       action: #selector(makeDefaultApplicationForFileAssociation(_:)))
+        return cellView
     }
 
     // MARK: - Folders Page (FoldersPage.cpp)
@@ -806,5 +1234,93 @@ class SettingsWindowController: NSWindowController {
             alert.runModal()
             return
         }
+    }
+
+    @objc private func makeDefaultApplicationForAllFileAssociations(_: NSButton) {
+        let nonDefaultAssociations = Self.supportedFileAssociations.filter { association in
+            let state = integrationFileAssociationStates[association.primaryTypeIdentifier]
+            return !(state?.isCurrentDefault ?? false)
+        }
+        guard !nonDefaultAssociations.isEmpty else { return }
+
+        var allContentTypes: [(contentType: UTType, primaryTypeIdentifier: String)] = []
+        for association in nonDefaultAssociations {
+            pendingFileAssociationUpdates.insert(association.primaryTypeIdentifier)
+            for contentType in association.contentTypes {
+                allContentTypes.append((contentType, association.primaryTypeIdentifier))
+            }
+        }
+        refreshIntegrationFileAssociationRows()
+
+        let updateState = IntegrationFileAssociationUpdateState(remainingUpdates: allContentTypes.count)
+        let currentApplicationURL = Self.currentApplicationURL()
+
+        for entry in allContentTypes {
+            NSWorkspace.shared.setDefaultApplication(at: currentApplicationURL,
+                                                    toOpen: entry.contentType)
+            { [weak self] error in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+
+                    let result = await updateState.recordCompletion(error: error)
+                    guard result.isFinished else {
+                        return
+                    }
+
+                    for association in nonDefaultAssociations {
+                        self.pendingFileAssociationUpdates.remove(association.primaryTypeIdentifier)
+                    }
+                    self.refreshIntegrationFileAssociationRows()
+
+                    if result.failureCount > 0 {
+                        self.presentDefaultOpenerFailureAlert(failureCount: result.failureCount)
+                    }
+                }
+            }
+        }
+    }
+
+    @objc private func makeDefaultApplicationForFileAssociation(_ sender: NSButton) {
+        guard let typeIdentifier = sender.identifier?.rawValue,
+              let association = Self.supportedFileAssociations.first(where: { $0.primaryTypeIdentifier == typeIdentifier })
+        else {
+            return
+        }
+
+        pendingFileAssociationUpdates.insert(typeIdentifier)
+        refreshIntegrationFileAssociationRows()
+
+        let updateState = IntegrationFileAssociationUpdateState(remainingUpdates: association.contentTypes.count)
+        let currentApplicationURL = Self.currentApplicationURL()
+
+        for contentType in association.contentTypes {
+            NSWorkspace.shared.setDefaultApplication(at: currentApplicationURL,
+                                                    toOpen: contentType)
+            { [weak self] error in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+
+                    let result = await updateState.recordCompletion(error: error)
+                    guard result.isFinished else {
+                        return
+                    }
+
+                    self.pendingFileAssociationUpdates.remove(typeIdentifier)
+                    self.refreshIntegrationFileAssociationRows()
+
+                    if result.failureCount > 0 {
+                        self.presentDefaultOpenerFailureAlert(failureCount: result.failureCount)
+                    }
+                }
+            }
+        }
+    }
+
+    private func presentDefaultOpenerFailureAlert(failureCount: Int) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = SZL10n.string("app.settings.defaultOpenerFailedTitle")
+        alert.informativeText = SZL10n.string("app.settings.defaultOpenerFailedDetail", failureCount)
+        alert.runModal()
     }
 }

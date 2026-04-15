@@ -3,9 +3,9 @@ import Foundation
 /// Centralized lookup for localized UI strings.
 ///
 /// Strings sourced from the upstream 7-Zip translation project live in
-/// `Upstream.strings`;  app-specific strings that have no upstream
-/// equivalent live in `App.strings`.  Both tables are generated /
-/// maintained by `scripts/generate_strings.py`.
+/// `Upstream.strings`; app-specific strings that have no upstream
+/// equivalent live in `App.strings`. `Upstream.strings` is generated,
+/// while `App.strings` is maintained manually.
 ///
 /// Lookup order: `App.strings` first, then `Upstream.strings`.
 /// This lets `App.strings` override any upstream translation.

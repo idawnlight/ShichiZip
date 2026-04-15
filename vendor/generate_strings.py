@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Generate Apple .lproj/*.strings files from upstream 7-Zip language files.
+Generate Apple .lproj/Upstream.strings files from upstream 7-Zip language files.
 
 Usage:
     python3 scripts/generate_strings.py
 
 Reads:  vendor/Lang/*.txt, vendor/Lang/en.ttt
 Writes: ShichiZip/Resources/Localization/<locale>.lproj/Upstream.strings
-        ShichiZip/Resources/Localization/en.lproj/App.strings  (template only if missing)
+
+App.strings is intentionally managed manually and is not generated here.
 """
 
 import os
@@ -500,162 +501,6 @@ LANG_FILE_TO_APPLE_LOCALE: dict[str, str] = {
 
 
 # ---------------------------------------------------------------------------
-# App-specific strings (no upstream equivalent)
-# ---------------------------------------------------------------------------
-
-APP_SPECIFIC_STRINGS: dict[str, str] = {
-    # Extract dialog - app-specific options
-    "app.extract.separateFolder": "Separate folder:",
-    "app.extract.createSeparateFolder": "Create a separate destination folder",
-    "app.extract.moveToTrash": "Move compressed file to Trash after extraction",
-    "app.extract.inheritQuarantine": "Inherit quarantine from downloaded file (if applicable)",
-    "app.extract.currentPaths": "Current Paths",
-
-    # Compress dialog - app-specific
-    "app.compress.excludeMacResources": "Exclude macOS resource files",
-    "app.compress.createWindowsSFX": "Create Windows SFX archive",
-    "app.compress.splitVolumes": "Split to volumes:",
-    "app.compress.memoryUsage": "Memory usage:",
-    "app.compress.order": "Order:",
-
-
-    # Settings - app-specific
-    "app.settings.showHiddenFiles": "Show hidden files in File Manager",
-    "app.settings.quitOnLastClose": "Quit the app when the last window closes",
-    "app.settings.maxRAMForExtraction": "Maximum RAM for extraction:",
-    "app.settings.limitTo": "Limit to",
-    "app.settings.shortcuts": "Shortcuts",
-    "app.settings.integration": "Integration",
-    "app.settings.preset": "Preset",
-    "app.settings.scheme": "Scheme:",
-    "app.settings.currentShortcuts": "Current Shortcuts",
-    "app.settings.shortcutsNote": "These shortcuts apply to file manager commands. Standard app shortcuts such as Preferences and Quit stay unchanged.",
-    "app.settings.shortcutsCustomNote": "Changing an individual binding switches the preset to Custom. Reusing a shortcut clears it from the previous command. Click a shortcut field and press any key combination. Press Escape to cancel recording.",
-    "app.settings.typeShortcut": "Type Shortcut…",
-    "app.settings.recordShortcut": "Record Shortcut",
-    "app.settings.clear": "Clear",
-    "app.settings.finderLike": "Finder-like",
-    "app.settings.finderLikeDescription": "Uses macOS-style file manager shortcuts, including Return to rename and Command+Arrow navigation.",
-    "app.settings.commanderLike": "Commander-like",
-    "app.settings.commanderLikeDescription": "Uses the classic 7-Zip function-key workflow for file operations and pane management.",
-    "app.settings.custom": "Custom",
-    "app.settings.customDescription": "Uses your saved per-command file manager shortcuts.",
-
-    # Shortcut command titles
-    "app.shortcut.openSelectedItem": "Open selected item",
-    "app.shortcut.quickLook": "Quick Look",
-    "app.shortcut.upOneLevel": "Up one level",
-    "app.shortcut.rename": "Rename",
-    "app.shortcut.switchPanes": "Switch panes",
-    "app.shortcut.copyTo": "Copy To",
-    "app.shortcut.moveTo": "Move To",
-    "app.shortcut.createFolder": "Create folder",
-    "app.shortcut.delete": "Delete",
-    "app.shortcut.toggleDualPane": "Toggle dual pane",
-    "app.shortcut.refresh": "Refresh",
-    "app.settings.finderQuickActions": "Finder Quick Actions",
-    "app.settings.openFinderQuickActionsSettings": "Open Finder Quick Actions Settings",
-    "app.settings.quickActionsDescription": "Open the Finder Quick Actions page in System Settings and review whether %@'s Quick Actions are currently enabled.",
-    "app.settings.quickActionsNote": "Finder Quick Action enablement is managed by macOS in System Settings.",
-    "app.settings.quickActionsOpenError": "Unable to open Finder Quick Actions settings.",
-    "app.settings.quickActionsOpenErrorDetail": "Open System Settings and go to Extensions > Finder to manage %@'s Quick Actions.",
-    "app.settings.followSystem": "Follow System",
-    "app.settings.compression": "Compression",
-    "app.settings.extraction": "Extraction",
-    "app.settings.excludeMacResourceForks": "Exclude macOS resource fork files by default",
-    "app.settings.workingFolderTitle": "Working folder for temporary archive files:",
-    "app.settings.currentFolder": "Current folder",
-
-    # Progress dialog
-    "app.progress.working": "Working…",
-    "app.progress.finalizing": "Finalizing…",
-    "app.progress.cancelling": "Cancelling…",
-    "app.progress.compressing": "Compressing…",
-    "app.progress.extracting": "Extracting…",
-
-    # Panels
-    "app.panel.chooseArchives": "Choose archive files to open in %@",
-    "app.panel.selectFilesToCompress": "Select files and folders to compress",
-
-    # File manager
-    "app.fileManager.openArchive": "Open Archive…",
-    "app.fileManager.extractHere": "Extract Here",
-    "app.fileManager.compress": "Compress…",
-    "app.fileManager.enterFullScreen": "Enter Full Screen",
-    "app.fileManager.fileManager": "File Manager",
-    "app.fileManager.testOK": "Test OK",
-    "app.fileManager.noErrorsFound": "No errors found.",
-    "app.fileManager.selectArchiveToExtract": "Select an archive to extract.",
-    "app.fileManager.selectArchiveToTest": "Select an archive to test.",
-    "app.fileManager.operationNotAvailable": "Operation Not Available",
-    "app.fileManager.selectFilesToAdd": "Select files or folders to add to the archive.",
-    "app.fileManager.cannotActionOntoItself": "Cannot %@ files onto itself",
-    "app.fileManager.cannotActionIntoSelf": "Cannot %@ a folder into itself",
-    "app.fileManager.cannotActionIntoDescendant": "Cannot %@ a folder into its descendant",
-    "app.fileManager.cannotActionArchiveIntoSelf": "Cannot %@ an archive into itself",
-    "app.fileManager.chooseDifferentDestination": "Choose a different destination folder.",
-    "app.fileManager.chooseDifferentArchive": "Choose a different destination archive.",
-    "app.fileManager.chooseOutside": "Choose a destination outside \"%@\".",
-    "app.fileManager.calculatingChecksum": "Calculating checksum…",
-    "app.fileManager.enterFolderName": "Enter folder name.",
-    "app.fileManager.enterFileName": "Enter file name.",
-    "app.fileManager.deleteFromArchiveTitle": "Delete %d item(s) from archive?",
-    "app.fileManager.deleteFromArchiveMessage": "These items will be permanently removed from the archive.",
-    "app.fileManager.deleteItemsTitle": "Delete %d item(s)?",
-    "app.fileManager.deleteItemsMessage": "Items will be moved to Trash.",
-    "app.fileManager.statusFile": "file",
-    "app.fileManager.statusFiles": "files",
-    "app.fileManager.statusFolder": "folder",
-    "app.fileManager.statusFolders": "folders",
-    "app.fileManager.statusSelected": "selected",
-    "app.fileManager.statusTotal": "total",
-
-    # Delete temp files
-    "app.deleteTempFiles.title": "Delete Temporary Files",
-    "app.deleteTempFiles.loading": "Loading temporary files…",
-    "app.deleteTempFiles.deleting": "Deleting selected items…",
-    "app.deleteTempFiles.folder": "Folder:",
-    "app.deleteTempFiles.deleteContents": "Delete \"%@\" and all of its contents?",
-    "app.deleteTempFiles.deleteFile": "Delete \"%@\"?",
-    "app.deleteTempFiles.deleteMultiple": "Delete %d selected items?",
-    "app.deleteTempFiles.item": "item",
-    "app.deleteTempFiles.items": "items",
-
-    # Benchmark
-    "app.benchmark.dictionarySize": "Dictionary size",
-    "app.benchmark.cpuThreads": "CPU threads",
-    "app.benchmark.estimatedMemory": "Estimated memory",
-    "app.benchmark.usableLimit": "Usable limit: %@ MB",
-    "app.benchmark.error": "Benchmark Error",
-    "app.benchmark.insufficientMemory": "Insufficient Memory",
-
-    # macOS standard menu items
-    "app.menu.about": "About %@",
-    "app.menu.preferences": "Preferences…",
-    "app.menu.services": "Services",
-    "app.menu.hide": "Hide %@",
-    "app.menu.hideOthers": "Hide Others",
-    "app.menu.showAll": "Show All",
-    "app.menu.quit": "Quit %@",
-    "app.menu.minimize": "Minimize",
-    "app.menu.zoom": "Zoom",
-    "app.menu.bringAllToFront": "Bring All to Front",
-    "app.menu.window": "Window",
-    "app.menu.cut": "Cut",
-    "app.menu.copy": "Copy",
-    "app.menu.paste": "Paste",
-
-    # Misc
-    "app.optional": "Optional",
-    "app.options": "Options",
-    "app.browse": "Browse…",
-    "app.choose": "Choose",
-    "app.chooseDestination": "Choose destination folder:",
-    "app.reenterPassword": "Retype password",
-}
-
-
-# ---------------------------------------------------------------------------
 # .strings file generation
 # ---------------------------------------------------------------------------
 
@@ -710,7 +555,6 @@ def main():
             en_upstream[key] = text
 
     print(f"Upstream English strings: {len(en_upstream)}")
-    print(f"App-specific strings: {len(APP_SPECIFIC_STRINGS)}")
 
     # Generate English .lproj
     en_lproj = output_dir / 'en.lproj'
@@ -720,11 +564,6 @@ def main():
     upstream_content = generate_strings_content(en_upstream)
     (en_lproj / 'Upstream.strings').write_text(upstream_content, encoding='utf-8')
     print(f"  Wrote {en_lproj / 'Upstream.strings'}")
-
-    # App.strings - app-specific strings (English baseline)
-    app_content = generate_strings_content(APP_SPECIFIC_STRINGS)
-    (en_lproj / 'App.strings').write_text(app_content, encoding='utf-8')
-    print(f"  Wrote {en_lproj / 'App.strings'}")
 
     # Process each translation file
     generated_count = 0

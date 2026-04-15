@@ -4,24 +4,36 @@ import Cocoa
 /// Windows 7-Zip opens archives through the file-manager panel, so this document
 /// class exists only to redirect archive opens into the unified file-manager UI.
 class ArchiveDocument: NSDocument {
+    private static let excludedTypeIdentifiers: Set<String> = [
+        "public.data",
+        "com.aone.keka-extraction",
+    ]
+
     override class var autosavesInPlace: Bool {
         false
     }
 
     override class var readableTypes: [String] {
-        [
-            "org.7-zip.7-zip-archive",
-            "public.zip-archive",
-            "public.tar-archive",
-            "org.gnu.gnu-zip-archive",
-            "public.bzip2-archive",
-            "org.tukaani.xz-archive",
-            "com.rarlab.rar-archive",
-            "public.iso-image",
-            "com.apple.disk-image-udif",
-            "public.archive",
-            "public.data",
-        ]
+        guard let documentTypes = Bundle.main.object(forInfoDictionaryKey: "CFBundleDocumentTypes") as? [[String: Any]] else {
+            return []
+        }
+
+        var readableTypeIdentifiers: [String] = []
+        var seenTypeIdentifiers: Set<String> = []
+
+        for documentType in documentTypes {
+            guard let contentTypes = documentType["LSItemContentTypes"] as? [String] else {
+                continue
+            }
+
+            for contentType in contentTypes where !excludedTypeIdentifiers.contains(contentType) {
+                if seenTypeIdentifiers.insert(contentType).inserted {
+                    readableTypeIdentifiers.append(contentType)
+                }
+            }
+        }
+
+        return readableTypeIdentifiers
     }
 
     /// Accept all types — let 7-Zip core detect format

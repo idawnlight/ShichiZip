@@ -92,9 +92,15 @@
 "app.settings.commanderLikeDescription" = "使用经典 7-Zip 功能键操作方式，通过功能键进行文件操作和窗格管理。";
 "app.settings.compression" = "压缩";
 "app.settings.currentFolder" = "当前文件夹";
+"app.settings.currentDefault" = "当前默认应用";
 "app.settings.currentShortcuts" = "当前快捷键";
 "app.settings.custom" = "自定义";
 "app.settings.customDescription" = "使用你保存的自定义快捷键。";
+"app.settings.defaultOpeners" = "默认打开方式";
+"app.settings.defaultOpenersDescription" = "选择要让 %@ 在访达中作为默认打开方式的压缩包类型。macOS 可能会要求你确认。";
+"app.settings.defaultOpenersNote" = "已经由本应用作为默认打开方式的类型会显示为「当前默认应用」。如果之后要切换回其他应用，请使用访达的「打开方式」设置或其他应用自己的集成设置。";
+"app.settings.defaultOpenerFailedTitle" = "部分类型无法设置";
+"app.settings.defaultOpenerFailedDetail" = "有 %d 个类型无法注册。系统可能不识别这些类型，或操作被阻止。";
 "app.settings.excludeMacResourceForks" = "默认排除 macOS 资源分支文件";
 "app.settings.extraction" = "解压";
 "app.settings.finderLike" = "Finder 风格";
@@ -103,7 +109,11 @@
 "app.settings.followSystem" = "跟随系统";
 "app.settings.integration" = "集成";
 "app.settings.limitTo" = "限制为";
+"app.settings.makeDefault" = "设为默认";
+"app.settings.setAllAsDefault" = "全部设为默认";
 "app.settings.maxRAMForExtraction" = "解压时最大内存用量：";
+"app.settings.multipleDefaultApps" = "多个应用";
+"app.settings.noDefaultApp" = "没有默认应用";
 "app.settings.openFinderQuickActionsSettings" = "打开访达快速操作设置";
 "app.settings.preset" = "预设";
 "app.settings.quickActionsDescription" = "打开系统设置中的「访达快速操作」页面，查看 %@ 的快速操作是否已启用。";

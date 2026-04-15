@@ -86,9 +86,15 @@
 "app.settings.commanderLikeDescription" = "Uses the classic 7-Zip function-key workflow for file operations and pane management.";
 "app.settings.compression" = "Compression";
 "app.settings.currentFolder" = "Current folder";
+"app.settings.currentDefault" = "Current Default";
 "app.settings.currentShortcuts" = "Current Shortcuts";
 "app.settings.custom" = "Custom";
 "app.settings.customDescription" = "Uses your saved per-command file manager shortcuts.";
+"app.settings.defaultOpeners" = "Default Openers";
+"app.settings.defaultOpenersDescription" = "Choose which archive types %@ should become the default opener for in Finder. macOS may ask for confirmation.";
+"app.settings.defaultOpenersNote" = "Already-default types are shown as Current Default. To switch a type back to another app later, use Finder's Open With controls or another app's integration settings.";
+"app.settings.defaultOpenerFailedTitle" = "Some types could not be set";
+"app.settings.defaultOpenerFailedDetail" = "%d type(s) could not be registered. The system may not recognize these types, or the operation was blocked.";
 "app.settings.excludeMacResourceForks" = "Exclude macOS resource fork files by default";
 "app.settings.extraction" = "Extraction";
 "app.settings.finderLike" = "Finder-like";
@@ -97,7 +103,11 @@
 "app.settings.followSystem" = "Follow System";
 "app.settings.integration" = "Integration";
 "app.settings.limitTo" = "Limit to";
+"app.settings.makeDefault" = "Make Default";
+"app.settings.setAllAsDefault" = "Set All as Default";
 "app.settings.maxRAMForExtraction" = "Maximum RAM for extraction:";
+"app.settings.multipleDefaultApps" = "Multiple Apps";
+"app.settings.noDefaultApp" = "No default app";
 "app.settings.openFinderQuickActionsSettings" = "Open Finder Quick Actions Settings";
 "app.settings.preset" = "Preset";
 "app.settings.quickActionsDescription" = "Open the Finder Quick Actions page in System Settings and review whether %@'s Quick Actions are currently enabled.";
