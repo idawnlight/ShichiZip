@@ -17,7 +17,7 @@ final class ArchiveOpenErrorClassificationTests: XCTestCase {
         try corruptArchive(at: corruptedArchiveURL)
 
         let archive = SZArchive()
-        let error = captureOpenError(from: archive, path: corruptedArchiveURL.path, password: "wrong-password")
+        let error = try captureOpenError(from: archive, path: corruptedArchiveURL.path, password: "wrong-password")
 
         XCTAssertEqual(error.domain, SZArchiveErrorDomain)
         XCTAssertEqual(error.code, -14)
@@ -39,15 +39,20 @@ final class ArchiveOpenErrorClassificationTests: XCTestCase {
 
     private func captureOpenError(from archive: SZArchive,
                                   path: String,
-                                  password: String) -> NSError
+                                  password: String) throws -> NSError
     {
         do {
             try archive.open(atPath: path, password: password, session: nil)
-            XCTFail("Expected archive open to fail")
-            return NSError(domain: "ArchiveOpenErrorClassificationTests",
-                           code: 0)
         } catch {
             return error as NSError
         }
+        // Reaching here means -open: unexpectedly succeeded. Throw so the
+        // caller bails out instead of silently reporting a fabricated
+        // error that would pass the domain/code assertions and hide the
+        // regression.
+        struct UnexpectedOpenSuccess: Error, CustomStringConvertible {
+            var description: String { "Expected archive open to fail, but it succeeded" }
+        }
+        throw UnexpectedOpenSuccess()
     }
 }
