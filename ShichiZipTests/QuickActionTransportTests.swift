@@ -2,6 +2,15 @@ import Foundation
 @testable import ShichiZip
 import XCTest
 
+// `AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride`
+// is stored on a `@MainActor`-isolated class, so every read/write
+// must happen on the main actor. Annotating the whole test class
+// `@MainActor` gives setUp/tearDown/test methods that isolation for
+// free and avoids the unsafe `MainActor.assumeIsolated` dance the
+// previous revision used (XCTest does not guarantee those overrides
+// run on the main actor executor; that would trap at runtime under
+// parallel test execution).
+@MainActor
 final class QuickActionTransportTests: XCTestCase {
     override func setUp() {
         super.setUp()
@@ -13,15 +22,11 @@ final class QuickActionTransportTests: XCTestCase {
         // observe state leaked from this setUp. Use the static
         // Swift-side override which is scoped to the current process
         // but is a plain property write instead of a POSIX call.
-        MainActor.assumeIsolated {
-            AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = false
-        }
+        AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = false
     }
 
     override func tearDown() {
-        MainActor.assumeIsolated {
-            AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = nil
-        }
+        AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = nil
         super.tearDown()
     }
 

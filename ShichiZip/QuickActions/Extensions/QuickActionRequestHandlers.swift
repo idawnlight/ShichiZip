@@ -22,7 +22,10 @@ class ShichiZipQuickActionRequestHandler: NSObject, NSExtensionRequestHandling {
         #if DEBUG
             NSLog("[QuickAction:%@] %@", quickAction.rawValue, message)
         #else
-            os_log(.info, "[QuickAction:%{public}s] %{private}s",
+            // Swift String in os_log must be formatted with %@, not %s.
+            // %s expects a C string pointer and would reinterpret the
+            // bridged NSString header as one at runtime.
+            os_log(.info, "[QuickAction:%{public}@] %{private}@",
                    quickAction.rawValue, message)
         #endif
     }

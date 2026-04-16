@@ -61,8 +61,9 @@ class ArchiveDocument: NSDocument {
             NSLog("[ShichiZip] Opening via document: %@ — will redirect to File Manager", url.path)
         #else
             // url.path is user data; keep it out of the unified log stream
-            // in Release builds.
-            os_log(.info, "[ShichiZip] Opening via document: %{private}s — will redirect to File Manager",
+            // in Release builds. Use %@ (bridged NSString), not %s — Swift
+            // String is not a C string pointer.
+            os_log(.info, "[ShichiZip] Opening via document: %{private}@ — will redirect to File Manager",
                    url.path)
         #endif
         // Actual archive parsing happens when the file manager enters the archive.

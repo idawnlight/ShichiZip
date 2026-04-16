@@ -520,7 +520,16 @@ lib-zs:
 # so neither `git -C vendor/7zip status` nor CI clean-tree assertions
 # see it as dirty. (A root .gitignore entry cannot exclude it from the
 # inner submodule's own git view.)
-PATCH_STAMP = build/.shichizip-patched-$(notdir $(SEVENZ_ROOT))
+#
+# The stamp name embeds the submodule HEAD SHA. Without that, a
+# `git submodule update --checkout` that resets the working tree to an
+# unpatched commit would leave the old stamp valid and cause `make` to
+# skip `apply_7zip_patches.sh`, silently compiling from unpatched
+# sources. Baking the SHA into the filename makes the dependency
+# explicit: a different HEAD produces a different stamp target, which
+# forces the patch recipe to run.
+SEVENZ_HEAD := $(shell git -C $(SEVENZ_ROOT) rev-parse --verify HEAD 2>/dev/null || echo unknown-head)
+PATCH_STAMP = build/.shichizip-patched-$(notdir $(SEVENZ_ROOT))-$(SEVENZ_HEAD)
 PATCH_SRC_FILES = $(wildcard vendor/$(notdir $(SEVENZ_ROOT))-*.patch) vendor/apply_7zip_patches.sh
 
 $(PATCH_STAMP): $(PATCH_SRC_FILES)
@@ -583,6 +592,7 @@ $(O)/%.o: %.mm
 
 clean:
 	rm -rf build/obj build/sfx-obj build/lib build/sfx
+	rm -f build/.shichizip-patched-*
 
 # === Cross-compile SFX modules for Windows using zig ===
 .PHONY: sfx sfx-mainline sfx-zs sfx-clean

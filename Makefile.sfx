@@ -289,7 +289,14 @@ all: $(SFX_BIN)
 # Stamp lives in build/ (not inside the submodule) so it never appears
 # in `git -C vendor/7zip status`. Shared naming convention with the
 # top-level Makefile so both makefiles target the same stamp.
-PATCH_STAMP = build/.shichizip-patched-$(notdir $(SEVENZ_ROOT))
+#
+# See the matching comment in Makefile: the submodule HEAD SHA is
+# baked into the stamp name so a `git submodule update --checkout` to
+# a different commit invalidates the stamp and forces the patch
+# recipe to re-run. Without this, switching submodule commits would
+# leave a stale stamp and skip patching the new tree.
+SEVENZ_HEAD := $(shell git -C $(SEVENZ_ROOT) rev-parse --verify HEAD 2>/dev/null || echo unknown-head)
+PATCH_STAMP = build/.shichizip-patched-$(notdir $(SEVENZ_ROOT))-$(SEVENZ_HEAD)
 PATCH_SRC_FILES = $(wildcard vendor/$(notdir $(SEVENZ_ROOT))-*.patch) vendor/apply_7zip_patches.sh
 
 $(PATCH_STAMP): $(PATCH_SRC_FILES)
@@ -323,6 +330,7 @@ $(RC_OBJ): $(RC_SRC)
 
 clean:
 	rm -rf build/sfx-obj build/sfx
+	rm -f build/.shichizip-patched-*
 
 # Pull in auto-generated header dependency files (one per .o produced
 # by the -MMD -MP flags above). The dash prefix silently skips missing
