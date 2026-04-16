@@ -37,6 +37,7 @@
 		27AAAB1352382FE609A3B393 /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB3BDFC444E8A46BA05A746 /* MainMenu.swift */; };
 		2C1FAB277BAFEC027D963EF8 /* QuickActionRequestHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A258EE11DC87F3E1709B0582 /* QuickActionRequestHandlers.swift */; };
 		2C3C4E26634CFF9A4FD20529 /* QuickActionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D093FFF06B68EDC421CEDF26 /* QuickActionCore.swift */; };
+		2D2DC4733273CFFEAF69449A /* ZipEncryptionPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E9C579DC867F6588DB84D2 /* ZipEncryptionPolicyTests.swift */; };
 		2DC7EF3A72120605C6DD4E1F /* gzip.icns in Resources */ = {isa = PBXBuildFile; fileRef = 9C6E9412E98222500403C6ED /* gzip.icns */; };
 		34D1F242A66E0994C0F50FCD /* QuickActionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */; };
 		3526B672AB9F2CEAFD0E549B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 937563A1E648A0013C4DD0C3 /* Assets.xcassets */; };
@@ -46,6 +47,8 @@
 		41DA6D8CD749F002B4F8EC07 /* DirectoryWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F4CB46CB67A3654A2A67E2D /* DirectoryWatcher.swift */; };
 		454747F0D3404AADF88B92CD /* SmartQuickExtractAction-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D8FE357C90F014620315B33 /* SmartQuickExtractAction-Info.plist */; };
 		45806ACB468551C4463CCD51 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9314451B0EB130E69FEDF7B /* SettingsWindowController.swift */; };
+		45FA1D450F9B5CE14BE5D591 /* EncryptedArchiveMutationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0004CA5C68D70BA58B4369C9 /* EncryptedArchiveMutationTests.swift */; };
+		4684F97C71D3D7C03943B415 /* OperationSessionProgressThrottlingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0358891C62CCFCAEF4C3636B /* OperationSessionProgressThrottlingTests.swift */; };
 		4716B9BE68CB589E3C4D61C4 /* DragFromArchiveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92EF191DBF7478F38AF4DCC9 /* DragFromArchiveUITests.swift */; };
 		4747789EA60F4B81B574BFC9 /* ShichiZipZSOpenInShichiZipAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2D52490C7FF5294CC6DEBEEE /* ShichiZipZSOpenInShichiZipAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		47A974D49EB2F91F92DD6456 /* SZSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D6A1A6EF0AE7CB104B909C /* SZSettings.swift */; };
@@ -155,6 +158,7 @@
 		EEC9FF565AB0CFBC22265E27 /* SmartQuickExtractAction-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D8FE357C90F014620315B33 /* SmartQuickExtractAction-Info.plist */; };
 		EFD6C6263E7F428FB8939A42 /* FileManagerDirectoryListing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF12616F99B5BC0BECF7D3BD /* FileManagerDirectoryListing.swift */; };
 		F2268F98EB1940EF90A4394C /* AppBuildInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC377A7A1121F0ED50658A6B /* AppBuildInfo.swift */; };
+		F2DF7C6F8E17E38F7ABD54F1 /* ArchiveMutationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3EA2B9FBFBFEA2B0749E62 /* ArchiveMutationTests.swift */; };
 		F322B1EF38BEC6C3DD97CB5C /* FileManagerArchiveOpenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F978AA77CB7237708162BD /* FileManagerArchiveOpenService.swift */; };
 		F5D35697C677E69E61A6D2E7 /* ArchiveDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC32FBCE2BA2E71302D8B8C9 /* ArchiveDocument.swift */; };
 		F6B05D0482BBA25989226D61 /* ArchiveOperationRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B46B23B616057C7E76AFC3 /* ArchiveOperationRunner.swift */; };
@@ -254,8 +258,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0004CA5C68D70BA58B4369C9 /* EncryptedArchiveMutationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedArchiveMutationTests.swift; sourceTree = "<group>"; };
 		012421245167AFC73FFB93F2 /* th */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = th; path = th.lproj/Upstream.strings; sourceTree = "<group>"; };
 		01B16B1E95F01DA36C831528 /* FileManagerTransferPathValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagerTransferPathValidation.swift; sourceTree = "<group>"; };
+		0358891C62CCFCAEF4C3636B /* OperationSessionProgressThrottlingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationSessionProgressThrottlingTests.swift; sourceTree = "<group>"; };
 		03931370F227571381909EBE /* tg */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tg; path = tg.lproj/Upstream.strings; sourceTree = "<group>"; };
 		03D9628AF6A43C9B080E2F66 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		043CD0B84AE81D874AD54E33 /* ExtractDialogUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtractDialogUITests.swift; sourceTree = "<group>"; };
@@ -272,6 +278,7 @@
 		08146AB3AE498C645D3CFD29 /* hr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hr; path = hr.lproj/Upstream.strings; sourceTree = "<group>"; };
 		0B3DED715D9F75758E8AF8E9 /* ms */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ms; path = ms.lproj/Upstream.strings; sourceTree = "<group>"; };
 		0C4791A2D01A2FA9110E2CB4 /* QuickActionTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionTransport.swift; sourceTree = "<group>"; };
+		0D3EA2B9FBFBFEA2B0749E62 /* ArchiveMutationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveMutationTests.swift; sourceTree = "<group>"; };
 		0DEB3F8BBDBD6F9E07CBC6B4 /* SZOperationSession.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SZOperationSession.m; sourceTree = "<group>"; };
 		0F4CB46CB67A3654A2A67E2D /* DirectoryWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryWatcher.swift; sourceTree = "<group>"; };
 		103224C384A1E7C8FA620287 /* SZBridgeCommon.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SZBridgeCommon.mm; sourceTree = "<group>"; };
@@ -399,6 +406,7 @@
 		C4B2D1040171A178E5575D88 /* ArchiveItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveItem.swift; sourceTree = "<group>"; };
 		C527154030132E62B6B780C5 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Upstream.strings; sourceTree = "<group>"; };
 		C9B56FD3FC3C784F51DF4115 /* af */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = af; path = af.lproj/Upstream.strings; sourceTree = "<group>"; };
+		C9E9C579DC867F6588DB84D2 /* ZipEncryptionPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipEncryptionPolicyTests.swift; sourceTree = "<group>"; };
 		CC4825D54791249E253C4A56 /* sk */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = sk; path = sk.lproj/Upstream.strings; sourceTree = "<group>"; };
 		CCCBD7802EE988D8182FB615 /* SZOperationSessionDefaults.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SZOperationSessionDefaults.m; sourceTree = "<group>"; };
 		CFF106A401471C69FA568E0B /* it */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = it; path = it.lproj/Upstream.strings; sourceTree = "<group>"; };
@@ -618,14 +626,18 @@
 		B9DAD67AF6B6486BB14E6D40 /* ShichiZipTests */ = {
 			isa = PBXGroup;
 			children = (
+				0D3EA2B9FBFBFEA2B0749E62 /* ArchiveMutationTests.swift */,
 				1C0B9CB3CF605BCEBC554B90 /* ArchiveOpenErrorClassificationTests.swift */,
+				0004CA5C68D70BA58B4369C9 /* EncryptedArchiveMutationTests.swift */,
 				704050D2B82A77BADCD9197F /* FileManagerArchiveChangeCoordinatorTests.swift */,
 				FF7308F2AFDBA865CE6735C2 /* FileManagerViewPreferencesTests.swift */,
+				0358891C62CCFCAEF4C3636B /* OperationSessionProgressThrottlingTests.swift */,
 				2B5960D243CEA7BD8CAC8083 /* QuarantineRegressionTests.swift */,
 				43955755E44D2B550131D8AA /* QuickActionTransportTests.swift */,
 				98737207F41E39FE2CB71138 /* ShichiZipTests-Bridging-Header.h */,
 				882AC50E39BAA37E67E37F3E /* ShichiZipTestSupport.swift */,
 				2DBD201620236E7E186B4A2F /* TransferPathValidationTests.swift */,
+				C9E9C579DC867F6588DB84D2 /* ZipEncryptionPolicyTests.swift */,
 			);
 			path = ShichiZipTests;
 			sourceTree = "<group>";
@@ -1316,13 +1328,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F2DF7C6F8E17E38F7ABD54F1 /* ArchiveMutationTests.swift in Sources */,
 				583E5205A6A6EF417A465BB2 /* ArchiveOpenErrorClassificationTests.swift in Sources */,
+				45FA1D450F9B5CE14BE5D591 /* EncryptedArchiveMutationTests.swift in Sources */,
 				21E9CDA741BD19129B87AE3B /* FileManagerArchiveChangeCoordinatorTests.swift in Sources */,
 				CDDB84BFFF6A861C960E54F0 /* FileManagerViewPreferencesTests.swift in Sources */,
+				4684F97C71D3D7C03943B415 /* OperationSessionProgressThrottlingTests.swift in Sources */,
 				57ED9148D94A32AC8683A9ED /* QuarantineRegressionTests.swift in Sources */,
 				5962D4469A89EB85038338B4 /* QuickActionTransportTests.swift in Sources */,
 				54BA1A1155A7825D47464057 /* ShichiZipTestSupport.swift in Sources */,
 				B4E90C7FE35737A16B6518E6 /* TransferPathValidationTests.swift in Sources */,
+				2D2DC4733273CFFEAF69449A /* ZipEncryptionPolicyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
