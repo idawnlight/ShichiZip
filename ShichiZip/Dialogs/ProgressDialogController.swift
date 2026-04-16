@@ -13,6 +13,17 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
 
     private var cancelled = false
     private var startTime: Date?
+
+    /// Tracks which flavour of text currently occupies `speedLabel`, so
+    /// we can decide whether an incoming file-count update is allowed
+    /// to overwrite it without having to string-match the label itself
+    /// (which would break the moment the text is localised).
+    private enum SpeedLabelMode {
+        case empty
+        case speed
+        case filesProcessed
+    }
+    private var speedLabelMode: SpeedLabelMode = .empty
     private var speedLabel: NSTextField!
     private var elapsedLabel: NSTextField!
     private var isWaitingForProgress = false
@@ -140,6 +151,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
         }
         bytesLabel.stringValue = ""
         speedLabel.stringValue = ""
+        speedLabelMode = .empty
         elapsedLabel.stringValue = ""
     }
 
@@ -225,6 +237,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
                 let speed = Double(completed) / elapsed
                 let speedStr = ByteCountFormatter.string(fromByteCount: Int64(speed), countStyle: .file)
                 speedLabel.stringValue = SZL10n.string("progress.speed") + " \(speedStr)/s"
+                speedLabelMode = .speed
 
                 let elapsedStr = formatDuration(elapsed)
                 if total > 0, completed > 0 {
@@ -250,9 +263,16 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     func progressDidUpdateFilesCompleted(_ count: UInt64) {
-        if speedLabel.stringValue.isEmpty || speedLabel.stringValue.hasSuffix("processed") {
+        // Only claim the speed slot when it is unused or already shows
+        // the file-count variant, so we never stomp on a live
+        // speed/ETA string while bytes-based progress is active.
+        switch speedLabelMode {
+        case .empty, .filesProcessed:
             let suffix = count == 1 ? "file" : "files"
             speedLabel.stringValue = "\(count) \(suffix) processed"
+            speedLabelMode = .filesProcessed
+        case .speed:
+            break
         }
     }
 
