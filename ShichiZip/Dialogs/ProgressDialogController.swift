@@ -152,12 +152,13 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     func showNowIfNeeded() {
-        if !Thread.isMainThread {
-            DispatchQueue.main.sync {
-                self.showNowIfNeeded()
-            }
-            return
-        }
+        // All SZProgressDelegate entry points are funnelled onto the
+        // main thread by SZOperationSession (either via its snapshot
+        // timer or via -prepareForUserInteraction's main-thread hop).
+        // Keep that invariant explicit so we never end up issuing a
+        // DispatchQueue.main.sync that deadlocks because the caller
+        // is already blocked on the main queue.
+        dispatchPrecondition(condition: .onQueue(.main))
 
         if let showRequestHandler {
             showRequestHandler()
@@ -168,12 +169,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     func showWindowNowIfNeeded() {
-        if !Thread.isMainThread {
-            DispatchQueue.main.sync {
-                self.showWindowNowIfNeeded()
-            }
-            return
-        }
+        dispatchPrecondition(condition: .onQueue(.main))
 
         guard let window else { return }
         if !window.isVisible {
