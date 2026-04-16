@@ -7,11 +7,8 @@ import XCTest
 /// reflected in the file list within roughly one second (FSEvents latency
 /// plus the 2-second timer heartbeat).
 final class AutoRefreshUITests: ShichiZipUITestCase {
-    override func setUp() async throws {
-        continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments += ["-FileManager.AutoRefresh", "YES"]
-        app.launch()
+    override var additionalLaunchArguments: [String] {
+        ["-FileManager.AutoRefresh", "YES"]
     }
 
     // MARK: - Tests

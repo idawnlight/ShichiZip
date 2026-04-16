@@ -9,15 +9,24 @@ import XCTest
 class ShichiZipUITestCase: XCTestCase {
     var app: XCUIApplication!
 
+    /// Additional launch arguments to pass to the app. Override in
+    /// subclasses instead of overriding `setUp()` so the base class
+    /// can keep owning the XCUIApplication lifecycle (and so we can
+    /// chain to `super.setUp()` without launching the app twice).
+    var additionalLaunchArguments: [String] { [] }
+
     override func setUp() async throws {
+        try await super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
+        app.launchArguments += additionalLaunchArguments
         app.launch()
     }
 
     override func tearDown() async throws {
         app.terminate()
         app = nil
+        try await super.tearDown()
     }
 
     // MARK: - Helpers

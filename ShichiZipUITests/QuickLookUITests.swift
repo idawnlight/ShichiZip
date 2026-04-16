@@ -4,11 +4,8 @@ import XCTest
 ///
 /// Launches with the Finder-like shortcut preset so Space triggers Quick Look.
 final class QuickLookUITests: ShichiZipUITestCase {
-    override func setUp() async throws {
-        continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments += ["-FileManagerShortcutPreset", "0"]
-        app.launch()
+    override var additionalLaunchArguments: [String] {
+        ["-FileManagerShortcutPreset", "0"]
     }
 
     func testQuickLookOpensForFilesystemFile() throws {
