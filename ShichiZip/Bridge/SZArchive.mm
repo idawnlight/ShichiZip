@@ -1410,17 +1410,24 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     }
 }
 
-// Reconcile the bridge's cached password with the state the update
+// Reconcile the bridge's cached password with whatever the update
 // callback ended up using. Called after a successful (or
 // archive-replacing) in-place mutation, before the archive is
-// reopened. Covers three cases:
-//   * update used the existing password -> identical value is stored,
-//     so reopen still works;
-//   * update prompted for a new password (e.g. re-encryption) ->
-//     cache is replaced with the new one so reopen does not fail
-//     with "wrong password";
-//   * update removed encryption -> cache is cleared so reopen does
-//     not confuse 7-Zip with a password for an unencrypted archive.
+// reopened. Handles two observable cases:
+//   * PasswordIsDefined is true -> the callback either kept the
+//     existing password or was prompted for a new one (e.g. on
+//     re-encryption). Store that value so the subsequent reopen
+//     still succeeds even if the password changed mid-operation.
+//   * PasswordIsDefined is false -> the caller never supplied a
+//     password and 7-Zip did not ask for one (an unencrypted archive
+//     update). Clear the cache for symmetry.
+//
+// A user-initiated "remove encryption entirely" flow is NOT surfaced
+// here: if the source archive was encrypted, 7-Zip calls
+// CryptoGetTextPassword to decrypt the existing content and the
+// callback ends with PasswordIsDefined=true holding the *old*
+// password. The resulting stale cache is harmless because a now-
+// unencrypted archive never prompts, so reopen succeeds regardless.
 - (void)syncCachedPasswordFromUpdateCallback:(SZAgentUpdateCallback*)callback
                                       result:(HRESULT)result {
     if (result != S_OK && !callback->ArchiveWasReplaced) {
@@ -1983,10 +1990,16 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     ia.reserve(indices.count);
     for (NSNumber* n in indices)
         ia.push_back([n unsignedIntValue]);
-    if (ia.size() > (size_t)UINT32_MAX) {
+    // Strict >= UINT32_MAX: 7-Zip's IInArchive::Extract treats a
+    // numItems argument of (UInt32)-1 (== UINT32_MAX) as the "extract
+    // all" sentinel, so a selection count of exactly 4294967295 would
+    // silently extract every entry instead of the user's chosen subset.
+    // Impossible in practice today, but the sentinel behaviour makes
+    // this one-off worth guarding.
+    if (ia.size() >= (size_t)UINT32_MAX) {
         if (error)
             *error = SZMakeError(E_INVALIDARG,
-                @"Too many entries selected for extraction (limit 4294967295).");
+                @"Too many entries selected for extraction (limit 4294967294).");
         return NO;
     }
     HRESULT r = archive->Extract(ia.data(), (UInt32)ia.size(), 0, ec);
