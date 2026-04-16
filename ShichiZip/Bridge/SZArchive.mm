@@ -1405,6 +1405,29 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     }
 }
 
+// Reconcile the bridge's cached password with the state the update
+// callback ended up using. Called after a successful (or
+// archive-replacing) in-place mutation, before the archive is
+// reopened. Covers three cases:
+//   * update used the existing password -> identical value is stored,
+//     so reopen still works;
+//   * update prompted for a new password (e.g. re-encryption) ->
+//     cache is replaced with the new one so reopen does not fail
+//     with "wrong password";
+//   * update removed encryption -> cache is cleared so reopen does
+//     not confuse 7-Zip with a password for an unencrypted archive.
+- (void)syncCachedPasswordFromUpdateCallback:(SZAgentUpdateCallback*)callback
+                                      result:(HRESULT)result {
+    if (result != S_OK && !callback->ArchiveWasReplaced) {
+        return;
+    }
+    if (callback->PasswordIsDefined) {
+        [self storeCachedPassword:callback->Password defined:true];
+    } else {
+        [self clearCachedPassword];
+    }
+}
+
 - (void)configureExtractPasswordForCallback:(SZFolderExtractCallback*)callback
                            explicitPassword:(NSString*)password {
     if (password) {
@@ -2050,9 +2073,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     result = folderOperations->CreateFolder(ToU(folderName), updateCallback);
 
-    if (updateSpec->PasswordIsDefined && (result == S_OK || updateSpec->ArchiveWasReplaced)) {
-        [self storeCachedPassword:updateSpec->Password defined:true];
-    }
+    [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
     if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
                                                                                                       error:error]) {
@@ -2129,9 +2150,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     result = folderOperations->Rename(indices[0], ToU(newName), updateCallback);
 
-    if (updateSpec->PasswordIsDefined && (result == S_OK || updateSpec->ArchiveWasReplaced)) {
-        [self storeCachedPassword:updateSpec->Password defined:true];
-    }
+    [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
     if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
                                                                                                       error:error]) {
@@ -2215,9 +2234,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     result = folderOperations->Delete(indices.data(), (UInt32)indices.size(),
         updateCallback);
 
-    if (updateSpec->PasswordIsDefined && (result == S_OK || updateSpec->ArchiveWasReplaced)) {
-        [self storeCachedPassword:updateSpec->Password defined:true];
-    }
+    [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
     if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
                                                                                                       error:error]) {
@@ -2336,9 +2353,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
         moveMode ? 1 : 0, ToU(folderPrefix ?: @"").Ptr(), pathPointers.data(),
         (UInt32)pathPointers.size(), updateCallback);
 
-    if (updateSpec->PasswordIsDefined && (result == S_OK || updateSpec->ArchiveWasReplaced)) {
-        [self storeCachedPassword:updateSpec->Password defined:true];
-    }
+    [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
     if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
                                                                                                       error:error]) {
@@ -2428,9 +2443,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     result = folderOperations->CopyFromFile(
         indices[0], ToU(standardizedSourcePath).Ptr(), updateCallback);
 
-    if (updateSpec->PasswordIsDefined && (result == S_OK || updateSpec->ArchiveWasReplaced)) {
-        [self storeCachedPassword:updateSpec->Password defined:true];
-    }
+    [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
     if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
                                                                                                       error:error]) {
