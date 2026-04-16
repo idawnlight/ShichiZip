@@ -1269,12 +1269,17 @@ static HRESULT SZOpenAgentFolder(NSString* archivePath, NSString* openType,
     CAgent*& agentSpecOut,
     CMyComPtr<IFolderFolder>& folderOut) {
     CAgent* agentSpec = new CAgent();
-    // Attach() transfers ownership of the freshly-new'd CAgent into the
-    // CMyComPtr without bumping its refcount. Using operator= (i.e.
-    // `agentOut = agentSpec;`) would call AddRef, leaving the object at
-    // refcount 2 and leaking the agent — Release in the smart pointer
-    // destructor only drops it back to 1.
-    agentOut.Attach(agentSpec);
+    // CMyUnknownImp starts with _m_RefCount = 0, so a freshly-new'd
+    // CAgent is NOT already at refcount 1. Use operator= so the smart
+    // pointer AddRef's the agent to 1. BindToRootFolder below creates a
+    // CAgentFolder whose internal CMyComPtr<IInFolderArchive> _agent
+    // AddRef's the CAgent again (to 2); if the local `agent` here were
+    // at refcount 0 via Attach(), the folder's destructor would Release
+    // the CAgent back to 0 and delete it, and then this local's
+    // destructor would dereference the freed CAgent — a crash that
+    // surfaced as a __asan_report_load8 in CMyComPtr::~CMyComPtr on
+    // drag-into-archive operations.
+    agentOut = agentSpec;
     agentSpecOut = agentSpec;
 
     UString openTypeText = openType.length > 0 ? ToU(openType) : UString();
