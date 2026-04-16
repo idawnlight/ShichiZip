@@ -223,20 +223,15 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 }
 
 - (BOOL)shouldCancel {
-    if (self.cancellationRequested) {
-        return YES;
-    }
-
-    id<SZProgressDelegate> delegate = self.progressDelegate;
-    if (!delegate) {
-        return NO;
-    }
-
-    __block BOOL shouldCancel = NO;
-    SZDispatchSyncOnMain(^{
-        shouldCancel = [delegate progressShouldCancel];
-    });
-    return shouldCancel;
+    // Worker threads poll this method on every decoder/encoder tick, so
+    // it must never hop to the main thread. Callers that originate
+    // cancellation on the main thread are expected to mirror their
+    // intent through -requestCancel (see ArchiveOperationCoordinator's
+    // periodic snapshot loop, which pushes the ProgressDialog's
+    // cancelled state into the session). Reading the atomic flag here
+    // avoids a dispatch_sync deadlock whenever the main thread is busy
+    // running a modal alert or another synchronous UI request.
+    return self.cancellationRequested;
 }
 
 - (void)requestCancel {
