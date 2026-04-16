@@ -508,10 +508,24 @@ lib-zs:
 	@$(MAKE) SEVENZ_VARIANT=zs lib
 	+@$(MAKE) -f Makefile.sfx SFX_VARIANT=zs
 
-prepare-7zip:
-	@sh vendor/apply_7zip_patches.sh $(SEVENZ_ROOT)
+# Stamp that records "this submodule has had all applicable vendor
+# patches applied on top of the checkout currently in the working
+# tree". It depends on every .patch file that could ever target the
+# submodule plus the script itself, so editing any of those forces a
+# re-apply on the next make invocation (apply_7zip_patches.sh is
+# idempotent on already-applied patches, so this is safe). Before
+# this, prepare-7zip was a pure .PHONY target that re-ran git apply
+# on every build and was race-prone under parallel recursive makes.
+PATCH_STAMP = $(SEVENZ_ROOT)/.shichizip-patched
+PATCH_SRC_FILES = $(wildcard vendor/$(notdir $(SEVENZ_ROOT))-*.patch) vendor/apply_7zip_patches.sh
 
-$(ALL_OBJS): | prepare-7zip
+$(PATCH_STAMP): $(PATCH_SRC_FILES)
+	@sh vendor/apply_7zip_patches.sh $(SEVENZ_ROOT)
+	@touch $@
+
+prepare-7zip: $(PATCH_STAMP)
+
+$(ALL_OBJS): | $(PATCH_STAMP)
 
 $(LIB): $(ALL_OBJS)
 	@mkdir -p $(LIB_OUT)

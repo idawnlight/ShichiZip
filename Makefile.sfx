@@ -277,9 +277,24 @@ C_OBJS   = $(patsubst $(SEVENZ_ROOT)/%.c,$(O)/%.o,$(C_SRCS))
 RC_OBJ   = $(O)/resource.res
 ALL_OBJS = $(C_OBJS) $(CPP_OBJS) $(RC_OBJ)
 
-.PHONY: all clean info
+.PHONY: all clean info prepare-7zip
 
 all: $(SFX_BIN)
+
+# Stamp-based ordering dependency shared with the top-level Makefile so
+# building only the SFX module (e.g. `make -f Makefile.sfx sfx-zs`) still
+# runs the vendor patch script. Without this, running Makefile.sfx in
+# isolation silently compiled from unpatched sources.
+PATCH_STAMP = $(SEVENZ_ROOT)/.shichizip-patched
+PATCH_SRC_FILES = $(wildcard vendor/$(notdir $(SEVENZ_ROOT))-*.patch) vendor/apply_7zip_patches.sh
+
+$(PATCH_STAMP): $(PATCH_SRC_FILES)
+	@sh vendor/apply_7zip_patches.sh $(SEVENZ_ROOT)
+	@touch $@
+
+prepare-7zip: $(PATCH_STAMP)
+
+$(ALL_OBJS): | $(PATCH_STAMP)
 
 $(SFX_BIN): $(ALL_OBJS)
 	@mkdir -p $(SFX_OUT)
