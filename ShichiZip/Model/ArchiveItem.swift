@@ -93,22 +93,36 @@ struct ArchiveItem {
                                     pathPrefixToStrip: String?) -> [URL]
     {
         let prefixComponents = pathPrefixToStrip.map(Self.derivePathParts(from:)) ?? []
+        let standardizedDestination = destinationURL.standardizedFileURL
         var seenPaths = Set<String>()
         var outputURLs: [URL] = []
 
         for item in items {
             let itemOutputURLs = extractedOutputURLs(for: item,
-                                                     destinationURL: destinationURL,
+                                                     destinationURL: standardizedDestination,
                                                      pathMode: pathMode,
                                                      prefixComponents: prefixComponents)
             for outputURL in itemOutputURLs {
                 let standardizedURL = outputURL.standardizedFileURL
+                // Containment guard: never return a URL that escapes
+                // the destination directory. This protects consumers
+                // (selection, reveal, move-to-trash) from zip-slip-style
+                // archive entries whose path traverses outside the
+                // target, even in SZPathMode.absolutePaths mode.
+                guard isURL(standardizedURL, containedIn: standardizedDestination) else { continue }
                 guard seenPaths.insert(standardizedURL.path).inserted else { continue }
                 outputURLs.append(standardizedURL)
             }
         }
 
         return outputURLs
+    }
+
+    private static func isURL(_ candidate: URL, containedIn parent: URL) -> Bool {
+        let parentComponents = parent.pathComponents
+        let candidateComponents = candidate.pathComponents
+        guard candidateComponents.count >= parentComponents.count else { return false }
+        return Array(candidateComponents.prefix(parentComponents.count)) == parentComponents
     }
 
     private static func extractedOutputURLs(for item: ArchiveItem,
@@ -128,9 +142,18 @@ struct ArchiveItem {
 
         case .absolutePaths:
             if NSString(string: item.path).isAbsolutePath {
+                // SZPathMode.absolutePaths on extraction asks 7-Zip to
+                // honor absolute paths inside the archive, but at the
+                // Swift model layer we must never hand callers a URL
+                // rooted outside the destination. Strip leading
+                // slashes and re-anchor the path under destinationURL;
+                // the containment check in the public entry point
+                // drops anything that still manages to escape.
                 let trimmedPath = item.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                 guard !trimmedPath.isEmpty else { return [] }
-                return [URL(fileURLWithPath: item.path)]
+                let anchored = destinationURL.appendingPathComponent(trimmedPath,
+                                                                     isDirectory: item.isDirectory)
+                return [anchored]
             }
 
             return relativeOutputURLs(from: relativeComponents,
