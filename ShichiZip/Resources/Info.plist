@@ -56,10 +56,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>7Z Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>7z</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -74,6 +76,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LZMA Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>xz</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -93,6 +97,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LZOP Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -111,6 +117,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LZOP Tarball Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -129,6 +137,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LZIP Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -147,6 +157,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LZIP Tarball Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -165,10 +177,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LZ4 Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -183,10 +197,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LZ4 Tarball Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -201,10 +217,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>ZIP Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>zip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -221,10 +239,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>ZIPX Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>zip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -239,10 +259,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>XZ Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>xz</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -258,10 +280,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>XZ Tarball Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>xz</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -278,10 +302,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Brotli Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -297,10 +323,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Brotli Tarball Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -316,10 +344,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Zstandard Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>zstd</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -335,10 +365,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Zstandard Tarball Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>zstd</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -354,6 +386,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>RAR Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>rar</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -372,10 +406,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>BZIP2 Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>bzip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -393,10 +429,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>BZIP2 Tarball Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>bzip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -414,10 +452,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>BZIP Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>bzip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -433,10 +473,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>GZIP Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>gzip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -452,10 +494,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>GZIP Tarball Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>gzip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -472,10 +516,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>TAR Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>tar</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -491,6 +537,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LRZIP Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -510,6 +558,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LRZIP Tarball Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -529,6 +579,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>CPIO Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -547,6 +599,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>CPGZ Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -565,6 +619,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>PAX Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -584,6 +640,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>DMG Disk Image</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>diskimg</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -603,6 +661,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>ISO Disk Image</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>diskimg</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -621,6 +681,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>LHA Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -640,6 +702,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Windows EXE File</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>exe</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -658,6 +722,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Windows Cabinet File</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>exe</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -676,6 +742,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Windows Installer Package</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>exe</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -694,10 +762,12 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>WIM Disk Image</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>diskimg</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
 			<key>CFBundleTypeExtensions</key>
@@ -712,6 +782,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>iOS App</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>zip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -730,6 +802,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>JAR Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>zip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -748,6 +822,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>WAR Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>zip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -766,6 +842,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Compact Pro Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -784,6 +862,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Synology Package Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -803,6 +883,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Android Application Package</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>zip</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -823,6 +905,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>APPX Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>exe</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -842,6 +926,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>ACE Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -860,6 +946,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>XAR Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -878,6 +966,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Apple Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -897,6 +987,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Apple Encrypted Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -915,6 +1007,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Squashfs Filesystem Archive</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -936,6 +1030,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>WordPress All-in-One Backup</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
@@ -954,6 +1050,8 @@
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Delta Controller Skin</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>archive</string>
 			<key>NSDocumentClass</key>
 			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
 			<key>CFBundleTypeRole</key>
