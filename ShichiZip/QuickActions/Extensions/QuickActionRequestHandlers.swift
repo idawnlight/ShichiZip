@@ -20,10 +20,10 @@ class ShichiZipQuickActionRequestHandler: NSObject, NSExtensionRequestHandling {
         // in Release; retain NSLog in Debug where the verbosity is
         // useful and developers already see user paths in Xcode.
         #if DEBUG
-        NSLog("[QuickAction:%@] %@", quickAction.rawValue, message)
+            NSLog("[QuickAction:%@] %@", quickAction.rawValue, message)
         #else
-        os_log(.info, "[QuickAction:%{public}s] %{private}s",
-               quickAction.rawValue, message)
+            os_log(.info, "[QuickAction:%{public}s] %{private}s",
+                   quickAction.rawValue, message)
         #endif
     }
 

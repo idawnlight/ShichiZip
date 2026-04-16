@@ -27,7 +27,7 @@ enum SZL10n {
     /// Access is guarded by `bundleLock` so lookups remain safe when
     /// called from background queues (e.g. error-message construction
     /// in FileManagerArchiveItemWorkflowService, or bridge callbacks).
-    nonisolated(unsafe) private static var _bundle: Bundle = makeBundle()
+    private nonisolated(unsafe) static var _bundle: Bundle = makeBundle()
     private static let bundleLock = NSLock()
 
     static var bundle: Bundle {

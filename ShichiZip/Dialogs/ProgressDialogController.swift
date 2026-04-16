@@ -23,6 +23,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
         case speed
         case filesProcessed
     }
+
     private var speedLabelMode: SpeedLabelMode = .empty
     private var speedLabel: NSTextField!
     private var elapsedLabel: NSTextField!

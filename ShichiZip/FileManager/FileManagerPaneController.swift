@@ -426,7 +426,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         tableView.target = self
         tableView.menu = buildContextMenu()
         #if DEBUG
-        NSLog("[ShichiZip] File manager pane context menu set with %ld items", tableView.menu?.items.count ?? 0)
+            NSLog("[ShichiZip] File manager pane context menu set with %ld items", tableView.menu?.items.count ?? 0)
         #endif
 
         // Register for drag and drop
@@ -635,7 +635,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 isDirectory: values?.isDirectory ?? false,
                 size: values?.fileSize ?? 0,
                 modifiedDate: values?.contentModificationDate,
-                createdDate: values?.creationDate)
+                createdDate: values?.creationDate,
+            )
             let item = FileSystemItem(url: url, resourceValues: values)
             return (fingerprint, item)
         }

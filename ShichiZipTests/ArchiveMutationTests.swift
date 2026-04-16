@@ -31,16 +31,16 @@ final class ArchiveMutationTests: XCTestCase {
             let fileURL = tempRoot.appendingPathComponent(relativePath)
             try FileManager.default.createDirectory(
                 at: fileURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true)
+                withIntermediateDirectories: true,
+            )
             try contents.write(to: fileURL, atomically: true, encoding: .utf8)
             sourceURLs.append(fileURL)
         }
 
-        let ext: String
-        switch format {
-        case .formatZip: ext = "zip"
-        case .formatTar: ext = "tar"
-        default: ext = "7z"
+        let ext = switch format {
+        case .formatZip: "zip"
+        case .formatTar: "tar"
+        default: "7z"
         }
         let archiveURL = tempRoot.appendingPathComponent("\(name).\(ext)")
 
@@ -79,8 +79,8 @@ final class ArchiveMutationTests: XCTestCase {
         defer { archive.close() }
 
         try archive.createFolderNamed("NewFolder",
-                                 inArchiveSubdir: "",
-                                 session: nil)
+                                      inArchiveSubdir: "",
+                                      session: nil)
 
         let paths = entryPaths(in: archive)
         XCTAssertTrue(paths.contains("keep.txt"),
@@ -94,8 +94,8 @@ final class ArchiveMutationTests: XCTestCase {
     func testRenameItemChangesPathAndLeavesOtherEntriesAlone() throws {
         let (archiveURL, _) = try makeArchive(named: "rename",
                                               payloads: [
-                                                "old.txt": "contents",
-                                                "other.txt": "untouched",
+                                                  "old.txt": "contents",
+                                                  "other.txt": "untouched",
                                               ])
 
         let archive = SZArchive()
@@ -121,9 +121,9 @@ final class ArchiveMutationTests: XCTestCase {
     func testDeleteItemsRemovesEverySpecifiedEntry() throws {
         let (archiveURL, _) = try makeArchive(named: "delete",
                                               payloads: [
-                                                "a.txt": "a",
-                                                "b.txt": "b",
-                                                "c.txt": "c",
+                                                  "a.txt": "a",
+                                                  "b.txt": "b",
+                                                  "c.txt": "c",
                                               ])
 
         let archive = SZArchive()
@@ -194,8 +194,8 @@ final class ArchiveMutationTests: XCTestCase {
     func testReplaceItemSubstitutesContentsAndKeepsEntryName() throws {
         let (archiveURL, tempRoot) = try makeArchive(named: "replace",
                                                      payloads: [
-                                                       "entry.txt": "original",
-                                                       "keep.txt": "untouched",
+                                                         "entry.txt": "original",
+                                                         "keep.txt": "untouched",
                                                      ])
 
         let newContentsURL = tempRoot.appendingPathComponent("source.bin")

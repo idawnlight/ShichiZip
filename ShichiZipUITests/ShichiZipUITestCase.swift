@@ -13,7 +13,9 @@ class ShichiZipUITestCase: XCTestCase {
     /// subclasses instead of overriding `setUp()` so the base class
     /// can keep owning the XCUIApplication lifecycle (and so we can
     /// chain to `super.setUp()` without launching the app twice).
-    var additionalLaunchArguments: [String] { [] }
+    var additionalLaunchArguments: [String] {
+        []
+    }
 
     override func setUp() async throws {
         try await super.setUp()
@@ -115,7 +117,7 @@ class ShichiZipUITestCase: XCTestCase {
         guard process.terminationStatus == 0 else {
             throw NSError(domain: "ShichiZipUITests", code: 1,
                           userInfo: [NSLocalizedDescriptionKey:
-                                     "/usr/bin/zip failed (status \(process.terminationStatus))"])
+                              "/usr/bin/zip failed (status \(process.terminationStatus))"])
         }
         return archiveURL
     }

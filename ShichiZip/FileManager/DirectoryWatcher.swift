@@ -20,7 +20,9 @@ final class DirectoryWatcher {
     /// DirectoryWatcher.
     private final class CallbackContext {
         weak var owner: DirectoryWatcher?
-        init(owner: DirectoryWatcher) { self.owner = owner }
+        init(owner: DirectoryWatcher) {
+            self.owner = owner
+        }
     }
 
     private var stream: FSEventStreamRef?

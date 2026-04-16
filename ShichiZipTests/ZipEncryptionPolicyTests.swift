@@ -60,7 +60,7 @@ final class ZipEncryptionPolicyTests: XCTestCase {
                                  fromPaths: [payload.path],
                                  settings: settings,
                                  session: nil),
-            "zip + password + encryption==None must not silently fall back to ZipCrypto"
+            "zip + password + encryption==None must not silently fall back to ZipCrypto",
         ) { error in
             let nsError = error as NSError
             // Bridge uses SZArchiveErrorDomain with E_INVALIDARG for

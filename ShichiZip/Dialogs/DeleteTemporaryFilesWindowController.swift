@@ -646,16 +646,15 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
         // vice versa. Identify them via the URL resource key rather
         // than a hard-coded extension allow-list.
         let isPackage: Bool = (try? item.url.resourceValues(forKeys: [.isPackageKey]).isPackage) ?? false
-        let key: String
-        if isPackage {
+        let key = if isPackage {
             // Per-path key: bundles are rare enough in the delete-temp
             // window that the extra cache entries are negligible, and
             // anything rarer than that falls through to a new entry.
-            key = "pkg:" + item.url.path
+            "pkg:" + item.url.path
         } else if item.isDirectory {
-            key = "__dir__"
+            "__dir__"
         } else {
-            key = "ext:" + item.url.pathExtension.lowercased()
+            "ext:" + item.url.pathExtension.lowercased()
         }
         if let cached = iconCacheByExtension[key] {
             return cached

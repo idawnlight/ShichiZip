@@ -37,15 +37,15 @@ final class EncryptedArchiveMutationTests: XCTestCase {
             let fileURL = tempRoot.appendingPathComponent(relativePath)
             try FileManager.default.createDirectory(
                 at: fileURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true)
+                withIntermediateDirectories: true,
+            )
             try contents.write(to: fileURL, atomically: true, encoding: .utf8)
             sourceURLs.append(fileURL)
         }
 
-        let ext: String
-        switch format {
-        case .formatZip: ext = "zip"
-        default: ext = "7z"
+        let ext = switch format {
+        case .formatZip: "zip"
+        default: "7z"
         }
         let archiveURL = tempRoot.appendingPathComponent("\(name).\(ext)")
 
@@ -88,7 +88,8 @@ final class EncryptedArchiveMutationTests: XCTestCase {
     func testAddPathsRoundTripsOnEncrypted7z() throws {
         let (archiveURL, tempRoot) = try makeEncryptedArchive(
             named: "enc-add",
-            payloads: ["existing.txt": "one"])
+            payloads: ["existing.txt": "one"],
+        )
 
         let looseFile = tempRoot.appendingPathComponent("added.txt")
         try "two".write(to: looseFile, atomically: true, encoding: .utf8)
@@ -119,14 +120,15 @@ final class EncryptedArchiveMutationTests: XCTestCase {
     func testCreateFolderOnEncrypted7z() throws {
         let (archiveURL, _) = try makeEncryptedArchive(
             named: "enc-mkdir",
-            payloads: ["file.txt": "x"])
+            payloads: ["file.txt": "x"],
+        )
 
         let archive = try openEncrypted(archiveURL)
         defer { archive.close() }
 
         try archive.createFolderNamed("sub",
-                                 inArchiveSubdir: "",
-                                 session: nil)
+                                      inArchiveSubdir: "",
+                                      session: nil)
 
         XCTAssertTrue(entryPaths(in: archive).contains("sub"))
     }
@@ -136,7 +138,8 @@ final class EncryptedArchiveMutationTests: XCTestCase {
     func testRenameOnEncrypted7z() throws {
         let (archiveURL, _) = try makeEncryptedArchive(
             named: "enc-rename",
-            payloads: ["old.txt": "hello"])
+            payloads: ["old.txt": "hello"],
+        )
 
         let archive = try openEncrypted(archiveURL)
         defer { archive.close() }
@@ -156,7 +159,8 @@ final class EncryptedArchiveMutationTests: XCTestCase {
     func testDeleteOnEncrypted7z() throws {
         let (archiveURL, _) = try makeEncryptedArchive(
             named: "enc-delete",
-            payloads: ["a.txt": "a", "b.txt": "b"])
+            payloads: ["a.txt": "a", "b.txt": "b"],
+        )
 
         let archive = try openEncrypted(archiveURL)
         defer { archive.close() }
@@ -173,7 +177,8 @@ final class EncryptedArchiveMutationTests: XCTestCase {
     func testReplaceOnEncrypted7z() throws {
         let (archiveURL, tempRoot) = try makeEncryptedArchive(
             named: "enc-replace",
-            payloads: ["entry.txt": "original"])
+            payloads: ["entry.txt": "original"],
+        )
 
         let substitute = tempRoot.appendingPathComponent("new.bin")
         try "replaced".write(to: substitute, atomically: true, encoding: .utf8)
@@ -210,7 +215,8 @@ final class EncryptedArchiveMutationTests: XCTestCase {
         let (archiveURL, tempRoot) = try makeEncryptedArchive(
             named: "enc-zip-add",
             format: .formatZip,
-            payloads: ["existing.txt": "one"])
+            payloads: ["existing.txt": "one"],
+        )
 
         let looseFile = tempRoot.appendingPathComponent("added.txt")
         try "two".write(to: looseFile, atomically: true, encoding: .utf8)

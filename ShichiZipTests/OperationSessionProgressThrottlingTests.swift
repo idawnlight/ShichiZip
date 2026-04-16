@@ -25,11 +25,15 @@ final class OperationSessionProgressThrottlingTests: XCTestCase {
         func progressDidUpdate(_ fraction: Double) {
             fractionUpdates.append(fraction)
         }
-        func progressDidUpdateFileName(_ fileName: String) {}
+
+        func progressDidUpdateFileName(_: String) {}
         func progressDidUpdateBytesCompleted(_ completed: UInt64, total: UInt64) {
             bytesUpdates.append((completed, total))
         }
-        func progressShouldCancel() -> Bool { false }
+
+        func progressShouldCancel() -> Bool {
+            false
+        }
     }
 
     private func drainMainQueue(for seconds: TimeInterval = 0.02) {
@@ -41,7 +45,7 @@ final class OperationSessionProgressThrottlingTests: XCTestCase {
 
     // MARK: - Fraction throttling
 
-    func testRapidProgressReportsAreCoalesced() throws {
+    func testRapidProgressReportsAreCoalesced() {
         let delegate = RecordingDelegate()
         let session = SZOperationSession()
         session.progressDelegate = delegate
@@ -73,7 +77,7 @@ final class OperationSessionProgressThrottlingTests: XCTestCase {
                        "last delegate call must carry the terminal fraction")
     }
 
-    func testTerminalFractionIsAlwaysDelivered() throws {
+    func testTerminalFractionIsAlwaysDelivered() {
         let delegate = RecordingDelegate()
         let session = SZOperationSession()
         session.progressDelegate = delegate
@@ -88,7 +92,7 @@ final class OperationSessionProgressThrottlingTests: XCTestCase {
                       "terminal 1.0 must always be delivered, got \(delegate.fractionUpdates)")
     }
 
-    func testFractionIsClampedToUnitInterval() throws {
+    func testFractionIsClampedToUnitInterval() {
         let delegate = RecordingDelegate()
         let session = SZOperationSession()
         session.progressDelegate = delegate
@@ -110,12 +114,12 @@ final class OperationSessionProgressThrottlingTests: XCTestCase {
 
     // MARK: - Bytes throttling
 
-    func testRapidBytesReportsAreCoalescedAndTerminalArrives() throws {
+    func testRapidBytesReportsAreCoalescedAndTerminalArrives() {
         let delegate = RecordingDelegate()
         let session = SZOperationSession()
         session.progressDelegate = delegate
 
-        let total: UInt64 = 1_000
+        let total: UInt64 = 1000
         for completed in stride(from: 0, through: 999, by: 1) {
             session.reportBytesCompleted(UInt64(completed), total: total)
         }
@@ -134,7 +138,7 @@ final class OperationSessionProgressThrottlingTests: XCTestCase {
 
     // MARK: - 50 ms window opens up after wait
 
-    func testDelegateReceivesSecondUpdateAfter50msGap() throws {
+    func testDelegateReceivesSecondUpdateAfter50msGap() {
         let delegate = RecordingDelegate()
         let session = SZOperationSession()
         session.progressDelegate = delegate

@@ -51,7 +51,9 @@ final class ArchiveOpenErrorClassificationTests: XCTestCase {
         // error that would pass the domain/code assertions and hide the
         // regression.
         struct UnexpectedOpenSuccess: Error, CustomStringConvertible {
-            var description: String { "Expected archive open to fail, but it succeeded" }
+            var description: String {
+                "Expected archive open to fail, but it succeeded"
+            }
         }
         throw UnexpectedOpenSuccess()
     }
