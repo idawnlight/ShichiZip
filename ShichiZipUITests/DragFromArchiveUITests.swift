@@ -311,19 +311,19 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
 
     // MARK: - Archive CLI helpers
 
-    /// Lists archive contents using 7z CLI. Returns the raw output string.
+    /// Lists archive contents using the system-provided zipinfo.
+    /// All test fixtures are .zip archives produced via /usr/bin/zip,
+    /// so zipinfo (shipped with macOS) is always sufficient. Do not
+    /// branch on /usr/local/bin/7z — that would make the test's listing
+    /// behaviour depend on whether p7zip happens to be installed on the
+    /// developer machine, which is exactly what createTestArchive was
+    /// changed to avoid.
     private func listArchiveContents(_ archiveURL: URL) throws -> String {
         let process = Process()
         let pipe = Pipe()
 
-        if FileManager.default.fileExists(atPath: "/usr/local/bin/7z") {
-            process.executableURL = URL(fileURLWithPath: "/usr/local/bin/7z")
-            process.arguments = ["l", archiveURL.path]
-        } else {
-            // Fallback for zip: use zipinfo
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/zipinfo")
-            process.arguments = ["-1", archiveURL.path]
-        }
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/zipinfo")
+        process.arguments = ["-1", archiveURL.path]
 
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
