@@ -27,6 +27,10 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     BOOL _hasReportedProgress;
     BOOL _waitingForUserInteraction;
     BOOL _cancellationRequested;
+    // Throttling state for progress dispatch to main. See
+    // -reportProgressFraction: / -reportBytesCompleted:total: for rules.
+    CFAbsoluteTime _lastProgressDispatchTime;
+    CFAbsoluteTime _lastBytesDispatchTime;
 }
 
 @end
@@ -169,13 +173,25 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 
 - (void)reportProgressFraction:(double)fraction {
     const double clamped = MIN(MAX(fraction, 0.0), 1.0);
+    BOOL shouldDispatch;
     @synchronized(self) {
         _progressFraction = clamped;
         _hasReportedProgress = YES;
+        // Coalesce live updates so 7-Zip's per-frame SetCompleted does
+        // not swamp the main queue. Always deliver the terminal value
+        // (>=1.0) and the first report; otherwise gate to ~50 ms.
+        const CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+        const CFAbsoluteTime kMinInterval = 0.05;
+        shouldDispatch = (clamped >= 1.0)
+            || (_lastProgressDispatchTime == 0)
+            || (now - _lastProgressDispatchTime >= kMinInterval);
+        if (shouldDispatch) {
+            _lastProgressDispatchTime = now;
+        }
     }
 
     id<SZProgressDelegate> delegate = self.progressDelegate;
-    if (!delegate) {
+    if (!delegate || !shouldDispatch) {
         return;
     }
 
@@ -201,13 +217,22 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 }
 
 - (void)reportBytesCompleted:(uint64_t)completed total:(uint64_t)total {
+    BOOL shouldDispatch;
     @synchronized(self) {
         _bytesCompleted = completed;
         _bytesTotal = total;
+        const CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+        const CFAbsoluteTime kMinInterval = 0.05;
+        shouldDispatch = (total > 0 && completed >= total)
+            || (_lastBytesDispatchTime == 0)
+            || (now - _lastBytesDispatchTime >= kMinInterval);
+        if (shouldDispatch) {
+            _lastBytesDispatchTime = now;
+        }
     }
 
     id<SZProgressDelegate> delegate = self.progressDelegate;
-    if (!delegate) {
+    if (!delegate || !shouldDispatch) {
         return;
     }
 
