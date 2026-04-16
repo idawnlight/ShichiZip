@@ -83,7 +83,7 @@ MACOSX_DEPLOYMENT_TARGET ?= 13.0
 TARGET_ARCH ?= arm64
 ARCH = -arch $(TARGET_ARCH)
 CFLAGS_COMMON = $(ARCH) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -O2 -DNDEBUG -D_REENTRANT -D_FILE_OFFSET_BITS=64 \
-	-D_LARGEFILE_SOURCE -fPIC -Wall -Wextra
+	-D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -MMD -MP
 SEVENZ_INCLUDE_FLAGS = -I$(SEVENZ_ROOT)
 CFLAGS = $(CFLAGS_COMMON) -std=c11 $(EXTRA_CODEC_INCLUDE_FLAGS)
 CXXFLAGS = $(CFLAGS_COMMON) -std=c++23 -DSHICHIZIP_APPLE_DETECTOR $(SEVENZ_INCLUDE_FLAGS) $(EXTRA_CODEC_INCLUDE_FLAGS)
@@ -517,6 +517,12 @@ $(LIB): $(ALL_OBJS)
 	@mkdir -p $(LIB_OUT)
 	$(AR) rcs $@ $^
 	@echo "=== Built $@ ($(words $(ALL_OBJS)) objects) ==="
+
+# -MMD -MP in CFLAGS_COMMON emits a sibling *.d next to each *.o so
+# re-running make after a header edit (including post-patch vendor
+# headers) recompiles only the dependent translation units instead of
+# leaving stale objects behind.
+-include $(ALL_OBJS:.o=.d)
 
 # Fast LZMA2 needs extra compatibility defines from the fork build.
 $(O)/C/fast-lzma2/%.o: $(SEVENZ_ROOT)/C/fast-lzma2/%.c
