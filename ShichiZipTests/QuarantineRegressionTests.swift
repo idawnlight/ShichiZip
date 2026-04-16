@@ -5,8 +5,37 @@ import XCTest
 final class QuarantineRegressionTests: XCTestCase {
     private let quarantineAttributeName = "com.apple.quarantine"
 
+    /// Verifies the volume backing the temporary directory actually
+    /// supports extended attributes. CI machines occasionally run
+    /// their tmp on filesystems (for example some tmpfs variants or
+    /// remote mounts) that return EOPNOTSUPP for setxattr; the rest of
+    /// the quarantine fixtures are meaningless on such volumes, so we
+    /// skip instead of misreporting a failure. Call this from every
+    /// xattr-dependent test.
+    private func skipUnlessExtendedAttributesWork(at directory: URL) throws {
+        let probeURL = directory.appendingPathComponent("xattr-probe-\(UUID().uuidString)")
+        FileManager.default.createFile(atPath: probeURL.path, contents: Data())
+        defer { try? FileManager.default.removeItem(at: probeURL) }
+
+        let probeName = "com.shichizip.test.xattr-probe"
+        let result = probeName.withCString { namePointer in
+            probeURL.path.withCString { pathPointer in
+                setxattr(pathPointer, namePointer, "1", 1, 0, XATTR_NOFOLLOW)
+            }
+        }
+        if result != 0 {
+            let code = errno
+            try XCTSkipIf(code == ENOTSUP || code == EPERM || code == EACCES,
+                          "Extended attributes not supported on this volume (errno=\(code)); skipping quarantine regression checks.")
+            // Any other setxattr failure is genuinely unexpected and
+            // should surface as a test error rather than a skip.
+            throw POSIXError(POSIXErrorCode(rawValue: code) ?? .EIO)
+        }
+    }
+
     func testNormalExtractionShouldInheritSourceArchiveQuarantine() throws {
         let tempRoot = try makeTemporaryDirectory(named: "normal-extract")
+        try skipUnlessExtendedAttributesWork(at: tempRoot)
 
         let payloadURL = tempRoot.appendingPathComponent("payload.txt")
         let archiveURL = tempRoot.appendingPathComponent("payload.7z")
@@ -44,6 +73,7 @@ final class QuarantineRegressionTests: XCTestCase {
 
     func testNormalExtractionShouldInheritSourceArchiveQuarantineForExtractedDirectories() throws {
         let tempRoot = try makeTemporaryDirectory(named: "normal-extract-directory")
+        try skipUnlessExtendedAttributesWork(at: tempRoot)
 
         let payloadDirectoryURL = tempRoot.appendingPathComponent("payload-directory", isDirectory: true)
         let nestedPayloadURL = payloadDirectoryURL.appendingPathComponent("payload.txt")
@@ -94,6 +124,7 @@ final class QuarantineRegressionTests: XCTestCase {
 
     func testStagedArchiveItemsShouldInheritSourceArchiveQuarantine() throws {
         let tempRoot = try makeTemporaryDirectory(named: "quarantine")
+        try skipUnlessExtendedAttributesWork(at: tempRoot)
 
         let payloadURL = tempRoot.appendingPathComponent("payload.txt")
         let archiveURL = tempRoot.appendingPathComponent("payload.7z")
@@ -139,6 +170,7 @@ final class QuarantineRegressionTests: XCTestCase {
 
     func testNestedArchiveExtractionShouldInheritOriginalSourceArchiveQuarantine() throws {
         let tempRoot = try makeTemporaryDirectory(named: "nested-extract")
+        try skipUnlessExtendedAttributesWork(at: tempRoot)
 
         let innerPayloadURL = tempRoot.appendingPathComponent("inner-payload.txt")
         let innerArchiveURL = tempRoot.appendingPathComponent("inner.7z")
