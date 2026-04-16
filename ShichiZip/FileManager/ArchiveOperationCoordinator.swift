@@ -57,11 +57,16 @@ final class ArchiveOperationCoordinator {
     }
 
     func start() {
-        let timer = Timer(timeInterval: Self.updateInterval,
-                          target: self,
-                          selector: #selector(updateFromSession),
-                          userInfo: nil,
-                          repeats: true)
+        // Use the block-based Timer API with [weak self] instead of
+        // Timer(target: self, ...); the target/selector form retains
+        // its target strongly, so if finish() is not reached (e.g. the
+        // operation fails before the sheet becomes visible) the
+        // coordinator stayed alive forever.
+        let timer = Timer(timeInterval: Self.updateInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.updateFromSession()
+            }
+        }
         self.timer = timer
         RunLoop.main.add(timer, forMode: .common)
 
