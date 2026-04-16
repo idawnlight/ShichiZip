@@ -64,7 +64,7 @@ targets:
         SEVENZ_VENDOR_ROOT: vendor/7zip
         INFOPLIST_FILE: ShichiZip/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/Resources/ShichiZip.entitlements
-        CLANG_CXX_LANGUAGE_STANDARD: c++11
+        CLANG_CXX_LANGUAGE_STANDARD: c++23
         SWIFT_OBJC_BRIDGING_HEADER: ShichiZip/App/ShichiZip-Bridging-Header.h
         HEADER_SEARCH_PATHS:
           - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)
@@ -155,7 +155,7 @@ targets:
         SEVENZ_VENDOR_ROOT: vendor/7zip-zstd
         INFOPLIST_FILE: ShichiZip/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShichiZip/Resources/ShichiZip.entitlements
-        CLANG_CXX_LANGUAGE_STANDARD: c++11
+        CLANG_CXX_LANGUAGE_STANDARD: c++23
         SWIFT_OBJC_BRIDGING_HEADER: ShichiZip/App/ShichiZip-Bridging-Header.h
         HEADER_SEARCH_PATHS:
           - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)
