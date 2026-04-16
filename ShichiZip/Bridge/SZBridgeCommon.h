@@ -224,6 +224,22 @@ static inline NSString* ToNS(const UString& u) {
     return result ?: @"";
 }
 
+// Convert a C string (typically from 7-Zip's AString) into NSString.
+// Unlike +stringWithUTF8String:, this never returns nil: if the bytes
+// are not valid UTF-8 it falls back to Mac Roman so the caller can
+// still surface the message to the user. Safe to feed into
+// dictionary literals that reject nil values.
+static inline NSString* NSFromCString(const char* _Nullable cstr) {
+    if (!cstr)
+        return @"";
+    NSString* utf8 = [[NSString alloc] initWithUTF8String:cstr];
+    if (utf8)
+        return utf8;
+    NSString* fallback = [[NSString alloc] initWithCString:cstr
+                                                  encoding:NSMacOSRomanStringEncoding];
+    return fallback ?: @"";
+}
+
 // ============================================================
 // Archive property helpers
 // ============================================================

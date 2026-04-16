@@ -2930,7 +2930,7 @@ static bool SZParseVolumeSizes(const UString& text,
         if (r == E_ABORT)
             desc = @"Compression was cancelled";
         else if (errorInfo.Message.Len() > 0)
-            desc = [NSString stringWithUTF8String:errorInfo.Message.Ptr()];
+            desc = NSFromCString(errorInfo.Message.Ptr());
         else
             desc = [NSString
                 stringWithFormat:@"Compression failed (0x%08X)", (unsigned)r];
@@ -3089,8 +3089,8 @@ static bool SZParseVolumeSizes(const UString& text,
                 const CHasherState& h = hb.Hashers[i];
                 char hex[256];
                 HashHexToString(hex, h.Digests[0], h.DigestSize);
-                results[[NSString stringWithUTF8String:h.Name.Ptr()]] =
-                    [NSString stringWithUTF8String:hex];
+                results[NSFromCString(h.Name.Ptr())] =
+                    NSFromCString(hex);
             }
             return S_OK;
         }
@@ -3150,7 +3150,7 @@ static bool SZParseVolumeSizes(const UString& text,
     if (r != S_OK) {
         NSString* reason = errorInfo.IsEmpty()
             ? nil
-            : [NSString stringWithUTF8String:errorInfo.Ptr()];
+            : NSFromCString(errorInfo.Ptr());
         if (error)
             *error = SZMakeDetailedError(r, @"Hash calculation failed", reason);
         return nil;
