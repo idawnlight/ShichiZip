@@ -423,6 +423,15 @@ Z7_COM7F_IMF(SZFolderExtractCallback::ReportExtractResult(Int32 opRes, Int32 enc
 }
 
 Z7_COM7F_IMF(SZFolderExtractCallback::CryptoGetTextPassword(BSTR* pw)) {
+    // COM contract: the out-parameter must be initialized on every
+    // return path, including early-error returns. Upstream 7-Zip
+    // (and some callers) have historically fed the returned BSTR to
+    // SysFreeString unconditionally, so leaving *pw uninitialized
+    // after returning E_ABORT is a double-free / use-of-uninitialized
+    // hazard.
+    if (pw) {
+        *pw = NULL;
+    }
     PasswordWasAsked = true;
     if (!PasswordIsDefined) {
         HRESULT hr = SZRequestOperationPassword(Session, Password, PasswordIsDefined);
@@ -616,11 +625,24 @@ HRESULT SZUpdateCallbackUI::GetStream(const wchar_t* name, bool, bool, UInt32) {
 }
 
 HRESULT SZUpdateCallbackUI::CryptoGetTextPassword2(Int32* passwordIsDefined, BSTR* password) {
-    *passwordIsDefined = PasswordIsDefined ? 1 : 0;
+    // Initialize the out-BSTR first so early returns are safe per COM
+    // contract (see SZFolderExtractCallback::CryptoGetTextPassword).
+    if (password) {
+        *password = NULL;
+    }
+    if (passwordIsDefined) {
+        *passwordIsDefined = PasswordIsDefined ? 1 : 0;
+    }
+    if (!PasswordIsDefined) {
+        return S_OK;
+    }
     return StringToBstr(Password, password);
 }
 
 HRESULT SZUpdateCallbackUI::CryptoGetTextPassword(BSTR* password) {
+    if (password) {
+        *password = NULL;
+    }
     if (!PasswordIsDefined)
         return E_ABORT;
     return StringToBstr(Password, password);
