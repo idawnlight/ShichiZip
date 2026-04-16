@@ -557,7 +557,7 @@ $(O)/%.o: %.mm
 	$(CXX) $(OBJCXXFLAGS) -c -o $@ $<
 
 clean:
-	rm -rf build
+	rm -rf build/obj build/sfx-obj build/lib build/sfx
 
 # === Cross-compile SFX modules for Windows using zig ===
 .PHONY: sfx sfx-mainline sfx-zs sfx-clean
