@@ -96,6 +96,18 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
     private var isLoading = false
     private var isDeleting = false
 
+    /// Cache of row icons keyed by filename extension (or a special
+    /// sentinel for directories / extensionless files). NSWorkspace's
+    /// icon(forFile:) is not cheap — each call resolves the UTI,
+    /// consults LaunchServices, and returns a fresh NSImage — and
+    /// tableView(_:viewFor:row:) fires this per visible cell on every
+    /// reload or scroll. The temp folder browser lists homogenous
+    /// extraction directories and a handful of file types, so keying
+    /// by extension gives near-100 % hit rate without risking
+    /// bundle-specific icons going stale (bundles live outside this
+    /// browser's domain).
+    private var iconCacheByExtension: [String: NSImage] = [:]
+
     private var deleteButton: NSButton!
     private var refreshButton: NSButton!
     private var parentButton: NSButton!
@@ -617,14 +629,28 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
         cell.textField?.alignment = column.alignment
 
         if column == .name {
-            let image = NSWorkspace.shared.icon(forFile: item.url.path)
-            image.size = NSSize(width: 16, height: 16)
+            let image = cachedIcon(for: item)
             cell.imageView?.image = image
         } else {
             cell.imageView?.image = nil
         }
 
         return cell
+    }
+
+    private func cachedIcon(for item: BrowserItem) -> NSImage {
+        let key: String = if item.isDirectory {
+            "__dir__"
+        } else {
+            "ext:" + item.url.pathExtension.lowercased()
+        }
+        if let cached = iconCacheByExtension[key] {
+            return cached
+        }
+        let image = NSWorkspace.shared.icon(forFile: item.url.path)
+        image.size = NSSize(width: 16, height: 16)
+        iconCacheByExtension[key] = image
+        return image
     }
 
     private func makeCellView(for column: Column,
