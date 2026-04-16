@@ -51,6 +51,11 @@ public:
     __weak SZOperationSession* Session;
 
     SZOpenCallbackUI();
+    virtual ~SZOpenCallbackUI() {
+        // Wipe the plaintext password from heap on destruction so a
+        // core dump or swap inspection cannot recover it.
+        Password.Wipe_and_Empty();
+    }
 
     HRESULT Open_CheckBreak() override;
     HRESULT Open_SetTotal(const UInt64*, const UInt64*) override;
@@ -110,6 +115,10 @@ public:
         , SkipMemoryArchive(false) {
     }
 
+    virtual ~SZFolderExtractCallback() {
+        Password.Wipe_and_Empty();
+    }
+
     Z7_COM_UNKNOWN_IMP_4(IFolderArchiveExtractCallback, IFolderArchiveExtractCallback2, ICryptoGetTextPassword, IArchiveRequestMemoryUseCallback)
 
     STDMETHOD(SetTotal)(UInt64 total) override;
@@ -141,6 +150,10 @@ public:
         : PasswordIsDefined(false)
         , TotalSize(0)
         , Session(nil) {
+    }
+
+    virtual ~SZUpdateCallbackUI() {
+        Password.Wipe_and_Empty();
     }
 
     // IUpdateCallbackUI
@@ -214,6 +227,10 @@ public:
         , NumFilesCompleted(0)
         , ArchiveWasReplaced(false)
         , Session(nil) {
+    }
+
+    virtual ~SZAgentUpdateCallback() {
+        Password.Wipe_and_Empty();
     }
 
     Z7_COM_UNKNOWN_IMP_8(IFolderArchiveUpdateCallback,
