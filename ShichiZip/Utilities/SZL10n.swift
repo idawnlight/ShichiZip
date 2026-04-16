@@ -28,7 +28,7 @@ enum SZL10n {
     /// called from background queues (e.g. error-message construction
     /// in FileManagerArchiveItemWorkflowService, or bridge callbacks).
     nonisolated(unsafe) private static var _bundle: Bundle = makeBundle()
-    nonisolated(unsafe) private static let bundleLock = NSLock()
+    private static let bundleLock = NSLock()
 
     static var bundle: Bundle {
         bundleLock.lock()
