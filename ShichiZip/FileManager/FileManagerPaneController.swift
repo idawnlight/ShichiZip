@@ -616,6 +616,31 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         .sorted { $0.path < $1.path }
     }
 
+    /// Single-pass combined fetch used when the caller needs both the
+    /// fingerprint (for change detection) and the fully-populated
+    /// `FileSystemItem`s (for the table view). Each URL is stat'd
+    /// exactly once via `URLResourceValues`, which previously cost us
+    /// two synchronous disk round-trips per entry (one inside
+    /// `makeDirectoryFingerprint`, one inside `FileSystemItem.init`).
+    private func makeFingerprintAndItems(from contents: [URL])
+        -> (fingerprint: [DirectoryEntryFingerprint], items: [FileSystemItem])
+    {
+        let keys = Set(FileSystemItem.resourceKeys)
+        let pairs: [(DirectoryEntryFingerprint, FileSystemItem)] = contents.map { url in
+            let values = try? url.resourceValues(forKeys: keys)
+            let fingerprint = DirectoryEntryFingerprint(
+                path: url.standardizedFileURL.path,
+                isDirectory: values?.isDirectory ?? false,
+                size: values?.fileSize ?? 0,
+                modifiedDate: values?.contentModificationDate,
+                createdDate: values?.creationDate)
+            let item = FileSystemItem(url: url, resourceValues: values)
+            return (fingerprint, item)
+        }
+        let fingerprint = pairs.map(\.0).sorted { $0.path < $1.path }
+        return (fingerprint, pairs.map(\.1))
+    }
+
     private func captureFileSystemSelectionState() -> FileSystemSelectionState {
         guard isViewLoaded, !isInsideArchive else {
             return .empty
@@ -691,8 +716,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         currentDirectory = url
         recordDirectoryVisit(url)
         updatePathField()
-        currentDirectoryFingerprint = fingerprint ?? makeDirectoryFingerprint(from: contents)
-        items = contents.map { FileSystemItem(url: $0) }
+        if let fingerprint {
+            currentDirectoryFingerprint = fingerprint
+            items = contents.map { FileSystemItem(url: $0) }
+        } else {
+            let combined = makeFingerprintAndItems(from: contents)
+            currentDirectoryFingerprint = combined.fingerprint
+            items = combined.items
+        }
         sortCurrentItems(by: tableView.sortDescriptors)
         tableView.reloadData()
         updateStatusBar()
