@@ -2919,6 +2919,15 @@ static bool SZParseVolumeSizes(const UString& text,
 
     SZOpenCallbackUI openCallbackUI;
     openCallbackUI.Session = resolvedSession;
+    // Re-opening an existing encrypted 7z archive as part of an update
+    // requires the open callback to already know the password; otherwise
+    // 7-Zip prompts the user again (once here, once inside
+    // SZUpdateCallbackUI::CryptoGetTextPassword2). Propagate the write
+    // password so the open phase is silent.
+    if (callbackUI.PasswordIsDefined) {
+        openCallbackUI.PasswordIsDefined = true;
+        openCallbackUI.Password = callbackUI.Password;
+    }
     CUpdateErrorInfo errorInfo;
     CObjectVector<COpenType> types;
 
