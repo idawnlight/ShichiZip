@@ -639,10 +639,23 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
     }
 
     private func cachedIcon(for item: BrowserItem) -> NSImage {
-        let key: String = if item.isDirectory {
-            "__dir__"
+        // Bundle-style directories (.app, .bundle, .pkg, framework…)
+        // each ship their own icon via NSWorkspace.icon(forFile:). They
+        // must not share the generic "__dir__" cache slot, or the first
+        // bundle's icon would be overwritten by a plain folder icon and
+        // vice versa. Identify them via the URL resource key rather
+        // than a hard-coded extension allow-list.
+        let isPackage: Bool = (try? item.url.resourceValues(forKeys: [.isPackageKey]).isPackage) ?? false
+        let key: String
+        if isPackage {
+            // Per-path key: bundles are rare enough in the delete-temp
+            // window that the extra cache entries are negligible, and
+            // anything rarer than that falls through to a new entry.
+            key = "pkg:" + item.url.path
+        } else if item.isDirectory {
+            key = "__dir__"
         } else {
-            "ext:" + item.url.pathExtension.lowercased()
+            key = "ext:" + item.url.pathExtension.lowercased()
         }
         if let cached = iconCacheByExtension[key] {
             return cached
