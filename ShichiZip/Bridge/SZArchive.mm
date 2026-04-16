@@ -2987,7 +2987,7 @@ static bool SZParseVolumeSizes(const UString& text,
 
     class HashCB : public IHashCallbackUI {
     public:
-        __unsafe_unretained SZOperationSession* session;
+        __weak SZOperationSession* session;
         NSMutableDictionary* results;
         UString failureDescription;
         UString failureReason;

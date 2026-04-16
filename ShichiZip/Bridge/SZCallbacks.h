@@ -48,7 +48,7 @@ public:
     UInt64 TotalValue;
     bool HasTotalValue;
     bool UsesBytesProgress;
-    __unsafe_unretained SZOperationSession* Session;
+    __weak SZOperationSession* Session;
 
     SZOpenCallbackUI();
 
@@ -83,7 +83,7 @@ public:
     bool PasswordWasAsked;
     UInt64 TotalSize;
     SZOverwriteMode OverwriteMode;
-    __unsafe_unretained SZOperationSession* Session;
+    __weak SZOperationSession* Session;
     UInt32 NumErrors;
     UInt32 NumFilesCompleted;
     bool PasswordWasWrong;
@@ -135,7 +135,7 @@ public:
     UString Password;
     bool PasswordIsDefined;
     UInt64 TotalSize;
-    __unsafe_unretained SZOperationSession* Session;
+    __weak SZOperationSession* Session;
 
     SZUpdateCallbackUI()
         : PasswordIsDefined(false)
@@ -200,7 +200,7 @@ public:
     bool UsesBytesProgress;
     UInt64 NumFilesCompleted;
     bool ArchiveWasReplaced;
-    __unsafe_unretained SZOperationSession* Session;
+    __weak SZOperationSession* Session;
     UString ArchivePath;
     UString LastErrorMessage;
 
