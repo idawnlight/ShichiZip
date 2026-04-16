@@ -1269,7 +1269,12 @@ static HRESULT SZOpenAgentFolder(NSString* archivePath, NSString* openType,
     CAgent*& agentSpecOut,
     CMyComPtr<IFolderFolder>& folderOut) {
     CAgent* agentSpec = new CAgent();
-    agentOut = agentSpec;
+    // Attach() transfers ownership of the freshly-new'd CAgent into the
+    // CMyComPtr without bumping its refcount. Using operator= (i.e.
+    // `agentOut = agentSpec;`) would call AddRef, leaving the object at
+    // refcount 2 and leaking the agent — Release in the smart pointer
+    // destructor only drops it back to 1.
+    agentOut.Attach(agentSpec);
     agentSpecOut = agentSpec;
 
     UString openTypeText = openType.length > 0 ? ToU(openType) : UString();
