@@ -2495,8 +2495,25 @@ SZCompressionEncryptionProperty(SZCompressionSettings* settings) {
         return UString();
     }
 
-    if (settings.format == SZArchiveFormatZip && settings.encryption == SZEncryptionMethodAES256) {
-        return UString(L"AES256");
+    if (settings.format == SZArchiveFormatZip) {
+        // Always emit an explicit em= value for zip so the user's choice
+        // is honoured verbatim. Silently falling back to ZipCrypto when
+        // the caller asked for "none" or AES256 not available is a
+        // security footgun: ZipCrypto is cryptographically broken and
+        // must never be the result of an unlabelled default.
+        switch (settings.encryption) {
+        case SZEncryptionMethodAES256:
+            return UString(L"AES256");
+        case SZEncryptionMethodZipCrypto:
+            return UString(L"ZipCrypto");
+        case SZEncryptionMethodNone:
+            // No explicit algorithm was chosen. 7-Zip's implicit default
+            // for zip is ZipCrypto, which is unsafe; force the caller to
+            // opt in explicitly by surfacing this to the compression
+            // code as "no em= property" and let that path reject the
+            // combination upstream.
+            return UString();
+        }
     }
 
     return UString();
@@ -2756,6 +2773,23 @@ static bool SZParseVolumeSizes(const UString& text,
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeUnsupportedFormat,
                 @"Unsupported format");
+        return NO;
+    }
+
+    // Zip-specific safety: 7-Zip's implicit default encryption for
+    // password-protected zip archives is ZipCrypto, which is
+    // cryptographically broken. Require the caller to commit to an
+    // explicit algorithm so an unlabelled "encrypt with this password"
+    // request cannot silently produce a ZipCrypto archive.
+    if (s.format == SZArchiveFormatZip
+        && s.password.length > 0
+        && s.encryption == SZEncryptionMethodNone) {
+        if (error) {
+            *error = SZMakeError(E_INVALIDARG,
+                @"A password was supplied but no zip encryption method was "
+                @"selected. Choose AES-256 (recommended) or ZipCrypto "
+                @"explicitly before creating the archive.");
+        }
         return NO;
     }
 
