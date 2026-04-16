@@ -516,10 +516,15 @@ lib-zs:
 # idempotent on already-applied patches, so this is safe). Before
 # this, prepare-7zip was a pure .PHONY target that re-ran git apply
 # on every build and was race-prone under parallel recursive makes.
-PATCH_STAMP = $(SEVENZ_ROOT)/.shichizip-patched
+# Stamp file lives in build/, NOT inside the submodule working tree,
+# so neither `git -C vendor/7zip status` nor CI clean-tree assertions
+# see it as dirty. (A root .gitignore entry cannot exclude it from the
+# inner submodule's own git view.)
+PATCH_STAMP = build/.shichizip-patched-$(notdir $(SEVENZ_ROOT))
 PATCH_SRC_FILES = $(wildcard vendor/$(notdir $(SEVENZ_ROOT))-*.patch) vendor/apply_7zip_patches.sh
 
 $(PATCH_STAMP): $(PATCH_SRC_FILES)
+	@mkdir -p $(dir $@)
 	@sh vendor/apply_7zip_patches.sh $(SEVENZ_ROOT)
 	@touch $@
 

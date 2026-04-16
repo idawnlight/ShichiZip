@@ -48,7 +48,8 @@ CFLAGS_COMMON = -Oz -DNDEBUG -D_REENTRANT -DUNICODE -D_UNICODE \
 	-Wno-missing-field-initializers \
 	-Wno-sign-compare \
 	-fno-rtti \
-	-ffunction-sections -fdata-sections
+	-ffunction-sections -fdata-sections \
+	-MMD -MP
 
 SEVENZ_INCLUDE = -I$(SEVENZ_ROOT)
 
@@ -285,10 +286,14 @@ all: $(SFX_BIN)
 # building only the SFX module (e.g. `make -f Makefile.sfx sfx-zs`) still
 # runs the vendor patch script. Without this, running Makefile.sfx in
 # isolation silently compiled from unpatched sources.
-PATCH_STAMP = $(SEVENZ_ROOT)/.shichizip-patched
+# Stamp lives in build/ (not inside the submodule) so it never appears
+# in `git -C vendor/7zip status`. Shared naming convention with the
+# top-level Makefile so both makefiles target the same stamp.
+PATCH_STAMP = build/.shichizip-patched-$(notdir $(SEVENZ_ROOT))
 PATCH_SRC_FILES = $(wildcard vendor/$(notdir $(SEVENZ_ROOT))-*.patch) vendor/apply_7zip_patches.sh
 
 $(PATCH_STAMP): $(PATCH_SRC_FILES)
+	@mkdir -p $(dir $@)
 	@sh vendor/apply_7zip_patches.sh $(SEVENZ_ROOT)
 	@touch $@
 
@@ -318,6 +323,13 @@ $(RC_OBJ): $(RC_SRC)
 
 clean:
 	rm -rf build/sfx-obj build/sfx
+
+# Pull in auto-generated header dependency files (one per .o produced
+# by the -MMD -MP flags above). The dash prefix silently skips missing
+# files, which is expected on the first build. Exclude the resource
+# object (.res) because zig rc does not emit makefile-format deps and
+# the .res file is binary; accidentally -include'ing it breaks make.
+-include $(C_OBJS:.o=.d) $(CPP_OBJS:.o=.d)
 
 info:
 	@echo "Variant: $(SFX_VARIANT)"
