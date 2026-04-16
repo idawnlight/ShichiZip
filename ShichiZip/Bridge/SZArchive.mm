@@ -3,6 +3,7 @@
 #include "SZBridgeCommon.h"
 #include "SZCallbacks.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -1046,7 +1047,7 @@ static UInt32 SZCompressionEstimateAutoThreads(SZCompressionSettings* settings,
 // ============================================================
 
 @interface SZArchive () {
-    CArchiveLink* _arcLink;
+    std::unique_ptr<CArchiveLink> _arcLink;
     BOOL _isOpen;
     NSString* _archivePath;
     NSString* _openType;
@@ -1448,7 +1449,7 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 
 - (instancetype)init {
     if ((self = [super init])) {
-        _arcLink = new CArchiveLink;
+        _arcLink.reset(new CArchiveLink);
         _isOpen = NO;
         _cachedPasswordIsDefined = NO;
     }
@@ -1456,9 +1457,23 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 }
 
 - (void)dealloc {
-    [self close];
-    delete _arcLink;
-    _arcLink = nullptr;
+    // Ensure the 7-Zip link tears down any retained COM objects before
+    // unique_ptr fires. Wrapping in try/catch keeps a throwing Close()
+    // (e.g. inside upstream CArc teardown) from propagating into the
+    // ObjC runtime, which would otherwise abort the process.
+    @try {
+        [self close];
+    } @catch (NSException* exception) {
+        NSLog(@"[ShichiZip] SZArchive dealloc caught ObjC exception during close: %@", exception);
+    }
+    try {
+        if (_arcLink) {
+            _arcLink->Close();
+        }
+    } catch (...) {
+        NSLog(@"[ShichiZip] SZArchive dealloc caught C++ exception during CArchiveLink::Close");
+    }
+    // unique_ptr destruction runs here.
 }
 
 + (NSString*)sevenZipVersionString {
