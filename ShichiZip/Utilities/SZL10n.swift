@@ -19,16 +19,29 @@ import Foundation
 /// let title = SZL10n.string("extract.title")   // "Extract"
 /// let label = SZL10n.string("app.extract.moveToTrash")
 /// ```
-@MainActor
 enum SZL10n {
-    /// The bundle used for string lookups.  Points at the chosen
+    /// The bundle used for string lookups. Points at the chosen
     /// `.lproj` inside `Resources/Localization` when an override
     /// is active, otherwise falls back to `.main`.
-    private(set) static var bundle: Bundle = makeBundle()
+    ///
+    /// Access is guarded by `bundleLock` so lookups remain safe when
+    /// called from background queues (e.g. error-message construction
+    /// in FileManagerArchiveItemWorkflowService, or bridge callbacks).
+    nonisolated(unsafe) private static var _bundle: Bundle = makeBundle()
+    nonisolated(unsafe) private static let bundleLock = NSLock()
+
+    static var bundle: Bundle {
+        bundleLock.lock()
+        defer { bundleLock.unlock() }
+        return _bundle
+    }
 
     /// Reload the bundle after the language preference changes.
     static func reloadBundle() {
-        bundle = makeBundle()
+        let newBundle = makeBundle()
+        bundleLock.lock()
+        _bundle = newBundle
+        bundleLock.unlock()
     }
 
     /// Look up a localized string.  Checks `App.strings` first,
@@ -39,8 +52,8 @@ enum SZL10n {
     /// first, then `.main` is consulted as a fallback so that keys
     /// only present in `en.lproj` (e.g. app-specific strings) still
     /// resolve.
-    nonisolated static func string(_ key: String) -> String {
-        let b = MainActor.assumeIsolated { bundle }
+    static func string(_ key: String) -> String {
+        let b = bundle
         if let found = lookup(key, in: b) {
             return found
         }
@@ -52,12 +65,12 @@ enum SZL10n {
     }
 
     /// Look up a localized string with format arguments.
-    nonisolated static func string(_ key: String, _ args: any CVarArg...) -> String {
+    static func string(_ key: String, _ args: any CVarArg...) -> String {
         String(format: string(key), arguments: args)
     }
 
     /// Search a single bundle's App then Upstream tables.
-    private nonisolated static func lookup(_ key: String, in b: Bundle) -> String? {
+    private static func lookup(_ key: String, in b: Bundle) -> String? {
         let appValue = b.localizedString(forKey: key, value: nil, table: "App")
         if appValue != key { return appValue }
         let upstreamValue = b.localizedString(forKey: key, value: nil, table: "Upstream")
