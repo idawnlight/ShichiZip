@@ -184,26 +184,44 @@ CCodecs* _Nullable SZGetCodecs(void);
 // ============================================================
 // String conversion: UString <-> NSString
 // ============================================================
+//
+// UString on non-Windows stores wchar_t elements, which are 32-bit on
+// macOS and are treated as Unicode codepoints. NSString internally
+// stores UTF-16 code units. A naive loop that casts each `unichar` to
+// `wchar_t` corrupts any non-BMP codepoint: the surrogate pair in the
+// NSString becomes two isolated surrogate codepoints in the UString,
+// which later serialize to invalid UTF-8 (emoji, CJK Ext B, etc.).
+// The reverse `wchar_t -> unichar` cast truncates anything >= U+10000
+// to a lone surrogate.
+//
+// Round-trip through NSUTF32LittleEndianStringEncoding so surrogate
+// pairs collapse to one codepoint in the UString, and codepoints >=
+// U+10000 expand back into proper surrogate pairs in the NSString.
 
 static inline UString ToU(NSString* _Nullable s) {
-    if (!s)
+    if (!s || s.length == 0)
         return UString();
-    NSUInteger len = [s length];
+    NSData* data = [s dataUsingEncoding:NSUTF32LittleEndianStringEncoding];
+    if (!data || data.length == 0)
+        return UString();
+    const NSUInteger count = data.length / sizeof(wchar_t);
+    const wchar_t* codepoints = (const wchar_t*)data.bytes;
     UString u;
-    u.Empty();
-    for (NSUInteger i = 0; i < len; i++) {
-        u += (wchar_t)[s characterAtIndex:i];
+    for (NSUInteger i = 0; i < count; i++) {
+        u += codepoints[i];
     }
     return u;
 }
 
 static inline NSString* ToNS(const UString& u) {
-    NSMutableString* s = [NSMutableString stringWithCapacity:u.Len()];
-    for (unsigned i = 0; i < u.Len(); i++) {
-        unichar ch = (unichar)u[i];
-        [s appendString:[NSString stringWithCharacters:&ch length:1]];
-    }
-    return s;
+    const unsigned len = u.Len();
+    if (len == 0)
+        return @"";
+    NSData* data = [NSData dataWithBytes:u.Ptr()
+                                  length:(NSUInteger)len * sizeof(wchar_t)];
+    NSString* result = [[NSString alloc] initWithData:data
+                                             encoding:NSUTF32LittleEndianStringEncoding];
+    return result ?: @"";
 }
 
 // ============================================================
