@@ -502,11 +502,11 @@ lib: $(LIB)
 
 lib-mainline:
 	@$(MAKE) SEVENZ_VARIANT=mainline lib
-	@$(MAKE) -f Makefile.sfx SFX_VARIANT=mainline -j8
+	+@$(MAKE) -f Makefile.sfx SFX_VARIANT=mainline
 
 lib-zs:
 	@$(MAKE) SEVENZ_VARIANT=zs lib
-	@$(MAKE) -f Makefile.sfx SFX_VARIANT=zs -j8
+	+@$(MAKE) -f Makefile.sfx SFX_VARIANT=zs
 
 prepare-7zip:
 	@sh vendor/apply_7zip_patches.sh $(SEVENZ_ROOT)
@@ -569,10 +569,10 @@ clean:
 .PHONY: sfx sfx-mainline sfx-zs sfx-clean
 
 sfx-mainline:
-	@$(MAKE) -f Makefile.sfx SFX_VARIANT=mainline -j8
+	+@$(MAKE) -f Makefile.sfx SFX_VARIANT=mainline
 
 sfx-zs:
-	@$(MAKE) -f Makefile.sfx SFX_VARIANT=zs -j8
+	+@$(MAKE) -f Makefile.sfx SFX_VARIANT=zs
 
 sfx: sfx-mainline sfx-zs
 
