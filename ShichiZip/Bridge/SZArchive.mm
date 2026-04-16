@@ -1454,7 +1454,7 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 
 - (instancetype)init {
     if ((self = [super init])) {
-        _arcLink.reset(new CArchiveLink);
+        _arcLink = std::make_unique<CArchiveLink>();
         _isOpen = NO;
         _cachedPasswordIsDefined = NO;
     }
