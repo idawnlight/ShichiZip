@@ -88,56 +88,36 @@ class ShichiZipUITestCase: XCTestCase {
     // MARK: - Archive Creation
 
     /// Creates a test archive from the given source file names that already
-    /// exist in `directory`.  Paths inside the archive are relative to
-    /// `directory`.  Uses the 7z CLI when available, otherwise falls back
-    /// to a ditto-produced .zip.
+    /// exist in `directory`. Paths inside the archive are relative to
+    /// `directory`. Always produces a `.zip` through the macOS-shipped
+    /// `/usr/bin/zip`, so fixtures are reproducible regardless of which
+    /// third-party 7z binary the developer has in their PATH and never
+    /// silently fall back to a different archive format.
     ///
     /// Returns the URL of the created archive.
     func createTestArchive(named name: String,
                            sourceFileNames: [String],
                            in directory: URL) throws -> URL
     {
-        if FileManager.default.fileExists(atPath: "/usr/local/bin/7z") {
-            let archiveURL = directory.appendingPathComponent("\(name).7z")
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/local/bin/7z")
-            process.arguments = ["a", archiveURL.path] + sourceFileNames
-            process.currentDirectoryURL = directory
-            process.standardOutput = FileHandle.nullDevice
-            process.standardError = FileHandle.nullDevice
-            try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else {
-                throw NSError(domain: "ShichiZipUITests", code: 1,
-                              userInfo: [NSLocalizedDescriptionKey: "7z archive creation failed"])
-            }
-            return archiveURL
-        } else {
-            // ditto archives a directory tree, so stage the files first.
-            let stageDir = directory.appendingPathComponent("__stage__", isDirectory: true)
-            try FileManager.default.createDirectory(at: stageDir, withIntermediateDirectories: true)
-            for fileName in sourceFileNames {
-                try FileManager.default.copyItem(
-                    at: directory.appendingPathComponent(fileName),
-                    to: stageDir.appendingPathComponent(fileName),
-                )
-            }
-
-            let archiveURL = directory.appendingPathComponent("\(name).zip")
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
-            process.arguments = ["-c", "-k", "--sequesterRsrc", stageDir.path, archiveURL.path]
-            process.standardOutput = FileHandle.nullDevice
-            process.standardError = FileHandle.nullDevice
-            try process.run()
-            process.waitUntilExit()
-            try FileManager.default.removeItem(at: stageDir)
-            guard process.terminationStatus == 0 else {
-                throw NSError(domain: "ShichiZipUITests", code: 1,
-                              userInfo: [NSLocalizedDescriptionKey: "zip archive creation failed"])
-            }
-            return archiveURL
+        let archiveURL = directory.appendingPathComponent("\(name).zip")
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+        // -q: quiet
+        // -X: omit platform-specific extra attributes so the archive is
+        //     byte-reproducible across machines.
+        // --: terminate options before file-name list.
+        process.arguments = ["-q", "-X", archiveURL.path, "--"] + sourceFileNames
+        process.currentDirectoryURL = directory
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            throw NSError(domain: "ShichiZipUITests", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey:
+                                     "/usr/bin/zip failed (status \(process.terminationStatus))"])
         }
+        return archiveURL
     }
 
     /// Convenience: creates a temp directory, writes the given payload
