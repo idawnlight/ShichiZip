@@ -1955,6 +1955,12 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     ia.reserve(indices.count);
     for (NSNumber* n in indices)
         ia.push_back([n unsignedIntValue]);
+    if (ia.size() > (size_t)UINT32_MAX) {
+        if (error)
+            *error = SZMakeError(E_INVALIDARG,
+                @"Too many entries selected for extraction (limit 4294967295).");
+        return NO;
+    }
     HRESULT r = archive->Extract(ia.data(), (UInt32)ia.size(), 0, ec);
     [self updateCachedPasswordFromExtractCallback:faeSpec result:r];
     return CheckExtractResult(faeSpec, r, error);
@@ -2199,6 +2205,13 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
         return NO;
     }
 
+    if (indices.size() > (size_t)UINT32_MAX) {
+        if (error) {
+            *error = SZMakeError(E_INVALIDARG,
+                @"Too many items selected for deletion (limit 4294967295).");
+        }
+        return NO;
+    }
     result = folderOperations->Delete(indices.data(), (UInt32)indices.size(),
         updateCallback);
 
@@ -2311,6 +2324,14 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
         return NO;
     }
 
+    if (pathPointers.size() > (size_t)UINT32_MAX) {
+        if (error) {
+            *error = SZMakeError(E_INVALIDARG,
+                @"Too many items to add to the archive in a single operation "
+                @"(limit 4294967295).");
+        }
+        return NO;
+    }
     result = folderOperations->CopyFrom(
         moveMode ? 1 : 0, ToU(folderPrefix ?: @"").Ptr(), pathPointers.data(),
         (UInt32)pathPointers.size(), updateCallback);
