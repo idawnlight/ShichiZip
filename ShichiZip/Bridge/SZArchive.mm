@@ -81,34 +81,50 @@ static NSData* SZQuarantineDataForArchivePath(NSString* archivePath) {
         return nil;
     }
 
+    const char* fsPath = archivePath.fileSystemRepresentation;
+    if (!fsPath) {
+        return nil;
+    }
+
     static NSString* const quarantineAttributeName = @"com.apple.quarantine";
-    const ssize_t size = archivePath.fileSystemRepresentation
-        ? quarantineAttributeName.fileSystemRepresentation
-            ? getxattr(archivePath.fileSystemRepresentation,
-                  quarantineAttributeName.fileSystemRepresentation,
-                  nil,
-                  0,
-                  0,
-                  XATTR_NOFOLLOW)
-            : -1
-        : -1;
-
-    if (size < 0) {
+    const char* attrName = quarantineAttributeName.fileSystemRepresentation;
+    if (!attrName) {
         return nil;
     }
 
-    NSMutableData* data = [NSMutableData dataWithLength:(NSUInteger)size];
-    const ssize_t result = getxattr(archivePath.fileSystemRepresentation,
-        quarantineAttributeName.fileSystemRepresentation,
-        data.mutableBytes,
-        data.length,
-        0,
-        XATTR_NOFOLLOW);
-    if (result < 0) {
+    // Avoid the classic "sizing call followed by real read" TOCTOU:
+    // another process touching the quarantine xattr between the two
+    // calls caused the real read to return ERANGE, which would silently
+    // drop Gatekeeper provenance for every file extracted from this
+    // archive. Read into a generous fixed buffer first (the quarantine
+    // string is < 256 bytes in practice), and only fall back to a
+    // sized retry loop when the buffer is genuinely too small.
+    char stackBuffer[1024];
+    ssize_t read = getxattr(fsPath, attrName, stackBuffer, sizeof(stackBuffer), 0, XATTR_NOFOLLOW);
+    if (read >= 0) {
+        return [NSData dataWithBytes:stackBuffer length:(NSUInteger)read];
+    }
+    if (errno != ERANGE) {
         return nil;
     }
 
-    return data;
+    // Very rare path: grow the buffer with a bounded retry loop.
+    for (int attempt = 0; attempt < 4; attempt++) {
+        const ssize_t probed = getxattr(fsPath, attrName, NULL, 0, 0, XATTR_NOFOLLOW);
+        if (probed < 0) {
+            return nil;
+        }
+        NSMutableData* data = [NSMutableData dataWithLength:(NSUInteger)probed];
+        read = getxattr(fsPath, attrName, data.mutableBytes, data.length, 0, XATTR_NOFOLLOW);
+        if (read >= 0) {
+            data.length = (NSUInteger)read;
+            return data;
+        }
+        if (errno != ERANGE) {
+            return nil;
+        }
+    }
+    return nil;
 }
 
 @implementation SZArchiveEntry
