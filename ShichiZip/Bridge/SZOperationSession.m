@@ -1,5 +1,7 @@
 #import "SZOperationSession.h"
 
+#import <QuartzCore/QuartzCore.h>
+
 #import "SZArchive.h"
 
 static inline void SZDispatchAsyncOnMain(dispatch_block_t block) {
@@ -180,8 +182,13 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
         // Coalesce live updates so 7-Zip's per-frame SetCompleted does
         // not swamp the main queue. Always deliver the terminal value
         // (>=1.0) and the first report; otherwise gate to ~50 ms.
-        const CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
-        const CFAbsoluteTime kMinInterval = 0.05;
+        // Use CACurrentMediaTime (monotonic) rather than
+        // CFAbsoluteTimeGetCurrent: wall-clock time can jump backwards
+        // on NTP correction or manual clock change, which would make
+        // (now - _last) negative and throttle every subsequent report
+        // until real time caught up.
+        const CFTimeInterval now = CACurrentMediaTime();
+        const CFTimeInterval kMinInterval = 0.05;
         shouldDispatch = (clamped >= 1.0)
             || (_lastProgressDispatchTime == 0)
             || (now - _lastProgressDispatchTime >= kMinInterval);
@@ -221,8 +228,8 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     @synchronized(self) {
         _bytesCompleted = completed;
         _bytesTotal = total;
-        const CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
-        const CFAbsoluteTime kMinInterval = 0.05;
+        const CFTimeInterval now = CACurrentMediaTime();
+        const CFTimeInterval kMinInterval = 0.05;
         shouldDispatch = (total > 0 && completed >= total)
             || (_lastBytesDispatchTime == 0)
             || (now - _lastBytesDispatchTime >= kMinInterval);
