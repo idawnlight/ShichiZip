@@ -5,11 +5,23 @@ import XCTest
 final class QuickActionTransportTests: XCTestCase {
     override func setUp() {
         super.setUp()
-        setenv("SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL", "1", 1)
+        // Avoid the process-global `setenv` that used to live here:
+        // xcodebuild can run test targets in parallel worker
+        // processes, and while each worker has its own environment
+        // block, within a single worker an unrelated test class
+        // reading SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL would
+        // observe state leaked from this setUp. Use the static
+        // Swift-side override which is scoped to the current process
+        // but is a plain property write instead of a POSIX call.
+        MainActor.assumeIsolated {
+            AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = false
+        }
     }
 
     override func tearDown() {
-        unsetenv("SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL")
+        MainActor.assumeIsolated {
+            AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = nil
+        }
         super.tearDown()
     }
 

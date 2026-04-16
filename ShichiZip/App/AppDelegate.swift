@@ -26,6 +26,12 @@ enum ArchiveExtractionPostProcessor {
 class AppDelegate: NSObject, NSApplicationDelegate {
     private static let disableSmartQuickExtractRevealEnvironmentKey = "SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL"
 
+    /// Test-only override for `shouldRevealSmartQuickExtractDestination`.
+    /// When set to a non-nil value, it takes precedence over the
+    /// environment-variable probe. Tests use this to avoid racing
+    /// parallel test targets through the process-global environment.
+    static var testingShouldRevealSmartQuickExtractDestinationOverride: Bool?
+
     private struct SmartQuickExtractPlan {
         let destinationURL: URL
         let pathPrefixToStrip: String?
@@ -33,6 +39,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static var shouldRevealSmartQuickExtractDestination: Bool {
+        if let override = testingShouldRevealSmartQuickExtractDestinationOverride {
+            return override
+        }
+
         guard let value = getenv(disableSmartQuickExtractRevealEnvironmentKey) else {
             return true
         }
