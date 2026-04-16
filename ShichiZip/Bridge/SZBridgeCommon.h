@@ -113,21 +113,26 @@ static inline NSString* SZLocalizedString(NSString* key) {
         NSString* lpath = [bundle pathForResource:override ofType:@"lproj"];
         if (lpath) {
             NSBundle* overrideBundle = [NSBundle bundleWithPath:lpath];
-            if (overrideBundle) bundle = overrideBundle;
+            if (overrideBundle)
+                bundle = overrideBundle;
         }
     }
     // App table first
     NSString* appValue = [bundle localizedStringForKey:key value:nil table:@"App"];
-    if (![appValue isEqualToString:key]) return appValue;
+    if (![appValue isEqualToString:key])
+        return appValue;
     // Upstream table
     NSString* upstreamValue = [bundle localizedStringForKey:key value:nil table:@"Upstream"];
-    if (![upstreamValue isEqualToString:key]) return upstreamValue;
+    if (![upstreamValue isEqualToString:key])
+        return upstreamValue;
     // Fallback to main bundle if override was active
     if (bundle != [NSBundle mainBundle]) {
         appValue = [[NSBundle mainBundle] localizedStringForKey:key value:nil table:@"App"];
-        if (![appValue isEqualToString:key]) return appValue;
+        if (![appValue isEqualToString:key])
+            return appValue;
         upstreamValue = [[NSBundle mainBundle] localizedStringForKey:key value:nil table:@"Upstream"];
-        if (![upstreamValue isEqualToString:key]) return upstreamValue;
+        if (![upstreamValue isEqualToString:key])
+            return upstreamValue;
     }
     return key;
 }

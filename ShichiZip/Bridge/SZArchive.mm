@@ -3174,8 +3174,7 @@ static bool SZParseVolumeSizes(const UString& text,
                 const CHasherState& h = hb.Hashers[i];
                 char hex[256];
                 HashHexToString(hex, h.Digests[0], h.DigestSize);
-                results[NSFromCString(h.Name.Ptr())] =
-                    NSFromCString(hex);
+                results[NSFromCString(h.Name.Ptr())] = NSFromCString(hex);
             }
             return S_OK;
         }
