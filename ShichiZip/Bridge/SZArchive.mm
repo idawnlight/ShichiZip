@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#import <os/log.h>
+
 #ifdef __APPLE__
 #include <sys/xattr.h>
 #ifndef XATTR_NOFOLLOW
@@ -1504,7 +1506,16 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     @try {
         [self close];
     } @catch (NSException* exception) {
+#if DEBUG
         NSLog(@"[ShichiZip] SZArchive dealloc caught ObjC exception during close: %@", exception);
+#else
+        // NSException.reason often contains archive paths or entry
+        // names; redact via os_log %{private}s so Release builds
+        // never leak filenames into the unified log stream.
+        os_log_error(OS_LOG_DEFAULT,
+            "[ShichiZip] SZArchive dealloc caught ObjC exception during close: %{private}s",
+            exception.description.UTF8String ?: "");
+#endif
     }
     try {
         if (_arcLink) {

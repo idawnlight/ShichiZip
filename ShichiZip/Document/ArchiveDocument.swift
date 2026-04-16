@@ -1,4 +1,5 @@
 import Cocoa
+import os.log
 
 /// Launch Services integration shim.
 /// Windows 7-Zip opens archives through the file-manager panel, so this document
@@ -56,7 +57,14 @@ class ArchiveDocument: NSDocument {
     }
 
     override func read(from url: URL, ofType _: String) throws {
+        #if DEBUG
         NSLog("[ShichiZip] Opening via document: %@ — will redirect to File Manager", url.path)
+        #else
+        // url.path is user data; keep it out of the unified log stream
+        // in Release builds.
+        os_log(.info, "[ShichiZip] Opening via document: %{private}s — will redirect to File Manager",
+               url.path)
+        #endif
         // Actual archive parsing happens when the file manager enters the archive.
     }
 }

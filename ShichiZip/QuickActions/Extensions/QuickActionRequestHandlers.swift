@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import os.log
 import UniformTypeIdentifiers
 
 class ShichiZipQuickActionRequestHandler: NSObject, NSExtensionRequestHandling {
@@ -13,7 +14,17 @@ class ShichiZipQuickActionRequestHandler: NSObject, NSExtensionRequestHandling {
     }
 
     private class func log(_ message: String) {
+        // Quick-action log messages frequently interpolate file paths
+        // and URLs (see the "resolved fileURLs=…" and "workspace open
+        // … url=" call sites). Keep those out of the unified log stream
+        // in Release; retain NSLog in Debug where the verbosity is
+        // useful and developers already see user paths in Xcode.
+        #if DEBUG
         NSLog("[QuickAction:%@] %@", quickAction.rawValue, message)
+        #else
+        os_log(.info, "[QuickAction:%{public}s] %{private}s",
+               quickAction.rawValue, message)
+        #endif
     }
 
     func beginRequest(with context: NSExtensionContext) {
