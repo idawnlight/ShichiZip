@@ -3855,8 +3855,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     {
         let sourceAttributes = try? fileManager.attributesOfItem(atPath: sourceURL.path)
         let destinationAttributes = try? fileManager.attributesOfItem(atPath: destinationURL.path)
-        let sourceSize = (sourceAttributes?[.size] as? UInt64) ?? 0
-        let destinationSize = (destinationAttributes?[.size] as? UInt64) ?? 0
+        // `attributesOfItem` stores file sizes as `NSNumber` (wrapping an off_t).
+        // Casting directly to UInt64 via `as?` fails because NSNumber does not
+        // bridge straight to UInt64, so the prompt always reported 0 bytes for
+        // both source and destination. Go through NSNumber explicitly.
+        let sourceSize = (sourceAttributes?[.size] as? NSNumber)?.uint64Value ?? 0
+        let destinationSize = (destinationAttributes?[.size] as? NSNumber)?.uint64Value ?? 0
         let sourceDate = sourceAttributes?[.modificationDate] as? Date
         let destinationDate = destinationAttributes?[.modificationDate] as? Date
         let dateFormatter = FileManagerViewPreferences.makeDateFormatter(dateStyle: .medium,
