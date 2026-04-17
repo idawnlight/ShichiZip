@@ -164,7 +164,7 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 @end
 
 /// Progress callback delegate
-NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate <NSObject>
+NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 - (void)progressDidUpdate:(double)fraction;
 - (void)progressDidUpdateFileName:(NSString*)fileName;
 - (void)progressDidUpdateBytesCompleted:(uint64_t)completed

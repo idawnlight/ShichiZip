@@ -6,19 +6,18 @@
 #include "CPP/Common/UTFConvert.h"
 #undef BOOL
 
-bool ShichiZip_DetectLegacyEncodingAndConvertToUnicode(UString &dest, const AString &src)
-{
+bool ShichiZip_DetectLegacyEncodingAndConvertToUnicode(UString& dest, const AString& src) {
     @autoreleasepool {
         if (src.IsEmpty()) {
             return false;
         }
 
-        NSData *data = [NSData dataWithBytes:src.Ptr() length:(NSUInteger)src.Len()];
+        NSData* data = [NSData dataWithBytes:src.Ptr() length:(NSUInteger)src.Len()];
         if (data.length == 0) {
             return false;
         }
 
-        NSArray<NSNumber *> *suggestedEncodings = @[
+        NSArray<NSNumber*>* suggestedEncodings = @[
             @(NSUTF8StringEncoding),
             @(CFStringConvertEncodingToNSStringEncoding(kCFStringEncodingGB_18030_2000)),
             @(CFStringConvertEncodingToNSStringEncoding(kCFStringEncodingGBK_95)),
@@ -31,18 +30,18 @@ bool ShichiZip_DetectLegacyEncodingAndConvertToUnicode(UString &dest, const AStr
             @(NSWindowsCP1252StringEncoding),
         ];
 
-        NSDictionary<NSStringEncodingDetectionOptionsKey, id> *options = @{
-            NSStringEncodingDetectionSuggestedEncodingsKey: suggestedEncodings,
-            NSStringEncodingDetectionUseOnlySuggestedEncodingsKey: @YES,
-            NSStringEncodingDetectionAllowLossyKey: @NO,
+        NSDictionary<NSStringEncodingDetectionOptionsKey, id>* options = @{
+            NSStringEncodingDetectionSuggestedEncodingsKey : suggestedEncodings,
+            NSStringEncodingDetectionUseOnlySuggestedEncodingsKey : @YES,
+            NSStringEncodingDetectionAllowLossyKey : @NO,
         };
 
-        NSString *converted = nil;
+        NSString* converted = nil;
         BOOL usedLossyConversion = NO;
         NSStringEncoding encoding = [NSString stringEncodingForData:data
-                                                   encodingOptions:options
-                                                   convertedString:&converted
-                                               usedLossyConversion:&usedLossyConversion];
+                                                    encodingOptions:options
+                                                    convertedString:&converted
+                                                usedLossyConversion:&usedLossyConversion];
 
         if (!converted || usedLossyConversion) {
             return false;
@@ -56,7 +55,7 @@ bool ShichiZip_DetectLegacyEncodingAndConvertToUnicode(UString &dest, const AStr
             return false;
         }
 
-        const char *utf8 = [converted UTF8String];
+        const char* utf8 = [converted UTF8String];
         if (!utf8) {
             return false;
         }

@@ -2,7 +2,7 @@ import Foundation
 @testable import ShichiZip
 import XCTest
 
-// AppDelegate is @MainActor; keep the test class there too.
+/// AppDelegate is @MainActor; keep the test class there too.
 @MainActor
 final class QuickActionTransportTests: XCTestCase {
     override func setUp() {
