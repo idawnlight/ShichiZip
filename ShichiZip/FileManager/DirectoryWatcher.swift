@@ -26,8 +26,8 @@ final class DirectoryWatcher {
         callbackContext = context
 
         var streamContext = FSEventStreamContext()
-        // Give the stream an owned context so queued callbacks stay safe during teardown.
-        streamContext.info = Unmanaged.passRetained(context).toOpaque()
+        // Let the stream manage the context lifetime via its retain/release callbacks.
+        streamContext.info = Unmanaged.passUnretained(context).toOpaque()
         streamContext.retain = { info in
             guard let info else { return nil }
             _ = Unmanaged<CallbackContext>.fromOpaque(info).retain()
