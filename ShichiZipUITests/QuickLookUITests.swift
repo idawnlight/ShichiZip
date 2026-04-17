@@ -31,12 +31,7 @@ final class QuickLookUITests: ShichiZipUITestCase {
                                                            object: app.windows)
         let panelAppeared = XCTWaiter().wait(for: [windowsExpectation], timeout: 5) == .completed
 
-        // The whole point of this test is to verify that Space opens Quick
-        // Look. Previously the assertion was omitted entirely and only
-        // `app.state == .runningForeground` was checked, meaning the test
-        // passed even when Quick Look never appeared (i.e. the shortcut
-        // regressed). Require the panel to appear; if it didn't, fail
-        // loudly with a description rather than silently proceeding.
+        // Require the preview panel to appear; app.runningForeground alone is not enough.
         XCTAssertTrue(panelAppeared,
                       "Quick Look panel did not appear after Space on preview.txt")
 

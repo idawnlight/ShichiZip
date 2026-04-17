@@ -95,13 +95,7 @@ static NSData* SZQuarantineDataForArchivePath(NSString* archivePath) {
         return nil;
     }
 
-    // Avoid the classic "sizing call followed by real read" TOCTOU:
-    // another process touching the quarantine xattr between the two
-    // calls caused the real read to return ERANGE, which would silently
-    // drop Gatekeeper provenance for every file extracted from this
-    // archive. Read into a generous fixed buffer first (the quarantine
-    // string is < 256 bytes in practice), and only fall back to a
-    // sized retry loop when the buffer is genuinely too small.
+    // Avoid a size-probe/read race by trying a fixed buffer first.
     char stackBuffer[1024];
     ssize_t read = getxattr(fsPath, attrName, stackBuffer, sizeof(stackBuffer), 0, XATTR_NOFOLLOW);
     if (read >= 0) {
@@ -111,7 +105,7 @@ static NSData* SZQuarantineDataForArchivePath(NSString* archivePath) {
         return nil;
     }
 
-    // Very rare path: grow the buffer with a bounded retry loop.
+    // Rare fallback for larger xattrs.
     for (int attempt = 0; attempt < 4; attempt++) {
         const ssize_t probed = getxattr(fsPath, attrName, NULL, 0, 0, XATTR_NOFOLLOW);
         if (probed < 0) {
@@ -1271,16 +1265,6 @@ static HRESULT SZOpenAgentFolder(NSString* archivePath, NSString* openType,
     CAgent*& agentSpecOut,
     CMyComPtr<IFolderFolder>& folderOut) {
     CAgent* agentSpec = new CAgent();
-    // CMyUnknownImp starts with _m_RefCount = 0, so a freshly-new'd
-    // CAgent is NOT already at refcount 1. Use operator= so the smart
-    // pointer AddRef's the agent to 1. BindToRootFolder below creates a
-    // CAgentFolder whose internal CMyComPtr<IInFolderArchive> _agent
-    // AddRef's the CAgent again (to 2); if the local `agent` here were
-    // at refcount 0 via Attach(), the folder's destructor would Release
-    // the CAgent back to 0 and delete it, and then this local's
-    // destructor would dereference the freed CAgent — a crash that
-    // surfaced as a __asan_report_load8 in CMyComPtr::~CMyComPtr on
-    // drag-into-archive operations.
     agentOut = agentSpec;
     agentSpecOut = agentSpec;
 
@@ -1412,24 +1396,7 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     }
 }
 
-// Reconcile the bridge's cached password with whatever the update
-// callback ended up using. Called after a successful (or
-// archive-replacing) in-place mutation, before the archive is
-// reopened. Handles two observable cases:
-//   * PasswordIsDefined is true -> the callback either kept the
-//     existing password or was prompted for a new one (e.g. on
-//     re-encryption). Store that value so the subsequent reopen
-//     still succeeds even if the password changed mid-operation.
-//   * PasswordIsDefined is false -> the caller never supplied a
-//     password and 7-Zip did not ask for one (an unencrypted archive
-//     update). Clear the cache for symmetry.
-//
-// A user-initiated "remove encryption entirely" flow is NOT surfaced
-// here: if the source archive was encrypted, 7-Zip calls
-// CryptoGetTextPassword to decrypt the existing content and the
-// callback ends with PasswordIsDefined=true holding the *old*
-// password. The resulting stale cache is harmless because a now-
-// unencrypted archive never prompts, so reopen succeeds regardless.
+// Keep the cached password in sync after an in-place mutation.
 - (void)syncCachedPasswordFromUpdateCallback:(SZAgentUpdateCallback*)callback
                                       result:(HRESULT)result {
     if (result != S_OK && !callback->ArchiveWasReplaced) {
@@ -1499,19 +1466,14 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 }
 
 - (void)dealloc {
-    // Ensure the 7-Zip link tears down any retained COM objects before
-    // unique_ptr fires. Wrapping in try/catch keeps a throwing Close()
-    // (e.g. inside upstream CArc teardown) from propagating into the
-    // ObjC runtime, which would otherwise abort the process.
+    // Close early so upstream objects release before unique_ptr teardown.
     @try {
         [self close];
     } @catch (NSException* exception) {
 #if DEBUG
         NSLog(@"[ShichiZip] SZArchive dealloc caught ObjC exception during close: %@", exception);
 #else
-        // NSException.reason often contains archive paths or entry
-        // names; redact via os_log %{private}s so Release builds
-        // never leak filenames into the unified log stream.
+        // Keep user paths private in Release logs.
         os_log_error(OS_LOG_DEFAULT,
             "[ShichiZip] SZArchive dealloc caught ObjC exception during close: %{private}s",
             exception.description.UTF8String ?: "");
@@ -1524,7 +1486,6 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     } catch (...) {
         NSLog(@"[ShichiZip] SZArchive dealloc caught C++ exception during CArchiveLink::Close");
     }
-    // unique_ptr destruction runs here.
 }
 
 + (NSString*)sevenZipVersionString {
@@ -2001,12 +1962,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     ia.reserve(indices.count);
     for (NSNumber* n in indices)
         ia.push_back([n unsignedIntValue]);
-    // Strict >= UINT32_MAX: 7-Zip's IInArchive::Extract treats a
-    // numItems argument of (UInt32)-1 (== UINT32_MAX) as the "extract
-    // all" sentinel, so a selection count of exactly 4294967295 would
-    // silently extract every entry instead of the user's chosen subset.
-    // Impossible in practice today, but the sentinel behaviour makes
-    // this one-off worth guarding.
+    // UINT32_MAX is 7-Zip's "extract all" sentinel.
     if (ia.size() >= (size_t)UINT32_MAX) {
         if (error)
             *error = SZMakeError(E_INVALIDARG,
@@ -2525,22 +2481,14 @@ SZCompressionEncryptionProperty(SZCompressionSettings* settings) {
     }
 
     if (settings.format == SZArchiveFormatZip) {
-        // Always emit an explicit em= value for zip so the user's choice
-        // is honoured verbatim. Silently falling back to ZipCrypto when
-        // the caller asked for "none" or AES256 not available is a
-        // security footgun: ZipCrypto is cryptographically broken and
-        // must never be the result of an unlabelled default.
+        // Zip should only use an explicit encryption mode when a password is set.
         switch (settings.encryption) {
         case SZEncryptionMethodAES256:
             return UString(L"AES256");
         case SZEncryptionMethodZipCrypto:
             return UString(L"ZipCrypto");
         case SZEncryptionMethodNone:
-            // No explicit algorithm was chosen. 7-Zip's implicit default
-            // for zip is ZipCrypto, which is unsafe; force the caller to
-            // opt in explicitly by surfacing this to the compression
-            // code as "no em= property" and let that path reject the
-            // combination upstream.
+            // Let createAtPath: reject password + no explicit zip mode.
             return UString();
         }
     }
@@ -2805,11 +2753,7 @@ static bool SZParseVolumeSizes(const UString& text,
         return NO;
     }
 
-    // Zip-specific safety: 7-Zip's implicit default encryption for
-    // password-protected zip archives is ZipCrypto, which is
-    // cryptographically broken. Require the caller to commit to an
-    // explicit algorithm so an unlabelled "encrypt with this password"
-    // request cannot silently produce a ZipCrypto archive.
+    // Reject zip passwords without an explicit encryption mode.
     if (s.format == SZArchiveFormatZip
         && s.password.length > 0
         && s.encryption == SZEncryptionMethodNone) {
@@ -2995,11 +2939,7 @@ static bool SZParseVolumeSizes(const UString& text,
 
     SZOpenCallbackUI openCallbackUI;
     openCallbackUI.Session = resolvedSession;
-    // Re-opening an existing encrypted 7z archive as part of an update
-    // requires the open callback to already know the password; otherwise
-    // 7-Zip prompts the user again (once here, once inside
-    // SZUpdateCallbackUI::CryptoGetTextPassword2). Propagate the write
-    // password so the open phase is silent.
+    // Reopen encrypted archives with the write password to avoid a second prompt.
     if (callbackUI.PasswordIsDefined) {
         openCallbackUI.PasswordIsDefined = true;
         openCallbackUI.Password = callbackUI.Password;

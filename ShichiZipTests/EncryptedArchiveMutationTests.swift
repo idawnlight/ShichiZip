@@ -1,24 +1,7 @@
 // EncryptedArchiveMutationTests.swift
 //
-// Exercises the two bridge fixes around updating password-protected
-// archives in place:
-//
-//   c76378c — +createAtPath: seeds the open-callback password when
-//             re-opening an encrypted 7z archive mid-update, so the
-//             bridge does not prompt twice for the same password.
-//
-//   3fa762d — syncCachedPasswordFromUpdateCallback: copies whatever
-//             password the update callback ended up using back into
-//             the bridge's cache before the subsequent reopen, so a
-//             mutation that changed or added a password still leaves
-//             the archive object openable without re-prompting.
-//
-// Both fixes feed a code path that only runs when the archive being
-// mutated is encrypted. The tests below open an AES-encrypted
-// archive, perform each of the five in-place mutations on it, and
-// assert that (a) the mutation succeeded, (b) the bridge can read the
-// archive back without re-prompting the user for a password, and (c)
-// the entry listing matches expectations.
+// Exercises in-place mutations on password-protected archives and
+// verifies that they remain reopenable afterward.
 
 import XCTest
 
@@ -81,10 +64,7 @@ final class EncryptedArchiveMutationTests: XCTestCase {
 
     // MARK: - AddPaths on encrypted archive
 
-    /// Regression guard for c76378c: adding a file to an encrypted
-    /// 7z used to re-prompt inside the open-callback because the
-    /// callback didn't know the write-phase password. After the fix,
-    /// the password is seeded so no prompt occurs.
+    /// Updating an encrypted 7z should not require a second password prompt.
     func testAddPathsRoundTripsOnEncrypted7z() throws {
         let (archiveURL, tempRoot) = try makeEncryptedArchive(
             named: "enc-add",

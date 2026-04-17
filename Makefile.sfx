@@ -282,19 +282,8 @@ ALL_OBJS = $(C_OBJS) $(CPP_OBJS) $(RC_OBJ)
 
 all: $(SFX_BIN)
 
-# Stamp-based ordering dependency shared with the top-level Makefile so
-# building only the SFX module (e.g. `make -f Makefile.sfx sfx-zs`) still
-# runs the vendor patch script. Without this, running Makefile.sfx in
-# isolation silently compiled from unpatched sources.
-# Stamp lives in build/ (not inside the submodule) so it never appears
-# in `git -C vendor/7zip status`. Shared naming convention with the
-# top-level Makefile so both makefiles target the same stamp.
-#
-# See the matching comment in Makefile: the submodule HEAD SHA is
-# baked into the stamp name so a `git submodule update --checkout` to
-# a different commit invalidates the stamp and forces the patch
-# recipe to re-run. Without this, switching submodule commits would
-# leave a stale stamp and skip patching the new tree.
+# Share the vendor patch stamp with the top-level Makefile.
+# This keeps standalone SFX builds patched and reruns when the submodule revision changes.
 SEVENZ_HEAD := $(shell git -C $(SEVENZ_ROOT) rev-parse --verify HEAD 2>/dev/null || echo unknown-head)
 PATCH_STAMP = build/.shichizip-patched-$(notdir $(SEVENZ_ROOT))-$(SEVENZ_HEAD)
 PATCH_SRC_FILES = $(wildcard vendor/$(notdir $(SEVENZ_ROOT))-*.patch) vendor/apply_7zip_patches.sh
@@ -332,11 +321,7 @@ clean:
 	rm -rf build/sfx-obj build/sfx
 	rm -f build/.shichizip-patched-*
 
-# Pull in auto-generated header dependency files (one per .o produced
-# by the -MMD -MP flags above). The dash prefix silently skips missing
-# files, which is expected on the first build. Exclude the resource
-# object (.res) because zig rc does not emit makefile-format deps and
-# the .res file is binary; accidentally -include'ing it breaks make.
+# Pull in generated header dependencies for C/C++ objects.
 -include $(C_OBJS:.o=.d) $(CPP_OBJS:.o=.d)
 
 info:

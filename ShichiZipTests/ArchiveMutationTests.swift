@@ -1,20 +1,7 @@
 // ArchiveMutationTests.swift
 //
-// Unit coverage for the five in-place archive mutation bridge entry
-// points that all funnel through SZOpenAgentFolder and therefore share
-// the CAgent refcount logic exercised by 5fe0dcc:
-//
-//   createFolderNamed:inArchiveSubdir:session:error:
-//   renameItemAtPath:inArchiveSubdir:newName:session:error:
-//   deleteItemsAtPaths:inArchiveSubdir:session:error:
-//   addPaths:toArchiveSubdir:moveMode:session:error:
-//   replaceItemAtPath:inArchiveSubdir:withFileAtPath:session:error:
-//
-// Before these tests, only addPaths was exercised (by a single UI test
-// in DragFromArchiveUITests). A UAF or double-free in any of the other
-// four entry points would not have been caught. Each case here opens a
-// small archive, performs the mutation, and asserts the bridge's own
-// post-mutation view matches the expected entry set.
+// Exercises the five in-place mutation entry points and verifies the
+// resulting archive contents.
 
 import XCTest
 
@@ -231,10 +218,7 @@ final class ArchiveMutationTests: XCTestCase {
 
     // MARK: - Regression: repeated mutations do not corrupt CAgent teardown
 
-    /// Hammer the same archive with several mutations in a row. Before
-    /// 5fe0dcc, each call destroyed the CAgent early, so any test that
-    /// relied on a second mutation succeeding crashed in
-    /// CMyComPtr<IInFolderArchive>::~CMyComPtr() the second time.
+    /// Repeated mutations on the same archive should keep working.
     func testRepeatedMutationsDoNotCorruptAgent() throws {
         let (archiveURL, tempRoot) = try makeArchive(named: "repeat",
                                                      payloads: ["seed.txt": "seed"])

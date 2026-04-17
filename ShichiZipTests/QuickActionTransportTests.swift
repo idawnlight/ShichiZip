@@ -2,26 +2,12 @@ import Foundation
 @testable import ShichiZip
 import XCTest
 
-// `AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride`
-// is stored on a `@MainActor`-isolated class, so every read/write
-// must happen on the main actor. Annotating the whole test class
-// `@MainActor` gives setUp/tearDown/test methods that isolation for
-// free and avoids the unsafe `MainActor.assumeIsolated` dance the
-// previous revision used (XCTest does not guarantee those overrides
-// run on the main actor executor; that would trap at runtime under
-// parallel test execution).
+// AppDelegate is @MainActor; keep the test class there too.
 @MainActor
 final class QuickActionTransportTests: XCTestCase {
     override func setUp() {
         super.setUp()
-        // Avoid the process-global `setenv` that used to live here:
-        // xcodebuild can run test targets in parallel worker
-        // processes, and while each worker has its own environment
-        // block, within a single worker an unrelated test class
-        // reading SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL would
-        // observe state leaked from this setUp. Use the static
-        // Swift-side override which is scoped to the current process
-        // but is a plain property write instead of a POSIX call.
+        // Use the test override instead of mutating process-wide environment state.
         AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = false
     }
 

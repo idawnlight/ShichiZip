@@ -9,10 +9,7 @@ import XCTest
 class ShichiZipUITestCase: XCTestCase {
     var app: XCUIApplication!
 
-    /// Additional launch arguments to pass to the app. Override in
-    /// subclasses instead of overriding `setUp()` so the base class
-    /// can keep owning the XCUIApplication lifecycle (and so we can
-    /// chain to `super.setUp()` without launching the app twice).
+    /// Extra launch arguments for subclasses.
     var additionalLaunchArguments: [String] {
         []
     }
@@ -89,12 +86,7 @@ class ShichiZipUITestCase: XCTestCase {
 
     // MARK: - Archive Creation
 
-    /// Creates a test archive from the given source file names that already
-    /// exist in `directory`. Paths inside the archive are relative to
-    /// `directory`. Always produces a `.zip` through the macOS-shipped
-    /// `/usr/bin/zip`, so fixtures are reproducible regardless of which
-    /// third-party 7z binary the developer has in their PATH and never
-    /// silently fall back to a different archive format.
+    /// Creates a `.zip` fixture from files already present in `directory`.
     ///
     /// Returns the URL of the created archive.
     func createTestArchive(named name: String,
@@ -104,10 +96,7 @@ class ShichiZipUITestCase: XCTestCase {
         let archiveURL = directory.appendingPathComponent("\(name).zip")
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
-        // -q: quiet
-        // -X: omit platform-specific extra attributes so the archive is
-        //     byte-reproducible across machines.
-        // --: terminate options before file-name list.
+        // -q: quiet, -X: omit platform-specific extras, --: end options.
         process.arguments = ["-q", "-X", archiveURL.path, "--"] + sourceFileNames
         process.currentDirectoryURL = directory
         process.standardOutput = FileHandle.nullDevice

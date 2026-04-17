@@ -508,26 +508,8 @@ lib-zs:
 	@$(MAKE) SEVENZ_VARIANT=zs lib
 	+@$(MAKE) -f Makefile.sfx SFX_VARIANT=zs
 
-# Stamp that records "this submodule has had all applicable vendor
-# patches applied on top of the checkout currently in the working
-# tree". It depends on every .patch file that could ever target the
-# submodule plus the script itself, so editing any of those forces a
-# re-apply on the next make invocation (apply_7zip_patches.sh is
-# idempotent on already-applied patches, so this is safe). Before
-# this, prepare-7zip was a pure .PHONY target that re-ran git apply
-# on every build and was race-prone under parallel recursive makes.
-# Stamp file lives in build/, NOT inside the submodule working tree,
-# so neither `git -C vendor/7zip status` nor CI clean-tree assertions
-# see it as dirty. (A root .gitignore entry cannot exclude it from the
-# inner submodule's own git view.)
-#
-# The stamp name embeds the submodule HEAD SHA. Without that, a
-# `git submodule update --checkout` that resets the working tree to an
-# unpatched commit would leave the old stamp valid and cause `make` to
-# skip `apply_7zip_patches.sh`, silently compiling from unpatched
-# sources. Baking the SHA into the filename makes the dependency
-# explicit: a different HEAD produces a different stamp target, which
-# forces the patch recipe to run.
+# Patch stamp for the current submodule checkout.
+# Keeps patching idempotent and reruns when the submodule revision changes.
 SEVENZ_HEAD := $(shell git -C $(SEVENZ_ROOT) rev-parse --verify HEAD 2>/dev/null || echo unknown-head)
 PATCH_STAMP = build/.shichizip-patched-$(notdir $(SEVENZ_ROOT))-$(SEVENZ_HEAD)
 PATCH_SRC_FILES = $(wildcard vendor/$(notdir $(SEVENZ_ROOT))-*.patch) vendor/apply_7zip_patches.sh
@@ -546,10 +528,7 @@ $(LIB): $(ALL_OBJS)
 	$(AR) rcs $@ $^
 	@echo "=== Built $@ ($(words $(ALL_OBJS)) objects) ==="
 
-# -MMD -MP in CFLAGS_COMMON emits a sibling *.d next to each *.o so
-# re-running make after a header edit (including post-patch vendor
-# headers) recompiles only the dependent translation units instead of
-# leaving stale objects behind.
+# Pull in generated header dependencies.
 -include $(ALL_OBJS:.o=.d)
 
 # Fast LZMA2 needs extra compatibility defines from the fork build.

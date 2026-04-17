@@ -104,11 +104,7 @@ struct ArchiveItem {
                                                      prefixComponents: prefixComponents)
             for outputURL in itemOutputURLs {
                 let standardizedURL = outputURL.standardizedFileURL
-                // Containment guard: never return a URL that escapes
-                // the destination directory. This protects consumers
-                // (selection, reveal, move-to-trash) from zip-slip-style
-                // archive entries whose path traverses outside the
-                // target, even in SZPathMode.absolutePaths mode.
+                // Never return paths that escape the destination directory.
                 guard isURL(standardizedURL, containedIn: standardizedDestination) else { continue }
                 guard seenPaths.insert(standardizedURL.path).inserted else { continue }
                 outputURLs.append(standardizedURL)
@@ -142,13 +138,7 @@ struct ArchiveItem {
 
         case .absolutePaths:
             if NSString(string: item.path).isAbsolutePath {
-                // SZPathMode.absolutePaths on extraction asks 7-Zip to
-                // honor absolute paths inside the archive, but at the
-                // Swift model layer we must never hand callers a URL
-                // rooted outside the destination. Strip leading
-                // slashes and re-anchor the path under destinationURL;
-                // the containment check in the public entry point
-                // drops anything that still manages to escape.
+                // Re-anchor absolute archive paths under the destination.
                 let trimmedPath = item.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                 guard !trimmedPath.isEmpty else { return [] }
                 let anchored = destinationURL.appendingPathComponent(trimmedPath,

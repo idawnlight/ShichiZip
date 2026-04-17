@@ -46,10 +46,7 @@ final class ArchiveOpenErrorClassificationTests: XCTestCase {
         } catch {
             return error as NSError
         }
-        // Reaching here means -open: unexpectedly succeeded. Throw so the
-        // caller bails out instead of silently reporting a fabricated
-        // error that would pass the domain/code assertions and hide the
-        // regression.
+        // Unexpected success should fail the test instead of fabricating an error.
         struct UnexpectedOpenSuccess: Error, CustomStringConvertible {
             var description: String {
                 "Expected archive open to fail, but it succeeded"

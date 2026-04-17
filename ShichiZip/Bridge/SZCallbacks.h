@@ -52,8 +52,7 @@ public:
 
     SZOpenCallbackUI();
     virtual ~SZOpenCallbackUI() {
-        // Wipe the plaintext password from heap on destruction so a
-        // core dump or swap inspection cannot recover it.
+        // Clear plaintext password on destruction.
         Password.Wipe_and_Empty();
     }
 

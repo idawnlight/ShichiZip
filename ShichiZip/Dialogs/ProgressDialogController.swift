@@ -14,10 +14,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     private var cancelled = false
     private var startTime: Date?
 
-    /// Tracks which flavour of text currently occupies `speedLabel`, so
-    /// we can decide whether an incoming file-count update is allowed
-    /// to overwrite it without having to string-match the label itself
-    /// (which would break the moment the text is localised).
+    /// Tracks whether `speedLabel` is showing throughput or file counts.
     private enum SpeedLabelMode {
         case empty
         case speed
@@ -165,12 +162,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     func showNowIfNeeded() {
-        // All SZProgressDelegate entry points are funnelled onto the
-        // main thread by SZOperationSession (either via its snapshot
-        // timer or via -prepareForUserInteraction's main-thread hop).
-        // Keep that invariant explicit so we never end up issuing a
-        // DispatchQueue.main.sync that deadlocks because the caller
-        // is already blocked on the main queue.
+        // SZOperationSession delivers delegate callbacks on the main queue.
         dispatchPrecondition(condition: .onQueue(.main))
 
         if let showRequestHandler {
@@ -264,9 +256,7 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
     }
 
     func progressDidUpdateFilesCompleted(_ count: UInt64) {
-        // Only claim the speed slot when it is unused or already shows
-        // the file-count variant, so we never stomp on a live
-        // speed/ETA string while bytes-based progress is active.
+        // Do not overwrite a live speed/ETA string with file counts.
         switch speedLabelMode {
         case .empty, .filesProcessed:
             let suffix = count == 1 ? "file" : "files"

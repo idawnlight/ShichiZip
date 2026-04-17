@@ -19,10 +19,7 @@ class FileSystemItem {
         self.init(url: url, resourceValues: values)
     }
 
-    /// Preferred initializer when the caller has already fetched
-    /// `URLResourceValues` for `url` (for example as part of building a
-    /// directory fingerprint). Avoids the second synchronous
-    /// filesystem round-trip that `init(url:)` would otherwise perform.
+    /// Reuses pre-fetched resource values when available.
     init(url: URL, resourceValues: URLResourceValues?) {
         self.url = url
         name = url.lastPathComponent

@@ -60,9 +60,7 @@ class ArchiveDocument: NSDocument {
         #if DEBUG
             NSLog("[ShichiZip] Opening via document: %@ — will redirect to File Manager", url.path)
         #else
-            // url.path is user data; keep it out of the unified log stream
-            // in Release builds. Use %@ (bridged NSString), not %s — Swift
-            // String is not a C string pointer.
+            // Keep user paths private in Release logs.
             os_log(.info, "[ShichiZip] Opening via document: %{private}@ — will redirect to File Manager",
                    url.path)
         #endif

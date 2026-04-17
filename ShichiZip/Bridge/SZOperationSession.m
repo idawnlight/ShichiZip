@@ -29,8 +29,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     BOOL _hasReportedProgress;
     BOOL _waitingForUserInteraction;
     BOOL _cancellationRequested;
-    // Throttling state for progress dispatch to main. See
-    // -reportProgressFraction: / -reportBytesCompleted:total: for rules.
+    // Last time progress/byte updates were forwarded to the delegate.
     CFAbsoluteTime _lastProgressDispatchTime;
     CFAbsoluteTime _lastBytesDispatchTime;
 }
@@ -179,14 +178,8 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     @synchronized(self) {
         _progressFraction = clamped;
         _hasReportedProgress = YES;
-        // Coalesce live updates so 7-Zip's per-frame SetCompleted does
-        // not swamp the main queue. Always deliver the terminal value
-        // (>=1.0) and the first report; otherwise gate to ~50 ms.
-        // Use CACurrentMediaTime (monotonic) rather than
-        // CFAbsoluteTimeGetCurrent: wall-clock time can jump backwards
-        // on NTP correction or manual clock change, which would make
-        // (now - _last) negative and throttle every subsequent report
-        // until real time caught up.
+        // Coalesce frequent updates to ~50 ms, but always send the first and terminal values.
+        // Use a monotonic clock so wall-clock changes do not break throttling.
         const CFTimeInterval now = CACurrentMediaTime();
         const CFTimeInterval kMinInterval = 0.05;
         shouldDispatch = (clamped >= 1.0)
@@ -255,14 +248,7 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 }
 
 - (BOOL)shouldCancel {
-    // Worker threads poll this method on every decoder/encoder tick, so
-    // it must never hop to the main thread. Callers that originate
-    // cancellation on the main thread are expected to mirror their
-    // intent through -requestCancel (see ArchiveOperationCoordinator's
-    // periodic snapshot loop, which pushes the ProgressDialog's
-    // cancelled state into the session). Reading the atomic flag here
-    // avoids a dispatch_sync deadlock whenever the main thread is busy
-    // running a modal alert or another synchronous UI request.
+    // Worker threads poll this frequently, so avoid main-thread hops here.
     return self.cancellationRequested;
 }
 

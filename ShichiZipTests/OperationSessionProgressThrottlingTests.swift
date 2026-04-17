@@ -1,18 +1,7 @@
 // OperationSessionProgressThrottlingTests.swift
 //
-// Covers the progress coalescing added in 584bc90 + f3f2c2e:
-//
-//   * Per-tick SetCompleted calls from 7-Zip are gated to ~50 ms so
-//     the main queue is not swamped during long operations.
-//   * Terminal updates (fraction >= 1.0, or completed >= total) are
-//     always delivered so the UI does not freeze at 99%.
-//   * The throttle uses a monotonic clock (CACurrentMediaTime), so
-//     wall-clock NTP steps do not starve the delegate.
-//
-// The session dispatches delegate calls to the main queue via
-// dispatch_async. Tests run on the XCTest main thread, so we drain
-// the queue with `RunLoop.main.run(until:)` between bursts of report
-// calls.
+// Covers progress throttling and terminal update delivery in
+// SZOperationSession.
 
 import XCTest
 

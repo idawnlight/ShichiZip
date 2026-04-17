@@ -618,12 +618,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         .sorted { $0.path < $1.path }
     }
 
-    /// Single-pass combined fetch used when the caller needs both the
-    /// fingerprint (for change detection) and the fully-populated
-    /// `FileSystemItem`s (for the table view). Each URL is stat'd
-    /// exactly once via `URLResourceValues`, which previously cost us
-    /// two synchronous disk round-trips per entry (one inside
-    /// `makeDirectoryFingerprint`, one inside `FileSystemItem.init`).
+    /// Builds the fingerprint and `FileSystemItem`s in one pass.
     private func makeFingerprintAndItems(from contents: [URL])
         -> (fingerprint: [DirectoryEntryFingerprint], items: [FileSystemItem])
     {
@@ -3889,10 +3884,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     {
         let sourceAttributes = try? fileManager.attributesOfItem(atPath: sourceURL.path)
         let destinationAttributes = try? fileManager.attributesOfItem(atPath: destinationURL.path)
-        // `attributesOfItem` stores file sizes as `NSNumber` (wrapping an off_t).
-        // Casting directly to UInt64 via `as?` fails because NSNumber does not
-        // bridge straight to UInt64, so the prompt always reported 0 bytes for
-        // both source and destination. Go through NSNumber explicitly.
+        // FileAttributeKey.size is stored as NSNumber.
         let sourceSize = (sourceAttributes?[.size] as? NSNumber)?.uint64Value ?? 0
         let destinationSize = (destinationAttributes?[.size] as? NSNumber)?.uint64Value ?? 0
         let sourceDate = sourceAttributes?[.modificationDate] as? Date

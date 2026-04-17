@@ -1,11 +1,7 @@
 // ArchiveRoundTripTests.swift
 //
-// End-to-end coverage for the SZArchive bridge that was flagged in
-// CODE_REVIEW §4.5 as missing: create → open → extract → verify
-// bytes, including the positive-password path (only the negative
-// password path had a test) and the encrypted-filenames listing
-// path. Also covers cooperative cancellation on SZOperationSession,
-// co-located with the 584bc90 throttling work.
+// End-to-end create/open/extract coverage, plus encrypted-listing and
+// cancellation checks.
 
 import XCTest
 
@@ -78,11 +74,7 @@ final class ArchiveRoundTripTests: XCTestCase {
 
     // MARK: - Positive-password open
 
-    /// The suite currently only has a negative test (wrong password
-    /// produces a classified error). Cover the positive branch too,
-    /// which exercises the open-callback password plumbing that
-    /// c76378c seeds during in-place updates and that 3fa762d keeps
-    /// in sync with the update callback.
+    /// Covers the positive password path, not just wrong-password errors.
     func testOpeningEncrypted7zWithCorrectPasswordSucceeds() throws {
         let archiveURL = try makeArchive(named: "pos-open",
                                          payloadFileName: "hello.txt",
@@ -104,11 +96,7 @@ final class ArchiveRoundTripTests: XCTestCase {
 
     // MARK: - Encrypted-filenames listing
 
-    /// When an archive is created with `encryptFileNames = true`, the
-    /// entire central directory is AES-encrypted. Opening it requires
-    /// the password *before* the entry list can be read — a different
-    /// code path from `encryption: AES256` alone. CODE_REVIEW §4.5
-    /// flagged this listing path as untested.
+    /// `encryptFileNames` archives need a password before listing entries.
     func testEncryptedFileNamesListingRequiresPassword() throws {
         let archiveURL = try makeArchive(named: "enc-filenames",
                                          payloadFileName: "top-secret.txt",
@@ -116,11 +104,7 @@ final class ArchiveRoundTripTests: XCTestCase {
                                          password: Self.password,
                                          encryptFileNames: true)
 
-        // Listing without a password must fail. Use an explicit empty
-        // SZOperationSession so the bridge does *not* fall back to
-        // SZMakeDefaultOperationSession — the default session wires
-        // SZDialogPresenter as the password handler, which would pop
-        // a UI prompt and hang the test runner.
+        // Use an empty session so the test never opens a UI prompt.
         do {
             let archive = SZArchive()
             let headlessSession = SZOperationSession()
@@ -132,9 +116,7 @@ final class ArchiveRoundTripTests: XCTestCase {
             archive.close()
         }
 
-        // With the password, the listing path must work and report
-        // the original file name. Still pass an empty session to keep
-        // any stray re-prompts routed to E_ABORT instead of the UI.
+        // Keep this headless too so any stray re-prompts fail instead of showing UI.
         let archive = SZArchive()
         try archive.open(atPath: archiveURL.path,
                          password: Self.password,
@@ -149,10 +131,7 @@ final class ArchiveRoundTripTests: XCTestCase {
 
     // MARK: - Session cancellation
 
-    /// Cooperative cancellation is a co-located cousin of the 584bc90
-    /// progress-throttling work (same SZOperationSession object). The
-    /// atomic shouldCancel flag (12dc0fd) must go true the moment
-    /// requestCancel is invoked, and stay true until clearCancellationRequest.
+    /// requestCancel should flip the flag immediately and keep it set until cleared.
     func testSessionCancellationFlagIsSetSynchronouslyAndCleared() {
         let session = SZOperationSession()
         XCTAssertFalse(session.shouldCancel(),
@@ -174,11 +153,7 @@ final class ArchiveRoundTripTests: XCTestCase {
         XCTAssertFalse(session.isCancellationRequested)
     }
 
-    /// Cancellation from a background thread must be observable by a
-    /// concurrent shouldCancel caller (this is the property the
-    /// atomic flag in 12dc0fd guarantees without taking the main
-    /// queue). We spin a background writer and a concurrent reader
-    /// and assert the reader sees the flag flip.
+    /// Cancellation should be visible across threads without a main-queue hop.
     func testSessionCancellationIsVisibleAcrossThreads() {
         let session = SZOperationSession()
         let observed = expectation(description: "reader saw cancellation")

@@ -96,16 +96,7 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
     private var isLoading = false
     private var isDeleting = false
 
-    /// Cache of row icons keyed by filename extension (or a special
-    /// sentinel for directories / extensionless files). NSWorkspace's
-    /// icon(forFile:) is not cheap — each call resolves the UTI,
-    /// consults LaunchServices, and returns a fresh NSImage — and
-    /// tableView(_:viewFor:row:) fires this per visible cell on every
-    /// reload or scroll. The temp folder browser lists homogenous
-    /// extraction directories and a handful of file types, so keying
-    /// by extension gives near-100 % hit rate without risking
-    /// bundle-specific icons going stale (bundles live outside this
-    /// browser's domain).
+    /// Cache row icons by type; packages keep per-path icons.
     private var iconCacheByExtension: [String: NSImage] = [:]
 
     private var deleteButton: NSButton!
@@ -639,17 +630,9 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
     }
 
     private func cachedIcon(for item: BrowserItem) -> NSImage {
-        // Bundle-style directories (.app, .bundle, .pkg, framework…)
-        // each ship their own icon via NSWorkspace.icon(forFile:). They
-        // must not share the generic "__dir__" cache slot, or the first
-        // bundle's icon would be overwritten by a plain folder icon and
-        // vice versa. Identify them via the URL resource key rather
-        // than a hard-coded extension allow-list.
+        // Packages keep per-path icons; plain folders share one cache key.
         let isPackage: Bool = (try? item.url.resourceValues(forKeys: [.isPackageKey]).isPackage) ?? false
         let key = if isPackage {
-            // Per-path key: bundles are rare enough in the delete-temp
-            // window that the extra cache entries are negligible, and
-            // anything rarer than that falls through to a new entry.
             "pkg:" + item.url.path
         } else if item.isDirectory {
             "__dir__"

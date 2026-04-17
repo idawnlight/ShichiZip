@@ -386,9 +386,7 @@ Z7_COM7F_IMF(SZFolderExtractCallback::MessageError(const wchar_t* message)) {
 #if DEBUG
         NSLog(@"[ShichiZip] Extract error: %@", ToNS(extractedMessage));
 #else
-        // In release builds, keep the message out of the unified log
-        // because it routinely contains user paths and filenames that
-        // `log stream --process ShichiZip` would expose.
+        // Keep user paths private in Release logs.
         os_log_error(OS_LOG_DEFAULT, "[ShichiZip] Extract error: %{private}s",
             [ToNS(extractedMessage) UTF8String] ?: "");
 #endif
@@ -432,12 +430,7 @@ Z7_COM7F_IMF(SZFolderExtractCallback::ReportExtractResult(Int32 opRes, Int32 enc
 }
 
 Z7_COM7F_IMF(SZFolderExtractCallback::CryptoGetTextPassword(BSTR* pw)) {
-    // COM contract: the out-parameter must be initialized on every
-    // return path, including early-error returns. Upstream 7-Zip
-    // (and some callers) have historically fed the returned BSTR to
-    // SysFreeString unconditionally, so leaving *pw uninitialized
-    // after returning E_ABORT is a double-free / use-of-uninitialized
-    // hazard.
+    // Some callers free the out BSTR even on failure, so initialize it first.
     if (pw) {
         *pw = NULL;
     }
@@ -639,8 +632,7 @@ HRESULT SZUpdateCallbackUI::GetStream(const wchar_t* name, bool, bool, UInt32) {
 }
 
 HRESULT SZUpdateCallbackUI::CryptoGetTextPassword2(Int32* passwordIsDefined, BSTR* password) {
-    // Initialize the out-BSTR first so early returns are safe per COM
-    // contract (see SZFolderExtractCallback::CryptoGetTextPassword).
+    // Initialize the out BSTR before any early return.
     if (password) {
         *password = NULL;
     }

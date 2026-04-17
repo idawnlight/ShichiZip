@@ -189,19 +189,8 @@ CCodecs* _Nullable SZGetCodecs(void);
 // ============================================================
 // String conversion: UString <-> NSString
 // ============================================================
-//
-// UString on non-Windows stores wchar_t elements, which are 32-bit on
-// macOS and are treated as Unicode codepoints. NSString internally
-// stores UTF-16 code units. A naive loop that casts each `unichar` to
-// `wchar_t` corrupts any non-BMP codepoint: the surrogate pair in the
-// NSString becomes two isolated surrogate codepoints in the UString,
-// which later serialize to invalid UTF-8 (emoji, CJK Ext B, etc.).
-// The reverse `wchar_t -> unichar` cast truncates anything >= U+10000
-// to a lone surrogate.
-//
-// Round-trip through NSUTF32LittleEndianStringEncoding so surrogate
-// pairs collapse to one codepoint in the UString, and codepoints >=
-// U+10000 expand back into proper surrogate pairs in the NSString.
+// Use UTF-32 to preserve non-BMP code points between NSString and
+// UString on macOS, where wchar_t is 32-bit.
 
 static inline UString ToU(NSString* _Nullable s) {
     if (!s || s.length == 0)
@@ -229,11 +218,8 @@ static inline NSString* ToNS(const UString& u) {
     return result ?: @"";
 }
 
-// Convert a C string (typically from 7-Zip's AString) into NSString.
-// Unlike +stringWithUTF8String:, this never returns nil: if the bytes
-// are not valid UTF-8 it falls back to Mac Roman so the caller can
-// still surface the message to the user. Safe to feed into
-// dictionary literals that reject nil values.
+// Convert a C string to NSString without returning nil; invalid UTF-8
+// falls back to Mac Roman.
 static inline NSString* NSFromCString(const char* _Nullable cstr) {
     if (!cstr)
         return @"";

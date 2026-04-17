@@ -14,17 +14,11 @@ class ShichiZipQuickActionRequestHandler: NSObject, NSExtensionRequestHandling {
     }
 
     private class func log(_ message: String) {
-        // Quick-action log messages frequently interpolate file paths
-        // and URLs (see the "resolved fileURLs=…" and "workspace open
-        // … url=" call sites). Keep those out of the unified log stream
-        // in Release; retain NSLog in Debug where the verbosity is
-        // useful and developers already see user paths in Xcode.
+        // Keep file paths private in Release logs.
         #if DEBUG
             NSLog("[QuickAction:%@] %@", quickAction.rawValue, message)
         #else
-            // Swift String in os_log must be formatted with %@, not %s.
-            // %s expects a C string pointer and would reinterpret the
-            // bridged NSString header as one at runtime.
+            // os_log expects %@ for Swift strings.
             os_log(.info, "[QuickAction:%{public}@] %{private}@",
                    quickAction.rawValue, message)
         #endif

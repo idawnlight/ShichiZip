@@ -1,23 +1,7 @@
 // ZipEncryptionPolicyTests.swift
 //
-// Covers the zip-specific encryption policy introduced by 50f3d01:
-//
-//   1. A password supplied to createAtPath: for the zip format with
-//      encryption == SZEncryptionMethodNone must be *rejected* up
-//      front with SZArchiveErrorCodeUnsupportedFormat or the generic
-//      E_INVALIDARG path, never silently fall through to ZipCrypto
-//      (7-Zip's implicit default for password-protected zips).
-//
-//   2. Explicit AES256 must produce an AES-256 zip that round-trips
-//      with the supplied password.
-//
-//   3. Explicit ZipCrypto is honoured verbatim when the caller opts
-//      in: the bridge does not force AES256 on zips that the user
-//      deliberately requested ZipCrypto for.
-//
-// Non-zip formats (7z, tar, ...) are unaffected by the policy and are
-// not covered here because the change is strictly within
-// SZCompressionEncryptionProperty()'s format==zip branch.
+// Covers zip creation with explicit AES256/ZipCrypto and rejection of
+// password + no explicit mode.
 
 import XCTest
 

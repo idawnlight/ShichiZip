@@ -1,23 +1,11 @@
 import CoreServices
 import Foundation
 
-/// Monitors a filesystem directory for changes using FSEvents.
-///
-/// Mirrors the upstream Windows 7-Zip pattern where `CFSFolder::Init()` registers
-/// a `FindFirstChangeNotification` handle, and `WasChanged()` returns whether the
-/// handle has been signaled since the last check.  Here, FSEvents sets a flag and
-/// the caller polls via ``wasChanged()`` on a timer tick.
-///
-/// The class is isolated to the main actor: `FSEventStreamSetDispatchQueue(main)`
-/// schedules the C callback on the main queue, and `stop()` must run there too
-/// so that no callback can fire between invalidation and release.
+/// Monitors a directory with FSEvents and exposes a pollable change flag.
+/// Runs on the main actor because callbacks are delivered on the main queue.
 @MainActor
 final class DirectoryWatcher {
-    /// Box that the FSEventStream owns a strong reference to for the
-    /// lifetime of the stream. It holds a weak back-pointer to the
-    /// watcher so a callback scheduled but not yet delivered safely
-    /// observes "already torn down" instead of dereferencing a dead
-    /// DirectoryWatcher.
+    /// Stream-owned context that weakly references the watcher.
     private final class CallbackContext {
         weak var owner: DirectoryWatcher?
         init(owner: DirectoryWatcher) {
@@ -38,13 +26,7 @@ final class DirectoryWatcher {
         callbackContext = context
 
         var streamContext = FSEventStreamContext()
-        // passRetained hands the stream a +1 owning reference to the
-        // context box; the matching release callback drops it when the
-        // stream is invalidated. Using passUnretained (as the previous
-        // implementation did) was a UAF: a callback already in flight
-        // on the main queue could outlive a deinit that ran on a
-        // different thread, and takeUnretainedValue would dereference
-        // freed memory.
+        // Give the stream an owned context so queued callbacks stay safe during teardown.
         streamContext.info = Unmanaged.passRetained(context).toOpaque()
         streamContext.retain = { info in
             guard let info else { return nil }
@@ -61,8 +43,6 @@ final class DirectoryWatcher {
             { _, info, _, _, _, _ in
                 guard let info else { return }
                 let context = Unmanaged<CallbackContext>.fromOpaque(info).takeUnretainedValue()
-                // The stream's dispatch queue is the main queue
-                // (set below), so this closure runs main-isolated.
                 MainActor.assumeIsolated {
                     guard let watcher = context.owner else { return }
                     watcher.changed = true
@@ -86,8 +66,7 @@ final class DirectoryWatcher {
         stop()
     }
 
-    /// Drains all pending change events and returns whether any occurred since
-    /// the last call — analogous to upstream `CFSFolder::WasChanged()`.
+    /// Returns whether any events arrived since the last poll.
     func wasChanged() -> Bool {
         guard changed else { return false }
         changed = false
