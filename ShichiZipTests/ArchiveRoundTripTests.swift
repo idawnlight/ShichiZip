@@ -72,6 +72,57 @@ final class ArchiveRoundTripTests: XCTestCase {
         }
     }
 
+    func testOpeningAndExtractingZipPreservesNonBMPFilenames() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "roundtrip-nonbmp-zip")
+        let sourceRoot = tempRoot.appendingPathComponent("src", isDirectory: true)
+        try FileManager.default.createDirectory(at: sourceRoot,
+                                                withIntermediateDirectories: true)
+        let payloads = [
+            "emoji-🔒.txt": "emoji filename payload",
+            "nested/han-𠜎.txt": "han extension-b filename payload",
+        ]
+        _ = try writePayloads(payloads, into: sourceRoot)
+        let archiveURL = tempRoot.appendingPathComponent("out.zip")
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+        process.arguments = ["-q", "-X", "-r", archiveURL.path, "src"]
+        process.currentDirectoryURL = tempRoot
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 0, "/usr/bin/zip failed to create the test fixture")
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        let listedPaths = Set(archive.entries().map(\.path))
+        let expected: Set = ["src/emoji-🔒.txt", "src/nested/han-𠜎.txt"]
+        XCTAssertTrue(listedPaths.isSuperset(of: expected),
+                      "listing must preserve non-BMP file names; got \(listedPaths)")
+
+        let extractDir = tempRoot.appendingPathComponent("extract", isDirectory: true)
+        try FileManager.default.createDirectory(at: extractDir,
+                                                withIntermediateDirectories: true)
+        let settings = SZExtractionSettings()
+        settings.pathMode = .fullPaths
+        try archive.extract(toPath: extractDir.path,
+                            settings: settings,
+                            session: nil)
+
+        for (relPath, contents) in payloads {
+            let extractedURL = extractDir.appendingPathComponent("src")
+                .appendingPathComponent(relPath)
+            XCTAssertTrue(FileManager.default.fileExists(atPath: extractedURL.path),
+                          "expected extracted file at \(extractedURL.path)")
+            let roundTripped = try String(contentsOf: extractedURL, encoding: .utf8)
+            XCTAssertEqual(roundTripped, contents,
+                           "byte-for-byte mismatch on extracted src/\(relPath)")
+        }
+    }
+
     // MARK: - Positive-password open
 
     /// Covers the positive password path, not just wrong-password errors.

@@ -40,37 +40,25 @@ static NSString* const kSZWorkDirModePreferenceKey = @"WorkDirMode";
 static NSString* const kSZWorkDirPathPreferenceKey = @"WorkDirPath";
 static NSString* const kSZWorkDirRemovableOnlyPreferenceKey = @"WorkDirForRemovableOnly";
 
-// See the commentary in ShichiZip/Bridge/SZBridgeCommon.h for why the
-// UString <-> NSString round-trip must go via UTF-32: a straight
-// unichar <-> wchar_t cast silently corrupts every non-BMP codepoint
-// (surrogate pairs). Keep this helper in sync with ToU/ToNS there.
 static UString SZToUString(NSString* string) {
-    if (!string || string.length == 0) {
+    if (!string) {
         return UString();
     }
-    NSData* data = [string dataUsingEncoding:NSUTF32LittleEndianStringEncoding];
-    if (!data || data.length == 0) {
-        return UString();
-    }
-    const NSUInteger count = data.length / sizeof(wchar_t);
-    const wchar_t* codepoints = (const wchar_t*)data.bytes;
+    const NSUInteger len = string.length;
     UString converted;
-    for (NSUInteger index = 0; index < count; index++) {
-        converted += codepoints[index];
-    }
+    converted.Empty();
+    for (NSUInteger index = 0; index < len; index++)
+        converted += (wchar_t)[string characterAtIndex:index];
     return converted;
 }
 
 static NSString* SZToNSString(const UString& string) {
-    const unsigned len = string.Len();
-    if (len == 0) {
-        return @"";
+    NSMutableString* converted = [NSMutableString stringWithCapacity:string.Len()];
+    for (unsigned index = 0; index < string.Len(); index++) {
+        const unichar character = (unichar)string[index];
+        [converted appendString:[NSString stringWithCharacters:&character length:1]];
     }
-    NSData* data = [NSData dataWithBytes:string.Ptr()
-                                  length:(NSUInteger)len * sizeof(wchar_t)];
-    NSString* result = [[NSString alloc] initWithData:data
-                                             encoding:NSUTF32LittleEndianStringEncoding];
-    return result ?: @"";
+    return converted;
 }
 
 bool SZWorkDirShouldUseConfiguredMode(const FString& path) {

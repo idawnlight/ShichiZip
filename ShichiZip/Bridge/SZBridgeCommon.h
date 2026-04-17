@@ -189,33 +189,24 @@ CCodecs* _Nullable SZGetCodecs(void);
 // ============================================================
 // String conversion: UString <-> NSString
 // ============================================================
-// Use UTF-32 to preserve non-BMP code points between NSString and
-// UString on macOS, where wchar_t is 32-bit.
-
 static inline UString ToU(NSString* _Nullable s) {
-    if (!s || s.length == 0)
+    if (!s)
         return UString();
-    NSData* data = [s dataUsingEncoding:NSUTF32LittleEndianStringEncoding];
-    if (!data || data.length == 0)
-        return UString();
-    const NSUInteger count = data.length / sizeof(wchar_t);
-    const wchar_t* codepoints = (const wchar_t*)data.bytes;
+    const NSUInteger len = s.length;
     UString u;
-    for (NSUInteger i = 0; i < count; i++) {
-        u += codepoints[i];
-    }
+    u.Empty();
+    for (NSUInteger i = 0; i < len; i++)
+        u += (wchar_t)[s characterAtIndex:i];
     return u;
 }
 
 static inline NSString* ToNS(const UString& u) {
-    const unsigned len = u.Len();
-    if (len == 0)
-        return @"";
-    NSData* data = [NSData dataWithBytes:u.Ptr()
-                                  length:(NSUInteger)len * sizeof(wchar_t)];
-    NSString* result = [[NSString alloc] initWithData:data
-                                             encoding:NSUTF32LittleEndianStringEncoding];
-    return result ?: @"";
+    NSMutableString* s = [NSMutableString stringWithCapacity:u.Len()];
+    for (unsigned i = 0; i < u.Len(); i++) {
+        const unichar ch = (unichar)u[i];
+        [s appendString:[NSString stringWithCharacters:&ch length:1]];
+    }
+    return s;
 }
 
 // Convert a C string to NSString without returning nil; invalid UTF-8
