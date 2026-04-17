@@ -96,9 +96,6 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
     private var isLoading = false
     private var isDeleting = false
 
-    /// Cache row icons by type; packages keep per-path icons.
-    private var iconCacheByExtension: [String: NSImage] = [:]
-
     private var deleteButton: NSButton!
     private var refreshButton: NSButton!
     private var parentButton: NSButton!
@@ -620,32 +617,14 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
         cell.textField?.alignment = column.alignment
 
         if column == .name {
-            let image = cachedIcon(for: item)
+            let image = NSWorkspace.shared.icon(forFile: item.url.path)
+            image.size = NSSize(width: 16, height: 16)
             cell.imageView?.image = image
         } else {
             cell.imageView?.image = nil
         }
 
         return cell
-    }
-
-    private func cachedIcon(for item: BrowserItem) -> NSImage {
-        // Packages keep per-path icons; plain folders share one cache key.
-        let isPackage: Bool = (try? item.url.resourceValues(forKeys: [.isPackageKey]).isPackage) ?? false
-        let key = if isPackage {
-            "pkg:" + item.url.path
-        } else if item.isDirectory {
-            "__dir__"
-        } else {
-            "ext:" + item.url.pathExtension.lowercased()
-        }
-        if let cached = iconCacheByExtension[key] {
-            return cached
-        }
-        let image = NSWorkspace.shared.icon(forFile: item.url.path)
-        image.size = NSSize(width: 16, height: 16)
-        iconCacheByExtension[key] = image
-        return image
     }
 
     private func makeCellView(for column: Column,
