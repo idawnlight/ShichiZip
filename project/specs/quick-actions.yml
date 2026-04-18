@@ -35,6 +35,8 @@ targets:
         <<: &quick_action_info_common
           CFBundleDisplayName: $(SHICHIZIP_QUICK_ACTION_DISPLAY_NAME)
           CFBundleName: $(SHICHIZIP_QUICK_ACTION_DISPLAY_NAME)
+          CFBundleShortVersionString: $(MARKETING_VERSION)
+          CFBundleVersion: $(CURRENT_PROJECT_VERSION)
           LSMinimumSystemVersion: "13.0"
           ShichiZipHostAppDisplayName: $(SHICHIZIP_HOST_APP_DISPLAY_NAME)
           ShichiZipQuickActionPasteboardType: $(SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE)

@@ -31,12 +31,25 @@ targets:
             - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/CPP
             - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/C
           LIBRARY_SEARCH_PATHS:
-            - $(PROJECT_DIR)/build/lib
+            - $(inherited)
+          'LIBRARY_SEARCH_PATHS[arch=arm64]':
+            - $(inherited)
+            - $(PROJECT_DIR)/build/lib/arm64
+          'LIBRARY_SEARCH_PATHS[arch=x86_64]':
+            - $(inherited)
+            - $(PROJECT_DIR)/build/lib/x86_64
           OTHER_LDFLAGS:
-            - -force_load
-            - $(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)
+            - $(inherited)
             - -liconv
             - -lpthread
+          'OTHER_LDFLAGS[arch=arm64]':
+            - $(inherited)
+            - -force_load
+            - $(PROJECT_DIR)/build/lib/arm64/$(SEVENZ_LIBRARY_NAME)
+          'OTHER_LDFLAGS[arch=x86_64]':
+            - $(inherited)
+            - -force_load
+            - $(PROJECT_DIR)/build/lib/x86_64/$(SEVENZ_LIBRARY_NAME)
           MACOSX_DEPLOYMENT_TARGET: "13.0"
           GENERATE_INFOPLIST_FILE: false
           CLANG_ENABLE_OBJC_ARC: true

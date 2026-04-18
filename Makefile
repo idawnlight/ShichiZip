@@ -93,8 +93,8 @@ define require_existing_files
 $(if $(strip $(filter-out $(wildcard $(1)),$(1))),$(error Missing required source file(s): $(filter-out $(wildcard $(1)),$(1))),$(1))
 endef
 
-O = build/obj/$(SEVENZ_OBJECT_SUBDIR)
-LIB_OUT = build/lib
+O = build/obj/$(TARGET_ARCH)/$(SEVENZ_OBJECT_SUBDIR)
+LIB_OUT = build/lib/$(TARGET_ARCH)
 LIB = $(LIB_OUT)/$(SEVENZ_LIBRARY_NAME)
 
 ifeq ($(TARGET_ARCH),arm64)
@@ -521,7 +521,7 @@ $(ALL_OBJS): | prepare-7zip
 $(LIB): $(ALL_OBJS)
 	@mkdir -p $(LIB_OUT)
 	$(AR) rcs $@ $^
-	@echo "=== Built $@ ($(words $(ALL_OBJS)) objects) ==="
+	@echo "=== Built $@ for $(TARGET_ARCH) ($(words $(ALL_OBJS)) objects) ==="
 
 # Pull in generated header dependencies.
 -include $(ALL_OBJS:.o=.d)
@@ -584,6 +584,8 @@ sfx-clean:
 
 # Print object count
 info:
+	@echo "Target arch: $(TARGET_ARCH)"
+	@echo "Library output: $(LIB)"
 	@echo "C objects: $(words $(C_OBJS))"
 	@echo "C++ objects: $(words $(CPP_OBJS))"
 	@echo "Total: $(words $(ALL_OBJS))"
