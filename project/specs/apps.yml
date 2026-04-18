@@ -1,0 +1,126 @@
+targets:
+  ShichiZip:
+    type: application
+    platform: macOS
+    postBuildScripts: &generate_build_metadata
+      - name: Generate Build Metadata
+        basedOnDependencyAnalysis: false
+        script: |
+          sh "${SRCROOT}/project/scripts/generate-build-metadata.sh"
+    sources: &app_sources
+      - path: ../../ShichiZip
+        excludes: &app_source_excludes
+          - "**/*.entitlements"
+          - "QuickActions/Extensions/**"
+    dependencies:
+      - target: ShichiZipRevealInFileManagerAction
+        embed: true
+      - target: ShichiZipOpenInShichiZipAction
+        embed: true
+      - target: ShichiZipSmartQuickExtractAction
+        embed: true
+    settings:
+      base:
+        <<: &common_app_settings
+          INFOPLIST_FILE: ShichiZip/Resources/Info.plist
+          CODE_SIGN_ENTITLEMENTS: ShichiZip/Resources/ShichiZip.entitlements
+          CLANG_CXX_LANGUAGE_STANDARD: c++23
+          SWIFT_OBJC_BRIDGING_HEADER: ShichiZip/App/ShichiZip-Bridging-Header.h
+          HEADER_SEARCH_PATHS:
+            - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)
+            - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/CPP
+            - $(PROJECT_DIR)/$(SEVENZ_VENDOR_ROOT)/C
+          LIBRARY_SEARCH_PATHS:
+            - $(PROJECT_DIR)/build/lib
+          OTHER_LDFLAGS:
+            - -force_load
+            - $(PROJECT_DIR)/build/lib/$(SEVENZ_LIBRARY_NAME)
+            - -liconv
+            - -lpthread
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
+          GENERATE_INFOPLIST_FILE: false
+          CLANG_ENABLE_OBJC_ARC: true
+          CLANG_WARN_DOCUMENTATION_COMMENTS: false
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip
+        PRODUCT_NAME: ShichiZip
+        SHICHIZIP_APP_DISPLAY_NAME: ShichiZip
+        SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip
+        SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip based."
+        SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip/DOC/License.txt
+        SHICHIZIP_SFX_SOURCE_PATH: build/sfx/7z-mainline-x86.sfx
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
+        SEVENZ_LIBRARY_NAME: lib7zip.a
+        SEVENZ_VENDOR_ROOT: vendor/7zip
+        GCC_PREPROCESSOR_DEFINITIONS:
+          - "$(inherited)"
+          - "NDEBUG=1"
+          - "SHICHIZIP_ZS_VARIANT=0"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS:
+          - "$(inherited)"
+
+  ShichiZipTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: ../../ShichiZipTests
+    dependencies:
+      - target: ShichiZip
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipTests
+        PRODUCT_NAME: ShichiZipTests
+        GENERATE_INFOPLIST_FILE: true
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_OBJC_BRIDGING_HEADER: ShichiZipTests/ShichiZipTests-Bridging-Header.h
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/ShichiZip.app/Contents/MacOS/ShichiZip
+        BUNDLE_LOADER: $(TEST_HOST)
+
+  ShichiZipUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: ../../ShichiZipUITests
+    dependencies:
+      - target: ShichiZip
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipUITests
+        PRODUCT_NAME: ShichiZipUITests
+        GENERATE_INFOPLIST_FILE: true
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        TEST_TARGET_NAME: ShichiZip
+
+  ShichiZipZS:
+    type: application
+    platform: macOS
+    postBuildScripts: *generate_build_metadata
+    sources: *app_sources
+    dependencies:
+      - target: ShichiZipZSRevealInFileManagerAction
+        embed: true
+      - target: ShichiZipZSOpenInShichiZipAction
+        embed: true
+      - target: ShichiZipZSSmartQuickExtractAction
+        embed: true
+    settings:
+      base:
+        <<: *common_app_settings
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS
+        PRODUCT_NAME: ShichiZip ZS
+        SHICHIZIP_APP_DISPLAY_NAME: ShichiZip ZS
+        SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip-zstd
+        SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip ZS (mcmilk/7-Zip-zstd) based."
+        SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip-zstd/COPYING
+        SHICHIZIP_SFX_SOURCE_PATH: build/sfx/7z-zs-x86.sfx
+        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
+        SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
+        SEVENZ_LIBRARY_NAME: lib7zip-zs.a
+        SEVENZ_VENDOR_ROOT: vendor/7zip-zstd
+        GCC_PREPROCESSOR_DEFINITIONS:
+          - "$(inherited)"
+          - "NDEBUG=1"
+          - "SHICHIZIP_ZS_VARIANT=1"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS:
+          - "$(inherited)"
+          - "SHICHIZIP_ZS_VARIANT"

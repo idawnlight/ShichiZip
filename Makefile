@@ -508,20 +508,15 @@ lib-zs:
 	@$(MAKE) SEVENZ_VARIANT=zs lib
 	+@$(MAKE) -f Makefile.sfx SFX_VARIANT=zs
 
-# Patch stamp for the current submodule checkout.
-# Keeps patching idempotent and reruns when the submodule revision changes.
-SEVENZ_HEAD := $(shell git -C $(SEVENZ_ROOT) rev-parse --verify HEAD 2>/dev/null || echo unknown-head)
-PATCH_STAMP = build/.shichizip-patched-$(notdir $(SEVENZ_ROOT))-$(SEVENZ_HEAD)
 PATCH_SRC_FILES = $(wildcard vendor/$(notdir $(SEVENZ_ROOT))-*.patch) vendor/apply_7zip_patches.sh
 
-$(PATCH_STAMP): $(PATCH_SRC_FILES)
-	@mkdir -p $(dir $@)
+# Always re-verify vendor patches before compiling. The vendored checkout
+# can be reset independently of build/ artifacts, so a stale stamp can
+# otherwise leave the tree unpatched while the build looks up to date.
+prepare-7zip: $(PATCH_SRC_FILES)
 	@sh vendor/apply_7zip_patches.sh $(SEVENZ_ROOT)
-	@touch $@
 
-prepare-7zip: $(PATCH_STAMP)
-
-$(ALL_OBJS): | $(PATCH_STAMP)
+$(ALL_OBJS): | prepare-7zip
 
 $(LIB): $(ALL_OBJS)
 	@mkdir -p $(LIB_OUT)

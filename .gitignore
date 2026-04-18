@@ -1,5 +1,9 @@
+/ShichiZip.xcodeproj/
+/project/generated/
+/ShichiZip/Resources/Localization/*.lproj/Upstream.strings
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
+/build/
 *.o
 *.a
 **/.DS_Store

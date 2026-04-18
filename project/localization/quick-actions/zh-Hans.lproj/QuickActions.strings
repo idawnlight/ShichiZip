@@ -1,0 +1,14 @@
+/* Shared Quick Action localization source. */
+/* Generated InfoPlist.strings files are composed from these tokens and templates. */
+
+"quickAction.template.full" = "{prefix}: {action}";
+"quickAction.template.openAction" = "在 {appName} 中打开";
+
+"quickAction.prefix.shichizip" = "SZ";
+"quickAction.prefix.shichizipzs" = "SZ ZS";
+
+"quickAction.app.shichizip" = "ShichiZip";
+"quickAction.app.shichizipzs" = "ShichiZip ZS";
+
+"quickAction.action.reveal" = "在文件管理器中显示";
+"quickAction.action.extract" = "智能快速解压";

@@ -1,0 +1,33 @@
+options:
+  bundleIdPrefix: ee.dawn
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+  preGenCommand: python3 project/scripts/generate_strings.py && python3 project/scripts/generate_quick_action_strings.py
+
+fileGroups:
+  - .
+  - ../scripts
+
+settings:
+  base:
+    MARKETING_VERSION: "0.0.4"
+    CURRENT_PROJECT_VERSION: "1" # placeholder, will be overridden by build script
+    SWIFT_VERSION: "6.0"
+  configs:
+    Debug:
+      ENABLE_HARDENED_RUNTIME: false
+      CODE_SIGN_IDENTITY: "Apple Development"
+      DEVELOPMENT_TEAM: VNM753Y3JX
+    Release:
+      ENABLE_HARDENED_RUNTIME: true
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: false
+      ENABLE_DEBUG_DYLIB: false
+      DEAD_CODE_STRIPPING: YES
+      DEPLOYMENT_POSTPROCESSING: YES
+      STRIP_INSTALLED_PRODUCT: YES
+      STRIP_STYLE: all
+      STRIP_SWIFT_SYMBOLS: YES
+      STRINGS_FILE_OUTPUT_ENCODING: binary
+      PLIST_FILE_OUTPUT_FORMAT: binary

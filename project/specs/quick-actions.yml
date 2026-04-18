@@ -1,0 +1,251 @@
+targets:
+  ShichiZipRevealInFileManagerAction:
+    type: app-extension
+    platform: macOS
+    postBuildScripts: &generate_build_metadata
+      - name: Generate Build Metadata
+        basedOnDependencyAnalysis: false
+        script: |
+          sh "${SRCROOT}/project/scripts/generate-build-metadata.sh"
+    sources:
+      - &quick_action_swift_sources
+        path: ../../ShichiZip/QuickActions
+        excludes:
+          - "Resources/**"
+      - path: ../generated/quick-actions/ShichiZipRevealInFileManagerAction
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        <<: &quick_action_mainline_settings
+          CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
+          GENERATE_INFOPLIST_FILE: false
+          APPLICATION_EXTENSION_API_ONLY: true
+          SHICHIZIP_HOST_APP_DISPLAY_NAME: ShichiZip
+          SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
+          SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.RevealInFileManagerAction
+        PRODUCT_NAME: ShichiZipRevealInFileManagerAction
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Reveal in File Manager"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Reveal in File Manager"
+    info:
+      path: ../generated/plists/ShichiZipRevealInFileManagerAction-Info.plist
+      properties: &reveal_quick_action_info
+        <<: &quick_action_info_common
+          CFBundleDisplayName: $(SHICHIZIP_QUICK_ACTION_DISPLAY_NAME)
+          CFBundleName: $(SHICHIZIP_QUICK_ACTION_DISPLAY_NAME)
+          LSMinimumSystemVersion: "13.0"
+          ShichiZipHostAppDisplayName: $(SHICHIZIP_HOST_APP_DISPLAY_NAME)
+          ShichiZipQuickActionPasteboardType: $(SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE)
+          ShichiZipQuickActionURLScheme: $(SHICHIZIP_QUICK_ACTION_URL_SCHEME)
+        NSExtension:
+          <<: &quick_action_extension_common
+            NSExtensionPointIdentifier: com.apple.services
+          NSExtensionAttributes:
+            <<: &quick_action_extension_attributes_common
+              NSExtensionServiceAllowsFinderPreviewItem: true
+              NSExtensionServiceFinderPreviewIconName: NSActionTemplate
+              NSExtensionServiceFinderPreviewLabel: $(SHICHIZIP_QUICK_ACTION_LABEL)
+              NSExtensionServiceRoleType: NSExtensionServiceRoleTypeViewer
+            NSExtensionActivationRule: >-
+              SUBQUERY(extensionItems, $extensionItem, $extensionItem.attachments.@count >= 1 &&
+              $extensionItem.attachments.@count <= 64 &&
+              SUBQUERY($extensionItem.attachments, $attachment,
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.item").@count ==
+              $extensionItem.attachments.@count).@count == 1
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShowInFileManagerQuickActionHandler
+
+  ShichiZipOpenInShichiZipAction:
+    type: app-extension
+    platform: macOS
+    postBuildScripts: *generate_build_metadata
+    sources:
+      - *quick_action_swift_sources
+      - path: ../generated/quick-actions/ShichiZipOpenInShichiZipAction
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        <<: *quick_action_mainline_settings
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.OpenInShichiZipAction
+        PRODUCT_NAME: ShichiZipOpenInShichiZipAction
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Open in ShichiZip"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Open in ShichiZip"
+    info:
+      path: ../generated/plists/ShichiZipOpenInShichiZipAction-Info.plist
+      properties: &open_quick_action_info
+        <<: *quick_action_info_common
+        NSExtension:
+          <<: *quick_action_extension_common
+          NSExtensionAttributes:
+            <<: *quick_action_extension_attributes_common
+            NSExtensionActivationRule: >-
+              SUBQUERY(extensionItems, $extensionItem, $extensionItem.attachments.@count == 1 &&
+              SUBQUERY($extensionItem.attachments, $attachment,
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.item").@count == 1).@count == 1
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).OpenInShichiZipQuickActionHandler
+
+  ShichiZipSmartQuickExtractAction:
+    type: app-extension
+    platform: macOS
+    postBuildScripts: *generate_build_metadata
+    sources:
+      - *quick_action_swift_sources
+      - path: ../generated/quick-actions/ShichiZipSmartQuickExtractAction
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        <<: *quick_action_mainline_settings
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.SmartQuickExtractAction
+        PRODUCT_NAME: ShichiZipSmartQuickExtractAction
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ: Smart Quick Extract"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ: Smart Quick Extract"
+    info:
+      path: ../generated/plists/ShichiZipSmartQuickExtractAction-Info.plist
+      properties: &smart_extract_quick_action_info
+        <<: *quick_action_info_common
+        NSExtension:
+          <<: *quick_action_extension_common
+          NSExtensionAttributes:
+            <<: *quick_action_extension_attributes_common
+            NSExtensionActivationRule: >-
+              SUBQUERY(extensionItems, $extensionItem, $extensionItem.attachments.@count == 1 &&
+              SUBQUERY($extensionItem.attachments, $attachment,
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.7-zip.7-zip-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.tukaani.lzma-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.lzma-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.lzop-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.lzop-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.lzip-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.lzip-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.lz4-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.lz4-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.pkware.zip-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.zip-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.zip-archive.first-part" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.winzip.zipx-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.tukaani.xz-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.xz-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.tukaani.tar-xz-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.tukaani.xz-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.tar-xz-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.google.brotli-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.brotli-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.google.brotli-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.brotli-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.facebook.zstandard-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.zstandard-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.facebook.zstandard-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.zstandard-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.rarlab.rar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.bzip2-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.bzip.bzip2-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.redhat.bzip2-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.tar-bzip2-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.bzip.bzip2-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.bzip-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.gnu.gnu-zip-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.gnu.gnu-zip-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.gnu.gnu-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.lrzip-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.kolivas.lrzip-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.lrzip-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.kolivas.lrzip-tar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.cpio-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.bom-compressed-cpio" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "cx.c3.pax-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.pax-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.disk-image" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.disk-image-smi" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.iso-image" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.archive.lha" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.microsoft.windows-executable" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.microsoft.cab-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.microsoft.msi-installer" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.microsoft.wim-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.iTunes.ipa" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.sun.java-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.cyclos.cpt-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.synology.spk-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "cx.c3.arc-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.archive.apk" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.android.package-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.microsoft.appx-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.winace.ace-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.xar-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.encrypted-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.plougher.squashfs-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.servmask.wpress-backup" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.rileytestut.delta.skin").@count == 1).@count == 1
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SmartQuickExtractQuickActionHandler
+
+  ShichiZipZSRevealInFileManagerAction:
+    type: app-extension
+    platform: macOS
+    postBuildScripts: *generate_build_metadata
+    sources:
+      - *quick_action_swift_sources
+      - path: ../generated/quick-actions/ShichiZipZSRevealInFileManagerAction
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        <<: &quick_action_zs_settings
+          CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
+          GENERATE_INFOPLIST_FILE: false
+          APPLICATION_EXTENSION_API_ONLY: true
+          SHICHIZIP_HOST_APP_DISPLAY_NAME: "ShichiZip ZS"
+          SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
+          SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.RevealInFileManagerAction
+        PRODUCT_NAME: ShichiZipZSRevealInFileManagerAction
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Reveal in File Manager"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Reveal in File Manager"
+    info:
+      path: ../generated/plists/ShichiZipZSRevealInFileManagerAction-Info.plist
+      properties: *reveal_quick_action_info
+
+  ShichiZipZSOpenInShichiZipAction:
+    type: app-extension
+    platform: macOS
+    postBuildScripts: *generate_build_metadata
+    sources:
+      - *quick_action_swift_sources
+      - path: ../generated/quick-actions/ShichiZipZSOpenInShichiZipAction
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        <<: *quick_action_zs_settings
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.OpenInShichiZipAction
+        PRODUCT_NAME: ShichiZipZSOpenInShichiZipAction
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Open in ShichiZip ZS"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Open in ShichiZip ZS"
+    info:
+      path: ../generated/plists/ShichiZipZSOpenInShichiZipAction-Info.plist
+      properties: *open_quick_action_info
+
+  ShichiZipZSSmartQuickExtractAction:
+    type: app-extension
+    platform: macOS
+    postBuildScripts: *generate_build_metadata
+    sources:
+      - *quick_action_swift_sources
+      - path: ../generated/quick-actions/ShichiZipZSSmartQuickExtractAction
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        <<: *quick_action_zs_settings
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.SmartQuickExtractAction
+        PRODUCT_NAME: ShichiZipZSSmartQuickExtractAction
+        SHICHIZIP_QUICK_ACTION_DISPLAY_NAME: "SZ ZS: Smart Quick Extract"
+        SHICHIZIP_QUICK_ACTION_LABEL: "SZ ZS: Smart Quick Extract"
+    info:
+      path: ../generated/plists/ShichiZipZSSmartQuickExtractAction-Info.plist
+      properties: *smart_extract_quick_action_info
