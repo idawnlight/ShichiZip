@@ -17,6 +17,9 @@ settings:
     SWIFT_VERSION: "6.0"
   configs:
     Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS:
+        - $(inherited)
+        - DEBUG
       ENABLE_HARDENED_RUNTIME: false
       CODE_SIGN_IDENTITY: "Apple Development"
       DEVELOPMENT_TEAM: VNM753Y3JX

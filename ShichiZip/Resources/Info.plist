@@ -43,8 +43,8 @@
 	<string>$(SHICHIZIP_COPYRIGHT_LINE)</string>
 	<key>ShichiZipArchiveCoreName</key>
 	<string>$(SHICHIZIP_ARCHIVE_CORE_NAME)</string>
-	<key>ShichiZipQuickActionPasteboardType</key>
-	<string>$(SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE)</string>
+	<key>ShichiZipQuickActionAppGroupIdentifier</key>
+	<string>$(SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER)</string>
 	<key>ShichiZipQuickActionURLScheme</key>
 	<string>$(SHICHIZIP_QUICK_ACTION_URL_SCHEME)</string>
 	<key>NSSupportsAutomaticTermination</key>

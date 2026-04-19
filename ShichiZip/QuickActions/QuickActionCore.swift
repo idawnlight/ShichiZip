@@ -59,6 +59,7 @@ enum ShichiZipQuickActionError: LocalizedError {
     case invalidLaunchURL
     case missingPayload
     case invalidPayload
+    case transportUnavailable
     case launchFailed
     case temporaryRepresentationUnsupported(ShichiZipQuickAction)
     case unsupportedSelection(String)
@@ -71,6 +72,8 @@ enum ShichiZipQuickActionError: LocalizedError {
             "The Quick Action request payload is missing."
         case .invalidPayload:
             "The Quick Action request payload is invalid."
+        case .transportUnavailable:
+            "The Quick Action shared container is unavailable."
         case .launchFailed:
             "\(ShichiZipQuickActionAppInfo.hostAppDisplayName) could not be launched from the Quick Action."
         case let .temporaryRepresentationUnsupported(action):

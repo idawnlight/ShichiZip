@@ -1,4 +1,5 @@
 import Cocoa
+import os.log
 
 struct ArchiveExtractionPostProcessResult {
     let movedSourceArchiveToTrash: Bool
@@ -26,8 +27,16 @@ enum ArchiveExtractionPostProcessor {
 class AppDelegate: NSObject, NSApplicationDelegate {
     private static let disableSmartQuickExtractRevealEnvironmentKey = "SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL"
 
+    private static func quickActionLog(_ message: String) {
+        #if DEBUG
+            NSLog("[QuickActionTransport] %@", message)
+        #else
+            os_log(.info, "[QuickActionTransport] %{private}@", message)
+        #endif
+    }
+
     /// Test-only override for smart quick extract reveal behavior.
-    static var testingShouldRevealSmartQuickExtractDestinationOverride: Bool?
+    nonisolated(unsafe) static var testingShouldRevealSmartQuickExtractDestinationOverride: Bool?
 
     private struct SmartQuickExtractPlan {
         let destinationURL: URL
@@ -60,6 +69,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_: Notification) {
+        ShichiZipQuickActionTransport.cleanupStalePayloads()
         MainMenu.setup()
         // Delay slightly — if we're opening a file, the document system will handle it
         // Only show file manager if no documents are being opened
@@ -119,6 +129,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if url.isFileURL {
                 archiveURLs.append(url)
             } else if ShichiZipQuickActionTransport.canHandle(url) {
+                Self.quickActionLog("received launchURL=\(url.absoluteString)")
                 handleQuickActionLaunchURL(url)
             }
         }
@@ -163,16 +174,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Open an archive in a NEW file manager window (for "Open With" from Finder)
     func openArchiveInNewFileManager(_ url: URL) {
-        let wc = FileManagerWindowController()
-        wc.onWindowWillClose = { [weak self] controller in
-            self?.additionalFileManagerWindows.removeAll { $0 === controller }
-        }
-        additionalFileManagerWindows.append(wc)
+        let wc = makeAdditionalFileManagerWindowController()
         if wc.navigateToArchive(url, revealWindow: false) {
             wc.showWindow(self)
         } else {
             additionalFileManagerWindows.removeAll { $0 === wc }
         }
+    }
+
+    @discardableResult
+    func openFileSystemItemInNewFileManager(_ url: URL) -> Bool {
+        let controller = makeAdditionalFileManagerWindowController()
+        if controller.openFileSystemItem(url, revealWindow: false) {
+            controller.showWindow(self)
+            return true
+        }
+
+        additionalFileManagerWindows.removeAll { $0 === controller }
+        return false
     }
 
     func beginDeferredArchiveOpen() {
@@ -302,10 +321,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handleQuickActionLaunchURL(_ url: URL) {
         do {
+            Self.quickActionLog("consuming launchURL=\(url.absoluteString)")
             let request = try ShichiZipQuickActionTransport.consumeRequest(from: url)
+            Self.quickActionLog("decoded request action=\(request.action.rawValue) paths=\(request.paths.joined(separator: ", "))")
             NSApp.activate(ignoringOtherApps: true)
             try handleQuickAction(request)
         } catch {
+            Self.quickActionLog("failed launchURL=\(url.absoluteString) error=\(String(describing: error))")
             szPresentError(error, for: NSApp.keyWindow ?? NSApp.mainWindow)
         }
     }
@@ -325,13 +347,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let fileURLs = try existingFileURLs(from: request)
         let groups = groupedFileSystemItemsByParentDirectory(fileURLs)
 
-        guard let firstGroup = groups.first else {
+        guard !groups.isEmpty else {
             throw ShichiZipQuickActionError.unsupportedSelection("Select one or more files or folders.")
         }
 
-        revealFileSystemItemsInPrimaryWindow(firstGroup)
-
-        for group in groups.dropFirst() {
+        for group in groups {
+            Self.quickActionLog("show-in-file-manager opening new window urls=\(group.map(\.path).joined(separator: ", "))")
             revealFileSystemItemsInNewWindow(group)
         }
     }
@@ -339,8 +360,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleOpenInShichiZipQuickAction(_ request: ShichiZipQuickActionRequest) throws {
         let itemURL = try existingSingleURL(from: request,
                                             selectionError: "Select a single file or folder to open in \(AppBuildInfo.appDisplayName()).")
-        let controller = ensurePrimaryFileManagerWindowController()
-        _ = controller.openFileSystemItem(itemURL, revealWindow: true)
+        Self.quickActionLog("open-in-shichizip opening new window item=\(itemURL.path)")
+        _ = openFileSystemItemInNewFileManager(itemURL)
     }
 
     private func handleSmartQuickExtractQuickAction(_ request: ShichiZipQuickActionRequest) throws {
@@ -475,17 +496,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func revealFileSystemItemsInNewWindow(_ urls: [URL]) {
-        let controller = FileManagerWindowController()
-        controller.onWindowWillClose = { [weak self] closingController in
-            self?.additionalFileManagerWindows.removeAll { $0 === closingController }
-        }
-        additionalFileManagerWindows.append(controller)
+        let controller = makeAdditionalFileManagerWindowController()
 
         if controller.revealFileSystemItems(urls, revealWindow: false) {
             controller.showWindow(self)
         } else {
             additionalFileManagerWindows.removeAll { $0 === controller }
         }
+    }
+
+    private func makeAdditionalFileManagerWindowController() -> FileManagerWindowController {
+        let controller = FileManagerWindowController()
+        controller.onWindowWillClose = { [weak self] closingController in
+            self?.additionalFileManagerWindows.removeAll { $0 === closingController }
+        }
+        additionalFileManagerWindows.append(controller)
+        return controller
     }
 
     private nonisolated func smartQuickExtractPlan(for archiveURL: URL,

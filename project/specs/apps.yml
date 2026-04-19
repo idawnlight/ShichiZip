@@ -61,7 +61,7 @@ targets:
         SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip based."
         SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip/DOC/License.txt
         SHICHIZIP_SFX_SOURCE_PATH: build/sfx/7z-mainline-x86.sfx
-        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
+        SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER: $(DEVELOPMENT_TEAM).ShichiZip
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
         SEVENZ_LIBRARY_NAME: lib7zip.a
         SEVENZ_VENDOR_ROOT: vendor/7zip
@@ -126,7 +126,7 @@ targets:
         SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip ZS (mcmilk/7-Zip-zstd) based."
         SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip-zstd/COPYING
         SHICHIZIP_SFX_SOURCE_PATH: build/sfx/7z-zs-x86.sfx
-        SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
+        SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER: $(DEVELOPMENT_TEAM).ShichiZip
         SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
         SEVENZ_LIBRARY_NAME: lib7zip-zs.a
         SEVENZ_VENDOR_ROOT: vendor/7zip-zstd

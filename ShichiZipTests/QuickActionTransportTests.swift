@@ -2,16 +2,21 @@ import Foundation
 @testable import ShichiZip
 import XCTest
 
-/// AppDelegate is @MainActor; keep the test class there too.
-@MainActor
 final class QuickActionTransportTests: XCTestCase {
+    private var requestDirectoryURL: URL!
+
     override func setUp() {
         super.setUp()
         // Use the test override instead of mutating process-wide environment state.
         AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = false
+        requestDirectoryURL = try? makeTemporaryDirectory(named: #function,
+                                                          prefix: "ShichiZipQuickActionRequests")
+        ShichiZipQuickActionTransport.testingRequestDirectoryURLOverride = requestDirectoryURL
     }
 
     override func tearDown() {
+        ShichiZipQuickActionTransport.testingRequestDirectoryURLOverride = nil
+        requestDirectoryURL = nil
         AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = nil
         super.tearDown()
     }
@@ -22,15 +27,19 @@ final class QuickActionTransportTests: XCTestCase {
                                                   fileURLs: [archiveURL])
 
         let launchURL = try ShichiZipQuickActionTransport.launchURL(for: request)
+        let components = try XCTUnwrap(URLComponents(url: launchURL, resolvingAgainstBaseURL: false))
+        let requestIdentifier = try XCTUnwrap(components.queryItems?.first(where: { $0.name == "request" })?.value)
         let consumedRequest = try ShichiZipQuickActionTransport.consumeRequest(from: launchURL)
 
         XCTAssertEqual(launchURL.scheme?.lowercased(),
                        ShichiZipQuickActionTransport.urlScheme.lowercased())
         XCTAssertEqual(launchURL.host?.lowercased(), "quick-action")
         XCTAssertEqual(launchURL.path, "/finder")
+        XCTAssertFalse(requestIdentifier.isEmpty)
         XCTAssertTrue(ShichiZipQuickActionTransport.canHandle(launchURL))
         XCTAssertEqual(consumedRequest.action, .smartQuickExtract)
         XCTAssertEqual(consumedRequest.fileURLs, [archiveURL.standardizedFileURL])
+        XCTAssertEqual(stagedPayloadURLs().count, 0)
     }
 
     func testSmartQuickExtractLaunchURLRejectsDifferentScheme() throws {
@@ -47,9 +56,42 @@ final class QuickActionTransportTests: XCTestCase {
                 return XCTFail("Expected invalidLaunchURL, got \(error)")
             }
         }
+        XCTAssertEqual(stagedPayloadURLs().count, 1)
 
         let consumedRequest = try ShichiZipQuickActionTransport.consumeRequest(from: launchURL)
         XCTAssertEqual(consumedRequest.action, .smartQuickExtract)
+        XCTAssertEqual(stagedPayloadURLs().count, 0)
+    }
+
+    func testReleasePayloadRemovesStagedRequestFile() throws {
+        let request = ShichiZipQuickActionRequest(action: .smartQuickExtract,
+                                                  fileURLs: [URL(fileURLWithPath: "/tmp/archive.7z")])
+        let launchURL = try ShichiZipQuickActionTransport.launchURL(for: request)
+
+        XCTAssertEqual(stagedPayloadURLs().count, 1)
+
+        ShichiZipQuickActionTransport.releasePayload(for: launchURL)
+
+        XCTAssertEqual(stagedPayloadURLs().count, 0)
+    }
+
+    func testCleanupStalePayloadsRemovesOnlyExpiredFiles() throws {
+        let expiredFileURL = requestDirectoryURL.appendingPathComponent("expired.json")
+        let freshFileURL = requestDirectoryURL.appendingPathComponent("fresh.json")
+        let markerDate = Date()
+
+        try Data("expired".utf8).write(to: expiredFileURL)
+        try Data("fresh".utf8).write(to: freshFileURL)
+
+        try FileManager.default.setAttributes([.modificationDate: markerDate.addingTimeInterval(-(25 * 60 * 60))],
+                                              ofItemAtPath: expiredFileURL.path)
+        try FileManager.default.setAttributes([.modificationDate: markerDate],
+                                              ofItemAtPath: freshFileURL.path)
+
+        ShichiZipQuickActionTransport.cleanupStalePayloads(now: markerDate)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: expiredFileURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: freshFileURL.path))
     }
 
     @MainActor
@@ -133,5 +175,11 @@ final class QuickActionTransportTests: XCTestCase {
         }
 
         XCTFail("Timed out waiting for file at \(url.path)")
+    }
+
+    private func stagedPayloadURLs() -> [URL] {
+        (try? FileManager.default.contentsOfDirectory(at: requestDirectoryURL,
+                                                      includingPropertiesForKeys: nil,
+                                                      options: [.skipsHiddenFiles])) ?? []
     }
 }

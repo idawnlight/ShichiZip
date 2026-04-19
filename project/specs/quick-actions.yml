@@ -23,7 +23,7 @@ targets:
           GENERATE_INFOPLIST_FILE: false
           APPLICATION_EXTENSION_API_ONLY: true
           SHICHIZIP_HOST_APP_DISPLAY_NAME: ShichiZip
-          SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZip.quick-action-request
+          SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER: $(DEVELOPMENT_TEAM).ShichiZip
           SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizip
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.RevealInFileManagerAction
         PRODUCT_NAME: ShichiZipRevealInFileManagerAction
@@ -39,7 +39,7 @@ targets:
           CFBundleVersion: $(CURRENT_PROJECT_VERSION)
           LSMinimumSystemVersion: "13.0"
           ShichiZipHostAppDisplayName: $(SHICHIZIP_HOST_APP_DISPLAY_NAME)
-          ShichiZipQuickActionPasteboardType: $(SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE)
+          ShichiZipQuickActionAppGroupIdentifier: $(SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER)
           ShichiZipQuickActionURLScheme: $(SHICHIZIP_QUICK_ACTION_URL_SCHEME)
         NSExtension:
           <<: &quick_action_extension_common
@@ -202,7 +202,7 @@ targets:
           GENERATE_INFOPLIST_FILE: false
           APPLICATION_EXTENSION_API_ONLY: true
           SHICHIZIP_HOST_APP_DISPLAY_NAME: "ShichiZip ZS"
-          SHICHIZIP_QUICK_ACTION_PASTEBOARD_TYPE: ee.dawn.ShichiZipZS.quick-action-request
+          SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER: $(DEVELOPMENT_TEAM).ShichiZip
           SHICHIZIP_QUICK_ACTION_URL_SCHEME: shichizipzs
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS.RevealInFileManagerAction
         PRODUCT_NAME: ShichiZipZSRevealInFileManagerAction
