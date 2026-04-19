@@ -425,9 +425,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         tableView.delegate = self
         tableView.target = self
         tableView.menu = buildContextMenu()
-        #if DEBUG
-            NSLog("[ShichiZip] File manager pane context menu set with %ld items", tableView.menu?.items.count ?? 0)
-        #endif
+        SZLog.debug("ShichiZip", "File manager pane context menu set with \(tableView.menu?.items.count ?? 0) items")
 
         // Register for drag and drop
         let promisedFileTypes = NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) }

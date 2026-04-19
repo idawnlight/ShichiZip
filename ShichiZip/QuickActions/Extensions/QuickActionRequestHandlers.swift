@@ -1,6 +1,5 @@
 import AppKit
 import Foundation
-import os.log
 import UniformTypeIdentifiers
 
 class ShichiZipQuickActionRequestHandler: NSObject, NSExtensionRequestHandling {
@@ -14,14 +13,7 @@ class ShichiZipQuickActionRequestHandler: NSObject, NSExtensionRequestHandling {
     }
 
     private class func log(_ message: String) {
-        // Keep file paths private in Release logs.
-        #if DEBUG
-            NSLog("[QuickAction:%@] %@", quickAction.rawValue, message)
-        #else
-            // os_log expects %@ for Swift strings.
-            os_log(.info, "[QuickAction:%{public}@] %{private}@",
-                   quickAction.rawValue, message)
-        #endif
+        SZLog.info("QuickAction:\(quickAction.rawValue)", message)
     }
 
     func beginRequest(with context: NSExtensionContext) {

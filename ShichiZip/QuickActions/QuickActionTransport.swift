@@ -1,5 +1,4 @@
 import Foundation
-import os.log
 
 enum ShichiZipQuickActionTransport {
     private static let launchHost = "quick-action"
@@ -215,11 +214,6 @@ enum ShichiZipQuickActionTransport {
     }
 
     private static func log(_ message: String) {
-        #if DEBUG
-            NSLog("[QuickActionTransport] %@", message)
-        #else
-            os_log(.info, "[QuickActionTransport] %{private}@",
-                   message)
-        #endif
+        SZLog.info("QuickActionTransport", message)
     }
 }

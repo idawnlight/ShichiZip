@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#import <os/log.h>
+#import "../Utilities/SZObjCLog.h"
 
 #ifdef __APPLE__
 #include <sys/xattr.h>
@@ -1470,21 +1470,14 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     @try {
         [self close];
     } @catch (NSException* exception) {
-#if DEBUG
-        NSLog(@"[ShichiZip] SZArchive dealloc caught ObjC exception during close: %@", exception);
-#else
-        // Keep user paths private in Release logs.
-        os_log_error(OS_LOG_DEFAULT,
-            "[ShichiZip] SZArchive dealloc caught ObjC exception during close: %{private}s",
-            exception.description.UTF8String ?: "");
-#endif
+        SZLogError(@"ShichiZip", @"SZArchive dealloc caught ObjC exception during close: %@", exception);
     }
     try {
         if (_arcLink) {
             _arcLink->Close();
         }
     } catch (...) {
-        NSLog(@"[ShichiZip] SZArchive dealloc caught C++ exception during CArchiveLink::Close");
+        SZLogError(@"ShichiZip", @"SZArchive dealloc caught C++ exception during CArchiveLink::Close");
     }
 }
 

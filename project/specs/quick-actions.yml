@@ -12,6 +12,8 @@ targets:
         path: ../../ShichiZip/QuickActions
         excludes:
           - "Resources/**"
+      - &shared_swift_log_source
+        path: ../../ShichiZip/Utilities/SZLog.swift
       - path: ../generated/quick-actions/ShichiZipRevealInFileManagerAction
         buildPhase: resources
         optional: true
@@ -64,6 +66,7 @@ targets:
     postBuildScripts: *generate_build_metadata
     sources:
       - *quick_action_swift_sources
+      - *shared_swift_log_source
       - path: ../generated/quick-actions/ShichiZipOpenInShichiZipAction
         buildPhase: resources
         optional: true
@@ -94,6 +97,7 @@ targets:
     postBuildScripts: *generate_build_metadata
     sources:
       - *quick_action_swift_sources
+      - *shared_swift_log_source
       - path: ../generated/quick-actions/ShichiZipSmartQuickExtractAction
         buildPhase: resources
         optional: true
@@ -191,6 +195,7 @@ targets:
     postBuildScripts: *generate_build_metadata
     sources:
       - *quick_action_swift_sources
+      - *shared_swift_log_source
       - path: ../generated/quick-actions/ShichiZipZSRevealInFileManagerAction
         buildPhase: resources
         optional: true
@@ -218,6 +223,7 @@ targets:
     postBuildScripts: *generate_build_metadata
     sources:
       - *quick_action_swift_sources
+      - *shared_swift_log_source
       - path: ../generated/quick-actions/ShichiZipZSOpenInShichiZipAction
         buildPhase: resources
         optional: true
@@ -238,6 +244,7 @@ targets:
     postBuildScripts: *generate_build_metadata
     sources:
       - *quick_action_swift_sources
+      - *shared_swift_log_source
       - path: ../generated/quick-actions/ShichiZipZSSmartQuickExtractAction
         buildPhase: resources
         optional: true

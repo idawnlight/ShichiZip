@@ -3,7 +3,7 @@
 #include "SZCallbacks.h"
 
 #import "../Dialogs/SZDialogPresenter.h"
-#import <os/log.h>
+#import "../Utilities/SZObjCLog.h"
 
 static inline void SZDispatchSyncOnMainThread(dispatch_block_t block) {
     if ([NSThread isMainThread]) {
@@ -383,13 +383,7 @@ Z7_COM7F_IMF(SZFolderExtractCallback::MessageError(const wchar_t* message)) {
     if (message) {
         UString extractedMessage(message);
         SZAppendErrorMessage(LastErrorMessage, extractedMessage);
-#if DEBUG
-        NSLog(@"[ShichiZip] Extract error: %@", ToNS(extractedMessage));
-#else
-        // Keep user paths private in Release logs.
-        os_log_error(OS_LOG_DEFAULT, "[ShichiZip] Extract error: %{private}s",
-            [ToNS(extractedMessage) UTF8String] ?: "");
-#endif
+        SZLogError(@"ShichiZip", @"Extract error: %@", ToNS(extractedMessage));
     }
     return S_OK;
 }
@@ -552,12 +546,7 @@ Z7_COM7F_IMF(SZFolderExtractCallback::RequestMemoryUse(
             archiveSkipped);
         SZAppendErrorMessage(LastErrorMessage, failureReason);
         NumErrors++;
-#if DEBUG
-        NSLog(@"[ShichiZip] %@", failureReason);
-#else
-        os_log_error(OS_LOG_DEFAULT, "[ShichiZip] %{private}s",
-            [failureReason UTF8String] ?: "");
-#endif
+        SZLogError(@"ShichiZip", @"%@", failureReason);
     }
 
     return S_OK;

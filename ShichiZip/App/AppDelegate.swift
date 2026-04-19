@@ -1,5 +1,4 @@
 import Cocoa
-import os.log
 
 struct ArchiveExtractionPostProcessResult {
     let movedSourceArchiveToTrash: Bool
@@ -26,14 +25,7 @@ enum ArchiveExtractionPostProcessor {
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     private static let disableSmartQuickExtractRevealEnvironmentKey = "SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL"
-
-    private static func quickActionLog(_ message: String) {
-        #if DEBUG
-            NSLog("[QuickActionTransport] %@", message)
-        #else
-            os_log(.info, "[QuickActionTransport] %{private}@", message)
-        #endif
-    }
+    private static let quickActionLogPrefix = "QuickActionTransport"
 
     /// Test-only override for smart quick extract reveal behavior.
     nonisolated(unsafe) static var testingShouldRevealSmartQuickExtractDestinationOverride: Bool?
@@ -129,7 +121,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if url.isFileURL {
                 archiveURLs.append(url)
             } else if ShichiZipQuickActionTransport.canHandle(url) {
-                Self.quickActionLog("received launchURL=\(url.absoluteString)")
+                SZLog.info(Self.quickActionLogPrefix, "received launchURL=\(url.absoluteString)")
                 handleQuickActionLaunchURL(url)
             }
         }
@@ -321,13 +313,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handleQuickActionLaunchURL(_ url: URL) {
         do {
-            Self.quickActionLog("consuming launchURL=\(url.absoluteString)")
+            SZLog.info(Self.quickActionLogPrefix, "consuming launchURL=\(url.absoluteString)")
             let request = try ShichiZipQuickActionTransport.consumeRequest(from: url)
-            Self.quickActionLog("decoded request action=\(request.action.rawValue) paths=\(request.paths.joined(separator: ", "))")
+            SZLog.info(Self.quickActionLogPrefix, "decoded request action=\(request.action.rawValue) paths=\(request.paths.joined(separator: ", "))")
             NSApp.activate(ignoringOtherApps: true)
             try handleQuickAction(request)
         } catch {
-            Self.quickActionLog("failed launchURL=\(url.absoluteString) error=\(String(describing: error))")
+            SZLog.error(Self.quickActionLogPrefix, "failed launchURL=\(url.absoluteString) error=\(String(describing: error))")
             szPresentError(error, for: NSApp.keyWindow ?? NSApp.mainWindow)
         }
     }
@@ -352,7 +344,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         for group in groups {
-            Self.quickActionLog("show-in-file-manager opening new window urls=\(group.map(\.path).joined(separator: ", "))")
+            SZLog.info(Self.quickActionLogPrefix, "show-in-file-manager opening new window urls=\(group.map(\.path).joined(separator: ", "))")
             revealFileSystemItemsInNewWindow(group)
         }
     }
@@ -360,7 +352,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleOpenInShichiZipQuickAction(_ request: ShichiZipQuickActionRequest) throws {
         let itemURL = try existingSingleURL(from: request,
                                             selectionError: "Select a single file or folder to open in \(AppBuildInfo.appDisplayName()).")
-        Self.quickActionLog("open-in-shichizip opening new window item=\(itemURL.path)")
+        SZLog.info(Self.quickActionLogPrefix, "open-in-shichizip opening new window item=\(itemURL.path)")
         _ = openFileSystemItemInNewFileManager(itemURL)
     }
 
