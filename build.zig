@@ -599,7 +599,42 @@ fn buildLib(
 
     const dest_dir = std.fmt.allocPrint(b.allocator, "lib/{s}", .{arch_str}) catch @panic("OOM");
     const dest_name = std.fmt.allocPrint(b.allocator, "{s}.a", .{lib_name}) catch @panic("OOM");
-    const install = b.addInstallFileWithDir(lib.getEmittedBin(), .{ .custom = dest_dir }, dest_name);
+
+    // Zig emits a SysV archive here, but Darwin's linker requires 64-bit Mach-O
+    // members to start on 8-byte boundaries. Repack the finished archive with
+    // Apple's libtool before installation so Xcode and clang can link it.
+    const archive_for_install: std.Build.LazyPath = blk: {
+        if (@import("builtin").os.tag != .macos or target.result.os.tag != .macos) {
+            break :blk lib.getEmittedBin();
+        }
+
+        const repack = b.addSystemCommand(&.{
+            "/bin/sh",
+            "-c",
+            \\set -eu
+            \\cwd="$(pwd)"
+            \\archive="$1"
+            \\output="$2"
+            \\case "$archive" in
+            \\  /*) ;;
+            \\  *) archive="$cwd/$archive" ;;
+            \\esac
+            \\tmpdir="${TMPDIR:-/tmp}/shichizip-archive.$$"
+            \\rm -rf "$tmpdir"
+            \\mkdir -p "$tmpdir"
+            \\trap 'rm -rf "$tmpdir"' EXIT
+            \\cd "$tmpdir"
+            \\/usr/bin/ar -x "$archive"
+            \\/bin/chmod u+rw ./*.o
+            \\/usr/bin/libtool -static -o "$output" *.o
+            ,
+            "sh",
+        });
+        repack.addFileArg(lib.getEmittedBin());
+        break :blk repack.addOutputFileArg(dest_name);
+    };
+
+    const install = b.addInstallFileWithDir(archive_for_install, .{ .custom = dest_dir }, dest_name);
     install.step.dependOn(&lib.step);
     return install;
 }
