@@ -27,6 +27,8 @@ jobs:
 
       - name: Set up Zig
         uses: mlugg/setup-zig@v2
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
         with:
           version: 0.16.0
 

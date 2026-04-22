@@ -191,33 +191,33 @@ const DarwinArchiveRepackStep = struct {
         try Io.Dir.deleteTree(Io.Dir.cwd(), io, base_dir_full);
         try Io.Dir.createDirPath(Io.Dir.cwd(), io, work_dir_path);
 
-        try repack.runCommand(step, io, work_dir_path, &.{ "/usr/bin/ar", "-x", archive_full_path });
+        const zig_exe = b.graph.zig_exe;
 
+        // Extract objects from the SysV archive produced by the Zig compiler.
+        try repack.runCommand(step, io, work_dir_path, &.{ zig_exe, "ar", "x", archive_full_path });
+
+        // Repack into a Darwin-format archive with proper 8-byte member alignment.
         var work_dir = try Io.Dir.openDirAbsolute(io, work_dir_path, .{ .iterate = true });
         defer work_dir.close(io);
 
-        var object_names = std.ArrayList([]const u8).empty;
+        var argv = std.ArrayList([]const u8).empty;
+        argv.appendSlice(b.allocator, &.{ zig_exe, "ar", "--format=darwin", "rcs", output_path }) catch @panic("OOM");
+
+        var has_objects = false;
         var iter = work_dir.iterate();
         while (iter.next(io) catch null) |entry| {
             if (entry.kind != .file or !std.mem.endsWith(u8, entry.name, ".o")) continue;
-
-            try work_dir.setFilePermissions(io, entry.name, Io.File.Permissions.fromMode(0o600), .{});
-            object_names.append(b.allocator, b.allocator.dupe(u8, entry.name) catch @panic("OOM")) catch @panic("OOM");
+            // Zig's deterministic archiver stores mode 0 in headers;
+            // restore a usable mode so zig ar can read objects back.
+            try work_dir.setFilePermissions(io, entry.name, Io.File.Permissions.fromMode(0o644), .{});
+            has_objects = true;
+            argv.append(b.allocator, b.allocator.dupe(u8, entry.name) catch @panic("OOM")) catch @panic("OOM");
         }
 
-        if (object_names.items.len == 0) {
+        if (!has_objects) {
             return fail(step, "archive extraction produced no object files");
         }
 
-        std.mem.sort([]const u8, object_names.items, {}, struct {
-            fn lessThan(_: void, lhs: []const u8, rhs: []const u8) bool {
-                return std.mem.order(u8, lhs, rhs) == .lt;
-            }
-        }.lessThan);
-
-        var argv = std.ArrayList([]const u8).empty;
-        argv.appendSlice(b.allocator, &.{ "/usr/bin/libtool", "-static", "-o", output_path }) catch @panic("OOM");
-        argv.appendSlice(b.allocator, object_names.items) catch @panic("OOM");
         try repack.runCommand(step, io, work_dir_path, argv.items);
 
         repack.output_file.path = output_path;
