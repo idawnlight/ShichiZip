@@ -21,25 +21,25 @@ jobs:
         include:
           - scheme: ShichiZip
             zig_variant: mainline
-            zig_target: aarch64-macos
+            zig_target: aarch64-native
             app_bundle: ShichiZip.app
             artifact_prefix: ShichiZip
             target_arch: arm64
           - scheme: ShichiZip
             zig_variant: mainline
-            zig_target: x86_64-macos
+            zig_target: x86_64-native
             app_bundle: ShichiZip.app
             artifact_prefix: ShichiZip
             target_arch: x86_64
           - scheme: ShichiZipZS
             zig_variant: zs
-            zig_target: aarch64-macos
+            zig_target: aarch64-native
             app_bundle: ShichiZip ZS.app
             artifact_prefix: ShichiZipZS
             target_arch: arm64
           - scheme: ShichiZipZS
             zig_variant: zs
-            zig_target: x86_64-macos
+            zig_target: x86_64-native
             app_bundle: ShichiZip ZS.app
             artifact_prefix: ShichiZipZS
             target_arch: x86_64

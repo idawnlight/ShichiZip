@@ -40,7 +40,6 @@ jobs:
         run: |
           zig build lib \
             -Dvariant=mainline \
-            -Dtarget=aarch64-macos \
             -Doptimize=ReleaseFast \
             -p build
 
@@ -94,7 +93,6 @@ jobs:
         run: |
           zig build lib \
             -Dvariant=mainline \
-            -Dtarget=aarch64-macos \
             -Doptimize=ReleaseFast \
             -p build
 
