@@ -54,8 +54,13 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Set up Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
       - name: Install build tools
-        run: brew install xcodegen zig
+        run: brew install xcodegen
 
       - name: Select Xcode 26.4
         run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
