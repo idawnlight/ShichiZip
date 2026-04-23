@@ -9,3 +9,4 @@
 **/.DS_Store
 *.zip
 *.rar
+.zig-cache/

@@ -19,22 +19,26 @@ jobs:
       matrix:
         include:
           - scheme: ShichiZip
-            make_target: lib-mainline
+            zig_variant: mainline
+            zig_target: aarch64-macos
             app_bundle: ShichiZip.app
             artifact_prefix: ShichiZip
             target_arch: arm64
           - scheme: ShichiZip
-            make_target: lib-mainline
+            zig_variant: mainline
+            zig_target: x86_64-macos
             app_bundle: ShichiZip.app
             artifact_prefix: ShichiZip
             target_arch: x86_64
           - scheme: ShichiZipZS
-            make_target: lib-zs
+            zig_variant: zs
+            zig_target: aarch64-macos
             app_bundle: ShichiZip ZS.app
             artifact_prefix: ShichiZipZS
             target_arch: arm64
           - scheme: ShichiZipZS
-            make_target: lib-zs
+            zig_variant: zs
+            zig_target: x86_64-macos
             app_bundle: ShichiZip ZS.app
             artifact_prefix: ShichiZipZS
             target_arch: x86_64
@@ -50,8 +54,15 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Set up Zig
+        uses: mlugg/setup-zig@v2
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+        with:
+          version: 0.16.0
+
       - name: Install build tools
-        run: brew install xcodegen zig
+        run: brew install xcodegen
 
       - name: Select Xcode 26.4
         run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
@@ -85,8 +96,22 @@ jobs:
 
           rm -f "$CERT_PATH"
 
-      - name: Build lib7zip
-        run: make -j"$(sysctl -n hw.ncpu)" TARGET_ARCH="${{ matrix.target_arch }}" "${{ matrix.make_target }}"
+      - name: Build archive core artifacts
+        run: |
+          zig build lib \
+            -Dvariant="${{ matrix.zig_variant }}" \
+            -Dtarget="${{ matrix.zig_target }}" \
+            -Doptimize=ReleaseFast \
+            -p build \
+            --summary all \
+            --verbose
+
+          zig build sfx \
+            -Dvariant="${{ matrix.zig_variant }}" \
+            -Doptimize=ReleaseSmall \
+            -p build \
+            --summary all \
+            --verbose
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -103,12 +128,11 @@ jobs:
             -scheme "${{ matrix.scheme }}" \
             -configuration "$XCODE_CONFIGURATION" \
             -derivedDataPath "$derived_data_path" \
+            -arch "${{ matrix.target_arch }}" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             OTHER_CODE_SIGN_FLAGS="--timestamp" \
-            ARCHS="${{ matrix.target_arch }}" \
-            VALID_ARCHS="${{ matrix.target_arch }}" \
             build
 
       # --- Code signing verification ---

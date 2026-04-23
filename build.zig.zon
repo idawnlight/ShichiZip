@@ -1,0 +1,11 @@
+.{
+    .name = .shichizip,
+    .version = "0.1.0",
+    .fingerprint = 0xee57ec2324ee6d91,
+    .minimum_zig_version = "0.16.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "vendor",
+    },
+}
