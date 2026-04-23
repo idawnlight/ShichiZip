@@ -7,6 +7,7 @@ The missing 7-Zip derivative intended for macOS.
 ## Build
 
 - Install prerequisites: `brew install xcodegen zig`
+- If you use Homebrew Zig on macOS, `zig 0.16.0_1` or newer is required. The `0.16.0` bottle shipped a broken `zig ar`; see [Homebrew/homebrew-core#278849](https://github.com/Homebrew/homebrew-core/issues/278849).
 - Generate the Xcode project and derived localization files: `xcodegen generate`
 
 ## Variants

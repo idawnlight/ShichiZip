@@ -43,12 +43,16 @@ jobs:
           zig build lib \
             -Dvariant=mainline \
             -Doptimize=ReleaseFast \
-            -p build
+            -p build \
+            --summary all \
+            --verbose
 
           zig build sfx \
             -Dvariant=mainline \
             -Doptimize=ReleaseSmall \
-            -p build
+            -p build \
+            --summary all \
+            --verbose
 
       - name: Generate Xcode project
         run: xcodegen generate

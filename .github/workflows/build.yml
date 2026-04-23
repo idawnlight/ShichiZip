@@ -74,12 +74,16 @@ jobs:
             -Dvariant="${{ matrix.zig_variant }}" \
             -Dtarget="${{ matrix.zig_target }}" \
             -Doptimize=ReleaseFast \
-            -p build
+            -p build \
+            --summary all \
+            --verbose
 
           zig build sfx \
             -Dvariant="${{ matrix.zig_variant }}" \
             -Doptimize=ReleaseSmall \
-            -p build
+            -p build \
+            --summary all \
+            --verbose
 
       - name: Generate Xcode project
         run: xcodegen generate
