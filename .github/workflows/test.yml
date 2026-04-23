@@ -11,9 +11,10 @@ permissions:
   contents: read
 
 jobs:
-  unit-tests:
-    name: Unit Tests (arm64)
+  tests:
+    name: Tests (arm64)
     runs-on: macos-26
+    timeout-minutes: 45
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
       XCODE_PROJECT: ShichiZip.xcodeproj
@@ -68,47 +69,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             test
-
-  ui-tests:
-    name: UI Tests (arm64)
-    runs-on: macos-26
-    timeout-minutes: 45
-    env:
-      MACOSX_DEPLOYMENT_TARGET: "13.0"
-      XCODE_PROJECT: ShichiZip.xcodeproj
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Set up Zig
-        uses: mlugg/setup-zig@v2
-        with:
-          version: 0.16.0
-
-      - name: Install build tools
-        run: brew install xcodegen
-
-      - name: Select Xcode 26.4
-        run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
-
-      - name: Build archive core artifacts
-        run: |
-          zig build lib \
-            -Dvariant=mainline \
-            -Doptimize=ReleaseFast \
-            -p build
-
-          zig build sfx \
-            -Dvariant=mainline \
-            -Doptimize=ReleaseSmall \
-            -p build
-
-      - name: Generate Xcode project
-        run: xcodegen generate
 
       - name: Run UI tests
         run: |

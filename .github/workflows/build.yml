@@ -124,10 +124,9 @@ jobs:
             -scheme "${{ matrix.scheme }}" \
             -configuration "$XCODE_CONFIGURATION" \
             -derivedDataPath "$derived_data_path" \
+            -arch "${{ matrix.target_arch }}" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
-            ARCHS="${{ matrix.target_arch }}" \
-            VALID_ARCHS="${{ matrix.target_arch }}" \
             build
 
       - name: Verify app bundle signature

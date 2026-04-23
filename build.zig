@@ -176,11 +176,11 @@ fn buildLib(
     const c_flags = concatFlags(b, c_flags_base, &.{"-std=c11"});
 
     const cpp_flags = concatFlags(b, c_flags_base, &.{
-        "-std=c++23", "-DSHICHIZIP_APPLE_DETECTOR", sevenz_include,
+        "-std=c++20", "-DSHICHIZIP_APPLE_DETECTOR", sevenz_include,
     });
 
     const objcxx_flags = concatFlags(b, c_flags_base, &.{
-        "-std=c++23", "-fobjc-arc", "-DSHICHIZIP_APPLE_DETECTOR", sevenz_include,
+        "-std=c++20", "-fobjc-arc", "-DSHICHIZIP_APPLE_DETECTOR", sevenz_include,
     });
 
     // ZS extra include flags
@@ -679,7 +679,7 @@ fn buildSfx(
         "-Wno-unused-parameter",   "-Wno-missing-field-initializers",
         "-Wno-sign-compare",       "-fno-rtti",
         "-ffunction-sections",     "-fdata-sections",
-        "-std=c++11",
+        "-std=c++20",
     }, &.{sevenz_include});
 
     // SFX C sources

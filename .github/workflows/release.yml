@@ -128,12 +128,11 @@ jobs:
             -scheme "${{ matrix.scheme }}" \
             -configuration "$XCODE_CONFIGURATION" \
             -derivedDataPath "$derived_data_path" \
+            -arch "${{ matrix.target_arch }}" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             OTHER_CODE_SIGN_FLAGS="--timestamp" \
-            ARCHS="${{ matrix.target_arch }}" \
-            VALID_ARCHS="${{ matrix.target_arch }}" \
             build
 
       # --- Code signing verification ---
