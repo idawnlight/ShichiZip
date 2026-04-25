@@ -55,6 +55,11 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
         pathField.typeText("\r")
     }
 
+    private func toggleDualPane() {
+        app.menuBars.menuBarItems["View"].click()
+        app.menuBars.menuBarItems["View"].menus.menuItems["2 Panels"].click()
+    }
+
     // MARK: - Workflow helpers
 
     /// Opens an archive in the left pane and navigates the right pane
@@ -225,7 +230,7 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
                       "added.txt should appear inside the archive after drag-in")
 
         // Verify the archive on disk actually contains the new file
-        // by listing its contents with the 7z CLI.
+        // by listing its contents.
         let listOutput = try listArchiveContents(archiveURL)
         XCTAssertTrue(listOutput.contains("added.txt"),
                       "Archive listing should contain added.txt. Got: \(listOutput)")
@@ -309,28 +314,85 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
                        "Extracted nested file content should match the original")
     }
 
-    // MARK: - Archive CLI helpers
+    func testDualPaneDeactivationWritesBackDirtyNestedArchiveInRightPane() throws {
+        let tempDir = try makeTemporaryDirectory(named: "nested-writeback-toggle")
 
-    /// Lists archive contents using the system-provided zipinfo.
-    /// All test fixtures are .zip archives produced via /usr/bin/zip,
-    /// so zipinfo (shipped with macOS) is always sufficient. Do not
-    /// branch on /usr/local/bin/7z — that would make the test's listing
-    /// behaviour depend on whether p7zip happens to be installed on the
-    /// developer machine, which is exactly what createTestArchive was
-    /// changed to avoid.
-    private func listArchiveContents(_ archiveURL: URL) throws -> String {
-        let process = Process()
-        let pipe = Pipe()
+        let innerPayload = tempDir.appendingPathComponent("inner_payload.txt")
+        try createTextFile(at: innerPayload, content: "original nested payload")
+        let innerArchiveURL = try createTestArchive(named: "inner",
+                                                    sourceFileNames: ["inner_payload.txt"],
+                                                    in: tempDir)
+        try FileManager.default.removeItem(at: innerPayload)
 
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/zipinfo")
-        process.arguments = ["-1", archiveURL.path]
+        let outerArchiveURL = try createTestArchive(named: "outer",
+                                                    sourceFileNames: [innerArchiveURL.lastPathComponent],
+                                                    in: tempDir)
+        try FileManager.default.removeItem(at: innerArchiveURL)
 
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-        try process.run()
-        process.waitUntilExit()
+        let addedFileURL = tempDir.appendingPathComponent("added_to_nested.txt")
+        try createTextFile(at: addedFileURL, content: "nested writeback payload")
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return String(data: data, encoding: .utf8) ?? ""
+        navigatePane(rightPathField, to: tempDir.path)
+        XCTAssertTrue(rightTable.waitForExistence(timeout: 10))
+
+        let outerCell = rightTable.cells.staticTexts[outerArchiveURL.lastPathComponent]
+        XCTAssertTrue(outerCell.waitForExistence(timeout: 5))
+        outerCell.doubleClick()
+
+        let outerPredicate = NSPredicate(format: "value CONTAINS %@",
+                                         outerArchiveURL.lastPathComponent)
+        let outerExpectation = XCTNSPredicateExpectation(predicate: outerPredicate,
+                                                         object: rightPathField)
+        wait(for: [outerExpectation], timeout: 10)
+
+        let innerCell = rightTable.cells.staticTexts[innerArchiveURL.lastPathComponent]
+        XCTAssertTrue(innerCell.waitForExistence(timeout: 5),
+                      "Inner archive should be visible inside the right pane's outer archive")
+        innerCell.doubleClick()
+
+        let nestedPredicate = NSPredicate(format: "value CONTAINS %@",
+                                          innerArchiveURL.lastPathComponent)
+        let nestedExpectation = XCTNSPredicateExpectation(predicate: nestedPredicate,
+                                                          object: rightPathField)
+        wait(for: [nestedExpectation], timeout: 10)
+
+        let nestedPayloadCell = rightTable.cells.staticTexts["inner_payload.txt"]
+        XCTAssertTrue(nestedPayloadCell.waitForExistence(timeout: 5),
+                      "Nested archive payload should be visible before mutation")
+
+        navigatePane(leftPathField, to: tempDir.path)
+        XCTAssertTrue(leftTable.waitForExistence(timeout: 10))
+
+        let addedCell = leftTable.cells.staticTexts[addedFileURL.lastPathComponent]
+        XCTAssertTrue(addedCell.waitForExistence(timeout: 5),
+                      "Loose file should be visible in the left pane")
+        addedCell.click(forDuration: 1.0, thenDragTo: rightTable)
+
+        let confirmButton = app.buttons.matching(identifier: "modal.button.1").firstMatch
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 10),
+                      "Archive transfer confirmation dialog should appear")
+        confirmButton.click()
+
+        let addedInNestedArchive = rightTable.cells.staticTexts[addedFileURL.lastPathComponent]
+        XCTAssertTrue(addedInNestedArchive.waitForExistence(timeout: 15),
+                      "Dragged file should appear in the nested archive before pane deactivation")
+
+        toggleDualPane()
+
+        let rightTableGone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
+                                                       object: rightTable)
+        wait(for: [rightTableGone], timeout: 10)
+
+        let verificationDirectory = tempDir.appendingPathComponent("verify", isDirectory: true)
+        try FileManager.default.createDirectory(at: verificationDirectory,
+                                                withIntermediateDirectories: true)
+        let extractedInnerArchiveURL = try extractArchiveEntry(innerArchiveURL.lastPathComponent,
+                                                               from: outerArchiveURL,
+                                                               to: verificationDirectory)
+        let nestedListing = try listArchiveContents(extractedInnerArchiveURL)
+        XCTAssertTrue(nestedListing.contains("inner_payload.txt"),
+                      "Nested archive should retain the original payload. Got: \(nestedListing)")
+        XCTAssertTrue(nestedListing.contains(addedFileURL.lastPathComponent),
+                      "Dual-pane deactivation should write the dirty nested archive back to the outer archive. Got: \(nestedListing)")
     }
 }

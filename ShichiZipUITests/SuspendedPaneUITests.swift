@@ -1,9 +1,18 @@
 import XCTest
 
 final class SuspendedPaneUITests: ShichiZipUITestCase {
+    override var additionalLaunchArguments: [String] {
+        ["-FileManager.IsDualPane", "NO"]
+    }
+
     private func closeDirectory() {
         app.menuBars.menuBarItems["File"].click()
         app.menuBars.menuBarItems["File"].menus.menuItems["Close Directory"].click()
+    }
+
+    private func toggleDualPane() {
+        app.menuBars.menuBarItems["View"].click()
+        app.menuBars.menuBarItems["View"].menus.menuItems["2 Panels"].click()
     }
 
     func testCloseDirectoryAndReactivationCycle() throws {
@@ -35,5 +44,24 @@ final class SuspendedPaneUITests: ShichiZipUITestCase {
         navigateLeftPane(to: tempDir.path)
         XCTAssertTrue(fileCell.waitForExistence(timeout: 5), "File list should restore after path field navigation")
         XCTAssertFalse(reactivateButton.exists, "Reactivate button should be gone after path reactivation")
+    }
+
+    func testDualPaneToggleReactivatesRightPaneAutomatically() {
+        let tables = app.tables.matching(identifier: "fileManager.tableView")
+        XCTAssertTrue(tables.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(tables.element(boundBy: 1).exists, "Right pane should start hidden")
+
+        toggleDualPane()
+        XCTAssertTrue(tables.element(boundBy: 1).waitForExistence(timeout: 5), "Right pane should appear after enabling dual pane")
+        XCTAssertFalse(app.buttons.matching(identifier: "fileManager.reactivateButton").firstMatch.exists,
+                       "Right pane should be reactivated automatically when dual pane is enabled")
+
+        toggleDualPane()
+        XCTAssertFalse(tables.element(boundBy: 1).exists, "Right pane should be hidden after disabling dual pane")
+
+        toggleDualPane()
+        XCTAssertTrue(tables.element(boundBy: 1).waitForExistence(timeout: 5), "Right pane should reappear after re-enabling dual pane")
+        XCTAssertFalse(app.buttons.matching(identifier: "fileManager.reactivateButton").firstMatch.exists,
+                       "Right pane should not require a manual reactivation click after being shown again")
     }
 }

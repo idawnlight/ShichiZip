@@ -567,6 +567,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         if isDualPane {
             splitView.addArrangedSubview(rightPane.view)
             pendingEvenSplitLayout = true
+        } else {
+            rightPane.prepareForDeactivation(showError: false)
         }
 
         contentView.addSubview(splitView)
@@ -948,19 +950,25 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     @objc func toggleDualPane(_: Any?) {
-        let wasRightPaneActive = isDualPane && activePane === rightPane
-        isDualPane.toggle()
-        PanePreferences.setShowsDualPane(isDualPane)
-
         if isDualPane {
-            splitView.addArrangedSubview(rightPane.view)
-            scheduleEvenSplitLayout()
-        } else {
+            let wasRightPaneActive = activePane === rightPane
+            guard rightPane.prepareForDeactivation(showError: true) else {
+                return
+            }
+
+            isDualPane = false
+            PanePreferences.setShowsDualPane(false)
             rightPane.view.removeFromSuperview()
             pendingEvenSplitLayout = false
             if wasRightPaneActive {
                 leftPane.focusFileList()
             }
+        } else {
+            isDualPane = true
+            PanePreferences.setShowsDualPane(true)
+            splitView.addArrangedSubview(rightPane.view)
+            rightPane.reactivateIfSuspended()
+            scheduleEvenSplitLayout()
         }
     }
 

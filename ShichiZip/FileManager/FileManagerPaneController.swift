@@ -2409,6 +2409,24 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return true
     }
 
+    @discardableResult
+    func prepareForDeactivation(showError: Bool = true) -> Bool {
+        guard prepareForClose(showError: showError) else {
+            return false
+        }
+
+        if isViewLoaded {
+            enterSuspendedState()
+        }
+
+        return true
+    }
+
+    func reactivateIfSuspended() {
+        guard isSuspended else { return }
+        reactivatePane()
+    }
+
     func closeDirectory() {
         guard !isSuspended else { return }
         if isInsideArchive {

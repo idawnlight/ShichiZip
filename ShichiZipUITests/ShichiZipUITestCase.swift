@@ -86,6 +86,41 @@ class ShichiZipUITestCase: XCTestCase {
 
     // MARK: - Archive Creation
 
+    @discardableResult
+    func runUITestCLITool(_ executablePath: String,
+                          arguments: [String],
+                          currentDirectoryURL: URL? = nil,
+                          captureStandardOutput: Bool = false) throws -> String
+    {
+        let process = Process()
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
+        process.currentDirectoryURL = currentDirectoryURL
+        process.standardOutput = captureStandardOutput ? outputPipe : FileHandle.nullDevice
+        process.standardError = errorPipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        let outputData = captureStandardOutput ? outputPipe.fileHandleForReading.readDataToEndOfFile() : Data()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+
+        guard process.terminationStatus == 0 else {
+            let details = errorOutput.isEmpty ? "" : ": \(errorOutput)"
+            throw NSError(domain: "ShichiZipUITests",
+                          code: Int(process.terminationStatus),
+                          userInfo: [NSLocalizedDescriptionKey:
+                              "\(executablePath) failed (status \(process.terminationStatus))\(details)"])
+        }
+
+        return output
+    }
+
     /// Creates a `.zip` fixture from files already present in `directory`.
     ///
     /// Returns the URL of the created archive.
@@ -94,21 +129,32 @@ class ShichiZipUITestCase: XCTestCase {
                            in directory: URL) throws -> URL
     {
         let archiveURL = directory.appendingPathComponent("\(name).zip")
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
         // -q: quiet, -X: omit platform-specific extras, --: end options.
-        process.arguments = ["-q", "-X", archiveURL.path, "--"] + sourceFileNames
-        process.currentDirectoryURL = directory
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            throw NSError(domain: "ShichiZipUITests", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey:
-                              "/usr/bin/zip failed (status \(process.terminationStatus))"])
-        }
+        try runUITestCLITool("/usr/bin/zip",
+                             arguments: ["-q", "-X", archiveURL.path, "--"] + sourceFileNames,
+                             currentDirectoryURL: directory)
         return archiveURL
+    }
+
+    /// Extracts one entry from a `.zip` fixture using the system-provided unzip.
+    func extractArchiveEntry(_ entryName: String,
+                             from archiveURL: URL,
+                             to destinationDirectory: URL) throws -> URL
+    {
+        try runUITestCLITool("/usr/bin/unzip",
+                             arguments: ["-q", archiveURL.path, entryName, "-d", destinationDirectory.path])
+        return destinationDirectory.appendingPathComponent(entryName)
+    }
+
+    /// Lists `.zip` fixture contents using the system-provided zipinfo.
+    ///
+    /// All UI-test archive fixtures are `.zip` archives produced via `/usr/bin/zip`,
+    /// so zipinfo (shipped with macOS) is always sufficient. Do not branch on a
+    /// locally installed 7z binary; test behavior should not depend on developer tools.
+    func listArchiveContents(_ archiveURL: URL) throws -> String {
+        try runUITestCLITool("/usr/bin/zipinfo",
+                             arguments: ["-1", archiveURL.path],
+                             captureStandardOutput: true)
     }
 
     /// Convenience: creates a temp directory, writes the given payload
