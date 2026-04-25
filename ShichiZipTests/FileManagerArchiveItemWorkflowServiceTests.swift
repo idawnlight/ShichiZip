@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
@@ -59,5 +60,38 @@ final class FileManagerArchiveItemWorkflowServiceTests: XCTestCase {
                                                                         context: context,
                                                                         strategy: .forceInternal(.defaultBehavior),
                                                                         session: SZOperationSession()))
+    }
+
+    func testScheduledExternalCleanupSurvivesPaneCleanupUntilApplicationTerminates() throws {
+        let temporaryDirectory = try makeTemporaryDirectory(named: "external-open-scheduled-cleanup")
+        let stagedFileURL = temporaryDirectory.appendingPathComponent("payload.txt")
+        try "payload".write(to: stagedFileURL, atomically: true, encoding: .utf8)
+
+        let notificationCenter = NotificationCenter()
+        let externalCleanup = FileManagerExternalTemporaryDirectoryCleanup(notificationCenter: notificationCenter)
+        let service = FileManagerArchiveItemWorkflowService(externalTemporaryDirectoryCleanup: externalCleanup,
+                                                            quarantineInheritanceEnabled: { false })
+        service.register(temporaryDirectory)
+
+        // Successful external open transfers ownership away from pane cleanup.
+        service.scheduleCleanup(temporaryDirectory, when: NSRunningApplication.current)
+
+        // Simulates pane teardown while the external app still has the staged file open.
+        service.cleanupAll()
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: stagedFileURL.path))
+
+        notificationCenter.post(name: NSWorkspace.didTerminateApplicationNotification,
+                                object: nil,
+                                userInfo: [NSWorkspace.applicationUserInfoKey: NSRunningApplication.current])
+
+        // The long-lived external cleanup owner should remove it after app exit.
+        let deadline = Date().addingTimeInterval(1)
+        while FileManager.default.fileExists(atPath: temporaryDirectory.path), Date() < deadline {
+            RunLoop.current.run(mode: .default,
+                                before: Date().addingTimeInterval(0.01))
+        }
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: temporaryDirectory.path))
     }
 }

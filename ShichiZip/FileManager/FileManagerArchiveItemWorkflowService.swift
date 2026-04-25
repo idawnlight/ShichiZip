@@ -3,6 +3,97 @@ import Darwin
 import Foundation
 import os
 
+protocol FileManagerExternalTemporaryDirectoryCleaning: AnyObject {
+    func scheduleCleanup(_ url: URL,
+                         when application: NSRunningApplication)
+}
+
+/// Process-wide owner for temp directories that were handed to an external app.
+/// Pane cleanup must not delete these while the external app may still be using them.
+final class FileManagerExternalTemporaryDirectoryCleanup: FileManagerExternalTemporaryDirectoryCleaning, @unchecked Sendable {
+    static let shared = FileManagerExternalTemporaryDirectoryCleanup()
+
+    private final class CleanupObserver: @unchecked Sendable {
+        private let notificationCenter: NotificationCenter
+        private var observer: NSObjectProtocol?
+
+        init(notificationCenter: NotificationCenter,
+             application: NSRunningApplication,
+             onTermination: @escaping @Sendable () -> Void)
+        {
+            let applicationProcessIdentifier = application.processIdentifier
+            self.notificationCenter = notificationCenter
+            observer = notificationCenter.addObserver(
+                forName: NSWorkspace.didTerminateApplicationNotification,
+                object: nil,
+                queue: .main,
+            ) { notification in
+                guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                      application.processIdentifier == applicationProcessIdentifier
+                else {
+                    return
+                }
+
+                onTermination()
+            }
+        }
+
+        deinit {
+            invalidate()
+        }
+
+        func invalidate() {
+            if let observer {
+                notificationCenter.removeObserver(observer)
+                self.observer = nil
+            }
+        }
+    }
+
+    private let fileManager: FileManager
+    private let notificationCenter: NotificationCenter
+    private let cleanupObserversState = OSAllocatedUnfairLock(initialState: [URL: CleanupObserver]())
+
+    init(fileManager: FileManager = .default,
+         notificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter)
+    {
+        self.fileManager = fileManager
+        self.notificationCenter = notificationCenter
+    }
+
+    func scheduleCleanup(_ url: URL,
+                         when application: NSRunningApplication)
+    {
+        let temporaryDirectory = url.standardizedFileURL
+        let observer = CleanupObserver(notificationCenter: notificationCenter,
+                                       application: application)
+        { [weak self] in
+            self?.cleanup(temporaryDirectory)
+        }
+
+        let previousObserver = cleanupObserversState.withLock { observers in
+            observers.updateValue(observer,
+                                  forKey: temporaryDirectory)
+        }
+        previousObserver?.invalidate()
+
+        if application.isTerminated {
+            cleanup(temporaryDirectory)
+        }
+    }
+
+    private func cleanup(_ temporaryDirectory: URL) {
+        if fileManager.fileExists(atPath: temporaryDirectory.path) {
+            try? fileManager.removeItem(at: temporaryDirectory)
+        }
+
+        let observer = cleanupObserversState.withLock { observers in
+            observers.removeValue(forKey: temporaryDirectory.standardizedFileURL)
+        }
+        observer?.invalidate()
+    }
+}
+
 final class FileManagerArchiveOperationGate: @unchecked Sendable {
     final class Lease: @unchecked Sendable {
         private let gate: FileManagerArchiveOperationGate
@@ -120,65 +211,22 @@ enum FileManagerArchiveItemOpenStrategy {
 }
 
 final class FileManagerArchiveItemWorkflowService {
-    private final class TemporaryDirectoryCleanupObserver: @unchecked Sendable {
-        private weak var owner: FileManagerArchiveItemWorkflowService?
-        private let applicationProcessIdentifier: pid_t
-        let temporaryDirectory: URL
-        private var observer: NSObjectProtocol?
-
-        init(owner: FileManagerArchiveItemWorkflowService,
-             application: NSRunningApplication,
-             temporaryDirectory: URL)
-        {
-            self.owner = owner
-            applicationProcessIdentifier = application.processIdentifier
-            self.temporaryDirectory = temporaryDirectory.standardizedFileURL
-            observer = NSWorkspace.shared.notificationCenter.addObserver(
-                forName: NSWorkspace.didTerminateApplicationNotification,
-                object: nil,
-                queue: .main,
-            ) { [weak self] notification in
-                self?.handleTermination(notification)
-            }
-        }
-
-        deinit {
-            invalidate()
-        }
-
-        private func handleTermination(_ notification: Notification) {
-            guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                  application.processIdentifier == applicationProcessIdentifier
-            else {
-                return
-            }
-
-            owner?.cleanup(temporaryDirectory)
-            owner?.removeCleanupObserver(self)
-        }
-
-        func invalidate() {
-            if let observer {
-                NSWorkspace.shared.notificationCenter.removeObserver(observer)
-                self.observer = nil
-            }
-        }
-    }
-
     private struct StagedArchiveItem {
         let temporaryDirectory: URL
         let fileURL: URL
     }
 
     private let fileManager: FileManager
+    private let externalTemporaryDirectoryCleanup: FileManagerExternalTemporaryDirectoryCleaning
     private let quarantineInheritanceEnabled: () -> Bool
     private let temporaryDirectoriesState = OSAllocatedUnfairLock(initialState: Set<URL>())
-    private let cleanupObserversState = OSAllocatedUnfairLock(initialState: [ObjectIdentifier: TemporaryDirectoryCleanupObserver]())
 
     init(fileManager: FileManager = .default,
+         externalTemporaryDirectoryCleanup: FileManagerExternalTemporaryDirectoryCleaning = FileManagerExternalTemporaryDirectoryCleanup.shared,
          quarantineInheritanceEnabled: @escaping () -> Bool = { SZSettings.bool(.inheritDownloadedFileQuarantine) })
     {
         self.fileManager = fileManager
+        self.externalTemporaryDirectoryCleanup = externalTemporaryDirectoryCleanup
         self.quarantineInheritanceEnabled = quarantineInheritanceEnabled
     }
 
@@ -193,12 +241,10 @@ final class FileManagerArchiveItemWorkflowService {
 
     func unregister(_ url: URL?) {
         guard let url else { return }
-        removeCleanupObservers(for: url)
         forgetTemporaryDirectory(url.standardizedFileURL)
     }
 
     func cleanupAll() {
-        invalidateCleanupObservers()
         for url in trackedTemporaryDirectories() {
             _ = cleanupIfPossible(url)
         }
@@ -207,10 +253,11 @@ final class FileManagerArchiveItemWorkflowService {
     func scheduleCleanup(_ url: URL,
                          when application: NSRunningApplication)
     {
-        let observer = TemporaryDirectoryCleanupObserver(owner: self,
-                                                         application: application,
-                                                         temporaryDirectory: url)
-        cleanupObserversState.withLock { $0[ObjectIdentifier(observer)] = observer }
+        let standardizedURL = url.standardizedFileURL
+        // External apps may outlive this pane, so pane cleanup must stop owning it.
+        forgetTemporaryDirectory(standardizedURL)
+        externalTemporaryDirectoryCleanup.scheduleCleanup(standardizedURL,
+                                                          when: application)
     }
 
     func writePromise(for item: ArchiveItem,
@@ -486,14 +533,12 @@ final class FileManagerArchiveItemWorkflowService {
         let standardizedURL = url.standardizedFileURL
 
         if !fileManager.fileExists(atPath: standardizedURL.path) {
-            removeCleanupObservers(for: standardizedURL)
             forgetTemporaryDirectory(standardizedURL)
             return true
         }
 
         do {
             try fileManager.removeItem(at: standardizedURL)
-            removeCleanupObservers(for: standardizedURL)
             forgetTemporaryDirectory(standardizedURL)
             return true
         } catch {
@@ -609,39 +654,6 @@ final class FileManagerArchiveItemWorkflowService {
 
     private func trackedTemporaryDirectories() -> [URL] {
         temporaryDirectoriesState.withLock { Array($0) }
-    }
-
-    private func removeCleanupObserver(_ observer: TemporaryDirectoryCleanupObserver) {
-        cleanupObserversState.withLock { _ = $0.removeValue(forKey: ObjectIdentifier(observer)) }
-        observer.invalidate()
-    }
-
-    private func removeCleanupObservers(for temporaryDirectory: URL) {
-        let standardizedURL = temporaryDirectory.standardizedFileURL
-
-        let matching = cleanupObserversState.withLock { observers -> [ObjectIdentifier: TemporaryDirectoryCleanupObserver] in
-            let matched = observers.filter { $0.value.temporaryDirectory == standardizedURL }
-            for key in matched.keys {
-                observers.removeValue(forKey: key)
-            }
-            return matched
-        }
-
-        for observer in matching.values {
-            observer.invalidate()
-        }
-    }
-
-    private func invalidateCleanupObservers() {
-        let observers = cleanupObserversState.withLock { observers -> [TemporaryDirectoryCleanupObserver] in
-            let values = Array(observers.values)
-            observers.removeAll()
-            return values
-        }
-
-        for observer in observers {
-            observer.invalidate()
-        }
     }
 
     private func moveItemPreservingMetadata(from sourceURL: URL,
