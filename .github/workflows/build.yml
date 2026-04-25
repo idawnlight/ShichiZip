@@ -61,6 +61,7 @@ jobs:
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
         with:
           version: 0.16.0
+          cache-key: ${{ matrix.zig_variant }}-${{ matrix.zig_target }}
 
       - name: Install build tools
         run: brew install xcodegen

@@ -437,7 +437,7 @@ final class ExtractDialogController: NSObject {
                 let destinationURL = try resolveFinalDestinationURL(baseDestinationURL: baseDestinationURL,
                                                                     splitDestination: splitDestination,
                                                                     splitName: splitName)
-                let password = normalizedPassword(from: enteredPassword)
+                let password = Self.normalizedPassword(from: enteredPassword)
                 DestinationHistory.record(baseDestinationURL.path)
                 DialogPreferences.record(pathMode: selectedPathMode,
                                          overwriteMode: selectedOverwriteMode,
@@ -612,9 +612,8 @@ final class ExtractDialogController: NSObject {
         return baseDestinationURL.appendingPathComponent(trimmedName, isDirectory: true).standardizedFileURL
     }
 
-    private func normalizedPassword(from rawValue: String) -> String? {
-        let trimmedValue = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedValue.isEmpty ? nil : trimmedValue
+    nonisolated static func normalizedPassword(from rawValue: String) -> String? {
+        rawValue.isEmpty ? nil : rawValue
     }
 
     private func visiblePasswordValue() -> String {
