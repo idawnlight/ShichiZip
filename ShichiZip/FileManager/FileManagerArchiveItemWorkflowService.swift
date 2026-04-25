@@ -43,6 +43,13 @@ final class FileManagerArchiveOperationGate: @unchecked Sendable {
         waitForLeasesToDrain()
     }
 
+    var hasActiveLeases: Bool {
+        condition.lock()
+        let hasActiveLeases = activeLeaseCount > 0
+        condition.unlock()
+        return hasActiveLeases
+    }
+
     func waitForLeasesToDrain() {
         while true {
             condition.lock()

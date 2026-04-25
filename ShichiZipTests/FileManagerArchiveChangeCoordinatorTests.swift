@@ -8,6 +8,25 @@ import os
 import XCTest
 
 final class FileManagerArchiveChangeCoordinatorTests: XCTestCase {
+    func testArchiveOperationGateReportsActiveLeases() throws {
+        let gate = FileManagerArchiveOperationGate()
+        XCTAssertFalse(gate.hasActiveLeases)
+
+        var firstLease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(gate.acquireLease())
+        XCTAssertNotNil(firstLease)
+        XCTAssertTrue(gate.hasActiveLeases)
+
+        var secondLease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(gate.acquireLease())
+        XCTAssertNotNil(secondLease)
+        XCTAssertTrue(gate.hasActiveLeases)
+
+        firstLease = nil
+        XCTAssertTrue(gate.hasActiveLeases)
+
+        secondLease = nil
+        XCTAssertFalse(gate.hasActiveLeases)
+    }
+
     func testArchiveOperationGateRejectsNewLeaseAfterClosingBegins() throws {
         let gate = FileManagerArchiveOperationGate()
         let lease = try XCTUnwrap(gate.acquireLease())

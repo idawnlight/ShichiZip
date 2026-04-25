@@ -5,6 +5,12 @@
 
 import XCTest
 
+#if SHICHIZIP_ZS_VARIANT
+    @testable import ShichiZip_ZS
+#else
+    @testable import ShichiZip
+#endif
+
 final class ArchiveRoundTripTests: XCTestCase {
     private static let password = "round-trip-pw"
 
@@ -182,6 +188,10 @@ final class ArchiveRoundTripTests: XCTestCase {
 
     // MARK: - Session cancellation
 
+    private enum CancellationTestFailure: Error {
+        case cancellationNotObserved
+    }
+
     /// requestCancel should flip the flag immediately and keep it set until cleared.
     func testSessionCancellationFlagIsSetSynchronouslyAndCleared() {
         let session = SZOperationSession()
@@ -228,5 +238,42 @@ final class ArchiveRoundTripTests: XCTestCase {
         }
 
         wait(for: [observed], timeout: 3.0)
+    }
+
+    func testTaskCancellationRequestsOperationSessionCancellation() async {
+        let workStarted = expectation(description: "archive operation work started")
+        let cancellationObserved = expectation(description: "session cancellation observed")
+
+        let task = Task { @MainActor in
+            try await ArchiveOperationRunner.run(operationTitle: "Testing cancellation",
+                                                 deferredDisplay: true)
+            { session in
+                workStarted.fulfill()
+
+                let deadline = Date(timeIntervalSinceNow: 2)
+                while Date() < deadline {
+                    if session.shouldCancel() {
+                        cancellationObserved.fulfill()
+                        throw CancellationError()
+                    }
+                    Thread.sleep(forTimeInterval: 0.005)
+                }
+
+                throw CancellationTestFailure.cancellationNotObserved
+            }
+        }
+
+        await fulfillment(of: [workStarted], timeout: 1)
+        task.cancel()
+        await fulfillment(of: [cancellationObserved], timeout: 2)
+
+        do {
+            try await task.value
+            XCTFail("cancelled archive operation unexpectedly completed")
+        } catch is CancellationError {
+            // Expected: the worker observed the session cancellation requested by the Swift task.
+        } catch {
+            XCTFail("cancelled archive operation failed with unexpected error: \(error)")
+        }
     }
 }

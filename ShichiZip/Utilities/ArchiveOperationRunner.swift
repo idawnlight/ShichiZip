@@ -61,18 +61,26 @@ enum ArchiveOperationRunner {
                                                       deferredDisplay: deferredDisplay)
         coordinator.start()
         defer { coordinator.finish() }
+        let session = coordinator.session
 
-        return try await withCheckedThrowingContinuation { continuation in
-            let session = coordinator.session
-            nonisolated(unsafe) let work = work
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let result = try work(session)
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                if Task.isCancelled {
+                    session.requestCancel()
+                }
+
+                nonisolated(unsafe) let work = work
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let result = try work(session)
+                        continuation.resume(returning: result)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
                 }
             }
+        } onCancel: {
+            session.requestCancel()
         }
     }
 }

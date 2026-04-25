@@ -90,6 +90,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var archiveDisplayItems: [ArchiveItem] = []
     private let archiveItemWorkflowService = FileManagerArchiveItemWorkflowService()
     private func archiveLevelSupportsInPlaceMutation(_ level: ArchiveLevel) -> Bool {
+        guard !level.operationGate.hasActiveLeases else {
+            return false
+        }
+
         guard level.temporaryDirectory == nil || level.nestedWriteBackInfo != nil else {
             return false
         }
@@ -1057,9 +1061,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.selectItems"))
         }
 
-        guard let context = currentArchiveItemWorkflowContext(),
-              let level = archiveStack.last
-        else {
+        guard let level = archiveStack.last else {
             throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
         }
 
@@ -1088,11 +1090,19 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.combinedSizeLimit", formattedByteCount(maxArchiveCombinedSize), formattedByteCount(combinedSize)))
         }
 
+        guard !level.operationGate.hasActiveLeases else {
+            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
+        }
+
         if level.archive.isSolidArchive {
             let archiveSize = archivePhysicalSize(for: level)
             if archiveSize > maxSolidArchiveSize {
                 throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.solidArchiveSizeLimit", formattedByteCount(maxSolidArchiveSize), formattedByteCount(archiveSize)))
             }
+        }
+
+        guard let context = currentArchiveItemWorkflowContext() else {
+            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
         }
 
         let stagedPreview = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.working"),
@@ -2021,13 +2031,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func currentArchiveItemWorkflowContext() -> FileManagerArchiveItemWorkflowContext? {
         guard let level = archiveStack.last else { return nil }
+        let mutationTarget = archiveMutationTarget(for: level)
         guard let archiveOperationLease = level.operationGate.acquireLease() else { return nil }
 
         return FileManagerArchiveItemWorkflowContext(archive: level.archive,
                                                      hostDirectory: archiveHostDirectory(),
                                                      displayPathPrefix: currentArchiveDisplayPathPrefix(),
                                                      quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path,
-                                                     mutationTarget: archiveMutationTarget(for: level),
+                                                     mutationTarget: mutationTarget,
                                                      archiveOperationLease: archiveOperationLease)
     }
 
@@ -2742,6 +2753,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     func showReadOnlyArchiveMutationAlert(action: String) {
         if let level = archiveStack.last,
+           level.operationGate.hasActiveLeases
+        {
+            return
+        }
+
+        if let level = archiveStack.last,
            let nestedIdentity = level.nestedIdentity,
            hasConflictingNestedArchiveInstance(for: nestedIdentity)
         {
@@ -3079,55 +3096,60 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     {
         let displayPath = context.displayPathPrefix + "/" + item.pathParts.joined(separator: "/")
 
-        do {
-            let preparedOpen = try ArchiveOperationRunner.runSynchronously(operationTitle: "Opening archive...",
-                                                                           initialFileName: displayPath,
-                                                                           deferredDisplay: true)
-            { [archiveItemWorkflowService] session in
-                try archiveItemWorkflowService.prepareInternalArchiveOpen(for: item,
-                                                                          context: context,
-                                                                          openMode: openMode,
-                                                                          session: session)
-            }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
 
-            let result = finishArchiveOpen(preparedOpen.preparedResult,
-                                           temporaryDirectory: preparedOpen.temporaryDirectory,
-                                           preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
-                                           replaceCurrentState: false,
-                                           showError: false)
-
-            switch result {
-            case .opened, .cancelled:
-                return
-
-            case let .unsupportedArchive(error):
-                guard preserveTemporaryDirectoryOnUnsupported else {
-                    showErrorAlert(error)
-                    return
+            do {
+                let preparedOpen = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.opening"),
+                                                                        initialFileName: displayPath,
+                                                                        parentWindow: view.window,
+                                                                        deferredDisplay: true)
+                { [archiveItemWorkflowService] session in
+                    try archiveItemWorkflowService.prepareInternalArchiveOpen(for: item,
+                                                                              context: context,
+                                                                              openMode: openMode,
+                                                                              session: session)
                 }
 
-                let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: preparedOpen.stagedArchiveURL)
-                if shouldFallbackExternally {
-                    if let applicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(forArchiveItemPath: item.path) {
-                        _ = openExternally(preparedOpen.stagedArchiveURL,
-                                           withApplicationAt: applicationURL,
-                                           preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
-                    } else if !openExternallyIfPossible(preparedOpen.stagedArchiveURL,
-                                                        preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
-                    {
+                let result = finishArchiveOpen(preparedOpen.preparedResult,
+                                               temporaryDirectory: preparedOpen.temporaryDirectory,
+                                               preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
+                                               replaceCurrentState: false,
+                                               showError: false)
+
+                switch result {
+                case .opened, .cancelled:
+                    return
+
+                case let .unsupportedArchive(error):
+                    guard preserveTemporaryDirectoryOnUnsupported else {
+                        showErrorAlert(error)
+                        return
+                    }
+
+                    let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: preparedOpen.stagedArchiveURL)
+                    if shouldFallbackExternally {
+                        if let applicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(forArchiveItemPath: item.path) {
+                            _ = openExternally(preparedOpen.stagedArchiveURL,
+                                               withApplicationAt: applicationURL,
+                                               preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
+                        } else if !openExternallyIfPossible(preparedOpen.stagedArchiveURL,
+                                                            preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
+                        {
+                            archiveItemWorkflowService.cleanup(preparedOpen.temporaryDirectory)
+                            showErrorAlert(error)
+                        }
+                    } else {
                         archiveItemWorkflowService.cleanup(preparedOpen.temporaryDirectory)
                         showErrorAlert(error)
                     }
-                } else {
-                    archiveItemWorkflowService.cleanup(preparedOpen.temporaryDirectory)
+
+                case let .failed(error):
                     showErrorAlert(error)
                 }
-
-            case let .failed(error):
+            } catch {
                 showErrorAlert(error)
             }
-        } catch {
-            showErrorAlert(error)
         }
     }
 
