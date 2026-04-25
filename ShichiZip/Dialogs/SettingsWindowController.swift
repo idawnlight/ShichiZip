@@ -400,7 +400,7 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
     private var isUpdatingShortcutControls = false
 
     private static let supportedFileAssociations = IntegrationFileAssociation.integrationDocumentTypes()
-    // https://gist.github.com/rmcdongit/f66ff91e0dad78d4d6346a75ded4b751?permalink_comment_id=5507723#gistcomment-5507723
+    /// https://gist.github.com/rmcdongit/f66ff91e0dad78d4d6346a75ded4b751?permalink_comment_id=5507723#gistcomment-5507723
     private static let finderQuickActionsSettingsURL = URL(string: "x-apple.systempreferences:com.apple.ExtensionsPreferences?extensionPointIdentifier=com.apple.finder-quick-actions")
 
     convenience init() {

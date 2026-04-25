@@ -100,6 +100,12 @@ struct FileManagerPreparedArchiveItemInternalOpen {
     let preparedResult: FileManagerPreparedArchiveOpenResult
 }
 
+struct FileManagerPreparedArchiveItemExternalOpen {
+    let stagedFileURL: URL
+    let temporaryDirectory: URL
+    let applicationURL: URL?
+}
+
 enum FileManagerArchiveItemOpenStrategy {
     case automatic
     case forceInternal(FileManagerArchiveOpenMode)
@@ -200,110 +206,6 @@ final class FileManagerArchiveItemWorkflowService {
         cleanupObserversState.withLock { $0[ObjectIdentifier(observer)] = observer }
     }
 
-    func open(_ item: ArchiveItem,
-              context: FileManagerArchiveItemWorkflowContext,
-              strategy: FileManagerArchiveItemOpenStrategy = .automatic,
-              session: SZOperationSession? = nil,
-              openArchiveInline: (URL, URL, String, URL, FileManagerNestedArchiveWriteBackInfo?, FileManagerArchiveOpenMode) -> FileManagerArchiveOpenResult,
-              openExternally: (URL, URL, URL) -> Bool,
-              openExternallyIfPossible: (URL, URL) -> Bool) throws
-    {
-        let stagedItem = try stage(item: item,
-                                   context: context,
-                                   temporaryDirectoryPrefix: FileManagerTemporaryDirectorySupport.openArchivePrefix,
-                                   session: session)
-        let preferredApplicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(forArchiveItemPath: item.path)
-
-        switch strategy {
-        case .automatic:
-            if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(archiveItemPath: item.path) {
-                guard let preferredApplicationURL else {
-                    cleanup(stagedItem.temporaryDirectory)
-                    throw unavailableExternalOpenError(for: item.name)
-                }
-
-                _ = openExternally(stagedItem.fileURL,
-                                   preferredApplicationURL,
-                                   stagedItem.temporaryDirectory)
-                return
-            }
-
-            let nestedWriteBackInfo = try makeNestedArchiveWriteBackInfo(for: item,
-                                                                         context: context,
-                                                                         stagedArchiveURL: stagedItem.fileURL)
-            switch openArchiveInline(stagedItem.fileURL,
-                                     stagedItem.temporaryDirectory,
-                                     nestedDisplayPath(for: item,
-                                                       displayPathPrefix: context.displayPathPrefix),
-                                     context.hostDirectory,
-                                     nestedWriteBackInfo,
-                                     .defaultBehavior)
-            {
-            case .opened:
-                return
-
-            case let .unsupportedArchive(error):
-                let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: stagedItem.fileURL)
-                if shouldFallbackExternally {
-                    if let preferredApplicationURL {
-                        _ = openExternally(stagedItem.fileURL,
-                                           preferredApplicationURL,
-                                           stagedItem.temporaryDirectory)
-                    } else if !openExternallyIfPossible(stagedItem.fileURL,
-                                                        stagedItem.temporaryDirectory)
-                    {
-                        cleanup(stagedItem.temporaryDirectory)
-                        throw error
-                    }
-                } else {
-                    cleanup(stagedItem.temporaryDirectory)
-                    throw error
-                }
-
-            case .cancelled:
-                return
-
-            case let .failed(error):
-                throw error
-            }
-
-        case let .forceInternal(openMode):
-            let nestedWriteBackInfo = try makeNestedArchiveWriteBackInfo(for: item,
-                                                                         context: context,
-                                                                         stagedArchiveURL: stagedItem.fileURL)
-            switch openArchiveInline(stagedItem.fileURL,
-                                     stagedItem.temporaryDirectory,
-                                     nestedDisplayPath(for: item,
-                                                       displayPathPrefix: context.displayPathPrefix),
-                                     context.hostDirectory,
-                                     nestedWriteBackInfo,
-                                     openMode)
-            {
-            case .opened, .cancelled:
-                return
-            case let .unsupportedArchive(error), let .failed(error):
-                throw error
-            }
-
-        case .forceExternal:
-            if let preferredApplicationURL {
-                _ = openExternally(stagedItem.fileURL,
-                                   preferredApplicationURL,
-                                   stagedItem.temporaryDirectory)
-                return
-            }
-
-            if openExternallyIfPossible(stagedItem.fileURL,
-                                        stagedItem.temporaryDirectory)
-            {
-                return
-            }
-
-            cleanup(stagedItem.temporaryDirectory)
-            throw unavailableExternalOpenError(for: item.name)
-        }
-    }
-
     func writePromise(for item: ArchiveItem,
                       context: FileManagerArchiveItemWorkflowContext,
                       to destinationURL: URL,
@@ -358,6 +260,37 @@ final class FileManagerArchiveItemWorkflowService {
             cleanup(temporaryDirectory)
             throw error
         }
+    }
+
+    func prepareExternalArchiveItemOpen(for item: ArchiveItem,
+                                        context: FileManagerArchiveItemWorkflowContext,
+                                        strategy: FileManagerArchiveItemOpenStrategy,
+                                        session: SZOperationSession) throws -> FileManagerPreparedArchiveItemExternalOpen
+    {
+        let preferredApplicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(forArchiveItemPath: item.path)
+
+        switch strategy {
+        case .automatic:
+            guard FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(archiveItemPath: item.path),
+                  preferredApplicationURL != nil
+            else {
+                throw unavailableExternalOpenError(for: item.name)
+            }
+
+        case .forceExternal:
+            break
+
+        case .forceInternal:
+            throw extractionPreparationError()
+        }
+
+        let stagedItem = try stage(item: item,
+                                   context: context,
+                                   temporaryDirectoryPrefix: FileManagerTemporaryDirectorySupport.openArchivePrefix,
+                                   session: session)
+        return FileManagerPreparedArchiveItemExternalOpen(stagedFileURL: stagedItem.fileURL,
+                                                          temporaryDirectory: stagedItem.temporaryDirectory,
+                                                          applicationURL: preferredApplicationURL)
     }
 
     private func stage(item: ArchiveItem,
