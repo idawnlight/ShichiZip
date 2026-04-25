@@ -76,6 +76,49 @@ final class ArchiveMutationTests: XCTestCase {
                       "new folder entry should be present after createFolder")
     }
 
+    func testCreateFolderRejectsNamesEndingInDotComponents() throws {
+        let (archiveURL, _) = try makeArchive(named: "createfolder-invalid",
+                                              payloads: ["keep.txt": "keep"])
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        for name in [".", "..", "nested/.", "nested/.."] {
+            XCTAssertThrowsError(
+                try archive.createFolderNamed(name,
+                                              inArchiveSubdir: "",
+                                              session: nil),
+                "createFolder should reject upstream-invalid name: \(name)",
+            ) { error in
+                XCTAssertEqual((error as NSError).domain, SZArchiveErrorDomain)
+            }
+        }
+
+        XCTAssertEqual(entryPaths(in: archive), ["keep.txt"])
+    }
+
+    func testCreateFolderAllowsSeparatorsAndSpecialSymbolsLikeUpstream() throws {
+        let (archiveURL, _) = try makeArchive(named: "createfolder-special",
+                                              payloads: ["keep.txt": "keep"])
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        try archive.createFolderNamed("nested/New Folder #1 [ok]! @&+=,;",
+                                      inArchiveSubdir: "",
+                                      session: nil)
+        try archive.createFolderNamed("name.with.dots...",
+                                      inArchiveSubdir: "",
+                                      session: nil)
+
+        let paths = entryPaths(in: archive)
+        XCTAssertTrue(paths.contains("nested/New Folder #1 [ok]! @&+=,;"))
+        XCTAssertTrue(paths.contains("name.with.dots..."))
+        XCTAssertTrue(paths.contains("keep.txt"))
+    }
+
     // MARK: - renameItemAtPath
 
     func testRenameItemChangesPathAndLeavesOtherEntriesAlone() throws {
@@ -101,6 +144,47 @@ final class ArchiveMutationTests: XCTestCase {
                        "old entry name must be gone after rename")
         XCTAssertTrue(paths.contains("other.txt"),
                       "unrelated entry must not be disturbed by rename")
+    }
+
+    func testRenameItemRejectsNamesEndingInDotComponents() throws {
+        let (archiveURL, _) = try makeArchive(named: "rename-invalid",
+                                              payloads: ["old.txt": "contents"])
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        for name in [".", "..", "nested/.", "nested/.."] {
+            XCTAssertThrowsError(
+                try archive.renameItem(atPath: "old.txt",
+                                       inArchiveSubdir: "",
+                                       newName: name,
+                                       session: nil),
+                "rename should reject upstream-invalid name: \(name)",
+            ) { error in
+                XCTAssertEqual((error as NSError).domain, SZArchiveErrorDomain)
+            }
+        }
+
+        XCTAssertEqual(entryPaths(in: archive), ["old.txt"])
+    }
+
+    func testRenameItemAllowsSeparatorsAndSpecialSymbolsLikeUpstream() throws {
+        let (archiveURL, _) = try makeArchive(named: "rename-special",
+                                              payloads: ["old.txt": "contents"])
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        try archive.renameItem(atPath: "old.txt",
+                               inArchiveSubdir: "",
+                               newName: "nested/Renamed File #1 [ok]! @&+=,;.txt",
+                               session: nil)
+
+        let paths = entryPaths(in: archive)
+        XCTAssertTrue(paths.contains("nested/Renamed File #1 [ok]! @&+=,;.txt"))
+        XCTAssertFalse(paths.contains("old.txt"))
     }
 
     // MARK: - deleteItemsAtPaths

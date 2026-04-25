@@ -1508,6 +1508,22 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     return ToNS(MakePathFromParts(pathParts));
 }
 
+static bool SZIsCorrectArchiveMutationName(NSString* name) {
+    const UString value = ToU(name);
+    const UString lastPart = value.Ptr((unsigned)(value.ReverseFind_PathSepar() + 1));
+    return !lastPart.IsEqualTo(".") && !lastPart.IsEqualTo("..");
+}
+
+static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
+    if (SZIsCorrectArchiveMutationName(name)) {
+        return YES;
+    }
+    if (error) {
+        *error = SZMakeError(E_INVALIDARG, @"Invalid archive item name.");
+    }
+    return NO;
+}
+
 // MARK: - Open / Close
 
 - (BOOL)openAtPath:(NSString*)path error:(NSError**)error {
@@ -2055,6 +2071,10 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
                     error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
+    if (!SZValidateArchiveMutationName(folderName, error)) {
+        return NO;
+    }
+
     if (!_isOpen) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
@@ -2123,6 +2143,10 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
                  session:(SZOperationSession*)session
                    error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
+
+    if (!SZValidateArchiveMutationName(newName, error)) {
+        return NO;
+    }
 
     if (!_isOpen) {
         if (error)
