@@ -137,6 +137,18 @@ static inline NSString* SZLocalizedString(NSString* key) {
     return key;
 }
 
+static inline NSString* SZLocalizedStringReplacingPlaceholder(NSString* key,
+    NSString* placeholder,
+    NSString* _Nullable value) {
+    return [SZLocalizedString(key) stringByReplacingOccurrencesOfString:placeholder
+                                                              withString:value ?: @""];
+}
+
+static inline NSString* SZLocalizedStringWithFirstPlaceholder(NSString* key,
+    NSString* _Nullable value) {
+    return SZLocalizedStringReplacingPlaceholder(key, @"{0}", value);
+}
+
 static NSString* const SZSettingsDidChangeNotificationName = @"SZSettingsDidChange";
 static NSString* const SZSettingsDidChangeKeyUserInfoKey = @"key";
 static NSString* const SZExtractionMemoryLimitEnabledPreferenceKey = @"MemLimitEnabled";

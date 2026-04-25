@@ -718,7 +718,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     }
 
     private static var ppmdDictLabel: String {
-        SZL10n.string("app.compress.memoryUsage")
+        SZL10n.string("benchmark.memoryUsage")
     }
 
     private static var ppmdWordLabel: String {
@@ -1081,7 +1081,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             let deleteAfterCheckbox = NSButton(checkboxWithTitle: SZL10n.string("compress.deleteAfter"), target: nil, action: nil)
             deleteAfterCheckbox.state = deleteAfterCompression ? .on : .off
             deleteAfterCheckbox.setAccessibilityIdentifier("compress.deleteAfter")
-            let createSFXCheckbox = NSButton(checkboxWithTitle: SZL10n.string("app.compress.createWindowsSFX"),
+            let createSFXCheckbox = NSButton(checkboxWithTitle: SZL10n.string("compress.createSFX"),
                                              target: self,
                                              action: #selector(createSFXToggled(_:)))
             createSFXCheckbox.state = createSFX ? .on : .off
@@ -1176,7 +1176,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                 memoryUsageRow,
                 compressionMemoryRow,
                 decompressionMemoryRow,
-                makeFormRow(label: SZL10n.string("app.compress.splitVolumes"), control: splitVolumesField),
+                makeFormRow(label: SZL10n.string("split.toVolumesBytes"), control: splitVolumesField),
                 makeFormRow(label: SZL10n.string("compress.parameters"), control: parametersField),
             ])
 
@@ -3020,13 +3020,13 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     private func timePrecisionTitle(for precision: SZCompressionTimePrecision) -> String {
         switch precision.rawValue {
         case 0:
-            "100 ns : Windows"
+            "100 \(SZL10n.string("time.nanosecondsAbbrev")) : Windows"
         case 1:
-            "1 sec : Unix"
+            "1 \(SZL10n.string("time.secondsAbbrev")) : Unix"
         case 2:
-            "2 sec : DOS"
+            "2 \(SZL10n.string("time.secondsAbbrev")) : DOS"
         case 3:
-            "1 ns : Linux"
+            "1 \(SZL10n.string("time.nanosecondsAbbrev")) : Linux"
         default:
             "Automatic"
         }

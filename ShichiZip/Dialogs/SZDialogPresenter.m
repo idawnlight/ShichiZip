@@ -205,18 +205,18 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     detailsStack.orientation = NSUserInterfaceLayoutOrientationVertical;
     detailsStack.alignment = NSLayoutAttributeLeading;
     detailsStack.spacing = 4;
-    [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"Required memory: %u GB", _requiredGB]]];
-    [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"Current limit: %u GB", _currentLimitGB]]];
-    [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"Installed RAM: %u GB", _installedRAMGB]]];
+    [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"%@: %u GB", SZLocalizedString(@"memory.requiredSize"), _requiredGB]]];
+    [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"%@: %u GB", SZLocalizedString(@"memory.allowedLimit"), _currentLimitGB]]];
+    [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"%@: %u GB", SZLocalizedString(@"memory.ramSize"), _installedRAMGB]]];
     if (_archivePath.length > 0) {
-        [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"Archive: %@", _archivePath]]];
+        [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:SZLocalizedString(@"app.fileManager.archiveTransfer.archive"), _archivePath]]];
     }
     if (_filePath.length > 0) {
-        [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"File: %@", _filePath]]];
+        [detailsStack addArrangedSubview:[self detailLabelWithString:[NSString stringWithFormat:@"%@: %@", SZLocalizedString(@"menu.file"), _filePath]]];
     }
     [stack addArrangedSubview:detailsStack];
 
-    _saveLimitButton = [NSButton checkboxWithTitle:@"Change allowed limit for next operations" target:self action:@selector(toggleSaveLimit:)];
+    _saveLimitButton = [NSButton checkboxWithTitle:SZLocalizedString(@"memory.changeAllowedLimit") target:self action:@selector(toggleSaveLimit:)];
     _saveLimitButton.translatesAutoresizingMaskIntoConstraints = NO;
     _saveLimitButton.accessibilityIdentifier = @"memoryLimit.saveLimit";
 
@@ -253,7 +253,7 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     ]];
     [stack addArrangedSubview:limitStack];
 
-    NSTextField* actionLabel = [NSTextField labelWithString:@"If the archive needs more than the current limit:"];
+    NSTextField* actionLabel = [NSTextField labelWithString:SZLocalizedString(@"memory.action")];
     actionLabel.translatesAutoresizingMaskIntoConstraints = NO;
     actionLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
     [stack addArrangedSubview:actionLabel];
@@ -274,7 +274,7 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     [actionStack addArrangedSubview:_skipButton];
     [stack addArrangedSubview:actionStack];
 
-    _rememberButton = [NSButton checkboxWithTitle:@"Repeat selected action for current operation" target:nil action:NULL];
+    _rememberButton = [NSButton checkboxWithTitle:SZLocalizedString(@"memory.repeatAction") target:nil action:NULL];
     _rememberButton.translatesAutoresizingMaskIntoConstraints = NO;
     _rememberButton.hidden = !_showRemember;
     _rememberButton.accessibilityIdentifier = @"memoryLimit.rememberButton";
@@ -413,8 +413,11 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
                          message:(NSString*)message
                     buttonTitles:(NSArray<NSString*>*)buttonTitles {
     NSInteger cancelButtonIndex = buttonTitles.count > 0 ? (NSInteger)buttonTitles.count - 1 : 0;
+    NSString* localizedCancelTitle = SZLocalizedString(@"common.cancel");
     for (NSInteger index = 0; index < (NSInteger)buttonTitles.count; index++) {
-        if ([buttonTitles[(NSUInteger)index] caseInsensitiveCompare:@"Cancel"] == NSOrderedSame) {
+        NSString* buttonTitle = buttonTitles[(NSUInteger)index];
+        if ([buttonTitle caseInsensitiveCompare:@"Cancel"] == NSOrderedSame
+            || [buttonTitle caseInsensitiveCompare:localizedCancelTitle] == NSOrderedSame) {
             cancelButtonIndex = index;
             break;
         }
@@ -468,11 +471,10 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
                                                                                                                    filePath:filePath
                                                                                                                showRemember:showRemember];
 
-    NSString* message = testMode
-        ? @"This archive needs more memory to continue testing than the current limit allows."
-        : @"This archive needs more memory to continue extracting than the current limit allows.";
+    NSString* message = SZLocalizedString(@"memory.requiresBigRAM");
     if (accessoryController.installedRAMIsInsufficient) {
-        message = [message stringByAppendingString:@" Installed RAM may also be insufficient."];
+        message = [message stringByAppendingFormat:@" %@",
+            SZLocalizedString(@"memory.blocked")];
     }
 
     SZModalDialogController* controller = [[SZModalDialogController alloc] initWithStyle:(accessoryController.installedRAMIsInsufficient ? SZDialogStyleCritical : SZDialogStyleWarning)

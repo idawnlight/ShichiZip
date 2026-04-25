@@ -296,11 +296,11 @@ static NSString* SZBenchErrorMessage(HRESULT result) {
     if (result == S_OK || result == E_ABORT)
         return nil;
     if (result == S_FALSE)
-        return @"Decoding error";
+        return SZLocalizedString(@"app.benchmark.decodingError");
     if (result == CLASS_E_CLASSNOTAVAILABLE)
-        return @"Can't find 7-Zip codecs";
+        return SZLocalizedString(@"app.benchmark.cannotFindCodecs");
     return [NSString
-        stringWithFormat:@"Benchmark failed (0x%08X).", (unsigned)result];
+        stringWithFormat:SZLocalizedString(@"app.benchmark.failedFormat"), (unsigned)result];
 }
 
 static CObjectVector<CProperty> SZBenchMakeProps(UInt64 dictionarySize,
@@ -476,7 +476,7 @@ public:
     CCodecs* codecs = SZGetCodecs();
     if (!codecs) {
         if (completion) {
-            completion(NO, @"Failed to init codecs");
+            completion(NO, SZLocalizedString(@"app.archive.error.failedToInitCodecs"));
         }
         return;
     }

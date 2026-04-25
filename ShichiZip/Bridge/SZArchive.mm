@@ -1078,20 +1078,19 @@ static NSString* SZOpenArchiveFlagDetails(UInt32 errorFlags) {
 
     const struct {
         UInt32 flag;
-        const char* message;
+        NSString* key;
     } flagMessages[] = {
-        { kpv_ErrorFlags_IsNotArc, "Is not archive" },
-        { kpv_ErrorFlags_HeadersError, "Headers Error" },
-        { kpv_ErrorFlags_EncryptedHeadersError,
-            "Headers Error in encrypted archive. Wrong password?" },
-        { kpv_ErrorFlags_UnavailableStart, "Unavailable start of archive" },
-        { kpv_ErrorFlags_UnconfirmedStart, "Unconfirmed start of archive" },
-        { kpv_ErrorFlags_UnexpectedEnd, "Unexpected end of data" },
-        { kpv_ErrorFlags_DataAfterEnd, "Data after end of archive" },
-        { kpv_ErrorFlags_UnsupportedMethod, "Unsupported method" },
-        { kpv_ErrorFlags_UnsupportedFeature, "Unsupported feature" },
-        { kpv_ErrorFlags_DataError, "Data Error" },
-        { kpv_ErrorFlags_CrcError, "CRC Error" },
+        { kpv_ErrorFlags_IsNotArc, @"error.isNotArchive" },
+        { kpv_ErrorFlags_HeadersError, @"error.headersError" },
+        { kpv_ErrorFlags_EncryptedHeadersError, @"error.headersError" },
+        { kpv_ErrorFlags_UnavailableStart, @"error.unavailableStart" },
+        { kpv_ErrorFlags_UnconfirmedStart, @"error.unconfirmedStart" },
+        { kpv_ErrorFlags_UnexpectedEnd, @"error.unexpectedEnd" },
+        { kpv_ErrorFlags_DataAfterEnd, @"error.dataAfterPayload" },
+        { kpv_ErrorFlags_UnsupportedMethod, @"error.unsupportedMethodGeneric" },
+        { kpv_ErrorFlags_UnsupportedFeature, @"error.unsupportedFeature" },
+        { kpv_ErrorFlags_DataError, @"error.dataErrorGeneric" },
+        { kpv_ErrorFlags_CrcError, @"error.crcFailedGeneric" },
     };
 
     for (size_t index = 0; index < sizeof(flagMessages) / sizeof(flagMessages[0]);
@@ -1100,7 +1099,13 @@ static NSString* SZOpenArchiveFlagDetails(UInt32 errorFlags) {
         if ((errorFlags & entry.flag) == 0) {
             continue;
         }
-        [messages addObject:[NSString stringWithUTF8String:entry.message]];
+        if (entry.flag == kpv_ErrorFlags_EncryptedHeadersError) {
+            [messages addObject:[NSString stringWithFormat:@"%@ : %@",
+                         SZLocalizedString(entry.key),
+                         SZLocalizedString(@"error.wrongPassword")]];
+        } else {
+            [messages addObject:SZLocalizedString(entry.key)];
+        }
     }
 
     return messages.count > 0 ? [messages componentsJoinedByString:@"\n"] : nil;
@@ -1123,47 +1128,50 @@ static NSString* SZOpenArchiveFailureReason(const CArcErrorInfo& errorInfo) {
 }
 
 static NSError* SZOpenArchiveErrorFromPasswordContext(
-    HRESULT result, const CArcErrorInfo& errorInfo, BOOL passwordWasAsked) {
+    HRESULT result, const CArcErrorInfo& errorInfo, BOOL passwordWasAsked,
+    NSString* archivePath) {
     if (result == E_ABORT) {
         return SZMakeError(SZArchiveErrorCodeUserCancelled,
-            @"Operation was cancelled");
+            SZLocalizedString(@"app.archive.error.operationCancelled"));
     }
 
     if (result != S_FALSE) {
         return SZMakeError(
-            result, [NSString stringWithFormat:@"Failed to open archive (0x%08X)", (unsigned)result]);
+            result, [NSString stringWithFormat:SZLocalizedString(@"app.archive.error.failedToOpenFormat"), (unsigned)result]);
     }
 
     const UInt32 errorFlags = errorInfo.GetErrorFlags();
-    const BOOL wrongPassword = SZOpenErrorFlagsIndicateWrongPassword(errorFlags)
-        || (passwordWasAsked && !errorInfo.ErrorFlags_Defined);
+    const BOOL wrongPassword = passwordWasAsked
+        || SZOpenErrorFlagsIndicateWrongPassword(errorFlags);
     if (wrongPassword) {
-        return SZMakeError(SZArchiveErrorCodeWrongPassword,
-            @"Cannot open encrypted archive. Wrong password?");
+        return SZMakeDetailedError(SZArchiveErrorCodeWrongPassword,
+            SZLocalizedStringWithFirstPlaceholder(@"archive.cannotOpenEncryptedWrongPassword", archivePath),
+            SZOpenArchiveFailureReason(errorInfo));
     }
 
     if (SZOpenErrorFlagsIndicateUnsupportedArchive(errorFlags)) {
         return SZMakeDetailedError(SZArchiveErrorCodeUnsupportedArchive,
-            @"Cannot open archive or unsupported format",
+            SZLocalizedString(@"archive.unsupportedType"),
             SZOpenArchiveFailureReason(errorInfo));
     }
 
     if (!errorInfo.IsArc_After_NonOpen() && errorInfo.ErrorMessage.IsEmpty()) {
         return SZMakeDetailedError(SZArchiveErrorCodeUnsupportedArchive,
-            @"Cannot open archive or unsupported format",
+            SZLocalizedString(@"archive.unsupportedType"),
             SZOpenArchiveFailureReason(errorInfo));
     }
 
     return SZMakeDetailedError(SZArchiveErrorCodeInvalidArchive,
-        @"Cannot open archive",
+        SZLocalizedStringWithFirstPlaceholder(@"archive.cannotOpenFileAsArchive", archivePath),
         SZOpenArchiveFailureReason(errorInfo));
 }
 
 static NSError*
 SZOpenArchiveErrorFromResult(HRESULT result, const CArcErrorInfo& errorInfo,
-    const SZOpenCallbackUI& callbackUI) {
+    const SZOpenCallbackUI& callbackUI,
+    NSString* archivePath) {
     return SZOpenArchiveErrorFromPasswordContext(result, errorInfo,
-        callbackUI.PasswordWasAsked);
+        callbackUI.PasswordWasAsked, archivePath);
 }
 
 static NSString* SZNormalizeArchiveRelativePath(NSString* path) {
@@ -1301,22 +1309,22 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     const UString& errorMessage) {
     if (result == E_ABORT) {
         return SZMakeError(SZArchiveErrorCodeUserCancelled,
-            @"Operation was cancelled");
+            SZLocalizedString(@"app.archive.error.operationCancelled"));
     }
 
     if (result == E_NOTIMPL) {
         return SZMakeError(
             SZArchiveErrorCodeUnsupportedFormat,
-            @"This archive does not support that in-place update operation.");
+            SZLocalizedString(@"archive.updateUnsupported"));
     }
 
     if (result == E_INVALIDARG) {
-        return SZMakeError(result, @"Invalid archive item selection.");
+        return SZMakeError(result, SZLocalizedString(@"app.archive.error.invalidItemSelection"));
     }
 
     if (result == (HRESULT)ERROR_ALREADY_EXISTS || result == HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)) {
         return SZMakeError(
-            result, @"An item with the same name already exists in the archive.");
+            result, SZLocalizedString(@"app.archive.error.itemAlreadyExists"));
     }
 
     NSString* details = ToNS(errorMessage);
@@ -1458,7 +1466,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     NSString* password = _cachedPasswordIsDefined ? [_cachedPassword copy] : nil;
     if (archivePath.length == 0) {
         if (error) {
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
+                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         }
         return NO;
     }
@@ -1519,7 +1528,8 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
         return YES;
     }
     if (error) {
-        *error = SZMakeError(E_INVALIDARG, @"Invalid archive item name.");
+        *error = SZMakeError(E_INVALIDARG,
+            SZLocalizedString(@"app.archive.error.invalidItemName"));
     }
     return NO;
 }
@@ -1595,7 +1605,7 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     if (!codecs) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeFailedToInitCodecs,
-                @"Failed to init codecs");
+                SZLocalizedString(@"app.archive.error.failedToInitCodecs"));
         return NO;
     }
     [self close];
@@ -1608,7 +1618,7 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
             *error = SZMakeError(
                 SZArchiveErrorCodeUnsupportedFormat,
                 [NSString
-                    stringWithFormat:@"Invalid archive open type: %@", openType]);
+                    stringWithFormat:SZLocalizedString(@"app.archive.error.invalidOpenType"), openType]);
         }
         return NO;
     }
@@ -1636,7 +1646,7 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     if (res != S_OK) {
         if (error) {
             *error = SZOpenArchiveErrorFromResult(res, _arcLink->NonOpen_ErrorInfo,
-                callbackUI);
+                callbackUI, _archivePath);
         }
         return NO;
     }
@@ -1847,15 +1857,21 @@ static UStringVector BuildRemovePathParts(NSString* pathPrefixToStrip) {
 
 static BOOL CheckExtractResult(SZFolderExtractCallback* fae, HRESULT r,
     NSError** error) {
-    if (r == S_OK && fae->PasswordWasWrong) {
+    if (r == E_ABORT) {
         if (error)
-            *error = SZMakeError(SZArchiveErrorCodeWrongPassword, @"Wrong password");
+            *error = SZMakeError(SZArchiveErrorCodeUserCancelled,
+                SZLocalizedString(@"app.archive.error.cancelled"));
+        return NO;
+    }
+    if (fae->PasswordWasWrong) {
+        if (error)
+            *error = SZMakeDetailedError(SZArchiveErrorCodeWrongPassword, SZLocalizedString(@"error.wrongPasswordGeneric"),
+                fae->LastErrorMessage.IsEmpty() ? nil : ToNS(fae->LastErrorMessage));
         return NO;
     }
     if (r == S_OK && fae->NumErrors > 0) {
-        NSString* title =
-            [NSString stringWithFormat:@"Completed with %u error%@", fae->NumErrors,
-                fae->NumErrors == 1 ? @"" : @"s"];
+        NSString* title = [NSString stringWithFormat:@"%@ %u",
+            SZLocalizedString(@"progress.errors"), fae->NumErrors];
         NSString* failureReason = fae->LastErrorMessage.IsEmpty() ? nil : ToNS(fae->LastErrorMessage);
         if (error)
             *error = SZMakeDetailedError(SZArchiveErrorCodePartialFailure, title,
@@ -1864,9 +1880,8 @@ static BOOL CheckExtractResult(SZFolderExtractCallback* fae, HRESULT r,
     }
     if (r != S_OK) {
         if (error)
-            *error = SZMakeError(r == E_ABORT ? SZArchiveErrorCodeUserCancelled
-                                              : SZArchiveErrorCodeExtractionFailed,
-                r == E_ABORT ? @"Cancelled" : @"Extraction failed");
+            *error = SZMakeError(SZArchiveErrorCodeExtractionFailed,
+                SZLocalizedString(@"app.archive.error.extractionFailed"));
         return NO;
     }
     return YES;
@@ -1881,7 +1896,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
         const DWORD lastError = GetLastError_noZero_HRESULT();
         NSString* failureReason = ToNS(NWindows::NError::MyFormatMessage(lastError));
         *error = SZMakeDetailedError(SZArchiveErrorCodeExtractionFailed,
-            [NSString stringWithFormat:@"Can't create folder \"%@\"", dest],
+            SZLocalizedString(@"create.errorFolder"),
             failureReason);
     }
 
@@ -1908,7 +1923,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     if (!_isOpen) {
         if (error)
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
+                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
     IInArchive* archive = _arcLink->GetArchive();
@@ -1972,7 +1988,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     if (!_isOpen) {
         if (error)
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
+                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
     IInArchive* archive = _arcLink->GetArchive();
@@ -2018,7 +2035,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (ia.size() >= (size_t)UINT32_MAX) {
         if (error)
             *error = SZMakeError(E_INVALIDARG,
-                @"Too many entries selected for extraction (limit 4294967294).");
+                SZLocalizedString(@"archive.tooManyItems"));
         return NO;
     }
     HRESULT r = archive->Extract(ia.data(), (UInt32)ia.size(), 0, ec);
@@ -2035,7 +2052,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     if (!_isOpen) {
         if (error)
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
+                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
     IInArchive* archive = _arcLink->GetArchive();
@@ -2077,7 +2095,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     if (!_isOpen) {
         if (error)
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
+                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
 
@@ -2101,7 +2120,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked);
+                result, errorInfo, updateSpec->PasswordWasAsked, _archivePath);
         }
         return NO;
     }
@@ -2111,7 +2130,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (!folderOperations) {
         if (error) {
             *error = SZMakeError(SZArchiveErrorCodeUnsupportedFormat,
-                @"This archive does not support in-place updates.");
+                SZLocalizedString(@"archive.updateUnsupported"));
         }
         return NO;
     }
@@ -2128,7 +2147,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (result != S_OK) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
-                result, @"Cannot create folder in archive",
+                result, SZLocalizedString(@"create.errorFolder"),
                 updateSpec->LastErrorMessage);
         }
         return NO;
@@ -2150,7 +2169,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     if (!_isOpen) {
         if (error)
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
+                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
 
@@ -2174,7 +2194,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked);
+                result, errorInfo, updateSpec->PasswordWasAsked, _archivePath);
         }
         return NO;
     }
@@ -2184,7 +2204,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (result != S_OK || indices.size() != 1) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
-                E_INVALIDARG, @"Cannot rename item in archive", UString());
+                E_INVALIDARG, SZLocalizedString(@"fileop.errorRenaming"), UString());
         }
         return NO;
     }
@@ -2194,7 +2214,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (!folderOperations) {
         if (error) {
             *error = SZMakeError(SZArchiveErrorCodeUnsupportedFormat,
-                @"This archive does not support in-place updates.");
+                SZLocalizedString(@"archive.updateUnsupported"));
         }
         return NO;
     }
@@ -2211,7 +2231,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (result != S_OK) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(result,
-                @"Cannot rename item in archive",
+                SZLocalizedString(@"fileop.errorRenaming"),
                 updateSpec->LastErrorMessage);
         }
         return NO;
@@ -2228,7 +2248,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     if (!_isOpen) {
         if (error)
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
+                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
 
@@ -2252,7 +2273,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked);
+                result, errorInfo, updateSpec->PasswordWasAsked, _archivePath);
         }
         return NO;
     }
@@ -2262,7 +2283,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (result != S_OK || indices.empty()) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
-                E_INVALIDARG, @"Cannot delete items from archive", UString());
+                E_INVALIDARG, SZLocalizedString(@"delete.errorDeleting"), UString());
         }
         return NO;
     }
@@ -2272,7 +2293,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (!folderOperations) {
         if (error) {
             *error = SZMakeError(SZArchiveErrorCodeUnsupportedFormat,
-                @"This archive does not support in-place updates.");
+                SZLocalizedString(@"archive.updateUnsupported"));
         }
         return NO;
     }
@@ -2280,7 +2301,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (indices.size() > (size_t)UINT32_MAX) {
         if (error) {
             *error = SZMakeError(E_INVALIDARG,
-                @"Too many items selected for deletion (limit 4294967295).");
+                SZLocalizedString(@"archive.tooManyItems"));
         }
         return NO;
     }
@@ -2297,7 +2318,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (result != S_OK) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
-                result, @"Cannot delete items from archive",
+                result, SZLocalizedString(@"delete.errorDeleting"),
                 updateSpec->LastErrorMessage);
         }
         return NO;
@@ -2315,7 +2336,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     if (!_isOpen) {
         if (error)
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
+                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
 
@@ -2336,7 +2358,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
         NSString* leafName = [standardizedPath lastPathComponent];
         if (leafName.length == 0) {
             if (error) {
-                *error = SZMakeError(E_INVALIDARG, @"Invalid source path.");
+                *error = SZMakeError(E_INVALIDARG,
+                    SZLocalizedString(@"app.archive.error.invalidSourcePath"));
             }
             return NO;
         }
@@ -2345,8 +2368,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             folderPrefix = parentPath;
         } else if (![folderPrefix isEqualToString:parentPath]) {
             if (error) {
-                *error = SZMakeError(E_INVALIDARG, @"All items added to an open archive "
-                                                   @"must come from the same folder.");
+                *error = SZMakeError(E_INVALIDARG,
+                    SZLocalizedString(@"app.archive.error.addSourcesDifferentFolders"));
             }
             return NO;
         }
@@ -2381,7 +2404,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked);
+                result, errorInfo, updateSpec->PasswordWasAsked, _archivePath);
         }
         return NO;
     }
@@ -2391,7 +2414,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (!folderOperations) {
         if (error) {
             *error = SZMakeError(SZArchiveErrorCodeUnsupportedFormat,
-                @"This archive does not support in-place updates.");
+                SZLocalizedString(@"archive.updateUnsupported"));
         }
         return NO;
     }
@@ -2399,8 +2422,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (pathPointers.size() > (size_t)UINT32_MAX) {
         if (error) {
             *error = SZMakeError(E_INVALIDARG,
-                @"Too many items to add to the archive in a single operation "
-                @"(limit 4294967295).");
+                SZLocalizedString(@"archive.tooManyItems"));
         }
         return NO;
     }
@@ -2418,7 +2440,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (result != S_OK) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(result,
-                @"Cannot update archive contents",
+                SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", _archivePath),
                 updateSpec->LastErrorMessage);
         }
         return NO;
@@ -2436,7 +2458,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 
     if (!_isOpen) {
         if (error)
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
+            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
+                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
 
@@ -2446,7 +2469,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             fileExistsAtPath:standardizedSourcePath]) {
         if (error) {
             *error = SZMakeError(E_INVALIDARG,
-                @"The updated nested archive file is missing.");
+                SZLocalizedString(@"app.archive.error.missingNestedArchive"));
         }
         return NO;
     }
@@ -2471,7 +2494,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
             const CArcErrorInfo errorInfo = agentSpec ? agentSpec->_archiveLink.NonOpen_ErrorInfo
                                                       : CArcErrorInfo();
             *error = SZOpenArchiveErrorFromPasswordContext(
-                result, errorInfo, updateSpec->PasswordWasAsked);
+                result, errorInfo, updateSpec->PasswordWasAsked, _archivePath);
         }
         return NO;
     }
@@ -2481,7 +2504,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (result != S_OK || indices.size() != 1) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
-                E_INVALIDARG, @"Cannot update nested archive in parent archive",
+                E_INVALIDARG, SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemPath),
                 UString());
         }
         return NO;
@@ -2492,7 +2515,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (!folderOperations) {
         if (error) {
             *error = SZMakeError(SZArchiveErrorCodeUnsupportedFormat,
-                @"This archive does not support in-place updates.");
+                SZLocalizedString(@"archive.updateUnsupported"));
         }
         return NO;
     }
@@ -2510,7 +2533,7 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
     if (result != S_OK) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
-                result, @"Cannot update nested archive in parent archive",
+                result, SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemPath),
                 updateSpec->LastErrorMessage);
         }
         return NO;
@@ -2811,7 +2834,7 @@ static bool SZParseVolumeSizes(const UString& text,
     CCodecs* codecs = SZGetCodecs();
     if (!codecs) {
         if (error)
-            *error = SZMakeError(-1, @"Failed to init codecs");
+            *error = SZMakeError(-1, SZLocalizedString(@"app.archive.error.failedToInitCodecs"));
         return NO;
     }
 
@@ -2821,7 +2844,7 @@ static bool SZParseVolumeSizes(const UString& text,
     if (formatName.length == 0) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeUnsupportedFormat,
-                @"Unsupported format");
+                SZLocalizedString(@"archive.unsupportedType"));
         return NO;
     }
 
@@ -2831,9 +2854,7 @@ static bool SZParseVolumeSizes(const UString& text,
         && s.encryption == SZEncryptionMethodNone) {
         if (error) {
             *error = SZMakeError(E_INVALIDARG,
-                @"A password was supplied but no zip encryption method was "
-                @"selected. Choose AES-256 (recommended) or ZipCrypto "
-                @"explicitly before creating the archive.");
+                SZLocalizedString(@"app.archive.error.zipPasswordRequiresEncryption"));
         }
         return NO;
     }
@@ -2852,15 +2873,15 @@ static bool SZParseVolumeSizes(const UString& text,
         const int sfxMethodID = methodID;
         if (s.format != SZArchiveFormat7z || !SZCompressionEstimateMethodSupportsSFX(sfxMethodID)) {
             if (error)
-                *error = SZMakeError(-8, @"The selected compression method does not "
-                                         @"support Windows SFX archives.");
+                *error = SZMakeError(-8,
+                    SZLocalizedString(@"app.archive.error.sfxUnsupportedMethod"));
             return NO;
         }
         if (!SZLocateBundledWindowsSfxModule(options.SfxModule)) {
             if (error)
                 *error = SZMakeError(
                     -1,
-                    @"The Windows SFX module is missing from the application bundle.");
+                    SZLocalizedString(@"app.archive.error.missingWindowsSFX"));
             return NO;
         }
     }
@@ -2884,7 +2905,7 @@ static bool SZParseVolumeSizes(const UString& text,
     }
     if (formatIndex < 0) {
         if (error)
-            *error = SZMakeError(-8, @"Unsupported format");
+            *error = SZMakeError(-8, SZLocalizedString(@"archive.unsupportedType"));
         return NO;
     }
     options.MethodMode.Type.FormatIndex = formatIndex;
@@ -2979,7 +3000,8 @@ static bool SZParseVolumeSizes(const UString& text,
     if (s.splitVolumes.length > 0) {
         if (!SZParseVolumeSizes(ToU(s.splitVolumes), options.VolumesSizes)) {
             if (error)
-                *error = SZMakeError(-1, @"Invalid split volume sizes.");
+                *error = SZMakeError(-1,
+                    SZLocalizedString(@"split.incorrectVolumeSize"));
             return NO;
         }
     } else if (s.splitVolumeSize > 0) {
@@ -2989,7 +3011,7 @@ static bool SZParseVolumeSizes(const UString& text,
     if (s.createSFX && options.VolumesSizes.Size() > 0) {
         if (error)
             *error = SZMakeError(
-                -1, @"Windows SFX archives cannot be split into volumes.");
+                -1, SZLocalizedString(@"app.archive.error.sfxCannotSplitVolumes"));
         return NO;
     }
 
@@ -3025,12 +3047,12 @@ static bool SZParseVolumeSizes(const UString& text,
     if (r != S_OK) {
         NSString* desc;
         if (r == E_ABORT)
-            desc = @"Compression was cancelled";
+            desc = SZLocalizedString(@"app.archive.error.compressionCancelled");
         else if (errorInfo.Message.Len() > 0)
             desc = NSFromCString(errorInfo.Message.Ptr());
         else
             desc = [NSString
-                stringWithFormat:@"Compression failed (0x%08X)", (unsigned)r];
+                stringWithFormat:SZLocalizedString(@"app.archive.error.compressionFailedFormat"), (unsigned)r];
         if (error)
             *error = SZMakeError(r, desc);
         return NO;
@@ -3102,7 +3124,7 @@ static bool SZParseVolumeSizes(const UString& text,
     CCodecs* codecs = SZGetCodecs();
     if (!codecs) {
         if (error)
-            *error = SZMakeError(-1, @"Failed to init codecs");
+            *error = SZMakeError(-1, SZLocalizedString(@"app.archive.error.failedToInitCodecs"));
         return nil;
     }
 
@@ -3178,7 +3200,7 @@ static bool SZParseVolumeSizes(const UString& text,
             return CheckBreak();
         }
         HRESULT OpenFileError(const FString& path, DWORD errorCode) override {
-            RecordFailure(L"Unable to open file for hashing.", path, errorCode);
+            RecordFailure(SZLocalizedString(@"app.archive.error.hashOpenFailed"), path, errorCode);
             return S_FALSE;
         }
         HRESULT SetOperationResult(UInt64, const CHashBundle& hb, bool) override {
@@ -3198,7 +3220,7 @@ static bool SZParseVolumeSizes(const UString& text,
             return CheckBreak();
         }
         HRESULT ScanError(const FString& path, DWORD errorCode) override {
-            RecordFailure(L"Unable to scan file for hashing.", path, errorCode);
+            RecordFailure(SZLocalizedString(@"app.archive.error.hashScanFailed"), path, errorCode);
             return S_FALSE;
         }
         HRESULT ScanProgress(const CDirItemsStat&, const FString& path,
@@ -3210,13 +3232,13 @@ static bool SZParseVolumeSizes(const UString& text,
         }
 
     private:
-        void RecordFailure(const wchar_t* description, const FString& path,
+        void RecordFailure(NSString* description, const FString& path,
             DWORD errorCode) {
             if (HasFailure()) {
                 return;
             }
 
-            failureDescription = description;
+            failureDescription = ToU(description ?: @"");
             failureReason = fs2us(path);
 
             const UString systemMessage = NWindows::NError::MyFormatMessage(errorCode);
@@ -3235,7 +3257,7 @@ static bool SZParseVolumeSizes(const UString& text,
     if (cb.HasFailure()) {
         if (error) {
             NSString* description = cb.failureDescription.IsEmpty()
-                ? @"Hash calculation failed"
+                ? SZLocalizedString(@"app.archive.error.hashFailed")
                 : ToNS(cb.failureDescription);
             NSString* reason = cb.failureReason.IsEmpty() ? nil : ToNS(cb.failureReason);
             *error = SZMakeDetailedError(cb.failureResult, description, reason);
@@ -3248,7 +3270,8 @@ static bool SZParseVolumeSizes(const UString& text,
             ? nil
             : NSFromCString(errorInfo.Ptr());
         if (error)
-            *error = SZMakeDetailedError(r, @"Hash calculation failed", reason);
+            *error = SZMakeDetailedError(r,
+                SZLocalizedString(@"app.archive.error.hashFailed"), reason);
         return nil;
     }
 

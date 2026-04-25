@@ -20,11 +20,11 @@ static inline HRESULT SZRequestOperationPassword(SZOperationSession* session,
     }
 
     NSString* message = context.length > 0
-        ? [NSString stringWithFormat:@"Enter password for \"%@\".", context]
-        : @"This archive is encrypted. Enter password.";
+        ? [NSString stringWithFormat:SZLocalizedString(@"app.archive.password.enterForArchive"), context]
+        : SZLocalizedString(@"password.enterPasswordPrompt");
     NSString* initialValue = wasDefined ? ToNS(outPassword) : nil;
     NSString* resolvedPassword = nil;
-    BOOL confirmed = [session requestPasswordWithTitle:@"Password Required"
+    BOOL confirmed = [session requestPasswordWithTitle:SZLocalizedString(@"password.enterPassword")
                                                message:message
                                           initialValue:initialValue
                                               password:&resolvedPassword];

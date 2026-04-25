@@ -1,17 +1,40 @@
-"app.benchmark.cpuThreads" = "CPU 线程数";
-"app.benchmark.dictionarySize" = "字典大小";
+"app.benchmark.cannotFindCodecs" = "找不到 7-Zip 编解码器";
+"app.benchmark.decodingError" = "解码错误";
 "app.benchmark.error" = "基准测试错误";
-"app.benchmark.estimatedMemory" = "预计内存占用";
+"app.benchmark.failedFormat" = "基准测试失败 (0x%08X)。";
 "app.benchmark.insufficientMemory" = "内存不足";
 "app.benchmark.usableLimit" = "可用上限：%@ MB";
+"benchmark.passes" = "轮数：";
+"compress.createSFX" = "创建 Windows 自解压程序";
+"app.archive.error.addSourcesDifferentFolders" = "添加到已打开压缩包的所有项目必须来自同一个文件夹。";
+"app.archive.error.cancelled" = "已取消";
+"app.archive.error.compressionCancelled" = "压缩已取消";
+"app.archive.error.compressionFailedFormat" = "压缩失败 (0x%08X)";
+"app.archive.error.errorNumberPrefix" = "错误 #";
+"app.archive.error.extractionFailed" = "解压失败";
+"app.archive.error.failedToInitCodecs" = "无法初始化编解码器";
+"app.archive.error.failedToOpenFormat" = "无法打开压缩包 (0x%08X)";
+"app.archive.error.hashFailed" = "哈希计算失败";
+"app.archive.error.hashOpenFailed" = "无法打开文件进行哈希计算。";
+"app.archive.error.hashScanFailed" = "无法扫描文件进行哈希计算。";
+"app.archive.error.invalidItemName" = "压缩包项目名称无效。";
+"app.archive.error.invalidItemSelection" = "压缩包项目选择无效。";
+"app.archive.error.invalidOpenType" = "压缩包打开类型无效：%@";
+"app.archive.error.invalidSourcePath" = "源路径无效。";
+"app.archive.error.itemAlreadyExists" = "压缩包中已存在同名项目。";
+"app.archive.error.missingNestedArchive" = "更新后的嵌套压缩包文件缺失。";
+"app.archive.error.missingWindowsSFX" = "应用程序包中缺少 Windows 自解压模块。";
+"app.archive.error.operationCancelled" = "操作已取消";
+"app.archive.error.operationFailedFormat" = "操作失败 (0x%08X)";
+"app.archive.error.sfxCannotSplitVolumes" = "Windows 自解压压缩包不能拆分为分卷。";
+"app.archive.error.sfxUnsupportedMethod" = "所选压缩方法不支持 Windows 自解压压缩包。";
+"app.archive.error.zipPasswordRequiresEncryption" = "已提供密码，但未选择 zip 加密方法。请先明确选择 AES-256（推荐）或 ZipCrypto，再创建压缩包。";
+"app.archive.password.enterForArchive" = "请输入「%@」的密码。";
 "app.browse" = "浏览…";
 "app.choose" = "选择";
 "app.chooseDestination" = "选择目标文件夹：";
-"app.compress.createWindowsSFX" = "创建 Windows 自解压程序";
 "app.compress.excludeMacResources" = "排除 macOS 资源文件";
-"app.compress.memoryUsage" = "内存占用：";
 "app.compress.order" = "阶数：";
-"app.compress.splitVolumes" = "分卷大小：";
 
 "app.deleteTempFiles.deleteContents" = "删除「%@」及其全部内容？";
 "app.deleteTempFiles.deleteFile" = "删除「%@」？";
@@ -29,7 +52,6 @@
 "app.extract.moveToTrash" = "解压后将压缩包移到废纸篓";
 "app.extract.separateFolder" = "独立文件夹：";
 
-"app.fileManager.calculatingChecksum" = "正在计算校验值…";
 "app.fileManager.cannotActionArchiveIntoSelf" = "无法将压缩包%@到自身";
 "app.fileManager.cannotActionIntoDescendant" = "无法将文件夹%@到其子文件夹";
 "app.fileManager.cannotActionIntoSelf" = "无法将文件夹%@到自身";
@@ -41,9 +63,7 @@
 "app.fileManager.enterFileName" = "请输入文件名。";
 "app.fileManager.enterFolderName" = "请输入文件夹名。";
 "app.fileManager.enterFullScreen" = "进入全屏幕";
-"app.fileManager.extractHere" = "解压到当前位置";
 "app.fileManager.fileManager" = "文件管理器";
-"app.fileManager.noErrorsFound" = "未发现任何错误。";
 "app.fileManager.openArchive" = "打开压缩包…";
 "app.fileManager.operationNotAvailable" = "操作不可用";
 "app.fileManager.selectArchiveToExtract" = "请选择要解压的压缩包。";
@@ -120,16 +140,11 @@
 "app.menu.zoom" = "缩放";
 "app.menu.closeDirectory" = "关闭文件夹";
 "app.optional" = "可选";
-"app.options" = "选项";
 "app.panel.chooseArchives" = "选择要在 %@ 中打开的压缩包";
 "app.panel.selectFilesToCompress" = "选择要压缩的文件和文件夹";
 "app.reenterPassword" = "再次输入密码";
 
-"app.progress.compressing" = "正在压缩…";
-"app.progress.copying" = "正在复制…";
-"app.progress.extracting" = "正在解压…";
 "app.progress.finalizing" = "正在完成…";
-"app.progress.moving" = "正在移动…";
 "app.progress.pasting" = "正在粘贴…";
 "app.progress.working" = "正在处理…";
 
@@ -137,7 +152,6 @@
 "app.settings.commanderLike" = "Commander 风格";
 "app.settings.commanderLikeDescription" = "使用经典 7-Zip 功能键操作方式，通过功能键进行文件操作和窗格管理。";
 "app.settings.compression" = "压缩";
-"app.settings.currentFolder" = "当前文件夹";
 "app.settings.currentDefault" = "当前默认应用";
 "app.settings.currentShortcuts" = "当前快捷键";
 "app.settings.custom" = "自定义";

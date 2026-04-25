@@ -27,6 +27,7 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
     private var elapsedL: NSTextField!; private var passesL: NSTextField!
     private var logView: NSTextView!
     private var restartBtn: NSButton!; private var stopBtn: NSButton!
+    private var languageObserver: NSObjectProtocol?
 
     private var elapsedTimer: Timer?
     private var startTime: Date?
@@ -63,6 +64,13 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
         self.init(window: window)
         window.delegate = self
         setupUI()
+        observeLanguageChanges()
+    }
+
+    isolated deinit {
+        if let languageObserver {
+            NotificationCenter.default.removeObserver(languageObserver)
+        }
     }
 
     override func showWindow(_ sender: Any?) {
@@ -111,7 +119,7 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
         row.spacing = 10
 
         let titleLabel = formLabel(title)
-        titleLabel.widthAnchor.constraint(equalToConstant: 116).isActive = true
+        titleLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 116).isActive = true
         titleLabel.setContentHuggingPriority(.required, for: .horizontal)
 
         row.addArrangedSubview(titleLabel)
@@ -132,6 +140,32 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
         }
         let memoryText = ByteCountFormatter.string(fromByteCount: Int64(physicalMemoryBytes), countStyle: .memory)
         return "\(versionedAppName) (\(AppBuildInfo.archiveCoreName()) core \(SZArchive.sevenZipVersionString())) | \(Self.cpuModel()) | \(logicalCPUCount) threads | \(memoryText)"
+    }
+
+    private func observeLanguageChanges() {
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: .szLanguageDidChange,
+            object: nil,
+            queue: .main,
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.rebuildUIForLanguageChange()
+            }
+        }
+    }
+
+    private func rebuildUIForLanguageChange() {
+        let waitsForStop = isRunningBenchmark
+        cancelBenchmark()
+        window?.title = SZL10n.string("benchmark.title")
+        for subview in window?.contentView?.subviews ?? [] {
+            subview.removeFromSuperview()
+        }
+        setupUI()
+        if waitsForStop {
+            restartBtn.isEnabled = false
+            stopBtn.isEnabled = false
+        }
     }
 
     private func setupUI() {
@@ -194,8 +228,8 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
         controlsColumn.orientation = .vertical
         controlsColumn.alignment = .leading
         controlsColumn.spacing = 8
-        controlsColumn.addArrangedSubview(controlRow(title: SZL10n.string("app.benchmark.dictionarySize"), control: dictPopup))
-        controlsColumn.addArrangedSubview(controlRow(title: SZL10n.string("app.benchmark.cpuThreads"), control: threadsControl))
+        controlsColumn.addArrangedSubview(controlRow(title: SZL10n.string("compress.dictionarySize"), control: dictPopup))
+        controlsColumn.addArrangedSubview(controlRow(title: SZL10n.string("compress.cpuThreads"), control: threadsControl))
         controlsColumn.addArrangedSubview(controlRow(title: SZL10n.string("benchmark.passes"), control: passesPopup))
         controlsColumn.setContentHuggingPriority(.required, for: .horizontal)
 
@@ -203,9 +237,9 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
         memoryGroup.orientation = .vertical
         memoryGroup.alignment = .leading
         memoryGroup.spacing = 3
-        memoryGroup.addArrangedSubview(secondaryLabel(SZL10n.string("app.benchmark.estimatedMemory")))
+        memoryGroup.addArrangedSubview(secondaryLabel(SZL10n.string("benchmark.memoryUsage")))
         memoryGroup.addArrangedSubview(memLabel)
-        memoryGroup.addArrangedSubview(secondaryLabel("Usable limit: \(Self.displayMegabytes(memoryLimitBytes)) MB"))
+        memoryGroup.addArrangedSubview(secondaryLabel(SZL10n.string("app.benchmark.usableLimit", String(Self.displayMegabytes(memoryLimitBytes)))))
         memoryGroup.setContentHuggingPriority(.required, for: .horizontal)
 
         let actionGroup = NSStackView()

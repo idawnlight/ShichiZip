@@ -38,18 +38,18 @@ static NSString* SZBuildMemoryLimitFailureReason(uint32_t requiredGB,
     NSString* filePath,
     BOOL archiveSkipped) {
     NSMutableArray<NSString*>* lines = [NSMutableArray array];
-    [lines addObject:@"Memory usage limit was exceeded."];
-    [lines addObject:[NSString stringWithFormat:@"Required memory: %u GB", requiredGB]];
-    [lines addObject:[NSString stringWithFormat:@"Current limit: %u GB", currentLimitGB]];
-    [lines addObject:[NSString stringWithFormat:@"Installed RAM: %u GB", SZRoundUpByteCountToGB([NSProcessInfo processInfo].physicalMemory)]];
+    [lines addObject:SZLocalizedString(@"memory.requiresBigRAM")];
+    [lines addObject:[NSString stringWithFormat:@"%@: %u GB", SZLocalizedString(@"memory.requiredSize"), requiredGB]];
+    [lines addObject:[NSString stringWithFormat:@"%@: %u GB", SZLocalizedString(@"memory.allowedLimit"), currentLimitGB]];
+    [lines addObject:[NSString stringWithFormat:@"%@: %u GB", SZLocalizedString(@"memory.ramSize"), SZRoundUpByteCountToGB([NSProcessInfo processInfo].physicalMemory)]];
     if (archivePath.length > 0) {
-        [lines addObject:[NSString stringWithFormat:@"Archive: %@", archivePath]];
+        [lines addObject:[NSString stringWithFormat:SZLocalizedString(@"app.fileManager.archiveTransfer.archive"), archivePath]];
     }
     if (filePath.length > 0) {
-        [lines addObject:[NSString stringWithFormat:@"File: %@", filePath]];
+        [lines addObject:[NSString stringWithFormat:@"%@: %@", SZLocalizedString(@"menu.file"), filePath]];
     }
     if (archiveSkipped) {
-        [lines addObject:@"Archive unpacking was skipped."];
+        [lines addObject:SZLocalizedString(@"memory.skipped")];
     }
     return [lines componentsJoinedByString:@"\n"];
 }
@@ -86,40 +86,41 @@ static void SZBuildExtractErrorMessage(Int32 opRes, Int32 encrypted, const wchar
 
     switch (opRes) {
     case NArchive::NExtract::NOperationResult::kUnsupportedMethod:
-        s += "Unsupported compression method";
+        s += ToU(SZLocalizedString(@"error.unsupportedMethodGeneric"));
         break;
     case NArchive::NExtract::NOperationResult::kDataError:
-        s += "Data error";
+        s += ToU(SZLocalizedString(@"error.dataErrorGeneric"));
         break;
     case NArchive::NExtract::NOperationResult::kCRCError:
-        s += "CRC failed";
+        s += ToU(SZLocalizedString(@"error.crcFailedGeneric"));
         break;
     case NArchive::NExtract::NOperationResult::kUnavailable:
-        s += "Unavailable data";
+        s += ToU(SZLocalizedString(@"error.unavailableData"));
         break;
     case NArchive::NExtract::NOperationResult::kUnexpectedEnd:
-        s += "Unexpected end of data";
+        s += ToU(SZLocalizedString(@"error.unexpectedEnd"));
         break;
     case NArchive::NExtract::NOperationResult::kDataAfterEnd:
-        s += "There are some data after the end of the payload data";
+        s += ToU(SZLocalizedString(@"error.dataAfterPayload"));
         break;
     case NArchive::NExtract::NOperationResult::kIsNotArc:
-        s += "Is not archive";
+        s += ToU(SZLocalizedString(@"error.isNotArchive"));
         break;
     case NArchive::NExtract::NOperationResult::kHeadersError:
-        s += "Headers Error";
+        s += ToU(SZLocalizedString(@"error.headersError"));
         break;
     case NArchive::NExtract::NOperationResult::kWrongPassword:
-        s += "Wrong password";
+        s += ToU(SZLocalizedString(@"error.wrongPasswordGeneric"));
         break;
     default:
-        s += "Error #";
+        s += ToU(SZLocalizedString(@"app.archive.error.errorNumberPrefix"));
         s.Add_UInt32((UInt32)opRes);
         break;
     }
 
     if (encrypted && opRes != NArchive::NExtract::NOperationResult::kWrongPassword) {
-        s += " : Wrong password?";
+        s += " : ";
+        s += ToU(SZLocalizedString(@"error.wrongPassword"));
     }
 
     if (fileName && fileName[0] != 0) {
@@ -156,7 +157,7 @@ static void SZAppendHRESULTMessage(UString& storage, const wchar_t* path, HRESUL
     NSString* pathText = (path && path[0] != 0) ? ToNS(UString(path)) : nil;
     NSString* message = pathText.length > 0
         ? [NSString stringWithFormat:@"%@: 0x%08X", pathText, (unsigned)errorCode]
-        : [NSString stringWithFormat:@"Operation failed (0x%08X)", (unsigned)errorCode];
+        : [NSString stringWithFormat:SZLocalizedString(@"app.archive.error.operationFailedFormat"), (unsigned)errorCode];
     SZAppendErrorMessage(storage, message);
 }
 
@@ -295,32 +296,32 @@ Z7_COM7F_IMF(SZFolderExtractCallback::AskOverwrite(
         NSString* newStr = newName ? ToNS(UString(newName)) : @"";
 
         NSMutableString* info = [NSMutableString string];
-        [info appendFormat:@"Would you like to replace the existing file:\n%@", existStr];
+        [info appendFormat:@"%@:\n%@", SZLocalizedString(@"replace.wouldYouLike"), existStr];
         if (existSize) {
-            [info appendFormat:@"\nSize: %@",
+            [info appendFormat:@"\n%@: %@", SZLocalizedString(@"column.size"),
                 [NSByteCountFormatter stringFromByteCount:(long long)*existSize
                                                countStyle:NSByteCountFormatterCountStyleFile]];
         }
         NSString* existDateStr = SZFormatFileTime(existTime);
         if (existDateStr) {
-            [info appendFormat:@"\nModified: %@", existDateStr];
+            [info appendFormat:@"\n%@: %@", SZLocalizedString(@"column.modified"), existDateStr];
         }
-        [info appendFormat:@"\n\nwith this one from the archive:\n%@", newStr];
+        [info appendFormat:@"\n\n%@\n%@", SZLocalizedString(@"replace.withThisOne"), newStr];
         if (newSize) {
-            [info appendFormat:@"\nSize: %@",
+            [info appendFormat:@"\n%@: %@", SZLocalizedString(@"column.size"),
                 [NSByteCountFormatter stringFromByteCount:(long long)*newSize
                                                countStyle:NSByteCountFormatterCountStyleFile]];
         }
         NSString* newDateStr = SZFormatFileTime(newTime);
         if (newDateStr) {
-            [info appendFormat:@"\nModified: %@", newDateStr];
+            [info appendFormat:@"\n%@: %@", SZLocalizedString(@"column.modified"), newDateStr];
         }
 
         NSInteger choice = Session
             ? [Session requestChoiceWithStyle:SZOperationPromptStyleWarning
-                                        title:@"File already exists"
+                                        title:SZLocalizedString(@"replace.confirmTitle")
                                       message:info
-                                 buttonTitles:@[ @"Yes", @"Yes to All", @"No", @"No to All", @"Auto Rename", @"Cancel" ]]
+                                 buttonTitles:@[ SZLocalizedString(@"common.yes"), SZLocalizedString(@"common.yesToAll"), SZLocalizedString(@"common.no"), SZLocalizedString(@"common.noToAll"), SZLocalizedString(@"replace.autoRename"), SZLocalizedString(@"common.cancel") ]]
             : 5;
         if (choice == 0)
             result = NOverwriteAnswer::kYes;
@@ -355,13 +356,13 @@ Z7_COM7F_IMF(SZFolderExtractCallback::PrepareOperation(const wchar_t* name, Int3
             NSString* prefix;
             switch (askExtractMode) {
             case NArchive::NExtract::NAskMode::kTest:
-                prefix = @"Testing";
+                prefix = SZLocalizedString(@"progress.testing");
                 break;
             case NArchive::NExtract::NAskMode::kSkip:
-                prefix = @"Skipping";
+                prefix = SZLocalizedString(@"progress.skipping");
                 break;
             case NArchive::NExtract::NAskMode::kReadExternal:
-                prefix = @"Reading";
+                prefix = SZLocalizedString(@"progress.opening");
                 break;
             default:
                 prefix = nil;
@@ -592,7 +593,7 @@ HRESULT SZUpdateCallbackUI::StartScanning() {
     SZOperationSession* session = Session;
     if (session) {
         [session reportProgressFraction:0.0];
-        [session reportCurrentFileName:@"Scanning files..."];
+        [session reportCurrentFileName:SZLocalizedString(@"progress.scanning")];
     }
     return CheckBreak();
 }
@@ -679,12 +680,12 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::SetRatioInfo(const UInt64* /* inSize */, con
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::CompressOperation(const wchar_t* name)) {
-    SZReportAgentCurrentPath(Session, @"Updating", name);
+    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.updating"), name);
     return S_OK;
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::DeleteOperation(const wchar_t* name)) {
-    SZReportAgentCurrentPath(Session, @"Deleting", name);
+    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.deleting"), name);
     return S_OK;
 }
 
@@ -721,7 +722,7 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::ReportExtractResult(Int32 opRes, Int32 isEnc
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::ReportUpdateOperation(UInt32 /* notifyOp */, const wchar_t* path, Int32 /* isDir */)) {
-    SZReportAgentCurrentPath(Session, @"Updating", path);
+    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.updating"), path);
     return S_OK;
 }
 
@@ -731,7 +732,7 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::ScanError(const wchar_t* path, HRESULT error
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::ScanProgress(UInt64 /* numFolders */, UInt64 /* numFiles */, UInt64 /* totalSize */, const wchar_t* path, Int32 /* isDir */)) {
-    SZReportAgentCurrentPath(Session, @"Scanning", path);
+    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.scanning"), path);
     return SZAgentCheckBreak(Session);
 }
 
@@ -821,7 +822,7 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::SetCompleted(const UInt64* files, const UInt
 Z7_COM7F_IMF(SZAgentUpdateCallback::MoveArc_Start(const wchar_t* /* srcTempPath */, const wchar_t* destFinalPath, UInt64 size, Int32 /* updateMode */)) {
     TotalSize = size;
     ArchiveWasReplaced = false;
-    SZReportAgentCurrentPath(Session, @"Replacing archive", destFinalPath);
+    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.repacking"), destFinalPath);
     SZOperationSession* session = Session;
     if (session && size > 0) {
         [session reportProgressFraction:0.0];

@@ -1053,7 +1053,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         Task { @MainActor [weak self] in
             guard let self, let parentWindow = window else { return }
             do {
-                try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.compressing"),
+                try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
                                                      parentWindow: parentWindow)
                 { session in
                     try SZArchive.create(atPath: result.archiveURL.path,
@@ -1089,13 +1089,13 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                                     preserveNtSecurityInfo: extractResult.preserveNtSecurityInfo,
                                                                     eliminateDuplicates: extractResult.eliminateDuplicates,
                                                                     inheritDownloadedFileQuarantine: extractResult.inheritDownloadedFileQuarantine)
-                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.extracting"),
+                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.extracting"),
                                                          parentWindow: parentWindow)
                     { session in
                         try FileManagerPaneController.performPreparedExtraction(prepared, session: session)
                     }
                 } else {
-                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.extracting"),
+                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.extracting"),
                                                          parentWindow: parentWindow)
                     { session in
                         guard let archiveURL = archiveCandidateURL else {
@@ -1192,7 +1192,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                     }
                 }
                 szPresentMessage(title: SZL10n.string("app.fileManager.testOK"),
-                                 message: SZL10n.string("app.fileManager.noErrorsFound"),
+                                 message: SZL10n.string("archive.noErrors"),
                                  for: window)
             } catch {
                 showErrorAlert(error)
@@ -1606,7 +1606,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                     do {
                         let prepared = try pane.prepareSelectedItemExtraction(to: destURL,
                                                                               overwriteMode: .ask)
-                        try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.copying"),
+                        try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("fileop.copying"),
                                                              parentWindow: parentWindow)
                         { session in
                             try FileManagerPaneController.performPreparedExtraction(prepared, session: session)
@@ -1645,7 +1645,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         switch preparedDestinationTarget {
         case let .directory(destURL):
             let dragOperation: NSDragOperation = move ? .move : .copy
-            let operationTitle = SZL10n.string(move ? "app.progress.moving" : "app.progress.copying")
+            let operationTitle = SZL10n.string(move ? "fileop.moving" : "fileop.copying")
             Task { @MainActor [weak self] in
                 guard let self, let parentWindow = window else { return }
                 do {
@@ -1726,7 +1726,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                let hashValues = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.fileManager.calculatingChecksum"),
+                let hashValues = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("checksum.calculating"),
                                                                       initialFileName: itemPath,
                                                                       parentWindow: window,
                                                                       deferredDisplay: true)
@@ -2261,7 +2261,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return
         }
 
-        let operationTitle = SZL10n.string(move ? "app.progress.moving" : "app.progress.copying")
+        let operationTitle = SZL10n.string(move ? "fileop.moving" : "fileop.copying")
         let selectionPaths = archiveSelectionPaths(for: sourceURLs, targetSubdir: subdir)
 
         Task { @MainActor [weak self] in

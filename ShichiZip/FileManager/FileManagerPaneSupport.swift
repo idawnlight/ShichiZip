@@ -72,7 +72,7 @@ final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate {
         // callback while the destination resolves the promised file can deadlock drag-out.
         DispatchQueue.main.async { [self] in
             MainActor.assumeIsolated {
-                let coordinator = ArchiveOperationCoordinator(operationTitle: SZL10n.string("app.progress.extracting"),
+                let coordinator = ArchiveOperationCoordinator(operationTitle: SZL10n.string("progress.extracting"),
                                                               initialFileName: self.item.path,
                                                               deferredDisplay: true)
                 coordinator.start()

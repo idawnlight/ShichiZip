@@ -1056,7 +1056,7 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
         systemTempRadio.setAccessibilityIdentifier("settings.workDirSystemTemp")
         stack.addArrangedSubview(systemTempRadio)
 
-        let currentRadio = NSButton(radioButtonWithTitle: SZL10n.string("app.settings.currentFolder"), target: self, action: #selector(workDirModeChanged(_:)))
+        let currentRadio = NSButton(radioButtonWithTitle: SZL10n.string("settings.current"), target: self, action: #selector(workDirModeChanged(_:)))
         currentRadio.tag = 1
         currentRadio.state = mode == 1 ? .on : .off
         currentRadio.setAccessibilityIdentifier("settings.workDirCurrent")

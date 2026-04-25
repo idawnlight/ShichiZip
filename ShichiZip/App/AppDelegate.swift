@@ -230,7 +230,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         Task { @MainActor in
             do {
-                try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.compressing"),
+                try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
                                                      parentWindow: parentWindow)
                 { session in
                     try SZArchive.create(atPath: result.archiveURL.path,
@@ -367,7 +367,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
 
             do {
-                let plan = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.extracting"),
+                let plan = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.extracting"),
                                                                 initialFileName: archiveURL.lastPathComponent,
                                                                 parentWindow: parentWindow,
                                                                 deferredDisplay: false)

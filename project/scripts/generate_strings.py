@@ -121,6 +121,19 @@ UPSTREAM_KEY_MAP: dict[int, str] = {
     558: "menu.link",
     559: "menu.alternateStreams",
 
+    # --- Shell context menu (section 2320) ---
+    2320: "shell.folder",
+    2321: "shell.archive",
+    2322: "shell.openArchive",
+    2323: "shell.extractFiles",
+    2324: "shell.addToArchive",
+    2325: "shell.testArchive",
+    2326: "shell.extractHere",
+    2327: "shell.extractTo",
+    2328: "shell.addTo",
+    2329: "shell.compressEmail",
+    2330: "shell.compressToEmail",
+
     # --- Edit menu (section 600) ---
     600: "edit.selectAll",
     601: "edit.deselectAll",
@@ -229,6 +242,28 @@ UPSTREAM_KEY_MAP: dict[int, str] = {
     2507: "settings.altSelectionMode",
     2508: "settings.largeMemoryPages",
 
+    # --- General archive messages (section 3000) ---
+    3000: "archive.memoryAllocationFailed",
+    3001: "archive.noErrors",
+    3002: "archive.objectsSelected",
+    3003: "archive.cannotCreateFolder",
+    3004: "archive.updateUnsupported",
+    3005: "archive.cannotOpenFileAsArchive",
+    3006: "archive.cannotOpenEncryptedWrongPassword",
+    3007: "archive.unsupportedType",
+    3008: "archive.fileAlreadyExists",
+    3009: "archive.fileModifiedUpdatePrompt",
+    3010: "archive.cannotUpdateFile",
+    3011: "archive.cannotStartEditor",
+    3012: "archive.virusLikeName",
+    3013: "archive.longPathOperationUnavailable",
+    3014: "archive.selectOneFile",
+    3015: "archive.selectOneOrMoreFiles",
+    3016: "archive.tooManyItems",
+    3017: "archive.cannotOpenFileAsFormatArchive",
+    3018: "archive.fileOpenAsFormatArchive",
+    3019: "archive.openWithOffset",
+
     # --- Progress operations (section 3300) ---
     3300: "progress.extracting",
     3301: "progress.compressing",
@@ -296,6 +331,10 @@ UPSTREAM_KEY_MAP: dict[int, str] = {
     3727: "error.isNotArchive",
     3728: "error.headersError",
     3729: "error.wrongPasswordGeneric",
+
+    3763: "error.unavailableStart",
+    3764: "error.unconfirmedStart",
+    3768: "error.unsupportedFeature",
 
     # --- Password dialog (section 3800) ---
     3800: "password.enterPassword",
@@ -372,6 +411,8 @@ UPSTREAM_KEY_MAP: dict[int, str] = {
     4084: "time.storeLastAccessTime",
     4085: "time.setArchiveTimeToLatest",
     4086: "time.doNotChangeAccessTime",
+    4090: "time.secondsAbbrev",
+    4091: "time.nanosecondsAbbrev",
 
     # --- Copy/Move (section 6000) ---
     6000: "fileop.copy",
@@ -428,6 +469,17 @@ UPSTREAM_KEY_MAP: dict[int, str] = {
     7204: "toolbar.move",
     7205: "toolbar.delete",
     7206: "toolbar.info",
+
+    # --- Split files (section 7300) ---
+    7300: "split.title",
+    7301: "split.to",
+    7302: "split.toVolumesBytes",
+    7303: "split.splitting",
+    7304: "split.confirmSplitting",
+    7305: "split.confirmVolumes",
+    7306: "split.volumeTooLarge",
+    7307: "split.incorrectVolumeSize",
+    7308: "split.confirmSmallVolume",
 
     # --- Checksum (section 7500) ---
     7500: "checksum.calculating",

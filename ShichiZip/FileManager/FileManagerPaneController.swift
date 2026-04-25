@@ -3033,7 +3033,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             guard let self else { return }
 
             do {
-                let preparedOpen = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.extracting"),
+                let preparedOpen = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.extracting"),
                                                                         initialFileName: displayPath,
                                                                         parentWindow: view.window,
                                                                         deferredDisplay: true)
@@ -4291,7 +4291,7 @@ extension FileManagerPaneController {
                     let prepared = try prepareExtraction(to: destinationURL,
                                                          overwriteMode: .ask,
                                                          inheritDownloadedFileQuarantine: SZSettings.bool(.inheritDownloadedFileQuarantine))
-                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.extracting"),
+                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.extracting"),
                                                          parentWindow: parentWindow)
                     { session in
                         try FileManagerPaneController.performPreparedExtraction(prepared, session: session)
@@ -4309,7 +4309,7 @@ extension FileManagerPaneController {
         Task { @MainActor [weak self] in
             guard let self, let parentWindow = view.window else { return }
             do {
-                try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.extracting"),
+                try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.extracting"),
                                                      parentWindow: parentWindow)
                 { session in
                     let archive = SZArchive()
