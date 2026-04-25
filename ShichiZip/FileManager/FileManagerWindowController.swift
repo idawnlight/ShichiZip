@@ -1987,7 +1987,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             pathField.setContentHuggingPriority(.defaultLow, for: .horizontal)
             pathField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-            let browseButton = NSButton(title: SZL10n.string("app.browse"), target: nil, action: nil)
+            let browseButton = NSButton(title: SZL10n.string("compress.browse"), target: nil, action: nil)
             browseButton.bezelStyle = .rounded
             browseButton.setContentHuggingPriority(.required, for: .horizontal)
             browseButton.setContentCompressionResistancePriority(.required, for: .horizontal)

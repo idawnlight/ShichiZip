@@ -242,23 +242,23 @@ enum FileManagerShortcutCommand: String, CaseIterable {
         case .toggleQuickLook:
             SZL10n.string("app.shortcut.quickLook")
         case .goUpOneLevel:
-            SZL10n.string("app.shortcut.upOneLevel")
+            SZL10n.string("view.upOneLevel")
         case .renameSelection:
-            SZL10n.string("app.shortcut.rename")
+            SZL10n.string("menu.rename")
         case .switchPanes:
             SZL10n.string("app.shortcut.switchPanes")
         case .copyFiles:
-            SZL10n.string("app.shortcut.copyTo")
+            SZL10n.string("menu.copyTo")
         case .moveFiles:
-            SZL10n.string("app.shortcut.moveTo")
+            SZL10n.string("menu.moveTo")
         case .createFolder:
-            SZL10n.string("app.shortcut.createFolder")
+            SZL10n.string("menu.createFolder")
         case .deleteFiles:
-            SZL10n.string("app.shortcut.delete")
+            SZL10n.string("menu.delete")
         case .toggleDualPane:
             SZL10n.string("app.shortcut.toggleDualPane")
         case .refreshActivePane:
-            SZL10n.string("app.shortcut.refresh")
+            SZL10n.string("view.refresh")
         }
     }
 }
@@ -545,7 +545,7 @@ enum FileManagerMenuFactory {
 
     private static var fileMenuNodes: [Node] {
         openNodes + [
-            .item(title: SZL10n.string("app.fileManager.openArchive"),
+            .item(title: SZL10n.string("shell.openArchive"),
                   action: #selector(AppDelegate.openArchives(_:)),
                   shortcut: Shortcut("o"),
                   target: .appDelegate),

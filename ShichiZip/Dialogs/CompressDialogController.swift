@@ -964,7 +964,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             archivePathField.widthAnchor.constraint(greaterThanOrEqualToConstant: 360).isActive = true
             archivePathField.setAccessibilityIdentifier("compress.archivePath")
 
-            let browseButton = NSButton(title: SZL10n.string("app.browse"), target: nil, action: nil)
+            let browseButton = NSButton(title: SZL10n.string("compress.browse"), target: nil, action: nil)
             browseButton.bezelStyle = .rounded
             browseButton.setAccessibilityIdentifier("compress.browseButton")
 

@@ -5,7 +5,9 @@
 "app.benchmark.insufficientMemory" = "内存不足";
 "app.benchmark.usableLimit" = "可用上限：%@ MB";
 "benchmark.passes" = "轮数：";
+"compress.browse" = "浏览…";
 "compress.createSFX" = "创建 Windows 自解压程序";
+"shell.openArchive" = "打开压缩包…";
 "app.archive.error.addSourcesDifferentFolders" = "添加到已打开压缩包的所有项目必须来自同一个文件夹。";
 "app.archive.error.cancelled" = "已取消";
 "app.archive.error.compressionCancelled" = "压缩已取消";
@@ -30,7 +32,6 @@
 "app.archive.error.sfxUnsupportedMethod" = "所选压缩方法不支持 Windows 自解压压缩包。";
 "app.archive.error.zipPasswordRequiresEncryption" = "已提供密码，但未选择 zip 加密方法。请先明确选择 AES-256（推荐）或 ZipCrypto，再创建压缩包。";
 "app.archive.password.enterForArchive" = "请输入「%@」的密码。";
-"app.browse" = "浏览…";
 "app.choose" = "选择";
 "app.chooseDestination" = "选择目标文件夹：";
 "app.compress.excludeMacResources" = "排除 macOS 资源文件";
@@ -64,7 +65,6 @@
 "app.fileManager.enterFolderName" = "请输入文件夹名。";
 "app.fileManager.enterFullScreen" = "进入全屏幕";
 "app.fileManager.fileManager" = "文件管理器";
-"app.fileManager.openArchive" = "打开压缩包…";
 "app.fileManager.operationNotAvailable" = "操作不可用";
 "app.fileManager.selectArchiveToExtract" = "请选择要解压的压缩包。";
 "app.fileManager.selectArchiveToTest" = "请选择要测试的压缩包。";
@@ -190,14 +190,7 @@
 "app.settings.typeShortcut" = "输入快捷键…";
 "app.settings.workingFolderTitle" = "临时压缩包的工作文件夹：";
 
-"app.shortcut.copyTo" = "复制到";
-"app.shortcut.createFolder" = "新建文件夹";
-"app.shortcut.delete" = "删除";
-"app.shortcut.moveTo" = "移动到";
 "app.shortcut.openSelectedItem" = "打开选中项";
 "app.shortcut.quickLook" = "快速查看";
-"app.shortcut.refresh" = "刷新";
-"app.shortcut.rename" = "重命名";
 "app.shortcut.switchPanes" = "切换窗格";
 "app.shortcut.toggleDualPane" = "切换双栏";
-"app.shortcut.upOneLevel" = "返回上一级";

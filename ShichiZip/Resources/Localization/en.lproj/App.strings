@@ -4,9 +4,11 @@
 "app.benchmark.failedFormat" = "Benchmark failed (0x%08X).";
 "app.benchmark.insufficientMemory" = "Insufficient Memory";
 "app.benchmark.usableLimit" = "Usable limit: %@ MB";
+"compress.browse" = "Browse…";
 "compress.cpuThreads" = "CPU threads:";
 "compress.createSFX" = "Create Windows SFX archive";
 "settings.current" = "Current folder";
+"shell.openArchive" = "Open Archive…";
 "app.archive.error.addSourcesDifferentFolders" = "All items added to an open archive must come from the same folder.";
 "app.archive.error.cancelled" = "Cancelled";
 "app.archive.error.compressionCancelled" = "Compression was cancelled";
@@ -31,7 +33,6 @@
 "app.archive.error.sfxUnsupportedMethod" = "The selected compression method does not support Windows SFX archives.";
 "app.archive.error.zipPasswordRequiresEncryption" = "A password was supplied but no zip encryption method was selected. Choose AES-256 (recommended) or ZipCrypto explicitly before creating the archive.";
 "app.archive.password.enterForArchive" = "Enter password for \"%@\".";
-"app.browse" = "Browse…";
 "app.choose" = "Choose";
 "app.chooseDestination" = "Choose destination folder:";
 "app.compress.excludeMacResources" = "Exclude macOS resource files";
@@ -66,7 +67,6 @@
 "app.fileManager.enterFolderName" = "Enter folder name.";
 "app.fileManager.enterFullScreen" = "Enter Full Screen";
 "app.fileManager.fileManager" = "File Manager";
-"app.fileManager.openArchive" = "Open Archive…";
 "app.fileManager.operationNotAvailable" = "Operation Not Available";
 "app.fileManager.selectArchiveToExtract" = "Select an archive to extract.";
 "app.fileManager.selectArchiveToTest" = "Select an archive to test.";
@@ -184,14 +184,7 @@
 "app.settings.showHiddenFiles" = "Show hidden files in File Manager";
 "app.settings.typeShortcut" = "Type Shortcut…";
 "app.settings.workingFolderTitle" = "Working folder for temporary archive files:";
-"app.shortcut.copyTo" = "Copy To";
-"app.shortcut.createFolder" = "Create folder";
-"app.shortcut.delete" = "Delete";
-"app.shortcut.moveTo" = "Move To";
 "app.shortcut.openSelectedItem" = "Open selected item";
 "app.shortcut.quickLook" = "Quick Look";
-"app.shortcut.refresh" = "Refresh";
-"app.shortcut.rename" = "Rename";
 "app.shortcut.switchPanes" = "Switch panes";
 "app.shortcut.toggleDualPane" = "Toggle dual pane";
-"app.shortcut.upOneLevel" = "Up one level";

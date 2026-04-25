@@ -255,7 +255,7 @@ final class ExtractDialogController: NSObject {
             pathField.widthAnchor.constraint(greaterThanOrEqualToConstant: 300).isActive = true
             pathField.setAccessibilityIdentifier("extract.destinationPath")
 
-            let browseButton = NSButton(title: SZL10n.string("app.browse"), target: nil, action: nil)
+            let browseButton = NSButton(title: SZL10n.string("compress.browse"), target: nil, action: nil)
             browseButton.bezelStyle = .rounded
             browseButton.setContentHuggingPriority(.required, for: .horizontal)
             browseButton.setContentCompressionResistancePriority(.required, for: .horizontal)
