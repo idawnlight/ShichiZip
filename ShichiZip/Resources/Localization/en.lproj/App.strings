@@ -69,6 +69,9 @@
 "app.fileManager.error.pathNotFound" = "The path \"%@\" does not exist.";
 "app.fileManager.error.fileAlreadyExists" = "A file named \"%@\" already exists.";
 "app.fileManager.error.unableToCreate" = "Unable to create \"%@\".";
+"app.fileManager.error.trashFailedTitle" = "Could not move %d item(s) to Trash.";
+"app.fileManager.error.trashFailedReason" = "%d of %d selected item(s) could not be moved to Trash.";
+"app.fileManager.error.trashFailedFirstFailure" = "First failure: \"%@\": %@";
 "app.fileManager.quickLook.selectItems" = "Select one or more items to preview.";
 "app.fileManager.quickLook.cannotPreview" = "The current selection cannot be previewed.";
 "app.fileManager.quickLook.cannotPreviewArchive" = "The current archive selection cannot be previewed.";

@@ -19,6 +19,7 @@ final class OperationSessionProgressThrottlingTests: XCTestCase {
         func progressDidUpdateFileName(_ fileName: String) {
             fileNameUpdates.append(fileName)
         }
+
         func progressDidUpdateBytesCompleted(_ completed: UInt64, total: UInt64) {
             bytesUpdates.append((completed, total))
         }

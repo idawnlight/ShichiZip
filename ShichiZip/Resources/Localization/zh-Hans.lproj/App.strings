@@ -72,6 +72,9 @@
 "app.fileManager.error.pathNotFound" = "路径「%@」不存在。";
 "app.fileManager.error.fileAlreadyExists" = "名为「%@」的文件已存在。";
 "app.fileManager.error.unableToCreate" = "无法创建「%@」。";
+"app.fileManager.error.trashFailedTitle" = "无法将 %d 个项目移到废纸篓。";
+"app.fileManager.error.trashFailedReason" = "%d/%d 个选中项目无法移到废纸篓。";
+"app.fileManager.error.trashFailedFirstFailure" = "第一个失败项目：「%@」：%@";
 "app.fileManager.quickLook.selectItems" = "请选择一个或多个项目进行预览。";
 "app.fileManager.quickLook.cannotPreview" = "当前选择无法预览。";
 "app.fileManager.quickLook.cannotPreviewArchive" = "当前压缩包选择无法预览。";
