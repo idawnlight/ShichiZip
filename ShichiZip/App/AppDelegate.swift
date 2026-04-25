@@ -376,7 +376,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     try archive.open(atPath: archiveURL.path, session: session)
                     defer { archive.close() }
 
-                    let archiveItems = archive.entries().map(ArchiveItem.init)
+                    let archiveItems = try archive.entries(with: session).map(ArchiveItem.init)
                     let plan = self.smartQuickExtractPlan(for: archiveURL,
                                                           archiveItems: archiveItems,
                                                           eliminateDuplicates: defaults.eliminateDuplicates)

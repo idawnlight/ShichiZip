@@ -2112,11 +2112,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
+    private func materializedArchiveItems(from archive: SZArchive) -> [ArchiveItem] {
+        archive.entries().map { ArchiveItem(from: $0) }
+    }
+
     private func refreshArchiveLevelEntries(at index: Int) {
         guard archiveStack.indices.contains(index) else { return }
 
         let level = archiveStack[index]
-        let refreshedEntries = level.archive.entries().map { ArchiveItem(from: $0) }
+        let refreshedEntries = materializedArchiveItems(from: level.archive)
         archiveStack[index] = ArchiveLevel(
             filesystemDirectory: level.filesystemDirectory,
             archivePath: level.archivePath,
@@ -2344,7 +2348,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private func reloadCurrentArchiveEntries(selectingPaths paths: [String] = []) {
         guard let level = archiveStack.last else { return }
 
-        let refreshedEntries = level.archive.entries().map { ArchiveItem(from: $0) }
+        let refreshedEntries = materializedArchiveItems(from: level.archive)
         archiveStack[archiveStack.count - 1] = ArchiveLevel(
             filesystemDirectory: level.filesystemDirectory,
             archivePath: level.archivePath,
@@ -2451,7 +2455,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     {
         guard let level = archiveStack.last else { return }
 
-        let refreshedEntries = level.archive.entries().map { ArchiveItem(from: $0) }
+        let refreshedEntries = materializedArchiveItems(from: level.archive)
         archiveStack[archiveStack.count - 1] = ArchiveLevel(
             filesystemDirectory: level.filesystemDirectory,
             archivePath: level.archivePath,

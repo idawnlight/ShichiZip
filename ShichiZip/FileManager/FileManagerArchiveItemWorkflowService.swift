@@ -376,8 +376,9 @@ final class FileManagerArchiveItemWorkflowService {
                                   context: FileManagerArchiveItemWorkflowContext,
                                   session: SZOperationSession?) throws -> StagedArchiveItem
     {
-        let extractionIndices = promiseExtractionIndices(for: item,
-                                                         context: context)
+        let extractionIndices = try promiseExtractionIndices(for: item,
+                                                             context: context,
+                                                             session: session)
         guard !extractionIndices.isEmpty else {
             throw extractionPreparationError()
         }
@@ -403,9 +404,10 @@ final class FileManagerArchiveItemWorkflowService {
     }
 
     private func promiseExtractionIndices(for item: ArchiveItem,
-                                          context: FileManagerArchiveItemWorkflowContext) -> [NSNumber]
+                                          context: FileManagerArchiveItemWorkflowContext,
+                                          session: SZOperationSession?) throws -> [NSNumber]
     {
-        let archiveItems = context.archive.entries().map { ArchiveItem(from: $0) }
+        let archiveItems = try context.archive.entries(with: session).map { ArchiveItem(from: $0) }
         var indices = Set<Int>()
 
         if item.index >= 0 {

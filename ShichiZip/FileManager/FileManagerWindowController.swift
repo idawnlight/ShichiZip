@@ -1107,7 +1107,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                         try archive.open(atPath: archiveURL.path,
                                          password: extractResult.password,
                                          session: session)
-                        let archiveItems = archive.entries().map(ArchiveItem.init)
+                        let archiveItems = try archive.entries(with: session).map(ArchiveItem.init)
                         let settings = SZExtractionSettings()
                         settings.overwriteMode = extractResult.overwriteMode
                         settings.pathMode = extractResult.pathMode

@@ -276,4 +276,23 @@ final class ArchiveRoundTripTests: XCTestCase {
             XCTFail("cancelled archive operation failed with unexpected error: \(error)")
         }
     }
+
+    func testEntryMaterializationHonorsCancelledSession() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "entry-materialization-cancel")
+        let payloadURL = tempRoot.appendingPathComponent("payload.txt")
+        let archiveURL = tempRoot.appendingPathComponent("payload.7z")
+        try "payload".write(to: payloadURL, atomically: true, encoding: .utf8)
+        try createArchive(at: archiveURL, from: [payloadURL])
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: SZOperationSession())
+        defer { archive.close() }
+
+        let listingSession = SZOperationSession()
+        listingSession.requestCancel()
+
+        XCTAssertThrowsError(try archive.entries(with: listingSession)) { error in
+            XCTAssertTrue(szIsUserCancellation(error), "expected user cancellation, got \(error)")
+        }
+    }
 }

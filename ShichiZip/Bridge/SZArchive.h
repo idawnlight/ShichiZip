@@ -299,6 +299,10 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 /// Get all entries
 - (NSArray<SZArchiveEntry*>*)entries;
 
+/// Get all entries with an explicit operation session for cancellation checks
+- (nullable NSArray<SZArchiveEntry*>*)entriesWithSession:(nullable SZOperationSession*)session
+                                                   error:(NSError**)error;
+
 /// Extract all entries to a destination
 - (BOOL)extractToPath:(NSString*)destinationPath
              settings:(SZExtractionSettings*)settings

@@ -1101,8 +1101,8 @@ static NSString* SZOpenArchiveFlagDetails(UInt32 errorFlags) {
         }
         if (entry.flag == kpv_ErrorFlags_EncryptedHeadersError) {
             [messages addObject:[NSString stringWithFormat:@"%@ : %@",
-                         SZLocalizedString(entry.key),
-                         SZLocalizedString(@"error.wrongPassword")]];
+                                    SZLocalizedString(entry.key),
+                                    SZLocalizedString(@"error.wrongPassword")]];
         } else {
             [messages addObject:SZLocalizedString(entry.key)];
         }
@@ -1755,6 +1755,11 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
 }
 
 - (NSArray<SZArchiveEntry*>*)entries {
+    return [self entriesWithSession:nil error:nil] ?: @[];
+}
+
+- (NSArray<SZArchiveEntry*>*)entriesWithSession:(SZOperationSession*)session
+                                          error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
     if (!_isOpen)
@@ -1767,6 +1772,13 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     archive->GetNumberOfItems(&n);
     NSMutableArray* arr = [NSMutableArray arrayWithCapacity:n];
     for (UInt32 i = 0; i < n; i++) {
+        if (session && [session shouldCancel]) {
+            if (error)
+                *error = SZMakeError(SZArchiveErrorCodeUserCancelled,
+                    SZLocalizedString(@"app.archive.error.cancelled"));
+            return nil;
+        }
+
         SZArchiveEntry* e = [SZArchiveEntry new];
         e.index = i;
         CReadArcItem item;
