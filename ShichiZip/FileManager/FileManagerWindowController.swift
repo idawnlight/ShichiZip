@@ -1703,8 +1703,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         szBeginTextInput(on: window,
                          title: SZL10n.string("create.file"),
                          message: SZL10n.string("app.fileManager.enterFileName"),
-                         placeholder: "New File.txt",
-                         confirmTitle: SZL10n.string("create.folder"))
+                         placeholder: SZL10n.string("create.newFile"),
+                         confirmTitle: SZL10n.string("create.file"))
         { [weak self] value in
             guard let name = value, !name.isEmpty else { return }
             self?.activePane.createFile(named: name)
