@@ -3,6 +3,9 @@ import Cocoa
 /// SZOperationSession synchronizes its mutable state internally and routes UI callbacks to the main thread.
 extension SZOperationSession: @unchecked Sendable {}
 
+/// SZArchive access is coordinated by callers before being handed to background archive workers.
+extension SZArchive: @unchecked Sendable {}
+
 enum ArchiveOperationRunner {
     @MainActor
     static func runSynchronously<T>(operationTitle: String,

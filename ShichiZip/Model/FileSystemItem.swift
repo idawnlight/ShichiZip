@@ -43,3 +43,5 @@ class FileSystemItem {
         return ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
     }
 }
+
+extension FileSystemItem: @unchecked Sendable {}

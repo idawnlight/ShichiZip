@@ -1,19 +1,34 @@
 import Foundation
 
+struct FileManagerDirectoryListingEntry {
+    let url: URL
+    let resourceValues: URLResourceValues?
+}
+
 enum FileManagerDirectoryListing {
+    private static let resourceKeys: Set<URLResourceKey> = [
+        .isDirectoryKey,
+        .isSymbolicLinkKey,
+        .fileSizeKey,
+        .contentModificationDateKey,
+        .creationDateKey,
+    ]
+
     static func contentsPreservingPresentedPath(for url: URL,
                                                 options: FileManager.DirectoryEnumerationOptions,
                                                 fileManager: FileManager = .default) throws -> [URL]
     {
-        let resourceKeys: Set<URLResourceKey> = [
-            .isDirectoryKey,
-            .isSymbolicLinkKey,
-            .fileSizeKey,
-            .contentModificationDateKey,
-            .creationDateKey,
-        ]
+        try entriesPreservingPresentedPath(for: url,
+                                           options: options,
+                                           fileManager: fileManager)
+            .map(\.url)
+    }
 
-        let resourceValues = try url.resourceValues(forKeys: resourceKeys)
+    static func entriesPreservingPresentedPath(for url: URL,
+                                               options: FileManager.DirectoryEnumerationOptions,
+                                               fileManager: FileManager = .default) throws -> [FileManagerDirectoryListingEntry]
+    {
+        let resourceValues = try url.resourceValues(forKeys: Self.resourceKeys)
         let listingURL: URL = if resourceValues.isSymbolicLink == true,
                                  let resolvedIsDirectory = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
                                  resolvedIsDirectory
@@ -25,17 +40,26 @@ enum FileManagerDirectoryListing {
 
         let contents = try fileManager.contentsOfDirectory(
             at: listingURL,
-            includingPropertiesForKeys: Array(resourceKeys),
+            includingPropertiesForKeys: Array(Self.resourceKeys),
             options: options,
         )
 
-        guard listingURL != url else {
-            return contents
+        let entries = contents.map { childURL in
+            let childValues = try? childURL.resourceValues(forKeys: Self.resourceKeys)
+            return (url: childURL, resourceValues: childValues)
         }
 
-        return contents.map { childURL in
-            let isDirectory = (try? childURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
-            return url.appendingPathComponent(childURL.lastPathComponent, isDirectory: isDirectory)
+        guard listingURL != url else {
+            return entries.map { FileManagerDirectoryListingEntry(url: $0.url,
+                                                                  resourceValues: $0.resourceValues) }
+        }
+
+        return entries.map { entry in
+            FileManagerDirectoryListingEntry(
+                url: url.appendingPathComponent(entry.url.lastPathComponent,
+                                                isDirectory: entry.resourceValues?.isDirectory ?? false),
+                resourceValues: entry.resourceValues,
+            )
         }
     }
 }

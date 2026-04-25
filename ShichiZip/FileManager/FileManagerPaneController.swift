@@ -19,6 +19,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private static let listDateColumnFont = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize,
                                                                              weight: .regular)
     private static let addressBarIconSize: CGFloat = 14
+    private static var directorySnapshotQueueLabel: String {
+        "\(Bundle.main.bundleIdentifier ?? "ShichiZip").file-manager.directory-snapshot"
+    }
 
     private struct DirectoryEntryFingerprint: Equatable {
         let path: String
@@ -46,7 +49,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var recentDirectories: [URL] = []
     private var isLiveScrolling = false
     private var pendingAutoRefresh = false
+    private var directorySnapshotGeneration = 0
+    private let directorySnapshotQueue = DispatchQueue(label: FileManagerPaneController.directorySnapshotQueueLabel,
+                                                       qos: .userInitiated)
     private var directoryWatcher: DirectoryWatcher?
+    private var archiveRefreshGeneration = 0
+    private var archiveRefreshTask: Task<Void, Never>?
     private var pendingDropOperation: (sequenceNumber: Int, operation: NSDragOperation)?
     private let iconCache = NSCache<NSString, NSImage>()
     private let iconSize = NSSize(width: 16, height: 16)
@@ -153,6 +161,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         tearDownDirectoryWatcher()
+        cancelPendingDirectorySnapshot()
+        cancelPendingArchiveRefresh()
 
         let preservedTemporaryDirectories = preserveNestedArchiveTemporaryDirectories()
         let didCloseAllArchives = closeAllArchives(showError: false)
@@ -387,7 +397,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         applyFileManagerSettings()
 
         view = container
-        loadDirectory(currentDirectory, showError: false)
+        loadInitialDirectory(currentDirectory)
     }
 
     // MARK: - Navigation
@@ -399,26 +409,45 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         static let empty = FileSystemSelectionState(selectedPaths: [], focusedPath: nil)
     }
 
+    private struct DirectorySnapshot {
+        let url: URL
+        let fingerprint: [DirectoryEntryFingerprint]
+        let items: [FileSystemItem]
+    }
+
+    private enum DirectorySnapshotPurpose {
+        case refresh(selectionState: FileSystemSelectionState)
+        case autoRefresh(selectionState: FileSystemSelectionState)
+    }
+
     @discardableResult
     func loadDirectory(_ url: URL,
                        showError: Bool = true) -> Bool
     {
-        let didNavigate = navigateToDirectory(url, showError: showError)
-        if didNavigate, isSuspended {
-            isSuspended = false
-            suspendedOverlay?.removeFromSuperview()
-            suspendedOverlay = nil
-        }
-        return didNavigate
+        navigateToDirectory(url, showError: showError)
     }
 
     @discardableResult
     private func navigateToDirectory(_ url: URL,
-                                     showError: Bool) -> Bool
+                                     showError: Bool,
+                                     selectionState: FileSystemSelectionState? = nil,
+                                     focusAfterLoad: Bool = false) -> Bool
     {
+        cancelPendingDirectorySnapshot()
+
         do {
-            let contents = try directoryContents(for: url)
-            applyDirectoryContents(contents, for: url)
+            let snapshot = try Self.makeDirectorySnapshot(for: url.standardizedFileURL,
+                                                          options: fileManagerDirectoryEnumerationOptions())
+            applyDirectorySnapshot(snapshot)
+            if isSuspended {
+                clearSuspendedState()
+            }
+            if let selectionState {
+                restoreFileSystemSelectionState(selectionState)
+            }
+            if focusAfterLoad {
+                focusFileList()
+            }
             return true
         } catch {
             if showError {
@@ -432,45 +461,27 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         SZSettings.bool(.showHiddenFiles) ? [] : [.skipsHiddenFiles]
     }
 
-    private func directoryContents(for url: URL) throws -> [URL] {
-        try FileManagerDirectoryListing.contentsPreservingPresentedPath(for: url,
-                                                                        options: fileManagerDirectoryEnumerationOptions())
-    }
-
-    private func makeDirectoryFingerprint(from contents: [URL]) -> [DirectoryEntryFingerprint] {
-        contents.map { url in
-            let values = try? url.resourceValues(forKeys: [.isDirectoryKey,
-                                                           .fileSizeKey,
-                                                           .contentModificationDateKey,
-                                                           .creationDateKey])
-            return DirectoryEntryFingerprint(path: url.standardizedFileURL.path,
-                                             isDirectory: values?.isDirectory ?? false,
-                                             size: values?.fileSize ?? 0,
-                                             modifiedDate: values?.contentModificationDate,
-                                             createdDate: values?.creationDate)
-        }
-        .sorted { $0.path < $1.path }
-    }
-
-    /// Builds the fingerprint and `FileSystemItem`s in one pass.
-    private func makeFingerprintAndItems(from contents: [URL])
-        -> (fingerprint: [DirectoryEntryFingerprint], items: [FileSystemItem])
+    private nonisolated static func makeDirectorySnapshot(for url: URL,
+                                                          options: FileManager.DirectoryEnumerationOptions) throws -> DirectorySnapshot
     {
-        let keys = Set(FileSystemItem.resourceKeys)
-        let pairs: [(DirectoryEntryFingerprint, FileSystemItem)] = contents.map { url in
-            let values = try? url.resourceValues(forKeys: keys)
+        let entries = try FileManagerDirectoryListing.entriesPreservingPresentedPath(for: url,
+                                                                                     options: options)
+        let pairs: [(DirectoryEntryFingerprint, FileSystemItem)] = entries.map { entry in
+            let values = entry.resourceValues
             let fingerprint = DirectoryEntryFingerprint(
-                path: url.standardizedFileURL.path,
+                path: entry.url.standardizedFileURL.path,
                 isDirectory: values?.isDirectory ?? false,
                 size: values?.fileSize ?? 0,
                 modifiedDate: values?.contentModificationDate,
                 createdDate: values?.creationDate,
             )
-            let item = FileSystemItem(url: url, resourceValues: values)
+            let item = FileSystemItem(url: entry.url, resourceValues: values)
             return (fingerprint, item)
         }
-        let fingerprint = pairs.map(\.0).sorted { $0.path < $1.path }
-        return (fingerprint, pairs.map(\.1))
+
+        return DirectorySnapshot(url: url,
+                                 fingerprint: pairs.map(\.0).sorted { $0.path < $1.path },
+                                 items: pairs.map(\.1))
     }
 
     private func captureFileSystemSelectionState() -> FileSystemSelectionState {
@@ -516,50 +527,100 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func reloadCurrentDirectoryPreservingSelection() {
         let selectionState = captureFileSystemSelectionState()
-
-        do {
-            let contents = try directoryContents(for: currentDirectory)
-            applyDirectoryContents(contents, for: currentDirectory)
-            restoreFileSystemSelectionState(selectionState)
-        } catch {
-            return
-        }
+        scheduleDirectorySnapshot(for: currentDirectory,
+                                  purpose: .refresh(selectionState: selectionState))
     }
 
     private func autoRefreshCurrentDirectoryIfNeeded() {
         let selectionState = captureFileSystemSelectionState()
+        scheduleDirectorySnapshot(for: currentDirectory,
+                                  purpose: .autoRefresh(selectionState: selectionState))
+    }
 
-        do {
-            let contents = try directoryContents(for: currentDirectory)
-            let fingerprint = makeDirectoryFingerprint(from: contents)
-            guard fingerprint != currentDirectoryFingerprint else { return }
+    private func scheduleDirectorySnapshot(for url: URL,
+                                           purpose: DirectorySnapshotPurpose)
+    {
+        directorySnapshotGeneration += 1
+        let generation = directorySnapshotGeneration
+        let options = fileManagerDirectoryEnumerationOptions()
 
-            applyDirectoryContents(contents, for: currentDirectory, fingerprint: fingerprint)
-            restoreFileSystemSelectionState(selectionState)
-        } catch {
+        directorySnapshotQueue.async {
+            let result = Result {
+                try Self.makeDirectorySnapshot(for: url,
+                                               options: options)
+            }
+
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated {
+                    self?.finishDirectorySnapshot(result,
+                                                  generation: generation,
+                                                  purpose: purpose)
+                }
+            }
+        }
+    }
+
+    private func cancelPendingDirectorySnapshot() {
+        directorySnapshotGeneration += 1
+    }
+
+    private func finishDirectorySnapshot(_ result: Result<DirectorySnapshot, Error>,
+                                         generation: Int,
+                                         purpose: DirectorySnapshotPurpose)
+    {
+        guard generation == directorySnapshotGeneration else { return }
+
+        switch result {
+        case let .success(snapshot):
+            guard !isInsideArchive else { return }
+
+            switch purpose {
+            case let .autoRefresh(selectionState):
+                guard snapshot.url.standardizedFileURL == currentDirectory.standardizedFileURL else { return }
+                guard snapshot.fingerprint != currentDirectoryFingerprint else { return }
+                applyDirectorySnapshot(snapshot)
+                restoreFileSystemSelectionState(selectionState)
+
+            case let .refresh(selectionState):
+                guard snapshot.url.standardizedFileURL == currentDirectory.standardizedFileURL else { return }
+                applyDirectorySnapshot(snapshot)
+                restoreFileSystemSelectionState(selectionState)
+            }
+
+        case .failure:
             return
         }
     }
 
-    private func applyDirectoryContents(_ contents: [URL],
-                                        for url: URL,
-                                        fingerprint: [DirectoryEntryFingerprint]? = nil)
-    {
-        currentDirectory = url
-        recordDirectoryVisit(url)
-        updatePathField()
-        if let fingerprint {
-            currentDirectoryFingerprint = fingerprint
-            items = contents.map { FileSystemItem(url: $0) }
-        } else {
-            let combined = makeFingerprintAndItems(from: contents)
-            currentDirectoryFingerprint = combined.fingerprint
-            items = combined.items
+    private func loadInitialDirectory(_ url: URL) {
+        do {
+            let snapshot = try Self.makeDirectorySnapshot(for: url.standardizedFileURL,
+                                                          options: fileManagerDirectoryEnumerationOptions())
+            applyDirectorySnapshot(snapshot)
+        } catch {
+            currentDirectory = url.standardizedFileURL
+            updatePathField()
+            updateStatusBar()
         }
+    }
+
+    private func applyDirectorySnapshot(_ snapshot: DirectorySnapshot) {
+        currentDirectory = snapshot.url
+        recordDirectoryVisit(snapshot.url)
+        updatePathField()
+        currentDirectoryFingerprint = snapshot.fingerprint
+        items = snapshot.items
         sortCurrentItems(by: tableView.sortDescriptors)
         tableView.reloadData()
         updateStatusBar()
-        installDirectoryWatcher(for: url)
+        installDirectoryWatcher(for: snapshot.url)
+    }
+
+    private func clearSuspendedState() {
+        guard isSuspended else { return }
+        isSuspended = false
+        suspendedOverlay?.removeFromSuperview()
+        suspendedOverlay = nil
     }
 
     private func installDirectoryWatcher(for url: URL) {
@@ -1183,30 +1244,17 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return false
         }
 
-        if isInsideArchive && !closeAllArchives(showError: true) {
+        if isInsideArchive, !closeAllArchives(showError: true) {
             return false
         }
 
-        loadDirectory(parentDirectory)
-
         let selectedPaths = Set(standardizedURLs.map(\.path))
-        let baseRow = showsParentRow ? 1 : 0
-        let selectedRows = IndexSet(items.enumerated().compactMap { index, item in
-            selectedPaths.contains(item.url.standardizedFileURL.path) ? baseRow + index : nil
-        })
-        guard !selectedRows.isEmpty else { return false }
-
-        tableView.selectRowIndexes(selectedRows, byExtendingSelection: false)
-        if let firstRow = selectedRows.first {
-            let rowRect = tableView.rect(ofRow: firstRow)
-            if let clipView = tableView.enclosingScrollView?.contentView {
-                let visibleHeight = clipView.bounds.height
-                let y = rowRect.midY - visibleHeight / 2
-                let clampedY = max(0, min(y, tableView.bounds.height - visibleHeight))
-                clipView.setBoundsOrigin(NSPoint(x: clipView.bounds.origin.x, y: clampedY))
-            }
-        }
-        focusFileList()
+        let selectionState = FileSystemSelectionState(selectedPaths: selectedPaths,
+                                                      focusedPath: standardizedURLs.first?.path)
+        navigateToDirectory(parentDirectory,
+                            showError: true,
+                            selectionState: selectionState,
+                            focusAfterLoad: true)
         return true
     }
 
@@ -1223,8 +1271,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 return false
             }
 
-            loadDirectory(standardizedURL)
-            focusFileList()
+            navigateToDirectory(standardizedURL,
+                                showError: true,
+                                focusAfterLoad: true)
             return true
         }
 
@@ -2112,30 +2161,60 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    private func materializedArchiveItems(from archive: SZArchive) -> [ArchiveItem] {
-        archive.entries().map { ArchiveItem(from: $0) }
+    private nonisolated static func materializedArchiveItems(from archive: SZArchive,
+                                                             session: SZOperationSession?) throws -> [ArchiveItem]
+    {
+        try archive.entries(with: session).map { ArchiveItem(from: $0) }
     }
 
-    private func refreshArchiveLevelEntries(at index: Int) {
+    private nonisolated static func materializedArchiveItemsAsync(from archive: SZArchive,
+                                                                  session: SZOperationSession,
+                                                                  reopenBeforeListing: Bool) async throws -> [ArchiveItem]
+    {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                if Task.isCancelled {
+                    session.requestCancel()
+                }
+
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let result: Result<[ArchiveItem], Error> = Result {
+                        if reopenBeforeListing {
+                            try archive.reopenAfterExternalMutation(with: session)
+                        }
+                        return try Self.materializedArchiveItems(from: archive,
+                                                                 session: session)
+                    }
+                    continuation.resume(with: result)
+                }
+            }
+        } onCancel: {
+            session.requestCancel()
+        }
+    }
+
+    private func replaceArchiveLevelEntries(at index: Int,
+                                            with entries: [ArchiveItem],
+                                            preservingSubdir subdir: String? = nil)
+    {
         guard archiveStack.indices.contains(index) else { return }
 
         let level = archiveStack[index]
-        let refreshedEntries = materializedArchiveItems(from: level.archive)
         archiveStack[index] = ArchiveLevel(
             filesystemDirectory: level.filesystemDirectory,
             archivePath: level.archivePath,
             displayPathPrefix: level.displayPathPrefix,
             archive: level.archive,
             operationGate: level.operationGate,
-            allEntries: refreshedEntries,
-            currentSubdir: level.currentSubdir,
+            allEntries: entries,
+            currentSubdir: subdir ?? level.currentSubdir,
             temporaryDirectory: level.temporaryDirectory,
             nestedIdentity: level.nestedIdentity,
             nestedWriteBackInfo: level.nestedWriteBackInfo,
         )
     }
 
-    private func writeBackNestedArchiveChangesIfNeeded(for level: ArchiveLevel) throws -> (refreshedParentIndex: Int?, publishedChange: FileManagerArchiveChange?) {
+    private func writeBackNestedArchiveChangesIfNeeded(for level: ArchiveLevel) throws -> (refreshedParent: (index: Int, entries: [ArchiveItem])?, publishedChange: FileManagerArchiveChange?) {
         guard let writeBackInfo = level.nestedWriteBackInfo else {
             return (nil, nil)
         }
@@ -2149,15 +2228,17 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return (nil, nil)
         }
 
-        try ArchiveOperationRunner.runSynchronously(operationTitle: SZL10n.string("progress.updating"),
-                                                    initialFileName: (writeBackInfo.parentItemPath as NSString).lastPathComponent,
-                                                    parentWindow: view.window,
-                                                    deferredDisplay: true)
-        { session in
+        let refreshedParentEntries = try ArchiveOperationRunner.runSynchronously(operationTitle: SZL10n.string("progress.updating"),
+                                                                                 initialFileName: (writeBackInfo.parentItemPath as NSString).lastPathComponent,
+                                                                                 parentWindow: view.window,
+                                                                                 deferredDisplay: true)
+        { session -> [ArchiveItem] in
             try writeBackInfo.parentTarget.archive.replaceItem(atPath: writeBackInfo.parentItemPath,
                                                                inArchiveSubdir: writeBackInfo.parentTarget.subdir,
                                                                withFileAtPath: temporaryArchiveURL.path,
                                                                session: session)
+            return try Self.materializedArchiveItems(from: writeBackInfo.parentTarget.archive,
+                                                     session: session)
         }
 
         let publishedChange = writeBackInfo.parentTarget.topLevelArchiveURL.map {
@@ -2166,13 +2247,17 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                      selectingPaths: [writeBackInfo.parentItemPath],
                                      sourceIdentifier: ObjectIdentifier(self))
         }
-        return (archiveStack.count >= 2 ? archiveStack.count - 2 : nil, publishedChange)
+        let refreshedParent = archiveStack.count >= 2
+            ? (index: archiveStack.count - 2, entries: refreshedParentEntries)
+            : nil
+        return (refreshedParent, publishedChange)
     }
 
     @discardableResult
     private func closeArchiveLevel(_ level: ArchiveLevel,
                                    showError: Bool = false) -> Bool
     {
+        cancelPendingArchiveRefresh()
         level.operationGate.beginClosingAndWaitForLeases()
 
         do {
@@ -2186,8 +2271,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 archiveStack.removeLast()
             }
 
-            if let refreshedParentIndex = nestedWriteBackResult.refreshedParentIndex {
-                refreshArchiveLevelEntries(at: refreshedParentIndex)
+            if let refreshedParent = nestedWriteBackResult.refreshedParent {
+                replaceArchiveLevelEntries(at: refreshedParent.index,
+                                           with: refreshedParent.entries)
             }
 
             if let publishedChange = nestedWriteBackResult.publishedChange {
@@ -2266,6 +2352,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         isSuspended = true
 
         tearDownDirectoryWatcher()
+        cancelPendingDirectorySnapshot()
+        cancelPendingArchiveRefresh()
         items.removeAll()
         archiveDisplayItems.removeAll()
         currentDirectoryFingerprint.removeAll()
@@ -2347,38 +2435,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func reloadCurrentArchiveEntries(selectingPaths paths: [String] = []) {
         guard let level = archiveStack.last else { return }
-
-        let refreshedEntries = materializedArchiveItems(from: level.archive)
-        archiveStack[archiveStack.count - 1] = ArchiveLevel(
-            filesystemDirectory: level.filesystemDirectory,
-            archivePath: level.archivePath,
-            displayPathPrefix: level.displayPathPrefix,
-            archive: level.archive,
-            operationGate: level.operationGate,
-            allEntries: refreshedEntries,
-            currentSubdir: level.currentSubdir,
-            temporaryDirectory: level.temporaryDirectory,
-            nestedIdentity: level.nestedIdentity,
-            nestedWriteBackInfo: level.nestedWriteBackInfo,
-        )
-
-        navigateArchiveSubdir(level.currentSubdir)
-
-        guard !paths.isEmpty else { return }
-
-        let selectedPaths = Set(paths)
-        var rows = IndexSet()
-        for (index, item) in archiveDisplayItems.enumerated() {
-            if selectedPaths.contains(normalizeArchivePath(item.path)) {
-                rows.insert(index + (showsParentRow ? 1 : 0))
-            }
-        }
-
-        guard !rows.isEmpty else { return }
-        tableView.selectRowIndexes(rows, byExtendingSelection: false)
-        if let firstRow = rows.first {
-            tableView.scrollRowToVisible(firstRow)
-        }
+        scheduleArchiveEntriesReload(at: archiveStack.count - 1,
+                                     selectingPaths: paths,
+                                     preservingSubdir: level.currentSubdir)
     }
 
     func handlePublishedArchiveChange(_ change: FileManagerArchiveChange) {
@@ -2401,18 +2460,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return
         }
 
-        let currentSubdir = level.currentSubdir
-        do {
-            try reopenArchiveLevelAtTopOfStack(level)
-            reloadCurrentArchiveEntries(selectingPaths: paths,
-                                        preservingSubdir: currentSubdir)
-        } catch {
-            showErrorAlert(error)
-        }
-    }
-
-    private func reopenArchiveLevelAtTopOfStack(_ level: ArchiveLevel) throws {
-        try level.archive.reopenAfterExternalMutation(with: nil)
+        scheduleArchiveEntriesReload(at: archiveStack.count - 1,
+                                     selectingPaths: paths,
+                                     preservingSubdir: level.currentSubdir,
+                                     reopenBeforeListing: true)
     }
 
     private func publishArchiveMutationIfNeeded(targetSubdir: String? = nil,
@@ -2453,24 +2504,87 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private func reloadCurrentArchiveEntries(selectingPaths paths: [String],
                                              preservingSubdir subdir: String)
     {
+        scheduleArchiveEntriesReload(at: archiveStack.count - 1,
+                                     selectingPaths: paths,
+                                     preservingSubdir: subdir)
+    }
+
+    private func scheduleArchiveEntriesReload(at index: Int,
+                                              selectingPaths paths: [String],
+                                              preservingSubdir subdir: String,
+                                              reopenBeforeListing: Bool = false)
+    {
+        guard archiveStack.indices.contains(index) else { return }
+
+        cancelPendingArchiveRefresh()
+
         guard let level = archiveStack.last else { return }
+        guard index == archiveStack.count - 1 else { return }
+        guard let lease = level.operationGate.acquireLease() else { return }
 
-        let refreshedEntries = materializedArchiveItems(from: level.archive)
-        archiveStack[archiveStack.count - 1] = ArchiveLevel(
-            filesystemDirectory: level.filesystemDirectory,
-            archivePath: level.archivePath,
-            displayPathPrefix: level.displayPathPrefix,
-            archive: level.archive,
-            operationGate: level.operationGate,
-            allEntries: refreshedEntries,
-            currentSubdir: subdir,
-            temporaryDirectory: level.temporaryDirectory,
-            nestedIdentity: level.nestedIdentity,
-            nestedWriteBackInfo: level.nestedWriteBackInfo,
-        )
+        archiveRefreshGeneration += 1
+        let generation = archiveRefreshGeneration
+        let archive = level.archive
+        let archivePath = level.archivePath
+        let normalizedPaths = paths.map(normalizeArchivePath)
+        let session = SZOperationSession()
 
+        archiveRefreshTask = Task { @MainActor [weak self] in
+            defer { withExtendedLifetime(lease) {} }
+
+            do {
+                let refreshedEntries = try await Self.materializedArchiveItemsAsync(from: archive,
+                                                                                    session: session,
+                                                                                    reopenBeforeListing: reopenBeforeListing)
+                guard !Task.isCancelled else { return }
+                self?.finishArchiveEntriesReload(refreshedEntries,
+                                                 generation: generation,
+                                                 index: index,
+                                                 archive: archive,
+                                                 archivePath: archivePath,
+                                                 subdir: subdir,
+                                                 selectingPaths: normalizedPaths)
+            } catch {
+                guard !Task.isCancelled else { return }
+                guard !szIsUserCancellation(error) else { return }
+                guard self?.archiveRefreshGeneration == generation else { return }
+                self?.showErrorAlert(error)
+            }
+        }
+    }
+
+    private func cancelPendingArchiveRefresh() {
+        archiveRefreshGeneration += 1
+        archiveRefreshTask?.cancel()
+        archiveRefreshTask = nil
+    }
+
+    private func finishArchiveEntriesReload(_ entries: [ArchiveItem],
+                                            generation: Int,
+                                            index: Int,
+                                            archive: SZArchive,
+                                            archivePath: String,
+                                            subdir: String,
+                                            selectingPaths paths: [String])
+    {
+        guard archiveRefreshGeneration == generation else { return }
+        guard archiveStack.indices.contains(index) else { return }
+
+        let level = archiveStack[index]
+        guard level.archive === archive,
+              level.archivePath == archivePath
+        else {
+            return
+        }
+
+        replaceArchiveLevelEntries(at: index,
+                                   with: entries,
+                                   preservingSubdir: subdir)
         navigateArchiveSubdir(subdir)
+        selectArchivePaths(paths)
+    }
 
+    private func selectArchivePaths(_ paths: [String]) {
         guard !paths.isEmpty else { return }
 
         let selectedPaths = Set(paths.map(normalizeArchivePath))
@@ -2898,9 +3012,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 updatePathField()
                 return
             }
-            if !loadDirectory(url) {
-                updatePathField()
-            }
+            loadDirectory(url)
         } else if FileManager.default.fileExists(atPath: url.path) {
             if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(url) {
                 updatePathField()
@@ -4135,6 +4247,7 @@ extension FileManagerPaneController {
 
         currentDirectory = prepared.hostDirectory
         recordDirectoryVisit(prepared.hostDirectory)
+        cancelPendingDirectorySnapshot()
         tearDownDirectoryWatcher()
         if let temporaryDirectory = prepared.temporaryDirectory {
             archiveItemWorkflowService.register(temporaryDirectory)
