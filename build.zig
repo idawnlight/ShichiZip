@@ -40,19 +40,13 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const sfx_arch = b.option(SfxArch, "sfx-arch", "Windows SFX architecture selection") orelse .x86;
 
-    const prepare_mainline = prepareVendor(b, .mainline);
-    const prepare_zs = prepareVendor(b, .zs);
-
-    const lib_mainline = buildLib(b, .mainline, target, optimize, prepare_mainline);
-    const lib_zs = buildLib(b, .zs, target, optimize, prepare_zs);
-
     const lib_step = b.step("lib", "Build the selected macOS static library");
     switch (variant) {
-        .mainline => lib_step.dependOn(&lib_mainline.step),
-        .zs => lib_step.dependOn(&lib_zs.step),
+        .mainline => addLibTarget(b, lib_step, .mainline, target, optimize),
+        .zs => addLibTarget(b, lib_step, .zs, target, optimize),
         .all => {
-            lib_step.dependOn(&lib_mainline.step);
-            lib_step.dependOn(&lib_zs.step);
+            addLibTarget(b, lib_step, .mainline, target, optimize);
+            addLibTarget(b, lib_step, .zs, target, optimize);
         },
     }
     b.getInstallStep().dependOn(lib_step);
@@ -89,6 +83,18 @@ fn prepareVendor(b: *std.Build, variant: Variant) *std.Build.Step {
     return &patch_cmd.step;
 }
 
+fn addLibTarget(
+    b: *std.Build,
+    step: *std.Build.Step,
+    comptime variant: Variant,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) void {
+    const prepare_step = prepareVendor(b, variant);
+    const lib = buildLib(b, variant, target, optimize, prepare_step);
+    step.dependOn(&lib.step);
+}
+
 fn addSfxTargets(
     b: *std.Build,
     step: *std.Build.Step,
@@ -106,23 +112,33 @@ fn addSfxTargets(
     }
 }
 
-/// Walk a directory at build-script time and collect all `.c` files.
+/// Walk a required directory at build-script time and collect all `.c` files.
 /// Returns paths relative to root (e.g. "C/zstd/decompress.c").
 fn collectCFilesRelative(b: *std.Build, root_path: []const u8, sub_dir: []const u8) []const []const u8 {
     const io = b.graph.io;
     const full_path = std.fmt.allocPrint(b.allocator, "{s}/{s}", .{ root_path, sub_dir }) catch @panic("OOM");
     const cwd = Io.Dir.cwd();
-    const dir = cwd.openDir(io, full_path, .{ .iterate = true }) catch return &.{};
+    const dir = cwd.openDir(io, full_path, .{ .iterate = true }) catch |err| {
+        std.debug.panic("required C source directory '{s}' is unavailable: {}", .{ full_path, err });
+    };
     defer dir.close(io);
-    var walker = dir.walk(b.allocator) catch return &.{};
+    var walker = dir.walk(b.allocator) catch |err| {
+        std.debug.panic("failed to walk required C source directory '{s}': {}", .{ full_path, err });
+    };
     defer walker.deinit();
 
     var files = std.ArrayList([]const u8).empty;
-    while (walker.next(io) catch null) |entry| {
+    while (true) {
+        const entry = (walker.next(io) catch |err| {
+            std.debug.panic("failed to enumerate required C source directory '{s}': {}", .{ full_path, err });
+        }) orelse break;
         if (entry.kind == .file and std.mem.endsWith(u8, entry.basename, ".c")) {
             const rel = std.fmt.allocPrint(b.allocator, "{s}/{s}", .{ sub_dir, entry.path }) catch @panic("OOM");
             files.append(b.allocator, rel) catch @panic("OOM");
         }
+    }
+    if (files.items.len == 0) {
+        std.debug.panic("required C source directory '{s}' contains no .c files", .{full_path});
     }
     return files.items;
 }
