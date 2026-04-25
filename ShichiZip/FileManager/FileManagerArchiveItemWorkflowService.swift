@@ -3,12 +3,90 @@ import Darwin
 import Foundation
 import os
 
+final class FileManagerArchiveOperationGate: @unchecked Sendable {
+    final class Lease: @unchecked Sendable {
+        private let gate: FileManagerArchiveOperationGate
+
+        fileprivate init(gate: FileManagerArchiveOperationGate) {
+            self.gate = gate
+        }
+
+        deinit {
+            gate.releaseLease()
+        }
+    }
+
+    private let condition = NSCondition()
+    private var activeLeaseCount = 0
+    private var isClosing = false
+
+    func acquireLease() -> Lease? {
+        condition.lock()
+        defer { condition.unlock() }
+
+        guard !isClosing else {
+            return nil
+        }
+
+        activeLeaseCount += 1
+        return Lease(gate: self)
+    }
+
+    func beginClosing() {
+        condition.lock()
+        isClosing = true
+        condition.unlock()
+    }
+
+    func beginClosingAndWaitForLeases() {
+        beginClosing()
+        waitForLeasesToDrain()
+    }
+
+    func waitForLeasesToDrain() {
+        while true {
+            condition.lock()
+            if activeLeaseCount == 0 {
+                condition.unlock()
+                return
+            }
+
+            if Thread.isMainThread {
+                condition.unlock()
+                _ = RunLoop.current.run(mode: .default,
+                                        before: Date().addingTimeInterval(0.05))
+            } else {
+                _ = condition.wait(until: Date().addingTimeInterval(0.05))
+                condition.unlock()
+            }
+        }
+    }
+
+    func cancelClosing() {
+        condition.lock()
+        isClosing = false
+        condition.broadcast()
+        condition.unlock()
+    }
+
+    private func releaseLease() {
+        condition.lock()
+        activeLeaseCount -= 1
+        precondition(activeLeaseCount >= 0)
+        if activeLeaseCount == 0 {
+            condition.broadcast()
+        }
+        condition.unlock()
+    }
+}
+
 struct FileManagerArchiveItemWorkflowContext {
     let archive: SZArchive
     let hostDirectory: URL
     let displayPathPrefix: String
     let quarantineSourceArchivePath: String?
     let mutationTarget: FileManagerArchiveMutationTarget?
+    var archiveOperationLease: FileManagerArchiveOperationGate.Lease?
 }
 
 struct FileManagerArchiveQuickLookPreview {

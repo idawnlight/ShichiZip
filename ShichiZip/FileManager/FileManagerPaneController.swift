@@ -243,6 +243,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         let archivePath: String
         let displayPathPrefix: String
         let archive: SZArchive
+        let operationGate: FileManagerArchiveOperationGate
         let allEntries: [ArchiveItem]
         let currentSubdir: String
         let temporaryDirectory: URL?
@@ -2211,12 +2212,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func currentArchiveItemWorkflowContext() -> FileManagerArchiveItemWorkflowContext? {
         guard let level = archiveStack.last else { return nil }
+        guard let archiveOperationLease = level.operationGate.acquireLease() else { return nil }
 
         return FileManagerArchiveItemWorkflowContext(archive: level.archive,
                                                      hostDirectory: archiveHostDirectory(),
                                                      displayPathPrefix: currentArchiveDisplayPathPrefix(),
                                                      quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path,
-                                                     mutationTarget: archiveMutationTarget(for: level))
+                                                     mutationTarget: archiveMutationTarget(for: level),
+                                                     archiveOperationLease: archiveOperationLease)
     }
 
     private func hasConflictingNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool {
@@ -2299,6 +2302,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             archivePath: level.archivePath,
             displayPathPrefix: level.displayPathPrefix,
             archive: level.archive,
+            operationGate: level.operationGate,
             allEntries: refreshedEntries,
             currentSubdir: level.currentSubdir,
             temporaryDirectory: level.temporaryDirectory,
@@ -2345,6 +2349,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private func closeArchiveLevel(_ level: ArchiveLevel,
                                    showError: Bool = false) -> Bool
     {
+        level.operationGate.beginClosingAndWaitForLeases()
+
         do {
             let nestedWriteBackResult = try writeBackNestedArchiveChangesIfNeeded(for: level)
             level.archive.close()
@@ -2372,6 +2378,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
             return true
         } catch {
+            level.operationGate.cancelClosing()
             if showError {
                 showErrorAlert(error)
             }
@@ -2505,6 +2512,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             archivePath: level.archivePath,
             displayPathPrefix: level.displayPathPrefix,
             archive: level.archive,
+            operationGate: level.operationGate,
             allEntries: refreshedEntries,
             currentSubdir: level.currentSubdir,
             temporaryDirectory: level.temporaryDirectory,
@@ -2611,6 +2619,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             archivePath: level.archivePath,
             displayPathPrefix: level.displayPathPrefix,
             archive: level.archive,
+            operationGate: level.operationGate,
             allEntries: refreshedEntries,
             currentSubdir: subdir,
             temporaryDirectory: level.temporaryDirectory,
@@ -4261,6 +4270,7 @@ extension FileManagerPaneController {
             archivePath: prepared.archivePath,
             displayPathPrefix: prepared.displayPathPrefix,
             archive: prepared.archive,
+            operationGate: FileManagerArchiveOperationGate(),
             allEntries: prepared.entries,
             currentSubdir: "",
             temporaryDirectory: prepared.temporaryDirectory,
@@ -4281,6 +4291,7 @@ extension FileManagerPaneController {
             archivePath: level.archivePath,
             displayPathPrefix: level.displayPathPrefix,
             archive: level.archive,
+            operationGate: level.operationGate,
             allEntries: level.allEntries,
             currentSubdir: subdir,
             temporaryDirectory: level.temporaryDirectory,

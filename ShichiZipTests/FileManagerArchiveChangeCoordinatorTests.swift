@@ -1,8 +1,50 @@
 import Foundation
+import os
 @testable import ShichiZip
 import XCTest
 
 final class FileManagerArchiveChangeCoordinatorTests: XCTestCase {
+    func testArchiveOperationGateRejectsNewLeaseAfterClosingBegins() throws {
+        let gate = FileManagerArchiveOperationGate()
+        let lease = try XCTUnwrap(gate.acquireLease())
+
+        gate.beginClosing()
+
+        XCTAssertNil(gate.acquireLease())
+
+        gate.cancelClosing()
+        XCTAssertNotNil(gate.acquireLease())
+        withExtendedLifetime(lease) {}
+    }
+
+    func testArchiveOperationGateWaitsForActiveLeaseBeforeClosing() throws {
+        let gate = FileManagerArchiveOperationGate()
+        var lease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(gate.acquireLease())
+        XCTAssertNotNil(lease)
+        let didFinish = OSAllocatedUnfairLock(initialState: false)
+        let closeFinished = expectation(description: "archive operation gate close finished")
+
+        gate.beginClosing()
+        DispatchQueue.global(qos: .userInitiated).async {
+            gate.waitForLeasesToDrain()
+            didFinish.withLock { $0 = true }
+            closeFinished.fulfill()
+        }
+
+        let deadline = Date().addingTimeInterval(0.05)
+        while Date() < deadline {
+            if didFinish.withLock({ $0 }) {
+                break
+            }
+            RunLoop.current.run(mode: .default,
+                                before: Date().addingTimeInterval(0.005))
+        }
+        XCTAssertFalse(didFinish.withLock { $0 })
+
+        lease = nil
+        wait(for: [closeFinished], timeout: 1)
+    }
+
     func testPublishPostsDecodableNotification() throws {
         let archiveURL = try makeArchive(named: "publish-decodable-notification",
                                          prefix: "ShichiZipArchiveChangeTests")
