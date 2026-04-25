@@ -128,14 +128,14 @@ class ProgressDialogController: NSWindowController, SZProgressDelegate {
 
             speedLabel.topAnchor.constraint(equalTo: bytesLabel.bottomAnchor, constant: 2),
             speedLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            speedLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12),
+            speedLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16),
 
             elapsedLabel.topAnchor.constraint(equalTo: progressBar.bottomAnchor, constant: 4),
             elapsedLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -100),
 
             cancelButton.topAnchor.constraint(equalTo: progressBar.bottomAnchor, constant: 4),
             cancelButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            cancelButton.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
+            cancelButton.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -16),
         ])
     }
 
