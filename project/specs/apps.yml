@@ -104,6 +104,44 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         TEST_TARGET_NAME: ShichiZip
 
+  ShichiZipZSTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: ../../ShichiZipTests
+    dependencies:
+      - target: ShichiZipZS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZSTests
+        PRODUCT_NAME: ShichiZipZSTests
+        GENERATE_INFOPLIST_FILE: true
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_OBJC_BRIDGING_HEADER: ShichiZipTests/ShichiZipTests-Bridging-Header.h
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/ShichiZip ZS.app/Contents/MacOS/ShichiZip ZS
+        BUNDLE_LOADER: $(TEST_HOST)
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS:
+          - "$(inherited)"
+          - "SHICHIZIP_ZS_VARIANT"
+
+  ShichiZipZSUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: ../../ShichiZipUITests
+    dependencies:
+      - target: ShichiZipZS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZSUITests
+        PRODUCT_NAME: ShichiZipZSUITests
+        GENERATE_INFOPLIST_FILE: true
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        TEST_TARGET_NAME: ShichiZipZS
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS:
+          - "$(inherited)"
+          - "SHICHIZIP_ZS_VARIANT"
+
   ShichiZipZS:
     type: application
     platform: macOS

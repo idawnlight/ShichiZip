@@ -1,4 +1,4 @@
-name: Build
+name: Build and Test
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   macos-build:
-    name: macOS Build (${{ matrix.artifact_prefix }}, ${{ matrix.target_arch }})
+    name: Build and Test (${{ matrix.artifact_prefix }}, ${{ matrix.target_arch }})
     runs-on: macos-26
     environment: development
     strategy:
@@ -88,7 +88,25 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Configure signing mode
+        id: signing
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_P12_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+        run: |
+          if [[ -n "$CERTIFICATE_P12_BASE64" && -n "$CERTIFICATE_PASSWORD" && -n "$SIGNING_IDENTITY" ]]; then
+            echo "has_certificate=true" >> "$GITHUB_OUTPUT"
+            echo "code_sign_identity=$SIGNING_IDENTITY" >> "$GITHUB_OUTPUT"
+            echo "Using imported signing certificate."
+          else
+            echo "has_certificate=false" >> "$GITHUB_OUTPUT"
+            echo "code_sign_identity=-" >> "$GITHUB_OUTPUT"
+            echo "Signing secrets are unavailable; using ad-hoc signing for validation."
+          fi
+
       - name: Install signing certificate
+        if: steps.signing.outputs.has_certificate == 'true'
         env:
           CERTIFICATE_P12_BASE64: ${{ secrets.CERTIFICATE_P12_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_P12_PASSWORD }}
@@ -114,8 +132,6 @@ jobs:
           rm -f "$CERT_PATH"
 
       - name: Build and sign app bundle
-        env:
-          SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
         run: |
           derived_data_path="build/DerivedData/${{ matrix.scheme }}"
 
@@ -126,7 +142,7 @@ jobs:
             -derivedDataPath "$derived_data_path" \
             -arch "${{ matrix.target_arch }}" \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+            CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
             build
 
       - name: Verify app bundle signature
@@ -161,3 +177,33 @@ jobs:
           path: ${{ steps.package_artifact.outputs.path }}
           if-no-files-found: error
           archive: false
+
+      - name: Run unit tests
+        run: |
+          derived_data_path="build/DerivedData/${{ matrix.scheme }}"
+
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "${{ matrix.scheme }}" \
+            -configuration "$XCODE_CONFIGURATION" \
+            -derivedDataPath "$derived_data_path" \
+            -arch "${{ matrix.target_arch }}" \
+            "-only-testing:${{ matrix.scheme }}Tests" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
+            test
+
+      - name: Run UI tests
+        run: |
+          derived_data_path="build/DerivedData/${{ matrix.scheme }}"
+
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "${{ matrix.scheme }}" \
+            -configuration "$XCODE_CONFIGURATION" \
+            -derivedDataPath "$derived_data_path" \
+            -arch "${{ matrix.target_arch }}" \
+            "-only-testing:${{ matrix.scheme }}UITests" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
+            test
