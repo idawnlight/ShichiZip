@@ -271,10 +271,8 @@ final class FileManagerArchiveItemWorkflowService {
                                                settings: settings,
                                                session: session)
 
-            let fileURLs = items.map { temporaryDirectory.appendingPathComponent($0.path) }
-            guard fileURLs.allSatisfy({ fileManager.fileExists(atPath: $0.path) }) else {
-                throw extractionPreparationError()
-            }
+            let fileURLs = try items.map { try stagedFileURL(for: $0,
+                                                             in: temporaryDirectory) }
 
             return FileManagerArchiveQuickLookPreview(temporaryDirectory: temporaryDirectory,
                                                       fileURLs: fileURLs)
@@ -298,10 +296,8 @@ final class FileManagerArchiveItemWorkflowService {
                                                settings: settings,
                                                session: session)
 
-            let fileURL = temporaryDirectory.appendingPathComponent(item.path)
-            guard fileManager.fileExists(atPath: fileURL.path) else {
-                throw extractionPreparationError()
-            }
+            let fileURL = try stagedFileURL(for: item,
+                                            in: temporaryDirectory)
 
             return StagedArchiveItem(temporaryDirectory: temporaryDirectory,
                                      fileURL: fileURL)
@@ -330,11 +326,8 @@ final class FileManagerArchiveItemWorkflowService {
                                                settings: settings,
                                                session: session)
 
-            let fileURL = temporaryDirectory.appendingPathComponent(item.path,
-                                                                    isDirectory: item.isDirectory)
-            guard fileManager.fileExists(atPath: fileURL.path) else {
-                throw extractionPreparationError()
-            }
+            let fileURL = try stagedFileURL(for: item,
+                                            in: temporaryDirectory)
 
             return StagedArchiveItem(temporaryDirectory: temporaryDirectory,
                                      fileURL: fileURL)
@@ -504,6 +497,46 @@ final class FileManagerArchiveItemWorkflowService {
         settings.pathMode = .noPaths
         configureQuarantineInheritance(on: settings, context: context)
         return settings
+    }
+
+    private func stagedFileURL(for item: ArchiveItem,
+                               in temporaryDirectory: URL) throws -> URL
+    {
+        let relativePath = SZArchive.correctedFileSystemRelativePath(forArchivePath: item.path,
+                                                                     isDirectory: item.isDirectory)
+        guard !relativePath.isEmpty else {
+            throw extractionPreparationError()
+        }
+
+        let fileURL = temporaryDirectory.appendingPathComponent(relativePath,
+                                                                isDirectory: item.isDirectory)
+        guard fileManager.fileExists(atPath: fileURL.path),
+              isStagedURL(fileURL,
+                          containedIn: temporaryDirectory)
+        else {
+            throw extractionPreparationError()
+        }
+
+        return fileURL
+    }
+
+    private func isStagedURL(_ candidate: URL,
+                             containedIn temporaryDirectory: URL) -> Bool
+    {
+        let parentComponents = temporaryDirectory
+            .resolvingSymlinksInPath()
+            .standardizedFileURL
+            .pathComponents
+        let candidateComponents = candidate
+            .resolvingSymlinksInPath()
+            .standardizedFileURL
+            .pathComponents
+
+        guard candidateComponents.count > parentComponents.count else {
+            return false
+        }
+
+        return Array(candidateComponents.prefix(parentComponents.count)) == parentComponents
     }
 
     private func configureQuarantineInheritance(on settings: SZExtractionSettings,

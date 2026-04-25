@@ -14,4 +14,23 @@ final class BridgeStringConversionTests: XCTestCase {
 
         XCTAssertEqual(SZTestBridgeDecodeCStringData(bytes), expected)
     }
+
+    func testCorrectedFileSystemRelativePathUsesUpstreamExtractionRules() {
+        XCTAssertEqual(
+            SZArchive.correctedFileSystemRelativePath(forArchivePath: "../payload.txt", isDirectory: false),
+            "payload.txt",
+        )
+        XCTAssertEqual(
+            SZArchive.correctedFileSystemRelativePath(forArchivePath: "safe/../payload.txt", isDirectory: false),
+            "safe/payload.txt",
+        )
+        XCTAssertEqual(
+            SZArchive.correctedFileSystemRelativePath(forArchivePath: ".", isDirectory: false),
+            "_",
+        )
+        XCTAssertEqual(
+            SZArchive.correctedFileSystemRelativePath(forArchivePath: ".", isDirectory: true),
+            "",
+        )
+    }
 }

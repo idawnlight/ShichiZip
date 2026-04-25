@@ -168,6 +168,64 @@ final class QuarantineRegressionTests: XCTestCase {
         )
     }
 
+    func testStagedArchiveItemsShouldNotResolveTraversalEntryOutsideTemporaryDirectory() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "staged-traversal")
+        let escapedLeafName = "staged-traversal-\(UUID().uuidString).txt"
+        let archivePayload = "archive payload"
+        let existingLocalPayload = "existing local file"
+
+        let temporaryRoot = FileManagerTemporaryDirectorySupport.rootDirectory()
+        let existingLocalURL = temporaryRoot.appendingPathComponent(escapedLeafName)
+        try existingLocalPayload.write(to: existingLocalURL, atomically: true, encoding: .utf8)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: existingLocalURL)
+        }
+
+        let archivePayloadURL = tempRoot.appendingPathComponent(escapedLeafName)
+        try archivePayload.write(to: archivePayloadURL, atomically: true, encoding: .utf8)
+
+        let zipRoot = tempRoot.appendingPathComponent("zip-root", isDirectory: true)
+        try FileManager.default.createDirectory(at: zipRoot, withIntermediateDirectories: true)
+
+        let archiveURL = tempRoot.appendingPathComponent("traversal.zip")
+        try createZipFixture(at: archiveURL,
+                             currentDirectory: zipRoot,
+                             entryPaths: ["../\(escapedLeafName)"])
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: SZOperationSession())
+        defer { archive.close() }
+
+        let archiveItems = archive.entries().map(ArchiveItem.init(from:))
+        let traversalItem = try XCTUnwrap(archiveItems.first { $0.path == "../\(escapedLeafName)" },
+                                          "fixture must preserve the traversal entry path; got \(archiveItems.map(\.path))")
+        let workflowService = FileManagerArchiveItemWorkflowService(
+            fileManager: .default,
+            quarantineInheritanceEnabled: { false },
+        )
+        let context = FileManagerArchiveItemWorkflowContext(
+            archive: archive,
+            hostDirectory: tempRoot,
+            displayPathPrefix: archiveURL.path,
+            quarantineSourceArchivePath: nil,
+            mutationTarget: nil,
+        )
+
+        let preview = try workflowService.stageQuickLookItems(
+            [traversalItem],
+            context: context,
+            session: SZOperationSession(),
+        )
+        defer { workflowService.cleanup(preview.temporaryDirectory) }
+
+        let stagedURL = try XCTUnwrap(preview.fileURLs.first)
+        let stagedPath = stagedURL.standardizedFileURL.path
+        let temporaryDirectoryPath = preview.temporaryDirectory.standardizedFileURL.path
+        XCTAssertTrue(stagedPath.hasPrefix(temporaryDirectoryPath + "/"),
+                      "staged URL must stay inside the staging directory; got \(stagedPath)")
+        XCTAssertEqual(try String(contentsOf: stagedURL, encoding: .utf8), archivePayload)
+    }
+
     func testNestedArchiveExtractionShouldInheritOriginalSourceArchiveQuarantine() throws {
         let tempRoot = try makeTemporaryDirectory(named: "nested-extract")
         try skipUnlessExtendedAttributesWork(at: tempRoot)

@@ -24,6 +24,7 @@
 #include "CPP/7zip/UI/Common/ArchiveExtractCallback.h"
 #include "CPP/7zip/UI/Common/EnumDirItems.h"
 #include "CPP/7zip/UI/Common/Extract.h"
+#include "CPP/7zip/UI/Common/ExtractingFilePath.h"
 #include "CPP/7zip/UI/Common/HashCalc.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
 #include "CPP/7zip/UI/Common/SetProperties.h"
@@ -1483,6 +1484,14 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 
 + (NSString*)sevenZipVersionString {
     return @MY_VERSION;
+}
+
++ (NSString*)correctedFileSystemRelativePathForArchivePath:(NSString*)path
+                                               isDirectory:(BOOL)isDirectory {
+    UStringVector pathParts;
+    SplitPathToParts(ToU(path), pathParts);
+    Correct_FsPath(false, false, pathParts, isDirectory);
+    return ToNS(MakePathFromParts(pathParts));
 }
 
 // MARK: - Open / Close

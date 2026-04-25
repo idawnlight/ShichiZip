@@ -41,6 +41,30 @@ extension XCTestCase {
                              session: nil)
     }
 
+    /// Creates ZIP fixtures whose stored entry names must be controlled exactly.
+    /// Prefer `createArchive` for normal archive fixtures; it exercises ShichiZip's
+    /// writer path, but it will not produce intentionally unusual names such as
+    /// `../payload.txt` that are needed to test reader-side path handling.
+    func createZipFixture(at archiveURL: URL,
+                          currentDirectory: URL,
+                          entryPaths: [String]) throws
+    {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+        process.arguments = ["-q", "-X", archiveURL.path] + entryPaths
+        process.currentDirectoryURL = currentDirectory
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            throw NSError(domain: NSCocoaErrorDomain,
+                          code: CocoaError.fileWriteUnknown.rawValue,
+                          userInfo: [NSLocalizedDescriptionKey: "/usr/bin/zip failed to create fixture at \(archiveURL.path)"])
+        }
+    }
+
     @discardableResult
     func makeArchive(named name: String,
                      prefix: String = "ShichiZipTests",

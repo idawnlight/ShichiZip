@@ -403,6 +403,11 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 /// Get the underlying 7-Zip core version string.
 + (NSString*)sevenZipVersionString;
 
+/// Correct an archive item path exactly as 7-Zip does before writing it to the
+/// file system for non-absolute extraction modes.
++ (NSString*)correctedFileSystemRelativePathForArchivePath:(NSString*)path
+                                               isDirectory:(BOOL)isDirectory;
+
 @end
 
 @interface SZArchive (Benchmark)
