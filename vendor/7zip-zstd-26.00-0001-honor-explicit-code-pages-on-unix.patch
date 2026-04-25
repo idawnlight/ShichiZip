@@ -1,5 +1,5 @@
 diff --git a/CPP/Common/StringConvert.cpp b/CPP/Common/StringConvert.cpp
-index 79ff9e0..b13f2bd 100644
+index 79ff9e00..e2cdbf55 100644
 --- a/CPP/Common/StringConvert.cpp
 +++ b/CPP/Common/StringConvert.cpp
 @@ -5,7 +5,8 @@
@@ -12,7 +12,7 @@ index 79ff9e0..b13f2bd 100644
  #include <stdlib.h>
  #endif
  
-@@ -259,12 +260,129 @@ static void MultiByteToUnicodeString2_Native(UString &dest, const AString &src)
+@@ -259,12 +260,137 @@ static void MultiByteToUnicodeString2_Native(UString &dest, const AString &src)
  
  bool g_ForceToUTF8 = true; // false;
  
@@ -22,13 +22,21 @@ index 79ff9e0..b13f2bd 100644
 +  if (cd == (iconv_t)-1)
 +    return false;
 +
-+  const size_t outSize = (size_t)src.Len() * 4 + 1;
++  const unsigned srcLen = src.Len();
++  const unsigned kMaxIconvOutputSize = ((unsigned)1 << 30) - 2;
++  if (srcLen > (kMaxIconvOutputSize - 1) / 4)
++  {
++    iconv_close(cd);
++    return false;
++  }
++
++  const unsigned outSize = srcLen * 4 + 1;
 +  AString utf8;
-+  char *outBuf = utf8.GetBuf((unsigned)outSize);
++  char *outBuf = utf8.GetBuf(outSize);
 +  char *outPtr = outBuf;
 +  size_t outLeft = outSize;
 +  char *inPtr = (char *)(void *)(const char *)src;
-+  size_t inLeft = src.Len();
++  size_t inLeft = srcLen;
 +
 +  bool ok = false;
 +  if (iconv(cd, &inPtr, &inLeft, &outPtr, &outLeft) != (size_t)-1 && inLeft == 0)
