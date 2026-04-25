@@ -123,8 +123,11 @@
 "app.reenterPassword" = "再次输入密码";
 
 "app.progress.compressing" = "正在压缩…";
+"app.progress.copying" = "正在复制…";
 "app.progress.extracting" = "正在解压…";
 "app.progress.finalizing" = "正在完成…";
+"app.progress.moving" = "正在移动…";
+"app.progress.pasting" = "正在粘贴…";
 "app.progress.working" = "正在处理…";
 
 "app.settings.clear" = "清除";

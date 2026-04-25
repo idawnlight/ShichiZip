@@ -117,8 +117,11 @@
 "app.panel.chooseArchives" = "Choose archive files to open in %@";
 "app.panel.selectFilesToCompress" = "Select files and folders to compress";
 "app.progress.compressing" = "Compressing…";
+"app.progress.copying" = "Copying…";
 "app.progress.extracting" = "Extracting…";
 "app.progress.finalizing" = "Finalizing…";
+"app.progress.moving" = "Moving…";
+"app.progress.pasting" = "Pasting…";
 "app.progress.working" = "Working…";
 "app.reenterPassword" = "Retype password";
 "app.settings.clear" = "Clear";

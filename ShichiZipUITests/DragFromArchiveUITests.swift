@@ -4,6 +4,7 @@ import XCTest
 ///
 /// Covers drag-from-archive (extract by dragging to filesystem pane),
 /// drag-into-archive (add files by dragging from filesystem pane),
+/// clipboard paste into archive from a filesystem pane,
 /// and nested archive operations (open archive inside archive, drag out).
 ///
 /// All tests launch in dual-pane mode via the `FileManager.IsDualPane`
@@ -86,6 +87,29 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
         // Right pane: point at the destination directory.
         navigatePane(rightPathField, to: destinationDir.path)
         XCTAssertTrue(rightTable.waitForExistence(timeout: 10))
+    }
+
+    private func openArchiveInRightPane(_ archiveURL: URL) {
+        navigatePane(rightPathField, to: archiveURL.deletingLastPathComponent().path)
+        XCTAssertTrue(rightTable.waitForExistence(timeout: 10))
+
+        let archiveCell = rightTable.cells.staticTexts[archiveURL.lastPathComponent]
+        XCTAssertTrue(archiveCell.waitForExistence(timeout: 5),
+                      "Archive should appear in the right pane")
+        archiveCell.doubleClick()
+
+        let openPredicate = NSPredicate(format: "value CONTAINS %@",
+                                        archiveURL.lastPathComponent)
+        let openExpectation = XCTNSPredicateExpectation(predicate: openPredicate,
+                                                        object: rightPathField)
+        wait(for: [openExpectation], timeout: 10)
+    }
+
+    private func confirmArchiveTransfer() {
+        let confirmButton = app.buttons.matching(identifier: "modal.button.1").firstMatch
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 10),
+                      "Archive transfer confirmation dialog should appear")
+        confirmButton.click()
     }
 
     // MARK: - Tests
@@ -191,20 +215,7 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
         let newFile = tempDir.appendingPathComponent("added.txt")
         try createTextFile(at: newFile, content: "newly added")
 
-        // Right pane: open the archive.
-        navigatePane(rightPathField, to: tempDir.path)
-        XCTAssertTrue(rightTable.waitForExistence(timeout: 10))
-
-        let archiveCell = rightTable.cells.staticTexts[archiveURL.lastPathComponent]
-        XCTAssertTrue(archiveCell.waitForExistence(timeout: 5),
-                      "Archive should appear in the right pane")
-        archiveCell.doubleClick()
-
-        let openPredicate = NSPredicate(format: "value CONTAINS %@",
-                                        archiveURL.lastPathComponent)
-        let openExpectation = XCTNSPredicateExpectation(predicate: openPredicate,
-                                                        object: rightPathField)
-        wait(for: [openExpectation], timeout: 10)
+        openArchiveInRightPane(archiveURL)
 
         // Left pane: navigate to the temp dir (shows added.txt).
         navigatePane(leftPathField, to: tempDir.path)
@@ -217,11 +228,7 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
         // Drag the file from filesystem (left) into the archive (right).
         addedCell.click(forDuration: 1.0, thenDragTo: rightTable)
 
-        // A confirmation alert appears — press the confirm button.
-        let confirmButton = app.buttons.matching(identifier: "modal.button.1").firstMatch
-        XCTAssertTrue(confirmButton.waitForExistence(timeout: 10),
-                      "Archive transfer confirmation dialog should appear")
-        confirmButton.click()
+        confirmArchiveTransfer()
 
         // Wait for the archive to be updated — the new file should
         // appear in the right pane's listing.
@@ -236,6 +243,49 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
                       "Archive listing should contain added.txt. Got: \(listOutput)")
         XCTAssertTrue(listOutput.contains("existing.txt"),
                       "Archive listing should still contain existing.txt. Got: \(listOutput)")
+    }
+
+    // MARK: - Clipboard Into Archive
+
+    /// Copies a filesystem file in the left pane and pastes it into an
+    /// open archive in the right pane, mirroring the drag-into-archive test.
+    func testCopyPasteFileIntoArchive() throws {
+        let (archiveURL, tempDir) = try makeTestArchive(named: "pasteintoarchive",
+                                                        payloads: ["existing.txt": "already here"])
+
+        let pastedFile = tempDir.appendingPathComponent("pasted.txt")
+        try createTextFile(at: pastedFile, content: "clipboard payload")
+
+        openArchiveInRightPane(archiveURL)
+
+        navigatePane(leftPathField, to: tempDir.path)
+        XCTAssertTrue(leftTable.waitForExistence(timeout: 10))
+
+        let pastedCell = leftTable.cells.staticTexts[pastedFile.lastPathComponent]
+        XCTAssertTrue(pastedCell.waitForExistence(timeout: 5),
+                      "pasted.txt should appear in the left pane")
+        pastedCell.click()
+        app.typeKey("c", modifierFlags: .command)
+
+        let existingCell = rightTable.cells.staticTexts["existing.txt"]
+        XCTAssertTrue(existingCell.waitForExistence(timeout: 5),
+                      "Existing archive item should be visible before paste")
+        existingCell.click()
+        app.typeKey("v", modifierFlags: .command)
+
+        confirmArchiveTransfer()
+
+        let pastedInArchive = rightTable.cells.staticTexts[pastedFile.lastPathComponent]
+        XCTAssertTrue(pastedInArchive.waitForExistence(timeout: 15),
+                      "pasted.txt should appear inside the archive after paste")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pastedFile.path),
+                      "Clipboard paste into an archive should copy, not move, the source file")
+
+        let listOutput = try listArchiveContents(archiveURL)
+        XCTAssertTrue(listOutput.contains("existing.txt"),
+                      "Archive listing should still contain existing.txt. Got: \(listOutput)")
+        XCTAssertTrue(listOutput.contains(pastedFile.lastPathComponent),
+                      "Archive listing should contain pasted.txt. Got: \(listOutput)")
     }
 
     // MARK: - Nested Archive

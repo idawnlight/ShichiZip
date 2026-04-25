@@ -3769,7 +3769,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                               sourcePane: FileManagerPaneController?,
                               cleanupDirectory: URL? = nil,
                               parentWindow: NSWindow? = nil,
-                              requiresConfirmation: Bool = false)
+                              requiresConfirmation: Bool = false,
+                              operationTitle: String? = nil)
     {
         guard !urls.isEmpty else {
             if let cleanupDirectory {
@@ -3794,7 +3795,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                         to: target,
                                         operation: operation,
                                         sourcePane: sourcePane,
-                                        cleanupDirectory: cleanupDirectory)
+                                        cleanupDirectory: cleanupDirectory,
+                                        operationTitle: operationTitle)
             return
         }
 
@@ -3803,7 +3805,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                         to: target,
                                         operation: operation,
                                         sourcePane: sourcePane,
-                                        cleanupDirectory: cleanupDirectory)
+                                        cleanupDirectory: cleanupDirectory,
+                                        operationTitle: operationTitle)
             return
         }
 
@@ -3832,7 +3835,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                         to: target,
                                         operation: operation,
                                         sourcePane: sourcePane,
-                                        cleanupDirectory: cleanupDirectory)
+                                        cleanupDirectory: cleanupDirectory,
+                                        operationTitle: operationTitle)
         }
     }
 
@@ -3841,7 +3845,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                        operation: NSDragOperation,
                                        sourcePane: FileManagerPaneController?,
                                        cleanupDirectory: URL? = nil,
-                                       parentWindow: NSWindow? = nil)
+                                       parentWindow: NSWindow? = nil,
+                                       operationTitle: String? = nil)
     {
         beginArchiveTransfer(urls,
                              to: target,
@@ -3849,16 +3854,19 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                              sourcePane: sourcePane,
                              cleanupDirectory: cleanupDirectory,
                              parentWindow: parentWindow,
-                             requiresConfirmation: true)
+                             requiresConfirmation: true,
+                             operationTitle: operationTitle)
     }
 
     private func beginDroppedArchiveTransfer(_ urls: [URL],
                                              to target: (archive: SZArchive, subdir: String),
                                              operation: NSDragOperation,
                                              sourcePane: FileManagerPaneController?,
-                                             cleanupDirectory: URL? = nil)
+                                             cleanupDirectory: URL? = nil,
+                                             operationTitle: String? = nil)
     {
-        let operationTitle = operation == .move ? SZL10n.string("fileop.moving") : SZL10n.string("fileop.copying")
+        let defaultOperationTitle = operation == .move ? SZL10n.string("fileop.moving") : SZL10n.string("fileop.copying")
+        let resolvedOperationTitle = operationTitle ?? defaultOperationTitle
 
         Task { @MainActor [weak self, weak sourcePane] in
             defer {
@@ -3877,7 +3885,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                        targetSubdir: currentTarget.subdir)
 
             do {
-                try await ArchiveOperationRunner.run(operationTitle: operationTitle,
+                try await ArchiveOperationRunner.run(operationTitle: resolvedOperationTitle,
                                                      parentWindow: view.window,
                                                      deferredDisplay: true)
                 { session in

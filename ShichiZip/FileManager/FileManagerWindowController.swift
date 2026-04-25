@@ -1305,6 +1305,103 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         return NSApp.sendAction(action, to: nil, from: sender)
     }
 
+    private func clipboardFileURLs() -> [URL] {
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [
+            .urlReadingFileURLsOnly: true,
+        ]
+
+        guard let urls = NSPasteboard.general.readObjects(forClasses: [NSURL.self],
+                                                          options: options) as? [URL]
+        else {
+            return []
+        }
+
+        return urls
+            .filter(\.isFileURL)
+            .map(\.standardizedFileURL)
+    }
+
+    private func canCopyFileSelectionToClipboard() -> Bool {
+        !activePane.isVirtualLocation && !activePane.selectedFileURLs().isEmpty
+    }
+
+    private func canPasteClipboardFilesIntoActivePane() -> Bool {
+        let pane = activePane
+        guard !clipboardFileURLs().isEmpty else { return false }
+
+        if pane.isVirtualLocation {
+            return pane.currentArchiveMutationTarget() != nil
+        }
+
+        return true
+    }
+
+    @objc func copyClipboardItems(_ sender: Any?) {
+        if dispatchTextEditingActionIfPossible(#selector(NSText.copy(_:)), sender: sender) {
+            return
+        }
+
+        let urls = activePane.selectedFileURLs()
+        guard !activePane.isVirtualLocation, !urls.isEmpty else { return }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects(urls.map { $0 as NSURL })
+    }
+
+    @objc func pasteClipboardItems(_ sender: Any?) {
+        if dispatchTextEditingActionIfPossible(#selector(NSText.paste(_:)), sender: sender) {
+            return
+        }
+
+        let pane = activePane
+        let sourceURLs = clipboardFileURLs()
+        guard !sourceURLs.isEmpty else { return }
+
+        if pane.isVirtualLocation {
+            guard let target = pane.currentArchiveMutationTarget() else {
+                pane.showReadOnlyArchiveMutationAlert(action: SZL10n.string("app.fileManager.action.addingFilesToArchive"))
+                return
+            }
+
+            pane.beginConfirmedArchiveTransfer(sourceURLs,
+                                               to: target,
+                                               operation: .copy,
+                                               sourcePane: nil,
+                                               parentWindow: window,
+                                               operationTitle: SZL10n.string("app.progress.pasting"))
+            return
+        }
+
+        let destinationURL = pane.currentDirectoryURL.standardizedFileURL
+        guard pane.canTransferFileSystemItemURLs(sourceURLs,
+                                                 to: destinationURL,
+                                                 operation: .copy,
+                                                 presentingIn: window)
+        else {
+            return
+        }
+
+        Task { @MainActor [weak self, weak pane] in
+            guard let self, let pane, let parentWindow = window else { return }
+            do {
+                try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.pasting"),
+                                                     parentWindow: parentWindow)
+                { session in
+                    try pane.transferFileSystemItemURLs(sourceURLs,
+                                                        to: destinationURL,
+                                                        operation: .copy,
+                                                        session: session)
+                }
+                refreshAfterFilesystemTransfer(from: pane,
+                                               to: destinationURL,
+                                               operation: .copy)
+            } catch {
+                showErrorAlert(error)
+            }
+        }
+    }
+
     @objc func selectAllItems(_ sender: Any?) {
         if dispatchTextEditingActionIfPossible(#selector(NSText.selectAll(_:)), sender: sender) {
             return
@@ -1509,7 +1606,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                     do {
                         let prepared = try pane.prepareSelectedItemExtraction(to: destURL,
                                                                               overwriteMode: .ask)
-                        try await ArchiveOperationRunner.run(operationTitle: "Copying selected archive items...",
+                        try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.copying"),
                                                              parentWindow: parentWindow)
                         { session in
                             try FileManagerPaneController.performPreparedExtraction(prepared, session: session)
@@ -1547,12 +1644,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         switch preparedDestinationTarget {
         case let .directory(destURL):
-            let operation = move ? "Moving" : "Copying"
             let dragOperation: NSDragOperation = move ? .move : .copy
+            let operationTitle = SZL10n.string(move ? "app.progress.moving" : "app.progress.copying")
             Task { @MainActor [weak self] in
                 guard let self, let parentWindow = window else { return }
                 do {
-                    try await ArchiveOperationRunner.run(operationTitle: "\(operation) \(sourceURLs.count) item(s)...",
+                    try await ArchiveOperationRunner.run(operationTitle: operationTitle,
                                                          parentWindow: parentWindow)
                     { session in
                         try pane.transferFileSystemItemURLs(sourceURLs,
@@ -1704,6 +1801,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return activePane.canCalculateSelectionHashes()
         case #selector(goUpOneLevel(_:)):
             return activePane.canGoUp()
+        case #selector(copyClipboardItems(_:)):
+            return firstResponderSupportsTextEditingAction(#selector(NSText.copy(_:))) ||
+                canCopyFileSelectionToClipboard()
+        case #selector(pasteClipboardItems(_:)):
+            return firstResponderSupportsTextEditingAction(#selector(NSText.paste(_:))) ||
+                canPasteClipboardFilesIntoActivePane()
         case #selector(selectAllItems(_:)):
             return firstResponderSupportsTextEditingAction(#selector(NSText.selectAll(_:))) ||
                 activePane.canSelectVisibleItems()
@@ -2158,7 +2261,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return
         }
 
-        let operationTitle = move ? "Moving \(sourceURLs.count) item(s)..." : "Copying \(sourceURLs.count) item(s)..."
+        let operationTitle = SZL10n.string(move ? "app.progress.moving" : "app.progress.copying")
         let selectionPaths = archiveSelectionPaths(for: sourceURLs, targetSubdir: subdir)
 
         Task { @MainActor [weak self] in

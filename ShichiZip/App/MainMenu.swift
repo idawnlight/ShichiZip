@@ -818,11 +818,11 @@ enum MainMenu {
                 keyEquivalent: "x")
         addItem(to: editMenu,
                 title: SZL10n.string("app.menu.copy"),
-                action: #selector(NSText.copy(_:)),
+                action: #selector(FileManagerWindowController.copyClipboardItems(_:)),
                 keyEquivalent: "c")
         addItem(to: editMenu,
                 title: SZL10n.string("app.menu.paste"),
-                action: #selector(NSText.paste(_:)),
+                action: #selector(FileManagerWindowController.pasteClipboardItems(_:)),
                 keyEquivalent: "v")
         editMenu.addItem(.separator())
         addItem(to: editMenu,
