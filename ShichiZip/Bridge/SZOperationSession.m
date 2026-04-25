@@ -29,9 +29,11 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     BOOL _hasReportedProgress;
     BOOL _waitingForUserInteraction;
     BOOL _cancellationRequested;
-    // Last time progress/byte updates were forwarded to the delegate.
+    // Last time progress/file-name/byte updates were forwarded to the delegate.
     CFAbsoluteTime _lastProgressDispatchTime;
+    CFAbsoluteTime _lastFileNameDispatchTime;
     CFAbsoluteTime _lastBytesDispatchTime;
+    BOOL _fileNameDispatchScheduled;
 }
 
 @end
@@ -202,17 +204,55 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 
 - (void)reportCurrentFileName:(NSString*)fileName {
     NSString* resolvedFileName = [fileName copy] ?: @"";
+    BOOL shouldDispatchNow = NO;
+    BOOL shouldScheduleDispatch = NO;
+    CFTimeInterval dispatchDelay = 0;
     @synchronized(self) {
         _currentFileName = resolvedFileName;
+        const CFTimeInterval now = CACurrentMediaTime();
+        const CFTimeInterval kMinInterval = 0.05;
+        const BOOL canDispatchNow = (_lastFileNameDispatchTime == 0)
+            || (now - _lastFileNameDispatchTime >= kMinInterval);
+        if (canDispatchNow && !_fileNameDispatchScheduled) {
+            shouldDispatchNow = YES;
+            _lastFileNameDispatchTime = now;
+        } else if (!_fileNameDispatchScheduled) {
+            shouldScheduleDispatch = YES;
+            _fileNameDispatchScheduled = YES;
+            dispatchDelay = MAX(kMinInterval - (now - _lastFileNameDispatchTime), 0);
+        }
     }
 
-    id<SZProgressDelegate> delegate = self.progressDelegate;
-    if (!delegate) {
+    if (shouldDispatchNow) {
+        id<SZProgressDelegate> delegate = self.progressDelegate;
+        if (!delegate) {
+            return;
+        }
+
+        SZDispatchAsyncOnMain(^{
+            [delegate progressDidUpdateFileName:resolvedFileName];
+        });
         return;
     }
 
-    SZDispatchAsyncOnMain(^{
-        [delegate progressDidUpdateFileName:resolvedFileName];
+    if (!shouldScheduleDispatch) {
+        return;
+    }
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(dispatchDelay * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        NSString* latestFileName;
+        id<SZProgressDelegate> delegate;
+        @synchronized(self) {
+            latestFileName = [_currentFileName copy] ?: @"";
+            delegate = self.progressDelegate;
+            _fileNameDispatchScheduled = NO;
+            _lastFileNameDispatchTime = CACurrentMediaTime();
+        }
+
+        if (delegate) {
+            [delegate progressDidUpdateFileName:latestFileName];
+        }
     });
 }
 

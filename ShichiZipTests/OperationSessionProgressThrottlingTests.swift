@@ -9,13 +9,16 @@ import XCTest
 final class OperationSessionProgressThrottlingTests: XCTestCase {
     private final class RecordingDelegate: NSObject, SZProgressDelegate {
         nonisolated(unsafe) var fractionUpdates: [Double] = []
+        nonisolated(unsafe) var fileNameUpdates: [String] = []
         nonisolated(unsafe) var bytesUpdates: [(UInt64, UInt64)] = []
 
         func progressDidUpdate(_ fraction: Double) {
             fractionUpdates.append(fraction)
         }
 
-        func progressDidUpdateFileName(_: String) {}
+        func progressDidUpdateFileName(_ fileName: String) {
+            fileNameUpdates.append(fileName)
+        }
         func progressDidUpdateBytesCompleted(_ completed: UInt64, total: UInt64) {
             bytesUpdates.append((completed, total))
         }
@@ -23,6 +26,30 @@ final class OperationSessionProgressThrottlingTests: XCTestCase {
         func progressShouldCancel() -> Bool {
             false
         }
+    }
+
+    // MARK: - File-name throttling
+
+    func testRapidFileNameReportsAreCoalescedAndLatestArrives() {
+        let delegate = RecordingDelegate()
+        let session = SZOperationSession()
+        session.progressDelegate = delegate
+
+        for index in 1 ... 100 {
+            session.reportCurrentFileName("file-\(index).txt")
+        }
+
+        XCTAssertEqual(session.currentFileName, "file-100.txt",
+                       "session snapshots should keep the latest file name even when delegate updates are throttled")
+
+        drainMainQueue(for: 0.12)
+
+        XCTAssertGreaterThanOrEqual(delegate.fileNameUpdates.count, 2,
+                                    "first and coalesced latest file-name updates should be delivered")
+        XCTAssertLessThanOrEqual(delegate.fileNameUpdates.count, 10,
+                                 "rapid file-name updates must be coalesced, got \(delegate.fileNameUpdates.count)")
+        XCTAssertEqual(delegate.fileNameUpdates.last, "file-100.txt",
+                       "coalesced file-name update must carry the latest reported name")
     }
 
     private func drainMainQueue(for seconds: TimeInterval = 0.02) {
