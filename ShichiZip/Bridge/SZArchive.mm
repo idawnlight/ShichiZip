@@ -9,6 +9,8 @@
 
 #import "../Utilities/SZObjCLog.h"
 
+#include <objc/objc-sync.h>
+
 #ifdef __APPLE__
 #include <sys/xattr.h>
 #ifndef XATTR_NOFOLLOW
@@ -157,6 +159,16 @@ static NSData* SZQuarantineDataForArchivePath(NSString* archivePath) {
 @end
 
 namespace {
+
+class SZArchiveOperationGuard {
+public:
+    explicit SZArchiveOperationGuard(id object)
+        : _object(object) { objc_sync_enter(_object); }
+    ~SZArchiveOperationGuard() { objc_sync_exit(_object); }
+
+private:
+    __unsafe_unretained id _object;
+};
 
 enum SZCompressionEstimateMethodID {
     kSZCompressionEstimateCopy,
@@ -1439,6 +1451,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 
 - (BOOL)reopenAfterExternalMutationWithSession:(SZOperationSession*)session
                                          error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     NSString* archivePath = [_archivePath copy];
     NSString* openType = [_openType copy];
     NSString* password = _cachedPasswordIsDefined ? [_cachedPassword copy] : nil;
@@ -1559,6 +1573,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
           password:(NSString*)password
            session:(SZOperationSession*)session
              error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     CCodecs* codecs = SZGetCodecs();
     if (!codecs) {
         if (error)
@@ -1618,6 +1634,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 }
 
 - (void)close {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (_isOpen)
         _arcLink->Close();
     _isOpen = NO;
@@ -1628,6 +1646,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 // MARK: - Properties
 
 - (NSString*)formatName {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen)
         return nil;
     const CArc& arc = _arcLink->Arcs.Back();
@@ -1638,6 +1658,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 }
 
 - (BOOL)canWrite {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen)
         return NO;
     const CArc& arc = _arcLink->Arcs.Back();
@@ -1648,6 +1670,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 }
 
 - (uint64_t)archivePhysicalSize {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen)
         return 0;
     IInArchive* archive = _arcLink->GetArchive();
@@ -1670,6 +1694,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 }
 
 - (BOOL)isSolidArchive {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen)
         return NO;
     IInArchive* archive = _arcLink->GetArchive();
@@ -1690,6 +1716,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 }
 
 - (NSUInteger)entryCount {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen)
         return 0;
     IInArchive* archive = _arcLink->GetArchive();
@@ -1701,6 +1729,8 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
 }
 
 - (NSArray<SZArchiveEntry*>*)entries {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen)
         return @[];
     IInArchive* archive = _arcLink->GetArchive();
@@ -1858,6 +1888,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
              settings:(SZExtractionSettings*)s
               session:(SZOperationSession*)session
                 error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
@@ -1920,6 +1952,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
               settings:(SZExtractionSettings*)s
                session:(SZOperationSession*)session
                  error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
@@ -1981,6 +2015,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
 }
 
 - (BOOL)testWithSession:(SZOperationSession*)session error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
@@ -2017,6 +2053,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
           inArchiveSubdir:(NSString*)archiveSubdir
                   session:(SZOperationSession*)session
                     error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
@@ -2084,6 +2122,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
                  newName:(NSString*)newName
                  session:(SZOperationSession*)session
                    error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
@@ -2160,6 +2200,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
            inArchiveSubdir:(NSString*)archiveSubdir
                    session:(SZOperationSession*)session
                      error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
@@ -2245,6 +2287,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
            moveMode:(BOOL)moveMode
             session:(SZOperationSession*)session
               error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
@@ -2364,6 +2408,8 @@ static BOOL EnsureExtractionDirectoryExists(NSString* dest, NSError** error) {
            withFileAtPath:(NSString*)sourceFilePath
                   session:(SZOperationSession*)session
                     error:(NSError**)error {
+    SZArchiveOperationGuard operationGuard(self);
+
     if (!_isOpen) {
         if (error)
             *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive, @"No archive open");
