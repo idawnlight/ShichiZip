@@ -321,12 +321,12 @@ final class FileManagerArchiveItemWorkflowService {
                                         strategy: FileManagerArchiveItemOpenStrategy,
                                         session: SZOperationSession) throws -> FileManagerPreparedArchiveItemExternalOpen
     {
-        let preferredApplicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(forArchiveItemPath: item.path)
+        let defaultApplicationURL = FileManagerExternalOpenRouter.defaultExternalApplicationURL(forArchiveItemPath: item.path)
 
         switch strategy {
         case .automatic:
             guard FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(archiveItemPath: item.path),
-                  preferredApplicationURL != nil
+                  defaultApplicationURL != nil
             else {
                 throw unavailableExternalOpenError(for: item.name)
             }
@@ -344,7 +344,7 @@ final class FileManagerArchiveItemWorkflowService {
                                    session: session)
         return FileManagerPreparedArchiveItemExternalOpen(stagedFileURL: stagedItem.fileURL,
                                                           temporaryDirectory: stagedItem.temporaryDirectory,
-                                                          applicationURL: preferredApplicationURL)
+                                                          applicationURL: defaultApplicationURL)
     }
 
     private func stage(item: ArchiveItem,

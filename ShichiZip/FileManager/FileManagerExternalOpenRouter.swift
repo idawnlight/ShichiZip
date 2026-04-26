@@ -9,25 +9,30 @@ enum FileManagerExternalOpenRouter {
         "tbz2", "tgz", "txz", "war", "xar", "xz", "z", "zip",
     ]
 
-    static func preferredExternalApplicationURL(for url: URL,
-                                                workspace: NSWorkspace = .shared) -> URL?
+    static func defaultExternalApplicationURL(for url: URL,
+                                              workspace: NSWorkspace = .shared) -> URL?
     {
-        let currentAppURL = currentApplicationURL()
-
-        if let defaultAppURL = workspace.urlForApplication(toOpen: url)?
-            .resolvingSymlinksInPath()
-            .standardizedFileURL,
-            defaultAppURL != currentAppURL
-        {
-            return defaultAppURL
-        }
-
-        return workspace.urlsForApplications(toOpen: url)
-            .map { $0.resolvingSymlinksInPath().standardizedFileURL }
-            .first { $0 != currentAppURL }
+        defaultExternalApplicationURL(for: url,
+                                      defaultApplicationURLProvider: { workspace.urlForApplication(toOpen: $0) })
     }
 
-    static func preferredExternalApplicationURL(forArchiveItemPath path: String) -> URL? {
+    static func defaultExternalApplicationURL(for url: URL,
+                                              defaultApplicationURLProvider: (URL) -> URL?) -> URL?
+    {
+        defaultExternalApplicationURL(for: url,
+                                      defaultApplicationURLProvider: defaultApplicationURLProvider,
+                                      currentApplicationURL: currentApplicationURL())
+    }
+
+    static func defaultExternalApplicationURL(for url: URL,
+                                              defaultApplicationURLProvider: (URL) -> URL?,
+                                              currentApplicationURL: URL) -> URL?
+    {
+        normalizedExternalApplicationURL(defaultApplicationURLProvider(url),
+                                         currentApplicationURL: currentApplicationURL)
+    }
+
+    static func defaultExternalApplicationURL(forArchiveItemPath path: String) -> URL? {
         guard let contentType = contentType(forPath: path),
               let unmanagedApplicationURL = LSCopyDefaultApplicationURLForContentType(contentType.identifier as CFString,
                                                                                       LSRolesMask.all,
@@ -37,12 +42,12 @@ enum FileManagerExternalOpenRouter {
         }
 
         let applicationURL = unmanagedApplicationURL.takeRetainedValue() as URL
-        let normalizedURL = applicationURL.resolvingSymlinksInPath().standardizedFileURL
-        return normalizedURL != currentApplicationURL() ? normalizedURL : nil
+        return normalizedExternalApplicationURL(applicationURL,
+                                                currentApplicationURL: currentApplicationURL())
     }
 
     static func shouldOpenExternallyBeforeArchiveAttempt(_ url: URL) -> Bool {
-        guard let applicationURL = preferredExternalApplicationURL(for: url),
+        guard let applicationURL = defaultExternalApplicationURL(for: url),
               let contentType = contentType(forPath: url.lastPathComponent)
         else {
             return false
@@ -53,7 +58,7 @@ enum FileManagerExternalOpenRouter {
 
     static func shouldOpenExternallyBeforeArchiveAttempt(archiveItemPath path: String) -> Bool {
         guard let contentType = contentType(forPath: path),
-              let applicationURL = preferredExternalApplicationURL(forArchiveItemPath: path)
+              let applicationURL = defaultExternalApplicationURL(forArchiveItemPath: path)
         else {
             return false
         }
@@ -86,6 +91,17 @@ enum FileManagerExternalOpenRouter {
 
     private static func currentApplicationURL() -> URL {
         Bundle.main.bundleURL.resolvingSymlinksInPath().standardizedFileURL
+    }
+
+    private static func normalizedExternalApplicationURL(_ applicationURL: URL?,
+                                                         currentApplicationURL: URL) -> URL?
+    {
+        guard let applicationURL else {
+            return nil
+        }
+
+        let normalizedURL = applicationURL.resolvingSymlinksInPath().standardizedFileURL
+        return normalizedURL != currentApplicationURL ? normalizedURL : nil
     }
 
     private static func isArchiveLikeURL(_ url: URL) -> Bool {

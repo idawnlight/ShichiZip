@@ -2625,7 +2625,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private func openExternallyIfPossible(_ url: URL,
                                           preservingTemporaryDirectory temporaryDirectory: URL? = nil) -> Bool
     {
-        guard let applicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(for: url) else {
+        guard let applicationURL = FileManagerExternalOpenRouter.defaultExternalApplicationURL(for: url) else {
             return false
         }
 
@@ -3245,7 +3245,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
                     let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: preparedOpen.stagedArchiveURL)
                     if shouldFallbackExternally {
-                        if let applicationURL = FileManagerExternalOpenRouter.preferredExternalApplicationURL(forArchiveItemPath: item.path) {
+                        if let applicationURL = FileManagerExternalOpenRouter.defaultExternalApplicationURL(forArchiveItemPath: item.path) {
                             _ = openExternally(preparedOpen.stagedArchiveURL,
                                                withApplicationAt: applicationURL,
                                                preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
