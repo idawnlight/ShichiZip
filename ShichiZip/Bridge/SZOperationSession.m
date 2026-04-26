@@ -240,20 +240,20 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     }
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(dispatchDelay * NSEC_PER_SEC)),
-                   dispatch_get_main_queue(), ^{
-        NSString* latestFileName;
-        id<SZProgressDelegate> delegate;
-        @synchronized(self) {
-            latestFileName = [_currentFileName copy] ?: @"";
-            delegate = self.progressDelegate;
-            _fileNameDispatchScheduled = NO;
-            _lastFileNameDispatchTime = CACurrentMediaTime();
-        }
+        dispatch_get_main_queue(), ^{
+            NSString* latestFileName;
+            id<SZProgressDelegate> delegate;
+            @synchronized(self) {
+                latestFileName = [self->_currentFileName copy] ?: @"";
+                delegate = self.progressDelegate;
+                self->_fileNameDispatchScheduled = NO;
+                self->_lastFileNameDispatchTime = CACurrentMediaTime();
+            }
 
-        if (delegate) {
-            [delegate progressDidUpdateFileName:latestFileName];
-        }
-    });
+            if (delegate) {
+                [delegate progressDidUpdateFileName:latestFileName];
+            }
+        });
 }
 
 - (void)reportBytesCompleted:(uint64_t)completed total:(uint64_t)total {
