@@ -548,6 +548,25 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
             stack.addArrangedSubview(cb)
         }
 
+        let fileListSeparator = makeSettingsSeparator()
+        stack.addArrangedSubview(fileListSeparator)
+        fileListSeparator.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        stack.addArrangedSubview(makeSectionLabel(SZL10n.string("app.settings.fileListLayout")))
+
+        let resetFileListPreferencesButton = NSButton(title: SZL10n.string("app.settings.resetFileListLayout"),
+                                                      target: self,
+                                                      action: #selector(resetFileListPreferences(_:)))
+        resetFileListPreferencesButton.setAccessibilityIdentifier("settings.resetFileListLayout")
+        stack.addArrangedSubview(resetFileListPreferencesButton)
+
+        let resetFileListPreferencesNote = NSTextField(wrappingLabelWithString: SZL10n.string("app.settings.resetFileListLayoutNote"))
+        resetFileListPreferencesNote.textColor = .secondaryLabelColor
+        resetFileListPreferencesNote.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        resetFileListPreferencesNote.maximumNumberOfLines = 0
+        resetFileListPreferencesNote.preferredMaxLayoutWidth = 480
+        stack.addArrangedSubview(resetFileListPreferencesNote)
+
         let compressionSeparator = makeSettingsSeparator()
         stack.addArrangedSubview(compressionSeparator)
         compressionSeparator.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -1180,6 +1199,18 @@ class SettingsWindowController: NSWindowController, NSTableViewDataSource, NSTab
         }
 
         updateShortcutBinding(for: command, to: nil)
+    }
+
+    @objc private func resetFileListPreferences(_: NSButton) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = SZL10n.string("app.settings.resetFileListLayoutConfirmTitle")
+        alert.informativeText = SZL10n.string("app.settings.resetFileListLayoutConfirmDetail")
+        alert.addButton(withTitle: SZL10n.string("app.settings.reset"))
+        alert.addButton(withTitle: SZL10n.string("common.cancel"))
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        FileManagerViewPreferences.removeAllListViewInfos()
     }
 
     @objc private func workDirModeChanged(_ sender: NSButton) {

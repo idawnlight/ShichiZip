@@ -14,16 +14,23 @@ class ShichiZipUITestCase: XCTestCase {
         []
     }
 
+    private static let defaultLaunchArguments: [String] =
+        ["-FileManager.DisableListViewInfoPersistence", "YES"]
+
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
+        app.launchArguments += Self.defaultLaunchArguments
         app.launchArguments += additionalLaunchArguments
         app.launch()
     }
 
     override func tearDown() async throws {
-        app.terminate()
+        if let app {
+            app.terminate()
+            _ = app.wait(for: .notRunning, timeout: 5)
+        }
         app = nil
         try await super.tearDown()
     }

@@ -158,6 +158,7 @@
 "app.settings.defaultOpenerFailedDetail" = "%d type(s) could not be registered. The system may not recognize these types, or the operation was blocked.";
 "app.settings.excludeMacResourceForks" = "Exclude macOS resource fork files by default";
 "app.settings.extraction" = "Extraction";
+"app.settings.fileListLayout" = "File List Layout";
 "app.settings.finderLike" = "Finder-like";
 "app.settings.finderLikeDescription" = "Uses macOS-style file manager shortcuts, including Return to rename and Command+Arrow navigation.";
 "app.settings.finderQuickActions" = "Finder Quick Actions";
@@ -177,6 +178,11 @@
 "app.settings.quickActionsOpenErrorDetail" = "Open System Settings and go to Extensions > Finder to manage %@'s Quick Actions.";
 "app.settings.quitOnLastClose" = "Quit the app when the last window closes";
 "app.settings.recordShortcut" = "Record Shortcut";
+"app.settings.reset" = "Reset";
+"app.settings.resetFileListLayout" = "Reset File List Layouts";
+"app.settings.resetFileListLayoutConfirmDetail" = "Saved sort order, column order, and column widths will return to defaults.";
+"app.settings.resetFileListLayoutConfirmTitle" = "Reset file list layouts?";
+"app.settings.resetFileListLayoutNote" = "Clears saved sort order, column order, and column widths for File Manager lists.";
 "app.settings.scheme" = "Scheme:";
 "app.settings.shortcuts" = "Shortcuts";
 "app.settings.shortcutsCustomNote" = "Changing an individual binding switches the preset to Custom. Reusing a shortcut clears it from the previous command. Click a shortcut field and press any key combination. Press Escape to cancel recording.";

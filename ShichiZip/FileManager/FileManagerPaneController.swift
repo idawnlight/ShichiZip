@@ -45,8 +45,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var languageObserver: NSObjectProtocol?
     private var liveScrollStartObserver: NSObjectProtocol?
     private var liveScrollEndObserver: NSObjectProtocol?
+    private var columnDidMoveObserver: NSObjectProtocol?
+    private var columnDidResizeObserver: NSObjectProtocol?
     private var recentDirectories: [URL] = []
     private var isLiveScrolling = false
+    private var isApplyingListViewPreferences = false
     private var pendingAutoRefresh = false
     private var directorySnapshotGeneration = 0
     private let directorySnapshotQueue = DispatchQueue(label: FileManagerPaneController.directorySnapshotQueueLabel,
@@ -59,6 +62,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private let iconSize = NSSize(width: 16, height: 16)
     private let listRowHeight: CGFloat = 22
     private var currentDirectoryFingerprint: [DirectoryEntryFingerprint] = []
+    private var currentListViewFolderTypeID: String?
     private(set) var isSuspended = false
     private var suspendedOverlay: NSView?
 
@@ -159,6 +163,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         if let liveScrollEndObserver {
             NotificationCenter.default.removeObserver(liveScrollEndObserver)
         }
+        if let columnDidMoveObserver {
+            NotificationCenter.default.removeObserver(columnDidMoveObserver)
+        }
+        if let columnDidResizeObserver {
+            NotificationCenter.default.removeObserver(columnDidResizeObserver)
+        }
 
         tearDownDirectoryWatcher()
         cancelPendingDirectorySnapshot()
@@ -238,7 +248,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         tableView.rowSizeStyle = .custom
         tableView.rowHeight = listRowHeight
         tableView.intercellSpacing = NSSize(width: tableView.intercellSpacing.width, height: 0)
-        configureTableColumns(FileManagerColumn.fileSystemColumns)
+        configureTableColumns(FileManagerColumn.fileSystemColumns,
+                              folderTypeID: FileManagerViewPreferences.fileSystemListViewFolderTypeID)
 
         tableView.dataSource = self
         tableView.delegate = self
@@ -252,6 +263,26 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         tableView.setDraggingSourceOperationMask(.copy, forLocal: false)
         tableView.setAccessibilityIdentifier("fileManager.tableView")
+
+        columnDidMoveObserver = NotificationCenter.default.addObserver(
+            forName: NSTableView.columnDidMoveNotification,
+            object: tableView,
+            queue: .main,
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.handleTableColumnLayoutDidChange()
+            }
+        }
+
+        columnDidResizeObserver = NotificationCenter.default.addObserver(
+            forName: NSTableView.columnDidResizeNotification,
+            object: tableView,
+            queue: .main,
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.handleTableColumnLayoutDidChange()
+            }
+        }
 
         scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -335,9 +366,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             forName: .fileManagerViewPreferencesDidChange,
             object: nil,
             queue: .main,
-        ) { [weak self] _ in
+        ) { [weak self] notification in
+            let shouldResetListViewPreferences = notification.userInfo?[FileManagerViewPreferences.listViewPreferencesResetUserInfoKey] as? Bool == true
             MainActor.assumeIsolated {
-                self?.reloadPresentedValues()
+                if shouldResetListViewPreferences {
+                    self?.resetTableColumnsForCurrentLocation()
+                } else {
+                    self?.reloadPresentedValues()
+                }
             }
         }
 
@@ -600,59 +636,132 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func updateTableColumnsForCurrentLocation() {
         guard isViewLoaded else { return }
-        configureTableColumns(columnsForCurrentLocation())
+        configureTableColumns(columnsForCurrentLocation(),
+                              folderTypeID: listViewFolderTypeIDForCurrentLocation())
     }
 
-    private func configureTableColumns(_ columns: [FileManagerColumn]) {
-        let currentIDs = currentColumns.map(\.id)
-        let newIDs = columns.map(\.id)
+    private func configureTableColumns(_ columns: [FileManagerColumn],
+                                       folderTypeID: String,
+                                       preferSavedState: Bool = true)
+    {
+        let listViewInfo = preferSavedState
+            ? FileManagerViewPreferences.listViewInfo(forFolderTypeID: folderTypeID)
+            : nil
+        let resolvedColumns = FileManagerViewPreferences.resolvedListViewColumns(columns,
+                                                                                 using: listViewInfo)
+        let resolvedColumnsByID = Dictionary(uniqueKeysWithValues: resolvedColumns.map { ($0.column.id, $0.column) })
+        let currentIDs = Set(currentColumns.map(\.id))
+        let newIDs = Set(resolvedColumns.map(\.column.id))
 
-        if currentIDs == newIDs {
-            currentColumns = columns
+        if preferSavedState,
+           currentListViewFolderTypeID == folderTypeID,
+           currentIDs == newIDs
+        {
+            currentColumns = tableView.tableColumns.compactMap { tableColumn in
+                FileManagerColumnID(rawValue: tableColumn.identifier.rawValue).flatMap { resolvedColumnsByID[$0] }
+            }
             for tableColumn in tableView.tableColumns {
                 guard let id = FileManagerColumnID(rawValue: tableColumn.identifier.rawValue),
-                      let column = columns.first(where: { $0.id == id })
+                      let column = resolvedColumnsByID[id]
                 else {
                     continue
                 }
                 tableColumn.title = column.title
+                tableColumn.minWidth = column.minWidth
                 tableColumn.sortDescriptorPrototype = column.sortDescriptorPrototype
             }
+            currentListViewFolderTypeID = folderTypeID
             return
         }
 
-        let sortDescriptors = normalizedSortDescriptors(tableView.sortDescriptors,
-                                                        for: columns)
-        for tableColumn in tableView.tableColumns {
+        isApplyingListViewPreferences = true
+        defer { isApplyingListViewPreferences = false }
+
+        for tableColumn in tableView.tableColumns.reversed() {
             tableView.removeTableColumn(tableColumn)
         }
 
-        currentColumns = columns
-        for column in columns {
-            tableView.addTableColumn(column.makeTableColumn())
-        }
-        tableView.sortDescriptors = sortDescriptors
-    }
-
-    private func normalizedSortDescriptors(_ descriptors: [NSSortDescriptor],
-                                           for columns: [FileManagerColumn]) -> [NSSortDescriptor]
-    {
-        let availableKeys = Set(columns.map(\.sortKey))
-        if let descriptor = descriptors.first,
-           let key = descriptor.key,
-           availableKeys.contains(key) || (key == "type" && availableKeys.contains(FileManagerColumnID.name.rawValue))
-        {
-            return descriptors
+        currentColumns = resolvedColumns.map(\.column)
+        for resolvedColumn in resolvedColumns {
+            let tableColumn = resolvedColumn.column.makeTableColumn()
+            tableColumn.width = resolvedColumn.width
+            tableView.addTableColumn(tableColumn)
         }
 
-        guard let nameColumn = columns.first(where: { $0.id == .name }) else {
-            return []
-        }
-        return [nameColumn.sortDescriptorPrototype]
+        currentListViewFolderTypeID = folderTypeID
+
+        let sortDescriptor = FileManagerViewPreferences.resolvedListViewSortDescriptor(using: listViewInfo,
+                                                                                       columns: columns)
+        tableView.sortDescriptors = sortDescriptor.map { [$0] } ?? []
+        updateHighlightedTableColumn(for: tableView.sortDescriptors.first?.key)
     }
 
     private func refreshColumnTitles() {
-        configureTableColumns(currentColumns.isEmpty ? columnsForCurrentLocation() : currentColumns)
+        configureTableColumns(currentColumns.isEmpty ? columnsForCurrentLocation() : currentColumns,
+                              folderTypeID: currentListViewFolderTypeID ?? listViewFolderTypeIDForCurrentLocation())
+    }
+
+    private func listViewFolderTypeIDForCurrentLocation() -> String {
+        if let level = archiveStack.last {
+            return FileManagerViewPreferences.archiveListViewFolderTypeID(formatName: level.archive.formatName)
+        }
+        return FileManagerViewPreferences.fileSystemListViewFolderTypeID
+    }
+
+    private func handleTableColumnLayoutDidChange() {
+        guard !isApplyingListViewPreferences else { return }
+        currentColumns = tableView.tableColumns.compactMap { tableColumn in
+            guard let id = FileManagerColumnID(rawValue: tableColumn.identifier.rawValue) else { return nil }
+            return currentColumns.first(where: { $0.id == id }) ?? FileManagerColumn.definition(for: id)
+        }
+        persistCurrentListViewInfo()
+    }
+
+    private func persistCurrentListViewInfo() {
+        guard isViewLoaded,
+              !isApplyingListViewPreferences,
+              !FileManagerViewPreferences.isListViewInfoPersistenceDisabled,
+              let folderTypeID = currentListViewFolderTypeID
+        else {
+            return
+        }
+
+        let columnInfos = tableView.tableColumns.compactMap { tableColumn -> FileManagerViewPreferences.ListViewColumnInfo? in
+            guard let id = FileManagerColumnID(rawValue: tableColumn.identifier.rawValue) else { return nil }
+            return FileManagerViewPreferences.ListViewColumnInfo(id: id,
+                                                                 isVisible: true,
+                                                                 width: tableColumn.width)
+        }
+        let sortDescriptor = tableView.sortDescriptors.first
+        let info = FileManagerViewPreferences.ListViewInfo(
+            sortKey: sortDescriptor?.key ?? FileManagerColumnID.name.rawValue,
+            ascending: sortDescriptor?.ascending ?? true,
+            columns: columnInfos,
+        )
+
+        guard FileManagerViewPreferences.listViewInfo(forFolderTypeID: folderTypeID) != info else { return }
+        FileManagerViewPreferences.setListViewInfo(info, forFolderTypeID: folderTypeID)
+    }
+
+    private func resetTableColumnsForCurrentLocation() {
+        guard isViewLoaded else { return }
+        configureTableColumns(columnsForCurrentLocation(),
+                              folderTypeID: listViewFolderTypeIDForCurrentLocation(),
+                              preferSavedState: false)
+        sortCurrentItems(by: tableView.sortDescriptors)
+        tableView.reloadData()
+    }
+
+    private func updateHighlightedTableColumn(for sortKey: String?) {
+        guard let sortKey,
+              let columnID = FileManagerViewPreferences.highlightedColumnID(for: sortKey,
+                                                                            columns: currentColumns)
+        else {
+            tableView.highlightedTableColumn = nil
+            return
+        }
+
+        tableView.highlightedTableColumn = tableView.tableColumns.first { $0.identifier.rawValue == columnID.rawValue }
     }
 
     private func clearSuspendedState() {
@@ -2893,9 +3002,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                           ascending: ascending,
                                           selector: selector)
         tableView.sortDescriptors = [descriptor]
-        if let column = tableView.tableColumns.first(where: { $0.identifier.rawValue == columnIdentifier }) {
-            tableView.highlightedTableColumn = column
-        }
+        tableView.highlightedTableColumn = tableView.tableColumns.first { $0.identifier.rawValue == columnIdentifier }
+        persistCurrentListViewInfo()
         sortCurrentItems(by: tableView.sortDescriptors)
         tableView.reloadData()
     }
@@ -4374,7 +4482,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     // MARK: - Sorting (matches PanelSort.cpp)
 
     func tableView(_ tableView: NSTableView, sortDescriptorsDidChange _: [NSSortDescriptor]) {
+        guard !isApplyingListViewPreferences else { return }
         sortCurrentItems(by: tableView.sortDescriptors)
+        updateHighlightedTableColumn(for: tableView.sortDescriptors.first?.key)
+        persistCurrentListViewInfo()
         tableView.reloadData()
     }
 }

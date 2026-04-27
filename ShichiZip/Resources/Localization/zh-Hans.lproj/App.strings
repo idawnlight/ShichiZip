@@ -163,6 +163,7 @@
 "app.settings.defaultOpenerFailedDetail" = "有 %d 个类型无法注册。系统可能不识别这些类型，或操作被阻止。";
 "app.settings.excludeMacResourceForks" = "默认排除 macOS 资源分支文件";
 "app.settings.extraction" = "解压";
+"app.settings.fileListLayout" = "文件列表布局";
 "app.settings.finderLike" = "Finder 风格";
 "app.settings.finderLikeDescription" = "使用 macOS 风格的文件管理器快捷键，包括按 Return 重命名和 Command+方向键导航。";
 "app.settings.finderQuickActions" = "访达快速操作";
@@ -182,6 +183,11 @@
 "app.settings.quickActionsOpenErrorDetail" = "请打开系统设置，前往「扩展 > 访达」管理 %@ 的快速操作。";
 "app.settings.quitOnLastClose" = "关闭最后一个窗口时退出应用";
 "app.settings.recordShortcut" = "录制快捷键";
+"app.settings.reset" = "重置";
+"app.settings.resetFileListLayout" = "重置文件列表布局";
+"app.settings.resetFileListLayoutConfirmDetail" = "已保存的排序、列顺序和列宽将恢复为默认值。";
+"app.settings.resetFileListLayoutConfirmTitle" = "要重置文件列表布局吗？";
+"app.settings.resetFileListLayoutNote" = "清除文件管理器列表已保存的排序、列顺序和列宽。";
 "app.settings.scheme" = "方案：";
 "app.settings.shortcuts" = "快捷键";
 "app.settings.shortcutsCustomNote" = "修改单个快捷键后方案将切换为「自定义」。重复使用的快捷键会从原命令中清除。点击快捷键区域后按下任意组合键。按 Esc 取消录制。";
