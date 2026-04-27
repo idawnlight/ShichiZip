@@ -16,8 +16,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    private static let listDateColumnFont = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize,
-                                                                             weight: .regular)
     private static let addressBarIconSize: CGFloat = 14
     private static var directorySnapshotQueueLabel: String {
         "\(Bundle.main.bundleIdentifier ?? "ShichiZip").file-manager.directory-snapshot"
@@ -40,6 +38,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var tableView: NSTableView!
     private var scrollView: NSScrollView!
     private var statusLabel: NSTextField!
+    private var currentColumns: [FileManagerColumn] = []
     private var settingsObserver: NSObjectProtocol?
     private var viewPreferencesObserver: NSObjectProtocol?
     private var archiveChangeObserver: NSObjectProtocol?
@@ -84,6 +83,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         let archive: SZArchive
         let operationGate: FileManagerArchiveOperationGate
         let allEntries: [ArchiveItem]
+        let entryPropertyKeys: Set<String>
         let currentSubdir: String
         let temporaryDirectory: URL?
         let nestedIdentity: FileManagerNestedArchiveIdentity?
@@ -238,34 +238,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         tableView.rowSizeStyle = .custom
         tableView.rowHeight = listRowHeight
         tableView.intercellSpacing = NSSize(width: tableView.intercellSpacing.width, height: 0)
-
-        let nameCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
-        nameCol.title = SZL10n.string("column.name")
-        nameCol.width = 250
-        nameCol.minWidth = 100
-        nameCol.sortDescriptorPrototype = NSSortDescriptor(key: "name", ascending: true, selector: #selector(NSString.localizedStandardCompare(_:)))
-        tableView.addTableColumn(nameCol)
-
-        let sizeCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("size"))
-        sizeCol.title = SZL10n.string("column.size")
-        sizeCol.width = 80
-        sizeCol.minWidth = 50
-        sizeCol.sortDescriptorPrototype = NSSortDescriptor(key: "size", ascending: false)
-        tableView.addTableColumn(sizeCol)
-
-        let modifiedCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("modified"))
-        modifiedCol.title = SZL10n.string("column.modified")
-        modifiedCol.width = 140
-        modifiedCol.minWidth = 80
-        modifiedCol.sortDescriptorPrototype = NSSortDescriptor(key: "modified", ascending: false)
-        tableView.addTableColumn(modifiedCol)
-
-        let createdCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("created"))
-        createdCol.title = SZL10n.string("column.created")
-        createdCol.width = 140
-        createdCol.minWidth = 80
-        createdCol.sortDescriptorPrototype = NSSortDescriptor(key: "created", ascending: false)
-        tableView.addTableColumn(createdCol)
+        configureTableColumns(FileManagerColumn.fileSystemColumns)
 
         tableView.dataSource = self
         tableView.delegate = self
@@ -390,6 +363,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             queue: .main,
         ) { [weak self] _ in
             MainActor.assumeIsolated {
+                self?.refreshColumnTitles()
                 self?.tableView.menu = self?.buildContextMenu()
             }
         }
@@ -610,10 +584,75 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         updatePathField()
         currentDirectoryFingerprint = snapshot.fingerprint
         items = snapshot.items
+        updateTableColumnsForCurrentLocation()
         sortCurrentItems(by: tableView.sortDescriptors)
         tableView.reloadData()
         updateStatusBar()
         installDirectoryWatcher(for: snapshot.url)
+    }
+
+    private func columnsForCurrentLocation() -> [FileManagerColumn] {
+        if let level = archiveStack.last {
+            return FileManagerColumn.archiveColumns(availablePropertyKeys: level.entryPropertyKeys)
+        }
+        return FileManagerColumn.fileSystemColumns
+    }
+
+    private func updateTableColumnsForCurrentLocation() {
+        guard isViewLoaded else { return }
+        configureTableColumns(columnsForCurrentLocation())
+    }
+
+    private func configureTableColumns(_ columns: [FileManagerColumn]) {
+        let currentIDs = currentColumns.map(\.id)
+        let newIDs = columns.map(\.id)
+
+        if currentIDs == newIDs {
+            currentColumns = columns
+            for tableColumn in tableView.tableColumns {
+                guard let id = FileManagerColumnID(rawValue: tableColumn.identifier.rawValue),
+                      let column = columns.first(where: { $0.id == id })
+                else {
+                    continue
+                }
+                tableColumn.title = column.title
+                tableColumn.sortDescriptorPrototype = column.sortDescriptorPrototype
+            }
+            return
+        }
+
+        let sortDescriptors = normalizedSortDescriptors(tableView.sortDescriptors,
+                                                        for: columns)
+        for tableColumn in tableView.tableColumns {
+            tableView.removeTableColumn(tableColumn)
+        }
+
+        currentColumns = columns
+        for column in columns {
+            tableView.addTableColumn(column.makeTableColumn())
+        }
+        tableView.sortDescriptors = sortDescriptors
+    }
+
+    private func normalizedSortDescriptors(_ descriptors: [NSSortDescriptor],
+                                           for columns: [FileManagerColumn]) -> [NSSortDescriptor]
+    {
+        let availableKeys = Set(columns.map(\.sortKey))
+        if let descriptor = descriptors.first,
+           let key = descriptor.key,
+           availableKeys.contains(key) || (key == "type" && availableKeys.contains(FileManagerColumnID.name.rawValue))
+        {
+            return descriptors
+        }
+
+        guard let nameColumn = columns.first(where: { $0.id == .name }) else {
+            return []
+        }
+        return [nameColumn.sortDescriptorPrototype]
+    }
+
+    private func refreshColumnTitles() {
+        configureTableColumns(currentColumns.isEmpty ? columnsForCurrentLocation() : currentColumns)
     }
 
     private func clearSuspendedState() {
@@ -1539,6 +1578,83 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
+    private static func formattedAttributes(_ attributes: UInt32) -> String {
+        guard attributes != 0 else { return "" }
+
+        let windowsAttributeCharacters = Array("RHS8DAdNTsLCOIEVvX.PU.M......B")
+        var remaining = attributes
+        var result = ""
+        let posixAttributes: UInt32?
+
+        if remaining & 0x8000 != 0 {
+            posixAttributes = remaining >> 16
+            if remaining & 0xF000_0000 != 0 {
+                remaining &= 0x3FFF
+            }
+        } else {
+            posixAttributes = nil
+        }
+
+        for index in windowsAttributeCharacters.indices {
+            let flag = UInt32(1) << UInt32(index)
+            guard remaining & flag != 0 else { continue }
+
+            let character = windowsAttributeCharacters[index]
+            if character != "." {
+                result.append(character)
+                remaining &= ~flag
+            }
+        }
+
+        if remaining != 0 || result.isEmpty {
+            if !result.isEmpty {
+                result.append(" ")
+            }
+            result.append(String(format: "%08X", remaining))
+        }
+
+        if let posixAttributes {
+            if !result.isEmpty {
+                result.append(" ")
+            }
+            result.append(formattedPosixAttributes(posixAttributes))
+        }
+
+        return result
+    }
+
+    private static func formattedPosixAttributes(_ attributes: UInt32) -> String {
+        let typeCharacters = Array("0pc3d5b7-9lBsDEF")
+        var result = String(typeCharacters[Int((attributes >> 12) & 0xF)])
+
+        for shift in stride(from: 6, through: 0, by: -3) {
+            result.append(attributes & (UInt32(1) << UInt32(shift + 2)) != 0 ? "r" : "-")
+            result.append(attributes & (UInt32(1) << UInt32(shift + 1)) != 0 ? "w" : "-")
+            result.append(attributes & (UInt32(1) << UInt32(shift)) != 0 ? "x" : "-")
+        }
+
+        if attributes & 0x800 != 0 {
+            result.replaceSubrange(result.index(result.startIndex, offsetBy: 3) ... result.index(result.startIndex, offsetBy: 3),
+                                   with: attributes & (UInt32(1) << 6) != 0 ? "s" : "S")
+        }
+        if attributes & 0x400 != 0 {
+            result.replaceSubrange(result.index(result.startIndex, offsetBy: 6) ... result.index(result.startIndex, offsetBy: 6),
+                                   with: attributes & (UInt32(1) << 3) != 0 ? "s" : "S")
+        }
+        if attributes & 0x200 != 0 {
+            result.replaceSubrange(result.index(result.startIndex, offsetBy: 9) ... result.index(result.startIndex, offsetBy: 9),
+                                   with: attributes & (UInt32(1) << 0) != 0 ? "t" : "T")
+        }
+
+        let remaining = attributes & ~UInt32(0xFFFF)
+        if remaining != 0 {
+            result.append(" ")
+            result.append(String(format: "%08X", remaining))
+        }
+
+        return result
+    }
+
     private func recordDirectoryVisit(_ url: URL) {
         let standardizedURL = url.standardizedFileURL
         recentDirectories.removeAll { $0.standardizedFileURL == standardizedURL }
@@ -2207,6 +2323,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             archive: level.archive,
             operationGate: level.operationGate,
             allEntries: entries,
+            entryPropertyKeys: level.entryPropertyKeys,
             currentSubdir: subdir ?? level.currentSubdir,
             temporaryDirectory: level.temporaryDirectory,
             nestedIdentity: level.nestedIdentity,
@@ -2285,6 +2402,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             } else if isViewLoaded, let currentLevel = archiveStack.last {
                 navigateArchiveSubdir(currentLevel.currentSubdir)
             }
+            updateTableColumnsForCurrentLocation()
 
             return true
         } catch {
@@ -2304,6 +2422,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             }
         }
         archiveDisplayItems.removeAll()
+        updateTableColumnsForCurrentLocation()
         return true
     }
 
@@ -2937,6 +3056,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                     : typeResult
             case "size":
                 result = a.size == b.size ? .orderedSame : (a.size < b.size ? .orderedAscending : .orderedDescending)
+            case "packedSize":
+                result = .orderedSame
             case "modified":
                 let ad = a.modifiedDate ?? Date.distantPast
                 let bd = b.modifiedDate ?? Date.distantPast
@@ -2945,6 +3066,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 let ad = a.createdDate ?? Date.distantPast
                 let bd = b.createdDate ?? Date.distantPast
                 result = ad.compare(bd)
+            case "accessed", "position", "block", "anti":
+                result = .orderedSame
             default:
                 result = a.name.localizedStandardCompare(b.name)
             }
@@ -2980,6 +3103,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                     : typeResult
             case "size":
                 result = a.size == b.size ? .orderedSame : (a.size < b.size ? .orderedAscending : .orderedDescending)
+            case "packedSize":
+                result = a.packedSize == b.packedSize ? .orderedSame : (a.packedSize < b.packedSize ? .orderedAscending : .orderedDescending)
             case "modified":
                 let ad = a.modifiedDate ?? Date.distantPast
                 let bd = b.modifiedDate ?? Date.distantPast
@@ -2988,6 +3113,26 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 let ad = a.createdDate ?? Date.distantPast
                 let bd = b.createdDate ?? Date.distantPast
                 result = ad.compare(bd)
+            case "accessed":
+                let ad = a.accessedDate ?? Date.distantPast
+                let bd = b.accessedDate ?? Date.distantPast
+                result = ad.compare(bd)
+            case "attributes":
+                result = a.attributes == b.attributes ? .orderedSame : (a.attributes < b.attributes ? .orderedAscending : .orderedDescending)
+            case "encrypted":
+                result = a.isEncrypted == b.isEncrypted ? .orderedSame : (!a.isEncrypted && b.isEncrypted ? .orderedAscending : .orderedDescending)
+            case "anti":
+                result = a.isAnti == b.isAnti ? .orderedSame : (!a.isAnti && b.isAnti ? .orderedAscending : .orderedDescending)
+            case "method":
+                result = a.method.localizedStandardCompare(b.method)
+            case "crc":
+                result = a.crc == b.crc ? .orderedSame : (a.crc < b.crc ? .orderedAscending : .orderedDescending)
+            case "block":
+                result = a.block == b.block ? .orderedSame : (a.block < b.block ? .orderedAscending : .orderedDescending)
+            case "position":
+                result = a.position == b.position ? .orderedSame : (a.position < b.position ? .orderedAscending : .orderedDescending)
+            case "comment":
+                result = a.comment.localizedStandardCompare(b.comment)
             default:
                 result = a.name.localizedStandardCompare(b.name)
             }
@@ -3314,6 +3459,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         let itemSize: String
         let itemModified: String
         let itemCreated: String
+        let itemAccessed: String
+        let itemPackedSize: String
+        let itemAttributes: String
+        let itemEncrypted: String
+        let itemAnti: String
+        let itemMethod: String
+        let itemCRC: String
+        let itemBlock: String
+        let itemPosition: String
+        let itemComment: String
         let itemIsDir: Bool
         let itemIconPath: String
 
@@ -3323,6 +3478,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             itemSize = ""
             itemModified = ""
             itemCreated = ""
+            itemAccessed = ""
+            itemPackedSize = ""
+            itemAttributes = ""
+            itemEncrypted = ""
+            itemAnti = ""
+            itemMethod = ""
+            itemCRC = ""
+            itemBlock = ""
+            itemPosition = ""
+            itemComment = ""
             itemIsDir = true
             itemIconPath = ""
 
@@ -3331,6 +3496,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             itemSize = ai.isDirectory ? "--" : ByteCountFormatter.string(fromByteCount: Int64(ai.size), countStyle: .file)
             itemModified = ai.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
             itemCreated = ai.createdDate.map { dateFormatter.string(from: $0) } ?? ""
+            itemAccessed = ai.accessedDate.map { dateFormatter.string(from: $0) } ?? ""
+            itemPackedSize = ai.isDirectory ? "" : ByteCountFormatter.string(fromByteCount: Int64(ai.packedSize), countStyle: .file)
+            itemAttributes = Self.formattedAttributes(ai.attributes)
+            itemEncrypted = ai.isEncrypted ? "+" : "-"
+            itemAnti = ai.isAnti ? "+" : "-"
+            itemMethod = ai.method
+            itemCRC = ai.crc == 0 ? "" : String(format: "%08X", ai.crc)
+            itemBlock = String(ai.block)
+            itemPosition = String(ai.position)
+            itemComment = ai.comment
             itemIsDir = ai.isDirectory
             itemIconPath = ai.name
 
@@ -3339,6 +3514,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             itemSize = item.formattedSize
             itemModified = item.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
             itemCreated = item.createdDate.map { dateFormatter.string(from: $0) } ?? ""
+            itemAccessed = ""
+            itemPackedSize = ""
+            itemAttributes = ""
+            itemEncrypted = ""
+            itemAnti = ""
+            itemMethod = ""
+            itemCRC = ""
+            itemBlock = ""
+            itemPosition = ""
+            itemComment = ""
             itemIsDir = item.isDirectory
             itemIconPath = item.url.path
         }
@@ -3384,6 +3569,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             }
         }
 
+        let column = FileManagerColumn.definition(for: FileManagerColumnID(rawValue: columnID) ?? .name)
+        cell.textField?.alignment = column.alignment
+        cell.textField?.font = column.font
+        cell.textField?.lineBreakMode = columnID == "name" ? .byTruncatingMiddle : .byTruncatingTail
+
         switch columnID {
         case "name":
             cell.textField?.stringValue = itemName
@@ -3402,15 +3592,42 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         case "size":
             cell.textField?.stringValue = itemSize
-            cell.textField?.alignment = .right
+
+        case "packedSize":
+            cell.textField?.stringValue = itemPackedSize
 
         case "modified":
             cell.textField?.stringValue = itemModified
-            cell.textField?.font = Self.listDateColumnFont
 
         case "created":
             cell.textField?.stringValue = itemCreated
-            cell.textField?.font = Self.listDateColumnFont
+
+        case "accessed":
+            cell.textField?.stringValue = itemAccessed
+
+        case "attributes":
+            cell.textField?.stringValue = itemAttributes
+
+        case "encrypted":
+            cell.textField?.stringValue = itemEncrypted
+
+        case "anti":
+            cell.textField?.stringValue = itemAnti
+
+        case "method":
+            cell.textField?.stringValue = itemMethod
+
+        case "crc":
+            cell.textField?.stringValue = itemCRC
+
+        case "block":
+            cell.textField?.stringValue = itemBlock
+
+        case "position":
+            cell.textField?.stringValue = itemPosition
+
+        case "comment":
+            cell.textField?.stringValue = itemComment
 
         default:
             break
@@ -4260,6 +4477,7 @@ extension FileManagerPaneController {
             archive: prepared.archive,
             operationGate: FileManagerArchiveOperationGate(),
             allEntries: prepared.entries,
+            entryPropertyKeys: Set(prepared.archive.entryPropertyKeys),
             currentSubdir: "",
             temporaryDirectory: prepared.temporaryDirectory,
             nestedIdentity: prepared.nestedWriteBackInfo?.identity,
@@ -4281,6 +4499,7 @@ extension FileManagerPaneController {
             archive: level.archive,
             operationGate: level.operationGate,
             allEntries: level.allEntries,
+            entryPropertyKeys: level.entryPropertyKeys,
             currentSubdir: subdir,
             temporaryDirectory: level.temporaryDirectory,
             nestedIdentity: level.nestedIdentity,
@@ -4329,13 +4548,15 @@ extension FileManagerPaneController {
                 displayItems.append(ArchiveItem(
                     index: -1, path: childPath, pathParts: childParts, name: childName,
                     size: 0, packedSize: 0, modifiedDate: entry.modifiedDate,
-                    createdDate: nil, crc: 0, isDirectory: true,
-                    isEncrypted: false, method: "", attributes: 0, comment: "",
+                    createdDate: nil, accessedDate: nil, crc: 0, isDirectory: true,
+                    isEncrypted: false, isAnti: false, method: "", attributes: 0, position: 0, block: 0,
+                    comment: "",
                 ))
             }
         }
 
         archiveDisplayItems = displayItems
+        updateTableColumnsForCurrentLocation()
         sortCurrentItems(by: tableView.sortDescriptors)
 
         // Update path field to show full path including archive

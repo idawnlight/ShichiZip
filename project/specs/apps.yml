@@ -13,6 +13,7 @@ targets:
           - "**/*.entitlements"
           - "QuickActions/Extensions/**"
     dependencies:
+      - sdk: AppIntents.framework
       - target: ShichiZipRevealInFileManagerAction
         embed: true
       - target: ShichiZipOpenInShichiZipAction
@@ -148,6 +149,7 @@ targets:
     postBuildScripts: *generate_build_metadata
     sources: *app_sources
     dependencies:
+      - sdk: AppIntents.framework
       - target: ShichiZipZSRevealInFileManagerAction
         embed: true
       - target: ShichiZipZSOpenInShichiZipAction

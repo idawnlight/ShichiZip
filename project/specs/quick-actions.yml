@@ -17,6 +17,8 @@ targets:
       - path: ../generated/quick-actions/ShichiZipRevealInFileManagerAction
         buildPhase: resources
         optional: true
+    dependencies: &quick_action_dependencies
+      - sdk: AppIntents.framework
     settings:
       base:
         <<: &quick_action_mainline_settings
@@ -70,6 +72,7 @@ targets:
       - path: ../generated/quick-actions/ShichiZipOpenInShichiZipAction
         buildPhase: resources
         optional: true
+    dependencies: *quick_action_dependencies
     settings:
       base:
         <<: *quick_action_mainline_settings
@@ -101,6 +104,7 @@ targets:
       - path: ../generated/quick-actions/ShichiZipSmartQuickExtractAction
         buildPhase: resources
         optional: true
+    dependencies: *quick_action_dependencies
     settings:
       base:
         <<: *quick_action_mainline_settings
@@ -199,6 +203,7 @@ targets:
       - path: ../generated/quick-actions/ShichiZipZSRevealInFileManagerAction
         buildPhase: resources
         optional: true
+    dependencies: *quick_action_dependencies
     settings:
       base:
         <<: &quick_action_zs_settings
@@ -227,6 +232,7 @@ targets:
       - path: ../generated/quick-actions/ShichiZipZSOpenInShichiZipAction
         buildPhase: resources
         optional: true
+    dependencies: *quick_action_dependencies
     settings:
       base:
         <<: *quick_action_zs_settings
@@ -248,6 +254,7 @@ targets:
       - path: ../generated/quick-actions/ShichiZipZSSmartQuickExtractAction
         buildPhase: resources
         optional: true
+    dependencies: *quick_action_dependencies
     settings:
       base:
         <<: *quick_action_zs_settings

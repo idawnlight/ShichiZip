@@ -190,11 +190,15 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 @property (nonatomic) uint64_t packedSize;
 @property (nonatomic, strong, nullable) NSDate* modifiedDate;
 @property (nonatomic, strong, nullable) NSDate* createdDate;
+@property (nonatomic, strong, nullable) NSDate* accessedDate;
 @property (nonatomic) uint32_t crc;
 @property (nonatomic) BOOL isDirectory;
 @property (nonatomic) BOOL isEncrypted;
+@property (nonatomic) BOOL isAnti;
 @property (nonatomic, copy, nullable) NSString* method;
 @property (nonatomic) uint32_t attributes;
+@property (nonatomic) uint64_t position;
+@property (nonatomic) uint64_t block;
 @property (nonatomic, copy, nullable) NSString* comment;
 @property (nonatomic) NSUInteger index; // internal archive index
 @end
@@ -286,6 +290,9 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 
 /// Get whether the detected archive format supports in-place updates.
 @property (nonatomic, readonly) BOOL canWrite;
+
+/// Entry property keys exposed by the archive handler, mapped to ShichiZip column identifiers.
+@property (nonatomic, readonly) NSArray<NSString*>* entryPropertyKeys;
 
 /// Get the physical size of the archive file in bytes when available
 @property (nonatomic, readonly) uint64_t archivePhysicalSize;

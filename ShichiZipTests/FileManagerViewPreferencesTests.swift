@@ -27,6 +27,65 @@ final class FileManagerViewPreferencesTests: XCTestCase {
     }
 }
 
+final class FileManagerColumnTests: XCTestCase {
+    func testFileSystemColumnsRemainFixed() {
+        XCTAssertEqual(FileManagerColumn.fileSystemColumns.map(\.id), [.name, .size, .modified, .created])
+    }
+
+    func testArchiveColumnsFollowSupportedPropertyOrder() {
+        let columns = FileManagerColumn.archiveColumns(availablePropertyKeys: [
+            "crc",
+            "method",
+            "size",
+            "unknown",
+            "name",
+            "encrypted",
+            "accessed",
+            "block",
+            "position",
+            "anti",
+            "size",
+            "packedSize",
+        ])
+
+        XCTAssertEqual(columns.map(\.id), [.name, .size, .packedSize, .accessed, .encrypted, .method, .crc, .block, .position, .anti])
+    }
+
+    func testArchiveColumnsAlwaysIncludeName() {
+        XCTAssertEqual(FileManagerColumn.archiveColumns(availablePropertyKeys: []).map(\.id), [.name])
+    }
+
+    func testColumnAlignmentFollowsUpstreamPropertyTypes() {
+        XCTAssertEqual(FileManagerColumn.definition(for: .method).alignment, .left)
+        XCTAssertEqual(FileManagerColumn.definition(for: .comment).alignment, .left)
+        XCTAssertEqual(FileManagerColumn.definition(for: .modified).alignment, .left)
+        XCTAssertEqual(FileManagerColumn.definition(for: .crc).alignment, .right)
+        XCTAssertEqual(FileManagerColumn.definition(for: .attributes).alignment, .right)
+        XCTAssertEqual(FileManagerColumn.definition(for: .encrypted).alignment, .right)
+        XCTAssertEqual(FileManagerColumn.definition(for: .anti).alignment, .right)
+    }
+
+    func testColumnTextStylesSeparateNumbersAndFixedWidthFields() {
+        XCTAssertEqual(FileManagerColumn.definition(for: .method).textStyle, .standard)
+        XCTAssertEqual(FileManagerColumn.definition(for: .size).textStyle, .tabularNumbers)
+        XCTAssertEqual(FileManagerColumn.definition(for: .modified).textStyle, .tabularNumbers)
+        XCTAssertEqual(FileManagerColumn.definition(for: .crc).textStyle, .fixedWidth)
+        XCTAssertEqual(FileManagerColumn.definition(for: .attributes).textStyle, .fixedWidth)
+    }
+
+    func testArchiveExposesEntryPropertyKeysFromHandler() throws {
+        let archiveURL = try makeArchive(named: "entry-property-keys")
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        let keys = Set(archive.entryPropertyKeys)
+        XCTAssertTrue(keys.contains("name"))
+        XCTAssertTrue(keys.contains("size"))
+        XCTAssertTrue(keys.contains("modified"))
+    }
+}
+
 final class FileManagerDirectoryListingTests: XCTestCase {
     func testEntriesPreservePresentedSymlinkDirectoryPath() throws {
         let tempRoot = try makeTemporaryDirectory(named: "directory-listing-symlink")

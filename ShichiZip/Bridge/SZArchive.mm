@@ -1065,6 +1065,42 @@ static UInt32 SZCompressionEstimateAutoThreads(SZCompressionSettings* settings,
 }
 @end
 
+static NSString* SZEntryPropertyKeyForPropID(PROPID propID) {
+    switch (propID) {
+    case kpidPath:
+    case kpidName:
+        return @"name";
+    case kpidSize:
+        return @"size";
+    case kpidPackSize:
+        return @"packedSize";
+    case kpidMTime:
+        return @"modified";
+    case kpidCTime:
+        return @"created";
+    case kpidATime:
+        return @"accessed";
+    case kpidAttrib:
+        return @"attributes";
+    case kpidEncrypted:
+        return @"encrypted";
+    case kpidIsAnti:
+        return @"anti";
+    case kpidMethod:
+        return @"method";
+    case kpidCRC:
+        return @"crc";
+    case kpidBlock:
+        return @"block";
+    case kpidPosition:
+        return @"position";
+    case kpidComment:
+        return @"comment";
+    default:
+        return nil;
+    }
+}
+
 static BOOL SZOpenErrorFlagsIndicateWrongPassword(UInt32 errorFlags) {
     return (errorFlags & kpv_ErrorFlags_EncryptedHeadersError) != 0;
 }
@@ -1695,6 +1731,45 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     return c->Formats[arc.FormatIndex].UpdateEnabled;
 }
 
+- (NSArray<NSString*>*)entryPropertyKeys {
+    SZArchiveOperationGuard operationGuard(self);
+
+    if (!_isOpen)
+        return @[];
+    IInArchive* archive = _arcLink->GetArchive();
+    if (!archive)
+        return @[];
+
+    NSMutableArray<NSString*>* keys = [NSMutableArray array];
+    NSMutableSet<NSString*>* seen = [NSMutableSet set];
+    void (^addKey)(NSString*) = ^(NSString* key) {
+        if (key.length == 0 || [seen containsObject:key])
+            return;
+        [seen addObject:key];
+        [keys addObject:key];
+    };
+
+    addKey(@"name");
+
+    UInt32 numProperties = 0;
+    if (archive->GetNumberOfProperties(&numProperties) != S_OK)
+        return keys;
+
+    for (UInt32 index = 0; index < numProperties; index++) {
+        BSTR name = NULL;
+        PROPID propID = kpidNoProperty;
+        VARTYPE varType = VT_EMPTY;
+        const HRESULT result = archive->GetPropertyInfo(index, &name, &propID, &varType);
+        if (name)
+            ::SysFreeString(name);
+        if (result != S_OK)
+            continue;
+        addKey(SZEntryPropertyKeyForPropID(propID));
+    }
+
+    return keys;
+}
+
 - (uint64_t)archivePhysicalSize {
     SZArchiveOperationGuard operationGuard(self);
 
@@ -1804,10 +1879,14 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
         e.crc = (uint32_t)ItemU64(archive, i, kpidCRC);
         e.isDirectory = hasReadItem ? item.IsDir : ItemBool(archive, i, kpidIsDir);
         e.isEncrypted = ItemBool(archive, i, kpidEncrypted);
+        e.isAnti = ItemBool(archive, i, kpidIsAnti);
         e.method = ItemStr(archive, i, kpidMethod);
         e.attributes = (uint32_t)ItemU64(archive, i, kpidAttrib);
+        e.position = ItemU64(archive, i, kpidPosition);
+        e.block = ItemU64(archive, i, kpidBlock);
         e.modifiedDate = ItemDate(archive, i, kpidMTime);
         e.createdDate = ItemDate(archive, i, kpidCTime);
+        e.accessedDate = ItemDate(archive, i, kpidATime);
         e.comment = ItemStr(archive, i, kpidComment);
         [arr addObject:e];
     }

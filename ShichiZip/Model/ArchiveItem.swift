@@ -10,11 +10,15 @@ struct ArchiveItem {
     let packedSize: UInt64
     let modifiedDate: Date?
     let createdDate: Date?
+    let accessedDate: Date?
     let crc: UInt32
     let isDirectory: Bool
     let isEncrypted: Bool
+    let isAnti: Bool
     let method: String
     let attributes: UInt32
+    let position: UInt64
+    let block: UInt64
     let comment: String
 
     private static func derivePathParts(from path: String) -> [String] {
@@ -211,25 +215,33 @@ struct ArchiveItem {
         packedSize = entry.packedSize
         modifiedDate = entry.modifiedDate
         createdDate = entry.createdDate
+        accessedDate = entry.accessedDate
         crc = entry.crc
         isDirectory = entry.isDirectory
         isEncrypted = entry.isEncrypted
+        isAnti = entry.isAnti
         method = entry.method ?? ""
         attributes = entry.attributes
+        position = entry.position
+        block = entry.block
         comment = entry.comment ?? ""
     }
 
     init(index: Int, path: String, pathParts: [String] = [], name: String, size: UInt64, packedSize: UInt64,
-         modifiedDate: Date?, createdDate: Date?, crc: UInt32, isDirectory: Bool,
-         isEncrypted: Bool, method: String, attributes: UInt32, comment: String)
+         modifiedDate: Date?, createdDate: Date?, accessedDate: Date?, crc: UInt32, isDirectory: Bool,
+         isEncrypted: Bool, isAnti: Bool, method: String, attributes: UInt32, position: UInt64, block: UInt64,
+         comment: String)
     {
         self.index = index; self.path = path
         self.pathParts = pathParts.isEmpty ? Self.derivePathParts(from: path) : pathParts
         self.name = name
         self.size = size; self.packedSize = packedSize
         self.modifiedDate = modifiedDate; self.createdDate = createdDate
+        self.accessedDate = accessedDate
         self.crc = crc; self.isDirectory = isDirectory
-        self.isEncrypted = isEncrypted; self.method = method
-        self.attributes = attributes; self.comment = comment
+        self.isEncrypted = isEncrypted; self.isAnti = isAnti
+        self.method = method; self.attributes = attributes
+        self.position = position; self.block = block
+        self.comment = comment
     }
 }
