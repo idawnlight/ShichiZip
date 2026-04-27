@@ -3574,9 +3574,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         cell.textField?.font = column.font
         cell.textField?.lineBreakMode = columnID == "name" ? .byTruncatingMiddle : .byTruncatingTail
 
+        func setDisplayText(_ text: String) {
+            cell.textField?.stringValue = column.normalizedDisplayString(text)
+        }
+
         switch columnID {
         case "name":
-            cell.textField?.stringValue = itemName
+            setDisplayText(itemName)
             cell.imageView?.image = iconImage(for: paneItem, isDirectory: itemIsDir, iconPath: itemIconPath)
             switch paneItem {
             case .parent:
@@ -3591,43 +3595,43 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             cell.imageView?.image?.size = iconSize
 
         case "size":
-            cell.textField?.stringValue = itemSize
+            setDisplayText(itemSize)
 
         case "packedSize":
-            cell.textField?.stringValue = itemPackedSize
+            setDisplayText(itemPackedSize)
 
         case "modified":
-            cell.textField?.stringValue = itemModified
+            setDisplayText(itemModified)
 
         case "created":
-            cell.textField?.stringValue = itemCreated
+            setDisplayText(itemCreated)
 
         case "accessed":
-            cell.textField?.stringValue = itemAccessed
+            setDisplayText(itemAccessed)
 
         case "attributes":
-            cell.textField?.stringValue = itemAttributes
+            setDisplayText(itemAttributes)
 
         case "encrypted":
-            cell.textField?.stringValue = itemEncrypted
+            setDisplayText(itemEncrypted)
 
         case "anti":
-            cell.textField?.stringValue = itemAnti
+            setDisplayText(itemAnti)
 
         case "method":
-            cell.textField?.stringValue = itemMethod
+            setDisplayText(itemMethod)
 
         case "crc":
-            cell.textField?.stringValue = itemCRC
+            setDisplayText(itemCRC)
 
         case "block":
-            cell.textField?.stringValue = itemBlock
+            setDisplayText(itemBlock)
 
         case "position":
-            cell.textField?.stringValue = itemPosition
+            setDisplayText(itemPosition)
 
         case "comment":
-            cell.textField?.stringValue = itemComment
+            setDisplayText(itemComment)
 
         default:
             break

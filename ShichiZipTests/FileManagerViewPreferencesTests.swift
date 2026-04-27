@@ -73,6 +73,14 @@ final class FileManagerColumnTests: XCTestCase {
         XCTAssertEqual(FileManagerColumn.definition(for: .attributes).textStyle, .fixedWidth)
     }
 
+    func testColumnDisplayStringsFlattenLineBreaks() {
+        let column = FileManagerColumn.definition(for: .comment)
+
+        XCTAssertEqual(column.normalizedDisplayString("alpha\nbeta\rgamma\r\ndelta\u{2028}epsilon"),
+                       "alpha beta gamma delta epsilon")
+        XCTAssertEqual(column.normalizedDisplayString("plain text"), "plain text")
+    }
+
     func testArchiveExposesEntryPropertyKeysFromHandler() throws {
         let archiveURL = try makeArchive(named: "entry-property-keys")
         let archive = SZArchive()

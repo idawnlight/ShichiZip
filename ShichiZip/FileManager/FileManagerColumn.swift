@@ -92,6 +92,10 @@ struct FileManagerColumn: Equatable {
         return tableColumn
     }
 
+    func normalizedDisplayString(_ string: String) -> String {
+        string.replacingLineBreakSequencesWithSpaces()
+    }
+
     static let fileSystemColumns: [FileManagerColumn] = [
         definition(for: .name),
         definition(for: .size),
@@ -242,5 +246,31 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: #selector(NSString.localizedStandardCompare(_:)))
         }
+    }
+}
+
+private extension String {
+    func replacingLineBreakSequencesWithSpaces() -> String {
+        guard unicodeScalars.contains(where: { CharacterSet.newlines.contains($0) }) else {
+            return self
+        }
+
+        var result = String()
+        result.reserveCapacity(count)
+        var previousWasLineBreak = false
+
+        for scalar in unicodeScalars {
+            if CharacterSet.newlines.contains(scalar) {
+                if !previousWasLineBreak {
+                    result.append(" ")
+                }
+                previousWasLineBreak = true
+            } else {
+                result.unicodeScalars.append(scalar)
+                previousWasLineBreak = false
+            }
+        }
+
+        return result
     }
 }
