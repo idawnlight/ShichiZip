@@ -105,6 +105,60 @@ extension FileManagerViewPreferences {
         return resolvedColumns
     }
 
+    static func listViewColumnInfosPreservingHiddenColumns(availableColumns: [FileManagerColumn],
+                                                           visibleColumns: [ListViewColumnInfo],
+                                                           previousInfo: ListViewInfo?) -> [ListViewColumnInfo]
+    {
+        let availableColumnsByID = Dictionary(uniqueKeysWithValues: availableColumns.map { ($0.id, $0) })
+        var visibleColumnsByID: [FileManagerColumnID: ListViewColumnInfo] = [:]
+        var orderedIDs: [FileManagerColumnID] = []
+        var seenColumnIDs = Set<FileManagerColumnID>()
+
+        for visibleColumn in visibleColumns where availableColumnsByID[visibleColumn.id] != nil {
+            guard seenColumnIDs.insert(visibleColumn.id).inserted else { continue }
+            orderedIDs.append(visibleColumn.id)
+            visibleColumnsByID[visibleColumn.id] = visibleColumn
+        }
+
+        let previousColumnInfos = previousInfo?.columns ?? []
+        var previousOrderedIDs: [FileManagerColumnID] = []
+        var previousColumnInfosByID: [FileManagerColumnID: ListViewColumnInfo] = [:]
+        seenColumnIDs.removeAll()
+        for previousColumn in previousColumnInfos where availableColumnsByID[previousColumn.id] != nil {
+            guard seenColumnIDs.insert(previousColumn.id).inserted else { continue }
+            previousOrderedIDs.append(previousColumn.id)
+            previousColumnInfosByID[previousColumn.id] = previousColumn
+        }
+
+        let visibleIDs = Set(visibleColumnsByID.keys)
+        for hiddenID in previousOrderedIDs where !visibleIDs.contains(hiddenID) && !orderedIDs.contains(hiddenID) {
+            let predecessors = previousOrderedIDs.prefix { $0 != hiddenID }
+            let insertionIndex = predecessors
+                .compactMap { orderedIDs.firstIndex(of: $0) }
+                .max()
+                .map { $0 + 1 } ?? 0
+            orderedIDs.insert(hiddenID, at: min(insertionIndex, orderedIDs.count))
+        }
+
+        for column in availableColumns where !orderedIDs.contains(column.id) {
+            orderedIDs.append(column.id)
+        }
+
+        return orderedIDs.compactMap { columnID in
+            guard let column = availableColumnsByID[columnID] else { return nil }
+            if let visibleColumn = visibleColumnsByID[columnID] {
+                return ListViewColumnInfo(id: columnID,
+                                          isVisible: true,
+                                          width: normalizedColumnWidth(visibleColumn.width, for: column))
+            }
+
+            return ListViewColumnInfo(id: columnID,
+                                      isVisible: columnID == .name,
+                                      width: normalizedColumnWidth(previousColumnInfosByID[columnID]?.width ?? column.width,
+                                                                   for: column))
+        }
+    }
+
     static func resolvedListViewSortDescriptor(using info: ListViewInfo?,
                                                columns: [FileManagerColumn]) -> NSSortDescriptor?
     {
@@ -194,11 +248,10 @@ private extension StoredListViewInfo {
 
 private extension FileManagerViewPreferences.ListViewInfo {
     init?(storedInfo: StoredListViewInfo) {
-        let columns = storedInfo.columns.compactMap { storedColumn -> FileManagerViewPreferences.ListViewColumnInfo? in
-            guard let id = FileManagerColumnID(rawValue: storedColumn.id) else { return nil }
-            return FileManagerViewPreferences.ListViewColumnInfo(id: id,
-                                                                 isVisible: storedColumn.isVisible,
-                                                                 width: CGFloat(storedColumn.width))
+        let columns = storedInfo.columns.map { storedColumn in
+            FileManagerViewPreferences.ListViewColumnInfo(id: FileManagerColumnID(rawValue: storedColumn.id),
+                                                          isVisible: storedColumn.isVisible,
+                                                          width: CGFloat(storedColumn.width))
         }
 
         self.init(sortKey: storedInfo.sortKey,

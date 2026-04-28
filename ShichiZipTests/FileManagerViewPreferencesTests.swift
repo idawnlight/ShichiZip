@@ -41,6 +41,27 @@ final class FileManagerViewPreferencesTests: XCTestCase {
                        archiveInfo)
     }
 
+    func testListViewInfoRoundTripsDynamicColumnIDs() throws {
+        let defaults = try makeIsolatedDefaults()
+        let dynamicColumnID = FileManagerColumnID(rawValue: "hostOS")
+        let info = FileManagerViewPreferences.ListViewInfo(
+            sortKey: dynamicColumnID.rawValue,
+            ascending: true,
+            columns: [
+                FileManagerViewPreferences.ListViewColumnInfo(id: .name, isVisible: true, width: 280),
+                FileManagerViewPreferences.ListViewColumnInfo(id: dynamicColumnID, isVisible: false, width: 120),
+            ],
+        )
+
+        FileManagerViewPreferences.setListViewInfo(info,
+                                                   forFolderTypeID: FileManagerViewPreferences.archiveListViewFolderTypeID(formatName: "zip"),
+                                                   defaults: defaults)
+
+        XCTAssertEqual(FileManagerViewPreferences.listViewInfo(forFolderTypeID: FileManagerViewPreferences.archiveListViewFolderTypeID(formatName: "zip"),
+                                                               defaults: defaults),
+                       info)
+    }
+
     func testRemoveAllListViewInfosKeepsUnrelatedDefaults() throws {
         let defaults = try makeIsolatedDefaults()
         let info = FileManagerViewPreferences.ListViewInfo(
@@ -120,6 +141,66 @@ final class FileManagerViewPreferencesTests: XCTestCase {
         XCTAssertEqual(resolvedColumns.first(where: { $0.column.id == .size })?.width, 50)
     }
 
+    func testResolvedListViewColumnsPreserveHiddenDynamicColumns() {
+        let hostOSColumnID = FileManagerColumnID(rawValue: "hostOS")
+        let checksumColumnID = FileManagerColumnID(rawValue: "checksum")
+        let columns = FileManagerColumn.archiveColumns(entryProperties: [
+            FileManagerArchiveEntryProperty(id: hostOSColumnID,
+                                            titleKey: "column.hostOS",
+                                            title: "Host OS",
+                                            valueType: 8),
+            FileManagerArchiveEntryProperty(id: .size,
+                                            titleKey: "column.size",
+                                            title: "Size",
+                                            valueType: 21),
+            FileManagerArchiveEntryProperty(id: checksumColumnID,
+                                            titleKey: "column.checksum",
+                                            title: "Checksum",
+                                            valueType: 19),
+        ])
+        let info = FileManagerViewPreferences.ListViewInfo(
+            sortKey: "name",
+            ascending: true,
+            columns: [
+                FileManagerViewPreferences.ListViewColumnInfo(id: hostOSColumnID, isVisible: false, width: 180),
+                FileManagerViewPreferences.ListViewColumnInfo(id: .name, isVisible: true, width: 320),
+            ],
+        )
+
+        let resolvedColumns = FileManagerViewPreferences.resolvedListViewColumns(columns, using: info)
+
+        XCTAssertEqual(resolvedColumns.map(\.column.id), [.name, .size, checksumColumnID])
+    }
+
+    func testListViewColumnInfosPreserveHiddenPositionAndWidth() {
+        let columns = FileManagerColumn.fileSystemColumns
+        let previousInfo = FileManagerViewPreferences.ListViewInfo(
+            sortKey: "name",
+            ascending: true,
+            columns: [
+                FileManagerViewPreferences.ListViewColumnInfo(id: .name, isVisible: true, width: 320),
+                FileManagerViewPreferences.ListViewColumnInfo(id: .size, isVisible: true, width: 128),
+                FileManagerViewPreferences.ListViewColumnInfo(id: .modified, isVisible: true, width: 172),
+                FileManagerViewPreferences.ListViewColumnInfo(id: .created, isVisible: true, width: 156),
+            ],
+        )
+        let visibleColumnsAfterHidingSize = [
+            FileManagerViewPreferences.ListViewColumnInfo(id: .name, isVisible: true, width: 320),
+            FileManagerViewPreferences.ListViewColumnInfo(id: .modified, isVisible: true, width: 172),
+            FileManagerViewPreferences.ListViewColumnInfo(id: .created, isVisible: true, width: 156),
+        ]
+
+        let savedColumns = FileManagerViewPreferences.listViewColumnInfosPreservingHiddenColumns(
+            availableColumns: columns,
+            visibleColumns: visibleColumnsAfterHidingSize,
+            previousInfo: previousInfo,
+        )
+
+        XCTAssertEqual(savedColumns.map(\.id), [.name, .size, .modified, .created])
+        XCTAssertEqual(savedColumns.map(\.isVisible), [true, false, true, true])
+        XCTAssertEqual(savedColumns.first(where: { $0.id == .size })?.width, 128)
+    }
+
     func testResolvedListViewSortDescriptorRestoresAvailableSortKey() {
         let columns = FileManagerColumn.archiveColumns(availablePropertyKeys: ["method", "size"])
         let info = FileManagerViewPreferences.ListViewInfo(sortKey: "method",
@@ -191,7 +272,7 @@ final class FileManagerColumnTests: XCTestCase {
         XCTAssertEqual(FileManagerColumn.fileSystemColumns.map(\.id), [.name, .size, .modified, .created])
     }
 
-    func testArchiveColumnsFollowSupportedPropertyOrder() {
+    func testArchiveColumnsFollowHandlerPropertyOrder() {
         let columns = FileManagerColumn.archiveColumns(availablePropertyKeys: [
             "crc",
             "method",
@@ -207,11 +288,43 @@ final class FileManagerColumnTests: XCTestCase {
             "packedSize",
         ])
 
-        XCTAssertEqual(columns.map(\.id), [.name, .size, .packedSize, .accessed, .encrypted, .method, .crc, .block, .position, .anti])
+        XCTAssertEqual(columns.map(\.id), [
+            .name,
+            .crc,
+            .method,
+            .size,
+            FileManagerColumnID(rawValue: "unknown"),
+            .encrypted,
+            .accessed,
+            .block,
+            .position,
+            .anti,
+            .packedSize,
+        ])
     }
 
     func testArchiveColumnsAlwaysIncludeName() {
         XCTAssertEqual(FileManagerColumn.archiveColumns(availablePropertyKeys: []).map(\.id), [.name])
+    }
+
+    func testArchiveColumnsIncludeDynamicProperties() {
+        let hostOSColumnID = FileManagerColumnID(rawValue: "hostOS")
+        let checksumColumnID = FileManagerColumnID(rawValue: "checksum")
+        let columns = FileManagerColumn.archiveColumns(entryProperties: [
+            FileManagerArchiveEntryProperty(id: hostOSColumnID,
+                                            titleKey: "column.hostOS",
+                                            title: "Host OS",
+                                            valueType: 8),
+            FileManagerArchiveEntryProperty(id: checksumColumnID,
+                                            titleKey: "column.checksum",
+                                            title: "Checksum",
+                                            valueType: 19),
+        ])
+
+        XCTAssertEqual(columns.map(\.id), [.name, hostOSColumnID, checksumColumnID])
+        XCTAssertEqual(columns.first(where: { $0.id == hostOSColumnID })?.titleFallback, "Host OS")
+        XCTAssertEqual(columns.first(where: { $0.id == hostOSColumnID })?.alignment, .left)
+        XCTAssertEqual(columns.first(where: { $0.id == checksumColumnID })?.alignment, .right)
     }
 
     func testColumnAlignmentFollowsUpstreamPropertyTypes() {

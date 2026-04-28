@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 
 @class SZArchiveEntry;
+@class SZArchiveEntryProperty;
 @class SZBenchDisplayRow;
 @class SZBenchSnapshot;
 @class SZOperationSession;
@@ -186,6 +187,7 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 @interface SZArchiveEntry : NSObject
 @property (nonatomic, copy) NSString* path;
 @property (nonatomic, copy) NSArray<NSString*>* pathParts;
+@property (nonatomic, copy) NSDictionary<NSString*, NSString*>* propertyValues;
 @property (nonatomic) uint64_t size;
 @property (nonatomic) uint64_t packedSize;
 @property (nonatomic, strong, nullable) NSDate* modifiedDate;
@@ -201,6 +203,15 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 @property (nonatomic) uint64_t block;
 @property (nonatomic, copy, nullable) NSString* comment;
 @property (nonatomic) NSUInteger index; // internal archive index
+@end
+
+/// Describes one item property exposed by the archive handler.
+@interface SZArchiveEntryProperty : NSObject
+@property (nonatomic, copy) NSString* key;
+@property (nonatomic, copy, nullable) NSString* titleKey;
+@property (nonatomic, copy) NSString* title;
+@property (nonatomic) NSUInteger propID;
+@property (nonatomic) NSUInteger valueType;
 @end
 
 /// Format info for detected/available formats
@@ -290,6 +301,9 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 
 /// Get whether the detected archive format supports in-place updates.
 @property (nonatomic, readonly) BOOL canWrite;
+
+/// Entry properties exposed by the archive handler, mapped to ShichiZip column identifiers.
+@property (nonatomic, readonly) NSArray<SZArchiveEntryProperty*>* entryProperties;
 
 /// Entry property keys exposed by the archive handler, mapped to ShichiZip column identifiers.
 @property (nonatomic, readonly) NSArray<NSString*>* entryPropertyKeys;

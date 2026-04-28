@@ -4,6 +4,7 @@
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 /build/
+__pycache__/
 *.o
 *.a
 **/.DS_Store
