@@ -889,6 +889,10 @@ enum MainMenu {
         addItem(to: toolbarsMenu,
                 title: SZL10n.string("view.showButtonsText"),
                 action: #selector(FileManagerWindowController.toggleToolbarButtonText(_:)))
+        toolbarsMenu.addItem(.separator())
+        addItem(to: toolbarsMenu,
+                title: SZL10n.string("app.view.unifiedToolbarStyle"),
+                action: #selector(FileManagerWindowController.toggleUnifiedToolbarStyle(_:)))
         toolbarsMenuItem.submenu = toolbarsMenu
         viewMenu.addItem(toolbarsMenuItem)
 

@@ -196,6 +196,8 @@
 "app.settings.typeShortcut" = "输入快捷键…";
 "app.settings.workingFolderTitle" = "临时压缩包的工作文件夹：";
 
+"app.view.unifiedToolbarStyle" = "统一样式";
+
 "app.shortcut.openSelectedItem" = "打开选中项";
 "app.shortcut.quickLook" = "快速查看";
 "app.shortcut.switchPanes" = "切换窗格";

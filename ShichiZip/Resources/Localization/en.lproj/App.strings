@@ -190,6 +190,7 @@
 "app.settings.showHiddenFiles" = "Show hidden files in File Manager";
 "app.settings.typeShortcut" = "Type Shortcut…";
 "app.settings.workingFolderTitle" = "Working folder for temporary archive files:";
+"app.view.unifiedToolbarStyle" = "Unified Style";
 "app.shortcut.openSelectedItem" = "Open selected item";
 "app.shortcut.quickLook" = "Quick Look";
 "app.shortcut.switchPanes" = "Switch panes";

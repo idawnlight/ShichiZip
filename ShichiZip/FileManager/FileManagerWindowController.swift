@@ -379,6 +379,20 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     private enum ToolbarPreferences {
+        enum Style: String {
+            case expanded
+            case unified
+
+            var toolbarStyle: NSWindow.ToolbarStyle {
+                switch self {
+                case .expanded:
+                    .expanded
+                case .unified:
+                    .unified
+                }
+            }
+        }
+
         private static var defaults: UserDefaults {
             .standard
         }
@@ -386,6 +400,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         private static let archiveToolbarKey = "FileManager.ShowArchiveToolbar"
         private static let standardToolbarKey = "FileManager.ShowStandardToolbar"
         private static let showTextKey = "FileManager.ToolbarShowButtonText"
+        private static let styleKey = "FileManager.ToolbarStyle"
 
         static var showsArchiveToolbar: Bool {
             bool(forKey: archiveToolbarKey, defaultValue: true)
@@ -399,6 +414,15 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             bool(forKey: showTextKey, defaultValue: true)
         }
 
+        static var style: Style {
+            guard let rawValue = defaults.string(forKey: styleKey),
+                  let style = Style(rawValue: rawValue)
+            else {
+                return .expanded
+            }
+            return style
+        }
+
         static func setShowsArchiveToolbar(_ value: Bool) {
             defaults.set(value, forKey: archiveToolbarKey)
         }
@@ -409,6 +433,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         static func setShowsButtonText(_ value: Bool) {
             defaults.set(value, forKey: showTextKey)
+        }
+
+        static func setStyle(_ style: Style) {
+            defaults.set(style.rawValue, forKey: styleKey)
         }
 
         private static func bool(forKey key: String, defaultValue: Bool) -> Bool {
@@ -591,7 +619,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         let newToolbar = NSToolbar(identifier: "FileManagerToolbar")
         newToolbar.delegate = self
         toolbar = newToolbar
-        window?.toolbarStyle = .expanded
+        window?.toolbarStyle = ToolbarPreferences.style.toolbarStyle
         window?.toolbar = newToolbar
         applyToolbarPresentation()
     }
@@ -599,8 +627,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     private func applyToolbarPresentation() {
         guard let toolbar else { return }
         toolbar.displayMode = ToolbarPreferences.showsButtonText ? .iconAndLabel : .iconOnly
-        toolbar.sizeMode = .regular
-        window?.toolbarStyle = .expanded
+        window?.toolbarStyle = ToolbarPreferences.style.toolbarStyle
         refreshToolbarItemPresentation()
         toolbar.validateVisibleItems()
     }
@@ -617,6 +644,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     private func configureToolbarItem(_ item: NSToolbarItem) {
         item.target = self
+        item.isBordered = true
 
         switch item.itemIdentifier {
         case Self.addItem:
@@ -628,13 +656,13 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         case Self.extractItem:
             item.label = SZL10n.string("toolbar.extract")
             item.toolTip = SZL10n.string("toolbar.extract")
-            item.image = toolbarImage(systemSymbolName: "arrow.down.doc", accessibilityDescription: SZL10n.string("toolbar.extract"))
+            item.image = toolbarImage(systemSymbolName: "tray.and.arrow.up", accessibilityDescription: SZL10n.string("toolbar.extract"))
             item.action = #selector(extractArchive(_:))
 
         case Self.testItem:
             item.label = SZL10n.string("toolbar.test")
             item.toolTip = SZL10n.string("toolbar.test")
-            item.image = toolbarImage(systemSymbolName: "checkmark.shield", accessibilityDescription: SZL10n.string("toolbar.test"))
+            item.image = toolbarImage(systemSymbolName: "checkmark.seal", accessibilityDescription: SZL10n.string("toolbar.test"))
             item.action = #selector(testArchive(_:))
 
         case Self.copyItem:
@@ -662,7 +690,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             item.action = #selector(showProperties(_:))
 
         default:
-            break
+            item.isBordered = false
         }
     }
 
@@ -1502,6 +1530,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         applyToolbarPresentation()
     }
 
+    @objc func toggleUnifiedToolbarStyle(_: Any?) {
+        ToolbarPreferences.setStyle(ToolbarPreferences.style == .unified ? .expanded : .unified)
+        applyToolbarPresentation()
+    }
+
     @objc func openFavoriteSlot(_ sender: Any?) {
         guard let menuItem = sender as? NSMenuItem,
               let url = FileManagerFavoriteStore.url(for: menuItem.tag)
@@ -1837,7 +1870,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             return activePane.canShowFoldersHistory()
         case #selector(toggleArchiveToolbar(_:)),
              #selector(toggleStandardToolbar(_:)),
-             #selector(toggleToolbarButtonText(_:)):
+             #selector(toggleToolbarButtonText(_:)),
+             #selector(toggleUnifiedToolbarStyle(_:)):
             return true
         case #selector(openFavoriteSlot(_:)):
             guard let menuItem = item as? NSMenuItem else { return false }
@@ -1889,6 +1923,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             menuItem.state = ToolbarPreferences.showsStandardToolbar ? .on : .off
         case #selector(toggleToolbarButtonText(_:)):
             menuItem.state = ToolbarPreferences.showsButtonText ? .on : .off
+        case #selector(toggleUnifiedToolbarStyle(_:)):
+            menuItem.state = ToolbarPreferences.style == .unified ? .on : .off
         default:
             menuItem.state = .off
         }
