@@ -55,10 +55,10 @@ def strip_accelerator(text: str) -> str:
 
     Handles both:
     - English style: &Archive → Archive
-    - CJK style: 压缩包(&A) → 压缩包
+    - CJK style: 压缩包(&A) / 双列显示(&2) → 压缩包 / 双列显示
     """
-    # First remove CJK-style parenthesized accelerators: (&X)
-    text = re.sub(r'\(&[A-Za-z]\)', '', text)
+    # First remove CJK-style parenthesized accelerators: (&X) or (&2)
+    text = re.sub(r'\(&[A-Za-z0-9]\)', '', text)
     # Then remove remaining & markers
     text = text.replace('&', '')
     return text
