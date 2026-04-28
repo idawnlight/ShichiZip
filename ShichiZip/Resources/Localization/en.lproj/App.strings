@@ -1,14 +1,8 @@
-"app.benchmark.cannotFindCodecs" = "Can't find 7-Zip codecs";
-"app.benchmark.decodingError" = "Decoding error";
-"app.benchmark.error" = "Benchmark Error";
-"app.benchmark.failedFormat" = "Benchmark failed (0x%08X).";
-"app.benchmark.insufficientMemory" = "Insufficient Memory";
-"app.benchmark.usableLimit" = "Usable limit: %@ MB";
-"compress.browse" = "Browse…";
-"compress.cpuThreads" = "CPU threads:";
-"compress.createSFX" = "Create Windows SFX archive";
-"settings.current" = "Current folder";
-"shell.openArchive" = "Open Archive…";
+"app.choose" = "Choose";
+"app.chooseDestination" = "Choose destination folder:";
+"app.optional" = "Optional";
+"app.reenterPassword" = "Retype password";
+
 "app.archive.error.addSourcesDifferentFolders" = "All items added to an open archive must come from the same folder.";
 "app.archive.error.cancelled" = "Cancelled";
 "app.archive.error.compressionCancelled" = "Compression was cancelled";
@@ -33,10 +27,17 @@
 "app.archive.error.sfxUnsupportedMethod" = "The selected compression method does not support Windows SFX archives.";
 "app.archive.error.zipPasswordRequiresEncryption" = "A password was supplied but no zip encryption method was selected. Choose AES-256 (recommended) or ZipCrypto explicitly before creating the archive.";
 "app.archive.password.enterForArchive" = "Enter password for \"%@\".";
-"app.choose" = "Choose";
-"app.chooseDestination" = "Choose destination folder:";
+
+"app.benchmark.cannotFindCodecs" = "Can't find 7-Zip codecs";
+"app.benchmark.decodingError" = "Decoding error";
+"app.benchmark.error" = "Benchmark Error";
+"app.benchmark.failedFormat" = "Benchmark failed (0x%08X).";
+"app.benchmark.insufficientMemory" = "Insufficient Memory";
+"app.benchmark.usableLimit" = "Usable limit: %@ MB";
+
 "app.compress.excludeMacResources" = "Exclude macOS resource files";
 "app.compress.order" = "Order:";
+
 "app.deleteTempFiles.deleteContents" = "Delete \"%@\" and all of its contents?";
 "app.deleteTempFiles.deleteFile" = "Delete \"%@\"?";
 "app.deleteTempFiles.deleteMultiple" = "Delete %d selected items?";
@@ -46,11 +47,33 @@
 "app.deleteTempFiles.items" = "items";
 "app.deleteTempFiles.loading" = "Loading temporary files…";
 "app.deleteTempFiles.title" = "Delete Temporary Files";
+
 "app.extract.createSeparateFolder" = "Create a separate destination folder";
 "app.extract.currentPaths" = "Current Paths";
 "app.extract.inheritQuarantine" = "Inherit quarantine from downloaded file (if applicable)";
 "app.extract.moveToTrash" = "Move compressed file to Trash after extraction";
 "app.extract.separateFolder" = "Separate folder:";
+
+"app.fileManager.action.addingFilesToArchive" = "Adding files to archive";
+"app.fileManager.action.creatingFiles" = "Creating files";
+"app.fileManager.action.creatingFolders" = "Creating folders";
+"app.fileManager.action.deletingArchiveItems" = "Deleting archive items";
+"app.fileManager.action.movingFilesIntoArchive" = "Moving files into archive";
+"app.fileManager.action.renamingArchiveItems" = "Renaming archive items";
+"app.fileManager.alert.actionNotAvailableTitle" = "%@ is not available here";
+"app.fileManager.alert.archiveModificationNotSupported" = "This file-manager view can browse archives and extract or copy items out of them, but in-place archive modification is not implemented yet.";
+"app.fileManager.alert.formatNoInPlaceUpdate" = "%@ archives do not support this in-place update operation.";
+"app.fileManager.alert.nestedArchiveConflict" = "This inner archive is open in more than one pane or window. Close the other instance before modifying it to avoid conflicting write-back state.";
+"app.fileManager.alert.temporaryCopyNoModification" = "This archive view is backed by a temporary extracted copy, so modifying it in place is not supported yet. Open the archive directly to rename, delete, or create folders inside it.";
+"app.fileManager.alert.thisArchiveFormat" = "This archive format";
+"app.fileManager.archiveTransfer.addMultiple" = "Add %d item(s) to archive?";
+"app.fileManager.archiveTransfer.addSingle" = "Add \"%@\" to archive?";
+"app.fileManager.archiveTransfer.archive" = "Archive: %@";
+"app.fileManager.archiveTransfer.folder" = "Folder: %@";
+"app.fileManager.archiveTransfer.moveMultiple" = "Move %d item(s) to archive?";
+"app.fileManager.archiveTransfer.moveSingle" = "Move \"%@\" to archive?";
+"app.fileManager.archiveTransfer.replaceWarning" = "Existing entries with the same name in that location will be replaced without another prompt.";
+"app.fileManager.archiveTransfer.sourceRemovalWarning" = "The source items will be removed after the archive is updated.";
 "app.fileManager.cannotActionArchiveIntoSelf" = "Cannot %@ an archive into itself";
 "app.fileManager.cannotActionIntoDescendant" = "Cannot %@ a folder into its descendant";
 "app.fileManager.cannotActionIntoSelf" = "Cannot %@ a folder into itself";
@@ -66,8 +89,30 @@
 "app.fileManager.enterFileName" = "Enter file name.";
 "app.fileManager.enterFolderName" = "Enter folder name.";
 "app.fileManager.enterFullScreen" = "Enter Full Screen";
+"app.fileManager.error.cannotExtractSelected" = "The selected archive items cannot be extracted.";
+"app.fileManager.error.fileAlreadyExists" = "A file named \"%@\" already exists.";
+"app.fileManager.error.nestedArchiveDirty" = "This inner archive already has unsaved changes in another pane or window. Close that modified instance before opening it again.";
+"app.fileManager.error.nestedArchiveSyncFailed" = "The nested archive could not be synchronized because its temporary file is missing.";
+"app.fileManager.error.noAppToOpen" = "No application is available to open \"%@\".";
+"app.fileManager.error.noArchiveItemsToExtract" = "There are no archive items to extract.";
+"app.fileManager.error.noArchiveOpen" = "No archive is open.";
+"app.fileManager.error.pathNotFound" = "The path \"%@\" does not exist.";
+"app.fileManager.error.selectArchiveItems" = "Select one or more archive items first.";
+"app.fileManager.error.trashFailedFirstFailure" = "First failure: \"%@\": %@";
+"app.fileManager.error.trashFailedReason" = "%d of %d selected item(s) could not be moved to Trash.";
+"app.fileManager.error.trashFailedTitle" = "Could not move %d item(s) to Trash.";
+"app.fileManager.error.unableToCreate" = "Unable to create \"%@\".";
 "app.fileManager.fileManager" = "File Manager";
 "app.fileManager.operationNotAvailable" = "Operation Not Available";
+"app.fileManager.quickLook.cannotPreview" = "The current selection cannot be previewed.";
+"app.fileManager.quickLook.cannotPreviewArchive" = "The current archive selection cannot be previewed.";
+"app.fileManager.quickLook.combinedSizeLimit" = "Quick Look previews from archives are limited to %@ for the current selection. The selected files total %@.";
+"app.fileManager.quickLook.fileSizeLimit" = "Quick Look previews from archives are limited to %@ per file. \"%@\" is %@.";
+"app.fileManager.quickLook.noFolderPreview" = "Quick Look can preview files from an archive, but not folders.";
+"app.fileManager.quickLook.selectArchiveFiles" = "Select one or more files in the archive to preview.";
+"app.fileManager.quickLook.selectItems" = "Select one or more items to preview.";
+"app.fileManager.quickLook.solidArchiveSizeLimit" = "Quick Look previews from solid archives are limited to archives up to %@. This archive is %@.";
+"app.fileManager.reactivatePane" = "Open Folder";
 "app.fileManager.selectArchiveToExtract" = "Select an archive to extract.";
 "app.fileManager.selectArchiveToTest" = "Select an archive to test.";
 "app.fileManager.selectFilesToAdd" = "Select files or folders to add to the archive.";
@@ -77,52 +122,12 @@
 "app.fileManager.statusFolders" = "folders";
 "app.fileManager.statusSelected" = "selected";
 "app.fileManager.statusTotal" = "total";
-"app.fileManager.reactivatePane" = "Open Folder";
 "app.fileManager.suspendedDescription" = "This pane has been closed. Click the button below or type a path in the address bar to reopen it.";
 "app.fileManager.testOK" = "Test OK";
-"app.fileManager.error.noAppToOpen" = "No application is available to open \"%@\".";
-"app.fileManager.error.selectArchiveItems" = "Select one or more archive items first.";
-"app.fileManager.error.noArchiveItemsToExtract" = "There are no archive items to extract.";
-"app.fileManager.error.noArchiveOpen" = "No archive is open.";
-"app.fileManager.error.cannotExtractSelected" = "The selected archive items cannot be extracted.";
-"app.fileManager.error.nestedArchiveSyncFailed" = "The nested archive could not be synchronized because its temporary file is missing.";
-"app.fileManager.error.nestedArchiveDirty" = "This inner archive already has unsaved changes in another pane or window. Close that modified instance before opening it again.";
-"app.fileManager.error.pathNotFound" = "The path \"%@\" does not exist.";
-"app.fileManager.error.fileAlreadyExists" = "A file named \"%@\" already exists.";
-"app.fileManager.error.unableToCreate" = "Unable to create \"%@\".";
-"app.fileManager.error.trashFailedTitle" = "Could not move %d item(s) to Trash.";
-"app.fileManager.error.trashFailedReason" = "%d of %d selected item(s) could not be moved to Trash.";
-"app.fileManager.error.trashFailedFirstFailure" = "First failure: \"%@\": %@";
-"app.fileManager.quickLook.selectItems" = "Select one or more items to preview.";
-"app.fileManager.quickLook.cannotPreview" = "The current selection cannot be previewed.";
-"app.fileManager.quickLook.cannotPreviewArchive" = "The current archive selection cannot be previewed.";
-"app.fileManager.quickLook.selectArchiveFiles" = "Select one or more files in the archive to preview.";
-"app.fileManager.quickLook.noFolderPreview" = "Quick Look can preview files from an archive, but not folders.";
-"app.fileManager.quickLook.fileSizeLimit" = "Quick Look previews from archives are limited to %@ per file. \"%@\" is %@.";
-"app.fileManager.quickLook.combinedSizeLimit" = "Quick Look previews from archives are limited to %@ for the current selection. The selected files total %@.";
-"app.fileManager.quickLook.solidArchiveSizeLimit" = "Quick Look previews from solid archives are limited to archives up to %@. This archive is %@.";
-"app.fileManager.alert.actionNotAvailableTitle" = "%@ is not available here";
-"app.fileManager.alert.archiveModificationNotSupported" = "This file-manager view can browse archives and extract or copy items out of them, but in-place archive modification is not implemented yet.";
-"app.fileManager.alert.nestedArchiveConflict" = "This inner archive is open in more than one pane or window. Close the other instance before modifying it to avoid conflicting write-back state.";
-"app.fileManager.alert.formatNoInPlaceUpdate" = "%@ archives do not support this in-place update operation.";
-"app.fileManager.alert.temporaryCopyNoModification" = "This archive view is backed by a temporary extracted copy, so modifying it in place is not supported yet. Open the archive directly to rename, delete, or create folders inside it.";
-"app.fileManager.alert.thisArchiveFormat" = "This archive format";
-"app.fileManager.action.creatingFolders" = "Creating folders";
-"app.fileManager.action.creatingFiles" = "Creating files";
-"app.fileManager.action.movingFilesIntoArchive" = "Moving files into archive";
-"app.fileManager.action.addingFilesToArchive" = "Adding files to archive";
-"app.fileManager.action.renamingArchiveItems" = "Renaming archive items";
-"app.fileManager.action.deletingArchiveItems" = "Deleting archive items";
-"app.fileManager.archiveTransfer.moveSingle" = "Move \"%@\" to archive?";
-"app.fileManager.archiveTransfer.addSingle" = "Add \"%@\" to archive?";
-"app.fileManager.archiveTransfer.moveMultiple" = "Move %d item(s) to archive?";
-"app.fileManager.archiveTransfer.addMultiple" = "Add %d item(s) to archive?";
-"app.fileManager.archiveTransfer.archive" = "Archive: %@";
-"app.fileManager.archiveTransfer.folder" = "Folder: %@";
-"app.fileManager.archiveTransfer.replaceWarning" = "Existing entries with the same name in that location will be replaced without another prompt.";
-"app.fileManager.archiveTransfer.sourceRemovalWarning" = "The source items will be removed after the archive is updated.";
+
 "app.menu.about" = "About %@";
 "app.menu.bringAllToFront" = "Bring All to Front";
+"app.menu.closeDirectory" = "Close Directory";
 "app.menu.copy" = "Copy";
 "app.menu.cut" = "Cut";
 "app.menu.hide" = "Hide %@";
@@ -135,14 +140,14 @@
 "app.menu.showAll" = "Show All";
 "app.menu.window" = "Window";
 "app.menu.zoom" = "Zoom";
-"app.menu.closeDirectory" = "Close Directory";
-"app.optional" = "Optional";
+
 "app.panel.chooseArchives" = "Choose archive files to open in %@";
 "app.panel.selectFilesToCompress" = "Select files and folders to compress";
+
 "app.progress.finalizing" = "Finalizing…";
 "app.progress.pasting" = "Pasting…";
 "app.progress.working" = "Working…";
-"app.reenterPassword" = "Retype password";
+
 "app.settings.clear" = "Clear";
 "app.settings.commanderLike" = "Commander-like";
 "app.settings.commanderLikeDescription" = "Uses the classic 7-Zip function-key workflow for file operations and pane management.";
@@ -151,11 +156,11 @@
 "app.settings.currentShortcuts" = "Current Shortcuts";
 "app.settings.custom" = "Custom";
 "app.settings.customDescription" = "Uses your saved per-command file manager shortcuts.";
+"app.settings.defaultOpenerFailedDetail" = "%d type(s) could not be registered. The system may not recognize these types, or the operation was blocked.";
+"app.settings.defaultOpenerFailedTitle" = "Some types could not be set";
 "app.settings.defaultOpeners" = "Default Openers";
 "app.settings.defaultOpenersDescription" = "Choose which archive types %@ should become the default opener for in Finder. macOS may ask for confirmation.";
 "app.settings.defaultOpenersNote" = "Already-default types are shown as Current Default. To switch a type back to another app later, use Finder's Open With controls or another app's integration settings.";
-"app.settings.defaultOpenerFailedTitle" = "Some types could not be set";
-"app.settings.defaultOpenerFailedDetail" = "%d type(s) could not be registered. The system may not recognize these types, or the operation was blocked.";
 "app.settings.excludeMacResourceForks" = "Exclude macOS resource fork files by default";
 "app.settings.extraction" = "Extraction";
 "app.settings.fileListLayout" = "File List Layout";
@@ -166,7 +171,6 @@
 "app.settings.integration" = "Integration";
 "app.settings.limitTo" = "Limit to";
 "app.settings.makeDefault" = "Make Default";
-"app.settings.setAllAsDefault" = "Set All as Default";
 "app.settings.maxRAMForExtraction" = "Maximum RAM for extraction:";
 "app.settings.multipleDefaultApps" = "Multiple Apps";
 "app.settings.noDefaultApp" = "No default app";
@@ -184,14 +188,25 @@
 "app.settings.resetFileListLayoutConfirmTitle" = "Reset file list layouts?";
 "app.settings.resetFileListLayoutNote" = "Clears saved sort order, column order, and column widths for File Manager lists.";
 "app.settings.scheme" = "Scheme:";
+"app.settings.setAllAsDefault" = "Set All as Default";
 "app.settings.shortcuts" = "Shortcuts";
 "app.settings.shortcutsCustomNote" = "Changing an individual binding switches the preset to Custom. Reusing a shortcut clears it from the previous command. Click a shortcut field and press any key combination. Press Escape to cancel recording.";
 "app.settings.shortcutsNote" = "These shortcuts apply to file manager commands. Standard app shortcuts such as Preferences and Quit stay unchanged.";
 "app.settings.showHiddenFiles" = "Show hidden files in File Manager";
 "app.settings.typeShortcut" = "Type Shortcut…";
 "app.settings.workingFolderTitle" = "Working folder for temporary archive files:";
-"app.view.unifiedToolbarStyle" = "Unified Style";
+
 "app.shortcut.openSelectedItem" = "Open selected item";
 "app.shortcut.quickLook" = "Quick Look";
 "app.shortcut.switchPanes" = "Switch panes";
 "app.shortcut.toggleDualPane" = "Toggle dual pane";
+
+"app.view.unifiedToolbarStyle" = "Unified Style";
+
+"compress.browse" = "Browse…";
+"compress.cpuThreads" = "CPU threads:";
+"compress.createSFX" = "Create Windows SFX archive";
+
+"settings.current" = "Current folder";
+
+"shell.openArchive" = "Open Archive…";

@@ -1,13 +1,8 @@
-"app.benchmark.cannotFindCodecs" = "找不到 7-Zip 编解码器";
-"app.benchmark.decodingError" = "解码错误";
-"app.benchmark.error" = "基准测试错误";
-"app.benchmark.failedFormat" = "基准测试失败 (0x%08X)。";
-"app.benchmark.insufficientMemory" = "内存不足";
-"app.benchmark.usableLimit" = "可用上限：%@ MB";
-"benchmark.passes" = "轮数：";
-"compress.browse" = "浏览…";
-"compress.createSFX" = "创建 Windows 自解压程序";
-"shell.openArchive" = "打开压缩包…";
+"app.choose" = "选择";
+"app.chooseDestination" = "选择目标文件夹：";
+"app.optional" = "可选";
+"app.reenterPassword" = "再次输入密码";
+
 "app.archive.error.addSourcesDifferentFolders" = "添加到已打开压缩包的所有项目必须来自同一个文件夹。";
 "app.archive.error.cancelled" = "已取消";
 "app.archive.error.compressionCancelled" = "压缩已取消";
@@ -32,8 +27,14 @@
 "app.archive.error.sfxUnsupportedMethod" = "所选压缩方法不支持 Windows 自解压压缩包。";
 "app.archive.error.zipPasswordRequiresEncryption" = "已提供密码，但未选择 zip 加密方法。请先明确选择 AES-256（推荐）或 ZipCrypto，再创建压缩包。";
 "app.archive.password.enterForArchive" = "请输入「%@」的密码。";
-"app.choose" = "选择";
-"app.chooseDestination" = "选择目标文件夹：";
+
+"app.benchmark.cannotFindCodecs" = "找不到 7-Zip 编解码器";
+"app.benchmark.decodingError" = "解码错误";
+"app.benchmark.error" = "基准测试错误";
+"app.benchmark.failedFormat" = "基准测试失败 (0x%08X)。";
+"app.benchmark.insufficientMemory" = "内存不足";
+"app.benchmark.usableLimit" = "可用上限：%@ MB";
+
 "app.compress.excludeMacResources" = "排除 macOS 资源文件";
 "app.compress.order" = "阶数：";
 
@@ -53,6 +54,26 @@
 "app.extract.moveToTrash" = "解压后将压缩包移到废纸篓";
 "app.extract.separateFolder" = "独立文件夹：";
 
+"app.fileManager.action.addingFilesToArchive" = "添加文件到压缩包";
+"app.fileManager.action.creatingFiles" = "创建文件";
+"app.fileManager.action.creatingFolders" = "创建文件夹";
+"app.fileManager.action.deletingArchiveItems" = "删除压缩包项目";
+"app.fileManager.action.movingFilesIntoArchive" = "移动文件到压缩包";
+"app.fileManager.action.renamingArchiveItems" = "重命名压缩包项目";
+"app.fileManager.alert.actionNotAvailableTitle" = "此处不可%@";
+"app.fileManager.alert.archiveModificationNotSupported" = "此文件管理器视图可以浏览压缩包并解压或复制其中的项目，但尚不支持就地修改。";
+"app.fileManager.alert.formatNoInPlaceUpdate" = "%@ 格式的压缩包不支持此就地更新操作。";
+"app.fileManager.alert.nestedArchiveConflict" = "此内层压缩包在多个窗格或窗口中打开。请先关闭其他实例再进行修改，以避免写回状态冲突。";
+"app.fileManager.alert.temporaryCopyNoModification" = "此压缩包视图基于临时解压副本，尚不支持就地修改。请直接打开压缩包进行重命名、删除或创建文件夹。";
+"app.fileManager.alert.thisArchiveFormat" = "此压缩格式";
+"app.fileManager.archiveTransfer.addMultiple" = "将 %d 个项目添加到压缩包？";
+"app.fileManager.archiveTransfer.addSingle" = "将「%@」添加到压缩包？";
+"app.fileManager.archiveTransfer.archive" = "压缩包：%@";
+"app.fileManager.archiveTransfer.folder" = "文件夹：%@";
+"app.fileManager.archiveTransfer.moveMultiple" = "将 %d 个项目移动到压缩包？";
+"app.fileManager.archiveTransfer.moveSingle" = "将「%@」移动到压缩包？";
+"app.fileManager.archiveTransfer.replaceWarning" = "该位置中同名的现有条目将被替换，不再另行提示。";
+"app.fileManager.archiveTransfer.sourceRemovalWarning" = "压缩包更新后，源项目将被删除。";
 "app.fileManager.cannotActionArchiveIntoSelf" = "无法将压缩包%@到自身";
 "app.fileManager.cannotActionIntoDescendant" = "无法将文件夹%@到其子文件夹";
 "app.fileManager.cannotActionIntoSelf" = "无法将文件夹%@到自身";
@@ -61,11 +82,37 @@
 "app.fileManager.chooseDifferentDestination" = "请选择其他目标文件夹。";
 "app.fileManager.chooseOutside" = "请选择「%@」以外的目标位置。";
 "app.fileManager.compress" = "压缩…";
+"app.fileManager.deleteFromArchiveMessage" = "这些项目将从压缩包中永久移除。";
+"app.fileManager.deleteFromArchiveTitle" = "从压缩包中删除 %d 个项目？";
+"app.fileManager.deleteItemsMessage" = "项目将被移到废纸篓。";
+"app.fileManager.deleteItemsTitle" = "删除 %d 个项目？";
 "app.fileManager.enterFileName" = "请输入文件名。";
 "app.fileManager.enterFolderName" = "请输入文件夹名。";
 "app.fileManager.enterFullScreen" = "进入全屏幕";
+"app.fileManager.error.cannotExtractSelected" = "所选压缩包项目无法解压。";
+"app.fileManager.error.fileAlreadyExists" = "名为「%@」的文件已存在。";
+"app.fileManager.error.nestedArchiveDirty" = "此内层压缩包在另一个窗格或窗口中有未保存的更改。请先关闭该修改中的实例再重新打开。";
+"app.fileManager.error.nestedArchiveSyncFailed" = "嵌套压缩包无法同步，因为其临时文件已丢失。";
+"app.fileManager.error.noAppToOpen" = "没有可用于打开「%@」的应用程序。";
+"app.fileManager.error.noArchiveItemsToExtract" = "没有可解压的压缩包项目。";
+"app.fileManager.error.noArchiveOpen" = "没有打开的压缩包。";
+"app.fileManager.error.pathNotFound" = "路径「%@」不存在。";
+"app.fileManager.error.selectArchiveItems" = "请先选择一个或多个压缩包项目。";
+"app.fileManager.error.trashFailedFirstFailure" = "第一个失败项目：「%@」：%@";
+"app.fileManager.error.trashFailedReason" = "%d/%d 个选中项目无法移到废纸篓。";
+"app.fileManager.error.trashFailedTitle" = "无法将 %d 个项目移到废纸篓。";
+"app.fileManager.error.unableToCreate" = "无法创建「%@」。";
 "app.fileManager.fileManager" = "文件管理器";
 "app.fileManager.operationNotAvailable" = "操作不可用";
+"app.fileManager.quickLook.cannotPreview" = "当前选择无法预览。";
+"app.fileManager.quickLook.cannotPreviewArchive" = "当前压缩包选择无法预览。";
+"app.fileManager.quickLook.combinedSizeLimit" = "当前选择的快速查看预览限制为 %@，已选文件合计 %@。";
+"app.fileManager.quickLook.fileSizeLimit" = "压缩包中的快速查看预览限制为每个文件 %@。「%@」的大小为 %@。";
+"app.fileManager.quickLook.noFolderPreview" = "快速查看可以预览压缩包中的文件，但不支持文件夹。";
+"app.fileManager.quickLook.selectArchiveFiles" = "请选择压缩包中的一个或多个文件进行预览。";
+"app.fileManager.quickLook.selectItems" = "请选择一个或多个项目进行预览。";
+"app.fileManager.quickLook.solidArchiveSizeLimit" = "固实压缩包的快速查看预览仅支持不超过 %@ 的压缩包，此压缩包大小为 %@。";
+"app.fileManager.reactivatePane" = "打开文件夹";
 "app.fileManager.selectArchiveToExtract" = "请选择要解压的压缩包。";
 "app.fileManager.selectArchiveToTest" = "请选择要测试的压缩包。";
 "app.fileManager.selectFilesToAdd" = "选择要添加到压缩包的文件或文件夹。";
@@ -75,57 +122,12 @@
 "app.fileManager.statusFolders" = "个文件夹";
 "app.fileManager.statusSelected" = "已选择";
 "app.fileManager.statusTotal" = "共计";
-"app.fileManager.reactivatePane" = "打开文件夹";
 "app.fileManager.suspendedDescription" = "此窗格已关闭，点击下方按钮或在地址栏中输入路径以重新打开。";
-"app.fileManager.deleteFromArchiveTitle" = "从压缩包中删除 %d 个项目？";
-"app.fileManager.deleteFromArchiveMessage" = "这些项目将从压缩包中永久移除。";
-"app.fileManager.deleteItemsTitle" = "删除 %d 个项目？";
-"app.fileManager.deleteItemsMessage" = "项目将被移到废纸篓。";
 "app.fileManager.testOK" = "测试通过";
-"app.fileManager.error.noAppToOpen" = "没有可用于打开「%@」的应用程序。";
-"app.fileManager.error.selectArchiveItems" = "请先选择一个或多个压缩包项目。";
-"app.fileManager.error.noArchiveItemsToExtract" = "没有可解压的压缩包项目。";
-"app.fileManager.error.noArchiveOpen" = "没有打开的压缩包。";
-"app.fileManager.error.cannotExtractSelected" = "所选压缩包项目无法解压。";
-"app.fileManager.error.nestedArchiveSyncFailed" = "嵌套压缩包无法同步，因为其临时文件已丢失。";
-"app.fileManager.error.nestedArchiveDirty" = "此内层压缩包在另一个窗格或窗口中有未保存的更改。请先关闭该修改中的实例再重新打开。";
-"app.fileManager.error.pathNotFound" = "路径「%@」不存在。";
-"app.fileManager.error.fileAlreadyExists" = "名为「%@」的文件已存在。";
-"app.fileManager.error.unableToCreate" = "无法创建「%@」。";
-"app.fileManager.error.trashFailedTitle" = "无法将 %d 个项目移到废纸篓。";
-"app.fileManager.error.trashFailedReason" = "%d/%d 个选中项目无法移到废纸篓。";
-"app.fileManager.error.trashFailedFirstFailure" = "第一个失败项目：「%@」：%@";
-"app.fileManager.quickLook.selectItems" = "请选择一个或多个项目进行预览。";
-"app.fileManager.quickLook.cannotPreview" = "当前选择无法预览。";
-"app.fileManager.quickLook.cannotPreviewArchive" = "当前压缩包选择无法预览。";
-"app.fileManager.quickLook.selectArchiveFiles" = "请选择压缩包中的一个或多个文件进行预览。";
-"app.fileManager.quickLook.noFolderPreview" = "快速查看可以预览压缩包中的文件，但不支持文件夹。";
-"app.fileManager.quickLook.fileSizeLimit" = "压缩包中的快速查看预览限制为每个文件 %@。「%@」的大小为 %@。";
-"app.fileManager.quickLook.combinedSizeLimit" = "当前选择的快速查看预览限制为 %@，已选文件合计 %@。";
-"app.fileManager.quickLook.solidArchiveSizeLimit" = "固实压缩包的快速查看预览仅支持不超过 %@ 的压缩包，此压缩包大小为 %@。";
-"app.fileManager.alert.actionNotAvailableTitle" = "此处不可%@";
-"app.fileManager.alert.archiveModificationNotSupported" = "此文件管理器视图可以浏览压缩包并解压或复制其中的项目，但尚不支持就地修改。";
-"app.fileManager.alert.nestedArchiveConflict" = "此内层压缩包在多个窗格或窗口中打开。请先关闭其他实例再进行修改，以避免写回状态冲突。";
-"app.fileManager.alert.formatNoInPlaceUpdate" = "%@ 格式的压缩包不支持此就地更新操作。";
-"app.fileManager.alert.temporaryCopyNoModification" = "此压缩包视图基于临时解压副本，尚不支持就地修改。请直接打开压缩包进行重命名、删除或创建文件夹。";
-"app.fileManager.alert.thisArchiveFormat" = "此压缩格式";
-"app.fileManager.action.creatingFolders" = "创建文件夹";
-"app.fileManager.action.creatingFiles" = "创建文件";
-"app.fileManager.action.movingFilesIntoArchive" = "移动文件到压缩包";
-"app.fileManager.action.addingFilesToArchive" = "添加文件到压缩包";
-"app.fileManager.action.renamingArchiveItems" = "重命名压缩包项目";
-"app.fileManager.action.deletingArchiveItems" = "删除压缩包项目";
-"app.fileManager.archiveTransfer.moveSingle" = "将「%@」移动到压缩包？";
-"app.fileManager.archiveTransfer.addSingle" = "将「%@」添加到压缩包？";
-"app.fileManager.archiveTransfer.moveMultiple" = "将 %d 个项目移动到压缩包？";
-"app.fileManager.archiveTransfer.addMultiple" = "将 %d 个项目添加到压缩包？";
-"app.fileManager.archiveTransfer.archive" = "压缩包：%@";
-"app.fileManager.archiveTransfer.folder" = "文件夹：%@";
-"app.fileManager.archiveTransfer.replaceWarning" = "该位置中同名的现有条目将被替换，不再另行提示。";
-"app.fileManager.archiveTransfer.sourceRemovalWarning" = "压缩包更新后，源项目将被删除。";
 
 "app.menu.about" = "关于 %@";
 "app.menu.bringAllToFront" = "前置全部窗口";
+"app.menu.closeDirectory" = "关闭文件夹";
 "app.menu.copy" = "拷贝";
 "app.menu.cut" = "剪切";
 "app.menu.hide" = "隐藏 %@";
@@ -138,11 +140,9 @@
 "app.menu.showAll" = "显示全部";
 "app.menu.window" = "窗口";
 "app.menu.zoom" = "缩放";
-"app.menu.closeDirectory" = "关闭文件夹";
-"app.optional" = "可选";
+
 "app.panel.chooseArchives" = "选择要在 %@ 中打开的压缩包";
 "app.panel.selectFilesToCompress" = "选择要压缩的文件和文件夹";
-"app.reenterPassword" = "再次输入密码";
 
 "app.progress.finalizing" = "正在完成…";
 "app.progress.pasting" = "正在粘贴…";
@@ -156,11 +156,11 @@
 "app.settings.currentShortcuts" = "当前快捷键";
 "app.settings.custom" = "自定义";
 "app.settings.customDescription" = "使用你保存的自定义快捷键。";
+"app.settings.defaultOpenerFailedDetail" = "有 %d 个类型无法注册。系统可能不识别这些类型，或操作被阻止。";
+"app.settings.defaultOpenerFailedTitle" = "部分类型无法设置";
 "app.settings.defaultOpeners" = "默认打开方式";
 "app.settings.defaultOpenersDescription" = "选择要让 %@ 在访达中作为默认打开方式的压缩包类型。macOS 可能会要求你确认。";
 "app.settings.defaultOpenersNote" = "已经由本应用作为默认打开方式的类型会显示为「当前默认应用」。如果之后要切换回其他应用，请使用访达的「打开方式」设置或其他应用自己的集成设置。";
-"app.settings.defaultOpenerFailedTitle" = "部分类型无法设置";
-"app.settings.defaultOpenerFailedDetail" = "有 %d 个类型无法注册。系统可能不识别这些类型，或操作被阻止。";
 "app.settings.excludeMacResourceForks" = "默认排除 macOS 资源分支文件";
 "app.settings.extraction" = "解压";
 "app.settings.fileListLayout" = "文件列表布局";
@@ -171,7 +171,6 @@
 "app.settings.integration" = "集成";
 "app.settings.limitTo" = "限制为";
 "app.settings.makeDefault" = "设为默认";
-"app.settings.setAllAsDefault" = "全部设为默认";
 "app.settings.maxRAMForExtraction" = "解压时最大内存用量：";
 "app.settings.multipleDefaultApps" = "多个应用";
 "app.settings.noDefaultApp" = "没有默认应用";
@@ -189,6 +188,7 @@
 "app.settings.resetFileListLayoutConfirmTitle" = "要重置文件列表布局吗？";
 "app.settings.resetFileListLayoutNote" = "清除文件管理器列表已保存的排序、列顺序和列宽。";
 "app.settings.scheme" = "方案：";
+"app.settings.setAllAsDefault" = "全部设为默认";
 "app.settings.shortcuts" = "快捷键";
 "app.settings.shortcutsCustomNote" = "修改单个快捷键后方案将切换为「自定义」。重复使用的快捷键会从原命令中清除。点击快捷键区域后按下任意组合键。按 Esc 取消录制。";
 "app.settings.shortcutsNote" = "这些快捷键仅适用于文件管理器命令。偏好设置和退出等标准快捷键保持不变。";
@@ -196,9 +196,16 @@
 "app.settings.typeShortcut" = "输入快捷键…";
 "app.settings.workingFolderTitle" = "临时压缩包的工作文件夹：";
 
-"app.view.unifiedToolbarStyle" = "统一样式";
-
 "app.shortcut.openSelectedItem" = "打开选中项";
 "app.shortcut.quickLook" = "快速查看";
 "app.shortcut.switchPanes" = "切换窗格";
 "app.shortcut.toggleDualPane" = "切换双栏";
+
+"app.view.unifiedToolbarStyle" = "统一样式";
+
+"benchmark.passes" = "轮数：";
+
+"compress.browse" = "浏览…";
+"compress.createSFX" = "创建 Windows 自解压程序";
+
+"shell.openArchive" = "打开压缩包…";
