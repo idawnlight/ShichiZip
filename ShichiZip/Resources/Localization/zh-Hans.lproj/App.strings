@@ -202,10 +202,12 @@
 "app.shortcut.toggleDualPane" = "切换双栏";
 
 "app.view.unifiedToolbarStyle" = "统一样式";
+
 "archive.cannotStartEditor" = "无法启动外部编辑器。";
 
 "benchmark.passes" = "轮数：";
 
+"column.changed" = "元数据修改时间";
 "column.hostOS" = "宿主系统";
 
 "compress.browse" = "浏览…";
