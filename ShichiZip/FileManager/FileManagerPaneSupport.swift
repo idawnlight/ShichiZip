@@ -28,15 +28,18 @@ private final class ArchiveDragPromiseCompletionHandler: @unchecked Sendable {
 final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate {
     private let item: ArchiveItem
     private let context: FileManagerArchiveItemWorkflowContext
+    private let operationGate: FileManagerArchiveOperationGate
     private let workflowService: FileManagerArchiveItemWorkflowService
     private let promiseQueue: OperationQueue
 
     init(item: ArchiveItem,
          context: FileManagerArchiveItemWorkflowContext,
+         operationGate: FileManagerArchiveOperationGate,
          workflowService: FileManagerArchiveItemWorkflowService)
     {
         self.item = item
         self.context = context
+        self.operationGate = operationGate
         self.workflowService = workflowService
 
         let queue = OperationQueue()
@@ -72,6 +75,14 @@ final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate {
         // callback while the destination resolves the promised file can deadlock drag-out.
         DispatchQueue.main.async { [self] in
             MainActor.assumeIsolated {
+                // Acquire the lease now, not at drag-start. The pasteboard retains
+                // this promise long after the drag ends; holding a lease from creation
+                // would block archive close indefinitely.
+                guard let lease = self.operationGate.acquireLease() else {
+                    completionHandler.finish(CocoaError(.fileWriteUnknown))
+                    return
+                }
+
                 let coordinator = ArchiveOperationCoordinator(operationTitle: SZL10n.string("progress.extracting"),
                                                               initialFileName: self.item.path,
                                                               deferredDisplay: true)
@@ -89,6 +100,7 @@ final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate {
                     DispatchQueue.main.async {
                         MainActor.assumeIsolated {
                             coordinator.finish()
+                            withExtendedLifetime(lease) {}
 
                             switch result {
                             case .success:

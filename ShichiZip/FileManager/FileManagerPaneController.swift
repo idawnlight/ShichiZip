@@ -2303,17 +2303,23 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         archiveStack.last?.filesystemDirectory ?? currentDirectory
     }
 
-    private func currentArchiveItemWorkflowContext() -> FileManagerArchiveItemWorkflowContext? {
+    private func currentArchiveItemWorkflowContext(acquireLease: Bool = true) -> FileManagerArchiveItemWorkflowContext? {
         guard let level = archiveStack.last else { return nil }
-        let mutationTarget = archiveMutationTarget(for: level)
-        guard let archiveOperationLease = level.operationGate.acquireLease() else { return nil }
+        let mutationTarget = acquireLease ? archiveMutationTarget(for: level) : nil
+        let lease: FileManagerArchiveOperationGate.Lease?
+        if acquireLease {
+            guard let acquired = level.operationGate.acquireLease() else { return nil }
+            lease = acquired
+        } else {
+            lease = nil
+        }
 
         return FileManagerArchiveItemWorkflowContext(archive: level.archive,
                                                      hostDirectory: archiveHostDirectory(),
                                                      displayPathPrefix: currentArchiveDisplayPathPrefix(),
                                                      quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path,
                                                      mutationTarget: mutationTarget,
-                                                     archiveOperationLease: archiveOperationLease)
+                                                     archiveOperationLease: lease)
     }
 
     private func hasConflictingNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool {
@@ -3762,12 +3768,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return nil
 
         case let .archive(ai):
-            guard let context = currentArchiveItemWorkflowContext() else {
-                return nil
-            }
+            // Build context without a lease — the lease is acquired lazily in
+            // writePromiseAsync so it doesn't outlive the extraction.
+            guard let level = archiveStack.last,
+                  let context = currentArchiveItemWorkflowContext(acquireLease: false)
+            else { return nil }
 
             let promise = ArchiveDragPromise(item: ai,
                                              context: context,
+                                             operationGate: level.operationGate,
                                              workflowService: archiveItemWorkflowService)
             let provider = NSFilePromiseProvider(fileType: archivePromiseFileType(for: ai),
                                                  delegate: promise)
