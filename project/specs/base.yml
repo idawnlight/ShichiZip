@@ -12,7 +12,7 @@ fileGroups:
 
 settings:
   base:
-    MARKETING_VERSION: "0.1.3"
+    MARKETING_VERSION: "0.1.4"
     CURRENT_PROJECT_VERSION: "1" # placeholder, will be overridden by build script
     SWIFT_VERSION: "6.0"
   configs:
