@@ -202,10 +202,19 @@
 "app.shortcut.toggleDualPane" = "切换双栏";
 
 "app.view.unifiedToolbarStyle" = "统一样式";
+"archive.cannotStartEditor" = "无法启动外部编辑器。";
 
 "benchmark.passes" = "轮数：";
+
+"column.hostOS" = "宿主系统";
 
 "compress.browse" = "浏览…";
 "compress.createSFX" = "创建 Windows 自解压程序";
 
+"extract.eliminateDuplication" = "排除重复的根目录";
+
 "shell.openArchive" = "打开压缩包…";
+
+"tools.deleteTempFiles" = "删除临时文件...";
+
+"view.openRootFolder" = "打开根目录";
