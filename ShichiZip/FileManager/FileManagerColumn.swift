@@ -17,6 +17,7 @@ struct FileManagerColumnID: RawRepresentable, Hashable, Codable, ExpressibleBySt
     static let modified = Self(rawValue: "modified")
     static let created = Self(rawValue: "created")
     static let accessed = Self(rawValue: "accessed")
+    static let changed = Self(rawValue: "changed")
     static let attributes = Self(rawValue: "attributes")
     static let encrypted = Self(rawValue: "encrypted")
     static let anti = Self(rawValue: "anti")
@@ -25,6 +26,8 @@ struct FileManagerColumnID: RawRepresentable, Hashable, Codable, ExpressibleBySt
     static let block = Self(rawValue: "block")
     static let position = Self(rawValue: "position")
     static let comment = Self(rawValue: "comment")
+    static let inode = Self(rawValue: "inode")
+    static let links = Self(rawValue: "links")
 }
 
 struct FileManagerArchiveEntryProperty: Equatable {
@@ -78,9 +81,33 @@ struct FileManagerColumn: Equatable {
     let width: CGFloat
     let minWidth: CGFloat
     let defaultAscending: Bool
+    let defaultVisible: Bool
     let alignment: NSTextAlignment
     let sortSelector: Selector?
     let textStyle: FileManagerColumnTextStyle
+
+    init(id: FileManagerColumnID,
+         titleKey: String?,
+         titleFallback: String,
+         width: CGFloat,
+         minWidth: CGFloat,
+         defaultAscending: Bool,
+         defaultVisible: Bool = true,
+         alignment: NSTextAlignment,
+         sortSelector: Selector?,
+         textStyle: FileManagerColumnTextStyle)
+    {
+        self.id = id
+        self.titleKey = titleKey
+        self.titleFallback = titleFallback
+        self.width = width
+        self.minWidth = minWidth
+        self.defaultAscending = defaultAscending
+        self.defaultVisible = defaultVisible
+        self.alignment = alignment
+        self.sortSelector = sortSelector
+        self.textStyle = textStyle
+    }
 
     var title: String {
         guard let titleKey else { return titleFallback }
@@ -124,11 +151,30 @@ struct FileManagerColumn: Equatable {
         string.replacingLineBreakSequencesWithSpaces()
     }
 
+    func withDefaultVisible(_ defaultVisible: Bool) -> FileManagerColumn {
+        FileManagerColumn(id: id,
+                          titleKey: titleKey,
+                          titleFallback: titleFallback,
+                          width: width,
+                          minWidth: minWidth,
+                          defaultAscending: defaultAscending,
+                          defaultVisible: defaultVisible,
+                          alignment: alignment,
+                          sortSelector: sortSelector,
+                          textStyle: textStyle)
+    }
+
     static let fileSystemColumns: [FileManagerColumn] = [
         definition(for: .name),
         definition(for: .size),
         definition(for: .modified),
         definition(for: .created),
+        definition(for: .accessed).withDefaultVisible(false),
+        definition(for: .changed).withDefaultVisible(false),
+        definition(for: .attributes).withDefaultVisible(false),
+        definition(for: .packedSize).withDefaultVisible(false),
+        definition(for: .inode).withDefaultVisible(false),
+        definition(for: .links).withDefaultVisible(false),
     ]
 
     static func archiveColumns(availablePropertyKeys: [String]) -> [FileManagerColumn] {
@@ -243,6 +289,16 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
+        case FileManagerColumnID.changed.rawValue:
+            FileManagerColumn(id: id,
+                              titleKey: "column.changed",
+                              titleFallback: "Metadata Changed",
+                              width: 140,
+                              minWidth: 80,
+                              defaultAscending: false,
+                              alignment: .left,
+                              sortSelector: nil,
+                              textStyle: .tabularNumbers)
         case FileManagerColumnID.attributes.rawValue:
             FileManagerColumn(id: id,
                               titleKey: "column.attributes",
@@ -323,6 +379,26 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: #selector(NSString.localizedStandardCompare(_:)),
                               textStyle: .standard)
+        case FileManagerColumnID.inode.rawValue:
+            FileManagerColumn(id: id,
+                              titleKey: "column.inode",
+                              titleFallback: "iNode",
+                              width: 100,
+                              minWidth: 70,
+                              defaultAscending: true,
+                              alignment: .right,
+                              sortSelector: nil,
+                              textStyle: .tabularNumbers)
+        case FileManagerColumnID.links.rawValue:
+            FileManagerColumn(id: id,
+                              titleKey: "column.links",
+                              titleFallback: "Links",
+                              width: 70,
+                              minWidth: 50,
+                              defaultAscending: true,
+                              alignment: .right,
+                              sortSelector: nil,
+                              textStyle: .tabularNumbers)
         default:
             nil
         }

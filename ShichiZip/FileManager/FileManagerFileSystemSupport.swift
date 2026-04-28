@@ -12,6 +12,10 @@ enum FileManagerDirectoryListing {
         .fileSizeKey,
         .contentModificationDateKey,
         .creationDateKey,
+        .contentAccessDateKey,
+        .attributeModificationDateKey,
+        .fileAllocatedSizeKey,
+        .totalFileAllocatedSizeKey,
     ]
 
     static func contentsPreservingPresentedPath(for url: URL,

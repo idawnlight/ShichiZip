@@ -145,13 +145,61 @@ final class FileManagerListViewPreferencesUITests: ShichiZipUITestCase {
             ],
         ]
 
-        do {
-            let data = try PropertyListSerialization.data(fromPropertyList: propertyList,
-                                                          format: .xml,
-                                                          options: 0)
-            return "<data>\(data.base64EncodedString())</data>"
-        } catch {
-            fatalError("Could not encode list-view defaults for UI test: \(error)")
-        }
+        return encodedListViewInfoArgumentValue(propertyList)
     }()
+}
+
+final class FileManagerHiddenColumnPreferencesUITests: ShichiZipUITestCase {
+    override var additionalLaunchArguments: [String] {
+        ["-FileManager.IsDualPane", "NO",
+         "-FileManager.ListViewInfo.FSFolder", Self.fileSystemListViewInfoArgumentValue]
+    }
+
+    func testRestoresHiddenColumnsFromDefaults() throws {
+        let tempDir = try makeTemporaryDirectory(named: "HiddenListViewColumns")
+        try Data(repeating: 0x61, count: 1).write(to: tempDir.appendingPathComponent("alpha.bin"))
+
+        navigateLeftPane(to: tempDir.path)
+
+        let table = leftPaneTable
+        XCTAssertTrue(table.waitForExistence(timeout: 10))
+
+        let nameText = table.staticTexts["alpha.bin"]
+        XCTAssertTrue(nameText.waitForExistence(timeout: 5))
+
+        let nameTextOffset = nameText.frame.minX - table.frame.minX
+        XCTAssertLessThan(nameTextOffset,
+                          120,
+                          "Hidden size column should not reserve visible space before the name column")
+        XCTAssertGreaterThan(nameText.frame.width,
+                             300,
+                             "Saved name column width should still be restored when a preceding size column is hidden")
+    }
+
+    private static let fileSystemListViewInfoArgumentValue: String = {
+        let propertyList: [String: Any] = [
+            "version": 1,
+            "sortKey": "name",
+            "ascending": true,
+            "columns": [
+                ["id": "size", "isVisible": false, "width": 280.0],
+                ["id": "name", "isVisible": true, "width": 360.0],
+                ["id": "modified", "isVisible": true, "width": 140.0],
+                ["id": "created", "isVisible": true, "width": 140.0],
+            ],
+        ]
+
+        return encodedListViewInfoArgumentValue(propertyList)
+    }()
+}
+
+private func encodedListViewInfoArgumentValue(_ propertyList: [String: Any]) -> String {
+    do {
+        let data = try PropertyListSerialization.data(fromPropertyList: propertyList,
+                                                      format: .xml,
+                                                      options: 0)
+        return "<data>\(data.base64EncodedString())</data>"
+    } catch {
+        fatalError("Could not encode list-view defaults for UI test: \(error)")
+    }
 }

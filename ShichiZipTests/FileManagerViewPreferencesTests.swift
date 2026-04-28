@@ -196,8 +196,8 @@ final class FileManagerViewPreferencesTests: XCTestCase {
             previousInfo: previousInfo,
         )
 
-        XCTAssertEqual(savedColumns.map(\.id), [.name, .size, .modified, .created])
-        XCTAssertEqual(savedColumns.map(\.isVisible), [true, false, true, true])
+        XCTAssertEqual(Array(savedColumns.map(\.id).prefix(4)), [.name, .size, .modified, .created])
+        XCTAssertEqual(Array(savedColumns.map(\.isVisible).prefix(4)), [true, false, true, true])
         XCTAssertEqual(savedColumns.first(where: { $0.id == .size })?.width, 128)
     }
 
@@ -268,8 +268,26 @@ final class FileManagerViewPreferencesTests: XCTestCase {
 }
 
 final class FileManagerColumnTests: XCTestCase {
-    func testFileSystemColumnsRemainFixed() {
-        XCTAssertEqual(FileManagerColumn.fileSystemColumns.map(\.id), [.name, .size, .modified, .created])
+    func testFileSystemColumnsExposeUpstreamBackedProperties() {
+        XCTAssertEqual(FileManagerColumn.fileSystemColumns.map(\.id), [
+            .name,
+            .size,
+            .modified,
+            .created,
+            .accessed,
+            .changed,
+            .attributes,
+            .packedSize,
+            .inode,
+            .links,
+        ])
+    }
+
+    func testFileSystemColumnsKeepOptionalPropertiesHiddenByDefault() {
+        let resolvedColumns = FileManagerViewPreferences.resolvedListViewColumns(FileManagerColumn.fileSystemColumns,
+                                                                                 using: nil)
+
+        XCTAssertEqual(resolvedColumns.map(\.column.id), [.name, .size, .modified, .created])
     }
 
     func testArchiveColumnsFollowHandlerPropertyOrder() {

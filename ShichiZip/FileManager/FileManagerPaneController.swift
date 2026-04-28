@@ -246,6 +246,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         tableView.allowsMultipleSelection = true
         tableView.allowsColumnResizing = true
         tableView.allowsColumnReordering = true
+        tableView.columnAutoresizingStyle = .noColumnAutoresizing
         tableView.rowSizeStyle = .custom
         tableView.rowHeight = listRowHeight
         tableView.intercellSpacing = NSSize(width: tableView.intercellSpacing.width, height: 0)
@@ -1728,7 +1729,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             }
         }
 
-        if remaining != 0 || result.isEmpty {
+        if remaining != 0 || (result.isEmpty && posixAttributes == nil) {
             if !result.isEmpty {
                 result.append(" ")
             }
@@ -3184,7 +3185,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             case "size":
                 result = a.size == b.size ? .orderedSame : (a.size < b.size ? .orderedAscending : .orderedDescending)
             case "packedSize":
-                result = .orderedSame
+                result = a.packedSize == b.packedSize ? .orderedSame : (a.packedSize < b.packedSize ? .orderedAscending : .orderedDescending)
             case "modified":
                 let ad = a.modifiedDate ?? Date.distantPast
                 let bd = b.modifiedDate ?? Date.distantPast
@@ -3193,7 +3194,25 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 let ad = a.createdDate ?? Date.distantPast
                 let bd = b.createdDate ?? Date.distantPast
                 result = ad.compare(bd)
-            case "accessed", "position", "block", "anti":
+            case "accessed":
+                let ad = a.accessedDate ?? Date.distantPast
+                let bd = b.accessedDate ?? Date.distantPast
+                result = ad.compare(bd)
+            case "changed":
+                let ad = a.changedDate ?? Date.distantPast
+                let bd = b.changedDate ?? Date.distantPast
+                result = ad.compare(bd)
+            case "attributes":
+                result = a.attributes == b.attributes ? .orderedSame : (a.attributes < b.attributes ? .orderedAscending : .orderedDescending)
+            case "inode":
+                let firstInode = a.inode ?? 0
+                let secondInode = b.inode ?? 0
+                result = firstInode == secondInode ? .orderedSame : (firstInode < secondInode ? .orderedAscending : .orderedDescending)
+            case "links":
+                let firstLinks = a.links ?? 0
+                let secondLinks = b.links ?? 0
+                result = firstLinks == secondLinks ? .orderedSame : (firstLinks < secondLinks ? .orderedAscending : .orderedDescending)
+            case "position", "block", "anti":
                 result = .orderedSame
             default:
                 result = a.name.localizedStandardCompare(b.name)
@@ -3592,8 +3611,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         let itemModified: String
         let itemCreated: String
         let itemAccessed: String
+        let itemChanged: String
         let itemPackedSize: String
         let itemAttributes: String
+        let itemInode: String
+        let itemLinks: String
         let itemEncrypted: String
         let itemAnti: String
         let itemMethod: String
@@ -3611,8 +3633,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             itemModified = ""
             itemCreated = ""
             itemAccessed = ""
+            itemChanged = ""
             itemPackedSize = ""
             itemAttributes = ""
+            itemInode = ""
+            itemLinks = ""
             itemEncrypted = ""
             itemAnti = ""
             itemMethod = ""
@@ -3629,8 +3654,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             itemModified = ai.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
             itemCreated = ai.createdDate.map { dateFormatter.string(from: $0) } ?? ""
             itemAccessed = ai.accessedDate.map { dateFormatter.string(from: $0) } ?? ""
+            itemChanged = ai.propertyValues[FileManagerColumnID.changed.rawValue] ?? ""
             itemPackedSize = ai.isDirectory ? "" : ByteCountFormatter.string(fromByteCount: Int64(ai.packedSize), countStyle: .file)
             itemAttributes = Self.formattedAttributes(ai.attributes)
+            itemInode = ai.propertyValues[FileManagerColumnID.inode.rawValue] ?? ""
+            itemLinks = ai.propertyValues[FileManagerColumnID.links.rawValue] ?? ""
             itemEncrypted = ai.isEncrypted ? "+" : "-"
             itemAnti = ai.isAnti ? "+" : "-"
             itemMethod = ai.method
@@ -3646,9 +3674,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             itemSize = item.formattedSize
             itemModified = item.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
             itemCreated = item.createdDate.map { dateFormatter.string(from: $0) } ?? ""
-            itemAccessed = ""
-            itemPackedSize = ""
-            itemAttributes = ""
+            itemAccessed = item.accessedDate.map { dateFormatter.string(from: $0) } ?? ""
+            itemChanged = item.changedDate.map { dateFormatter.string(from: $0) } ?? ""
+            itemPackedSize = item.formattedPackedSize
+            itemAttributes = Self.formattedAttributes(item.attributes)
+            itemInode = item.inode.map(String.init) ?? ""
+            itemLinks = item.links.map(String.init) ?? ""
             itemEncrypted = ""
             itemAnti = ""
             itemMethod = ""
@@ -3744,8 +3775,17 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         case "accessed":
             setDisplayText(itemAccessed)
 
+        case "changed":
+            setDisplayText(itemChanged)
+
         case "attributes":
             setDisplayText(itemAttributes)
+
+        case "inode":
+            setDisplayText(itemInode)
+
+        case "links":
+            setDisplayText(itemLinks)
 
         case "encrypted":
             setDisplayText(itemEncrypted)

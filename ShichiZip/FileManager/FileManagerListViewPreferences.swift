@@ -76,7 +76,9 @@ extension FileManagerViewPreferences {
                                         using info: ListViewInfo?) -> [ResolvedListViewColumn]
     {
         guard let info else {
-            return columns.map { ResolvedListViewColumn(column: $0, width: $0.width) }
+            return columns
+                .filter(\.defaultVisible)
+                .map { ResolvedListViewColumn(column: $0, width: $0.width) }
         }
 
         let availableColumns = Dictionary(uniqueKeysWithValues: columns.map { ($0.id, $0) })
@@ -98,7 +100,7 @@ extension FileManagerViewPreferences {
                                                                                        for: column)))
         }
 
-        for column in columns where !seenColumnIDs.contains(column.id) {
+        for column in columns where !seenColumnIDs.contains(column.id) && column.defaultVisible {
             resolvedColumns.append(ResolvedListViewColumn(column: column, width: column.width))
         }
 
