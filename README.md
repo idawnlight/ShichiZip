@@ -9,7 +9,7 @@ The missing 7-Zip derivative intended for macOS.
 - (Most) 7-Zip File Manager experience, rebuilt natively for macOS.
 - Full 7-Zip format support. Everything supported by upstream 7-Zip.
 - One-click smart extraction that auto-picks the best destination and strips duplicate top-level folders.
-- Quick Look support for previewing files inside archives without extracting.
+- In-archive Quick Look support for previewing files without extracting.
 - Additional macOS-specific features, including stripping resource forks and best-effort integration with Finder.
 
 ## Build
