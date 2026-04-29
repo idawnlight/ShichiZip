@@ -2,7 +2,15 @@
 
 The missing 7-Zip derivative intended for macOS.
 
-![screenshot of ShichiZip](https://i.dawnlab.me/2e94b659e94ab1ec187fdb758bc4e7a9.png)
+![screenshot of ShichiZip](https://i.dawnlab.me/2712265ec4056f5aa89d68a1688ac184.png)
+
+## Features
+
+- (Most) 7-Zip File Manager experience, rebuilt natively for macOS.
+- Full 7-Zip format support. Everything supported by upstream 7-Zip.
+- One-click smart extraction that auto-picks the best destination and strips duplicate top-level folders.
+- Quick Look support for previewing files inside archives without extracting.
+- Additional macOS-specific features, including stripping resource forks and best-effort integration with Finder.
 
 ## Build
 
@@ -21,7 +29,11 @@ Use `-Dvariant=all` with `lib`, `sfx`, or `all` (`lib` + `sfx` basically) to bui
 
 Windows SFX builds default to `x86` to match the current app packaging. Use `-Dsfx-arch=x86_64` or `-Dsfx-arch=all` when you need the other architecture(s).
 
-## Contributions
+## Contributing
+
+All types of contributions are welcome.
+
+This project is also happy to accept contributions from LLM, with only one requirement: it should be reviewed carefully by a human being before submission, and you must clearly know what you are doing.
 
 ### Localization
 
@@ -36,3 +48,9 @@ When working on a single locale, you can pass just that file to the formatter, f
 ```sh
 python3 project/scripts/format_app_strings.py ShichiZip/Resources/Localization/zh-Hans.lproj/App.strings
 ```
+
+## License
+
+ShichiZip is licensed under [LGPL-2.1](LICENSE), only to avoid any potential licensing conflicts with the upstream code.
+
+See submodules in `vendor/` for the licenses of the upstream 7-Zip code.
