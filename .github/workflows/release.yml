@@ -47,7 +47,6 @@ jobs:
       - name: Upload source tarball
         uses: actions/upload-artifact@v7
         with:
-          name: source-tarball
           path: ${{ runner.temp }}/shichizip-*-source.tar.gz
           if-no-files-found: error
           archive: false
@@ -94,7 +93,7 @@ jobs:
       - name: Download source tarball
         uses: actions/download-artifact@v8
         with:
-          name: source-tarball
+          name: shichizip-${{ github.ref_name || 'source' }}-source.tar.gz
           path: ${{ runner.temp }}/source
           skip-decompress: true
 
