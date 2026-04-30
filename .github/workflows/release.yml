@@ -21,6 +21,11 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Apply vendor patches
+        run: |
+          sh vendor/apply_7zip_patches.sh vendor/7zip
+          sh vendor/apply_7zip_patches.sh vendor/7zip-zstd
+
       - name: Snapshot build metadata
         run: |
           commit_count="$(git rev-list --count HEAD)"

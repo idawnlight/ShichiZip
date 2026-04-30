@@ -78,6 +78,15 @@ fn concatFlags(b: *std.Build, base: []const []const u8, extra: []const []const u
 }
 
 fn prepareVendor(b: *std.Build, variant: Variant) *std.Build.Step {
+    // When building from a source tarball (.build-metadata present),
+    // vendor sources are already patched — skip the patch step.
+    const io = b.graph.io;
+    if (Io.Dir.cwd().statFile(io, ".build-metadata", .{})) |_| {
+        const noop = b.allocator.create(std.Build.Step) catch @panic("OOM");
+        noop.* = std.Build.Step.init(.{ .id = .custom, .name = "vendor sources pre-patched", .owner = b });
+        return noop;
+    } else |_| {}
+
     const sevenz_root = variant.vendorRoot();
     const patch_cmd = b.addSystemCommand(&.{ "sh", "vendor/apply_7zip_patches.sh", sevenz_root });
     return &patch_cmd.step;
