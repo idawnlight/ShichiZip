@@ -3,8 +3,19 @@
 set -eu
 
 info_plist="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
-commit_count="$(git -C "${SRCROOT}" rev-list --count HEAD 2>/dev/null || printf '0')"
-short_hash="$(git -C "${SRCROOT}" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+
+# Read build metadata from .build-metadata if present (source tarball),
+# otherwise fall back to live git queries.
+build_metadata="${SRCROOT}/.build-metadata"
+if [ -f "${build_metadata}" ]; then
+  # shellcheck source=/dev/null
+  . "${build_metadata}"
+  commit_count="${BUILD_COMMIT_COUNT:-0}"
+  short_hash="${BUILD_SHORT_HASH:-unknown}"
+else
+  commit_count="$(git -C "${SRCROOT}" rev-list --count HEAD 2>/dev/null || printf '0')"
+  short_hash="$(git -C "${SRCROOT}" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+fi
 
 set_plist_value() {
   plist_path="$1"

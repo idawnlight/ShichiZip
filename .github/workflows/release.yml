@@ -10,8 +10,46 @@ permissions:
   contents: write
 
 jobs:
+  # --- Source tarball (includes submodules, strips .git) ---
+  source-tarball:
+    name: Source Tarball
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository with submodules
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Snapshot build metadata
+        run: |
+          commit_count="$(git rev-list --count HEAD)"
+          short_hash="$(git rev-parse --short HEAD)"
+          printf 'BUILD_COMMIT_COUNT="%s"\nBUILD_SHORT_HASH="%s"\n' \
+            "$commit_count" "$short_hash" > .build-metadata
+
+      - name: Strip .git directories and files
+        run: find . -name .git -exec rm -rf {} +
+
+      - name: Create source tarball
+        run: |
+          repo_name="shichizip"
+          tag="${GITHUB_REF_NAME:-source}"
+          tar -czf "$RUNNER_TEMP/${repo_name}-${tag}-source.tar.gz" \
+            --transform "s,^\.,${repo_name}-${tag}," \
+            .
+
+      - name: Upload source tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-tarball
+          path: ${{ runner.temp }}/shichizip-*-source.tar.gz
+          if-no-files-found: error
+          archive: false
+
   release-build:
     name: Release (${{ matrix.artifact_prefix }}, ${{ matrix.target_arch }})
+    needs: source-tarball
     runs-on: macos-26
     environment: release
     strategy:
@@ -48,11 +86,17 @@ jobs:
       XCODE_CONFIGURATION: Release
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
+      - name: Download source tarball
+        uses: actions/download-artifact@v8
         with:
-          fetch-depth: 0
-          submodules: recursive
+          name: source-tarball
+          path: ${{ runner.temp }}/source
+          skip-decompress: true
+
+      - name: Extract source tarball
+        run: |
+          tarball="$(ls "$RUNNER_TEMP"/source/shichizip-*-source.tar.gz)"
+          tar -xzf "$tarball" --strip-components=1
 
       - name: Set up Zig
         uses: mlugg/setup-zig@v2
@@ -199,7 +243,7 @@ jobs:
   # --- Create GitHub Release ---
   create-release:
     name: Create GitHub Release
-    needs: release-build
+    needs: [release-build, source-tarball]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -214,4 +258,6 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
-          files: artifacts/**/*.zip
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
