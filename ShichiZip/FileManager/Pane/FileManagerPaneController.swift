@@ -63,6 +63,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         case parent
         case filesystem(FileSystemItem)
         case archive(ArchiveItem)
+
+        var fileSystemItem: FileSystemItem? {
+            guard case let .filesystem(item) = self else { return nil }
+            return item
+        }
+
+        var archiveItem: ArchiveItem? {
+            guard case let .archive(item) = self else { return nil }
+            return item
+        }
     }
 
     /// Archive navigation state (matches CFolderLink stack in Panel.cpp)
@@ -1931,21 +1941,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                           dropOperation: NSTableView.DropOperation) -> URL?
     {
         guard !isInsideArchive else { return nil }
-
-        if dropOperation != .on {
-            return currentDirectory.standardizedFileURL
-        }
-
-        guard let item = paneItem(at: row) else {
-            return currentDirectory.standardizedFileURL
-        }
-
-        switch item {
-        case let .filesystem(fileSystemItem) where fileSystemItem.isDirectory:
-            return fileSystemItem.url.standardizedFileURL
-        default:
-            return nil
-        }
+        return FileOperationDropTargetResolver.fileSystemDestination(currentDirectory: currentDirectory,
+                                                                     dropOperation: dropOperation,
+                                                                     item: paneItem(at: row)?.fileSystemItem)
     }
 
     private func archiveDropMutationTarget(for row: Int,
@@ -1955,20 +1953,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return nil
         }
 
-        guard dropOperation == .on else {
-            return (target.archive, normalizeArchivePath(target.subdir))
-        }
-
-        guard let item = paneItem(at: row) else {
-            return (target.archive, normalizeArchivePath(target.subdir))
-        }
-
-        switch item {
-        case let .archive(archiveItem) where archiveItem.isDirectory:
-            return (target.archive, normalizeArchivePath(archiveItem.path))
-        default:
+        guard let targetSubdir = FileOperationDropTargetResolver.archiveDestinationSubdir(currentSubdir: target.subdir,
+                                                                                          dropOperation: dropOperation,
+                                                                                          item: paneItem(at: row)?.archiveItem)
+        else {
             return nil
         }
+        return (target.archive, targetSubdir)
     }
 
     private func selectedPaneItems() -> [PaneItem] {
@@ -3257,9 +3248,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
             let operation = takeResolvedArchiveDropOperation(for: info)
 
-            if let promiseReceivers = info.draggingPasteboard.readObjects(forClasses: [NSFilePromiseReceiver.self]) as? [NSFilePromiseReceiver],
-               !promiseReceivers.isEmpty
-            {
+            let promiseReceivers = FileOperationDropResolver.promiseReceivers(in: info.draggingPasteboard)
+            if !promiseReceivers.isEmpty {
                 receivePromisedFiles(promiseReceivers,
                                      intoArchive: target,
                                      sourcePane: sourcePane)
@@ -3267,7 +3257,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             }
 
             guard !operation.isEmpty else { return false }
-            let urls = droppedFileURLs(from: info)
+            let urls = FileOperationDropResolver.fileURLs(in: info.draggingPasteboard)
             guard !urls.isEmpty else { return false }
 
             guard canTransferFileSystemItemURLsToArchive(urls,
@@ -3290,15 +3280,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
         let operation = takeResolvedDropOperation(for: info, destinationDirectory: destDir)
 
-        if let promiseReceivers = info.draggingPasteboard.readObjects(forClasses: [NSFilePromiseReceiver.self]) as? [NSFilePromiseReceiver],
-           !promiseReceivers.isEmpty
-        {
+        let promiseReceivers = FileOperationDropResolver.promiseReceivers(in: info.draggingPasteboard)
+        if !promiseReceivers.isEmpty {
             receivePromisedFiles(promiseReceivers, at: destDir)
             return true
         }
 
         guard !operation.isEmpty else { return false }
-        let urls = droppedFileURLs(from: info)
+        let urls = FileOperationDropResolver.fileURLs(in: info.draggingPasteboard)
         guard !urls.isEmpty else { return false }
 
         guard canTransferFileSystemItemURLs(urls,
@@ -3327,7 +3316,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     {
         FileOperationDropResolver.fileSystemDropOperation(sourceMask: info.draggingSourceOperationMask,
                                                           containsFilePromises: FileOperationDropResolver.containsFilePromises(in: info.draggingPasteboard),
-                                                          droppedFileURLs: droppedFileURLs(from: info),
+                                                          droppedFileURLs: FileOperationDropResolver.fileURLs(in: info.draggingPasteboard),
                                                           destinationDirectory: destinationDirectory)
     }
 
@@ -3360,14 +3349,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         return resolvedArchiveDropOperation(for: info)
-    }
-
-    private func droppedFileURLs(from info: any NSDraggingInfo) -> [URL] {
-        guard let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self]) as? [URL] else {
-            return []
-        }
-
-        return urls.map(\.standardizedFileURL)
     }
 
     private func archiveDestinationFileURL(for target: (archive: SZArchive, subdir: String)) -> URL? {

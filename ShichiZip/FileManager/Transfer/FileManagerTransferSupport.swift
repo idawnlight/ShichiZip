@@ -371,6 +371,46 @@ private func szNormalizedArchiveTransferPath(_ path: String) -> String {
     return normalized
 }
 
+enum FileOperationDropTargetResolver {
+    static func fileSystemDestination(currentDirectory: URL,
+                                      dropOperation: NSTableView.DropOperation,
+                                      item: FileSystemItem?) -> URL?
+    {
+        if dropOperation != .on {
+            return currentDirectory.standardizedFileURL
+        }
+
+        guard let item else {
+            return currentDirectory.standardizedFileURL
+        }
+
+        guard item.isDirectory else {
+            return nil
+        }
+
+        return item.url.standardizedFileURL
+    }
+
+    static func archiveDestinationSubdir(currentSubdir: String,
+                                         dropOperation: NSTableView.DropOperation,
+                                         item: ArchiveItem?) -> String?
+    {
+        if dropOperation != .on {
+            return szNormalizedArchiveTransferPath(currentSubdir)
+        }
+
+        guard let item else {
+            return szNormalizedArchiveTransferPath(currentSubdir)
+        }
+
+        guard item.isDirectory else {
+            return nil
+        }
+
+        return szNormalizedArchiveTransferPath(item.path)
+    }
+}
+
 enum FileOperationDropResolver {
     static var promisedFilePasteboardTypes: [NSPasteboard.PasteboardType] {
         NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) }
@@ -379,6 +419,17 @@ enum FileOperationDropResolver {
     static func containsFilePromises(in pasteboard: NSPasteboard) -> Bool {
         let promisedTypes = Set(promisedFilePasteboardTypes)
         return pasteboard.types?.contains(where: promisedTypes.contains) ?? false
+    }
+
+    static func fileURLs(in pasteboard: NSPasteboard) -> [URL] {
+        guard let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL] else {
+            return []
+        }
+        return urls.map(\.standardizedFileURL)
+    }
+
+    static func promiseReceivers(in pasteboard: NSPasteboard) -> [NSFilePromiseReceiver] {
+        pasteboard.readObjects(forClasses: [NSFilePromiseReceiver.self]) as? [NSFilePromiseReceiver] ?? []
     }
 
     static func fileSystemDropOperation(sourceMask: NSDragOperation,
