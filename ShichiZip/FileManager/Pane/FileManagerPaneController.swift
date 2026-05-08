@@ -678,16 +678,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return FileManagerViewPreferences.fileSystemListViewFolderTypeID
     }
 
-    private func visibleColumnsInTableOrder(availableColumns: [FileManagerColumn]) -> [FileManagerColumn] {
-        let columnsByID = Dictionary(uniqueKeysWithValues: availableColumns.map { ($0.id, $0) })
-        return tableView.tableColumns.compactMap { tableColumn in
-            columnsByID[FileManagerColumnID(rawValue: tableColumn.identifier.rawValue)]
-        }
-    }
-
     private func handleTableColumnLayoutDidChange() {
         guard !isApplyingListViewPreferences else { return }
-        currentColumns = visibleColumnsInTableOrder(availableColumns: columnsForCurrentLocation())
+        currentColumns = FileManagerColumn.visibleColumns(inTableOrder: tableView.tableColumns,
+                                                          availableColumns: columnsForCurrentLocation())
         persistCurrentListViewInfo()
     }
 
@@ -3827,7 +3821,8 @@ extension FileManagerPaneController {
                                   availableColumns: availableColumns)
         }
 
-        currentColumns = visibleColumnsInTableOrder(availableColumns: availableColumns)
+        currentColumns = FileManagerColumn.visibleColumns(inTableOrder: tableView.tableColumns,
+                                                          availableColumns: availableColumns)
         let visibleIDs = Set(currentColumns.map(\.id))
         tableView.sortDescriptors = FileManagerViewPreferences.sortDescriptorsByResettingUnavailableColumn(tableView.sortDescriptors,
                                                                                                            visibleColumnIDs: visibleIDs,

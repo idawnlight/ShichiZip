@@ -219,6 +219,15 @@ struct FileManagerColumn: Equatable {
         return columns
     }
 
+    static func visibleColumns(inTableOrder tableColumns: [NSTableColumn],
+                               availableColumns: [FileManagerColumn]) -> [FileManagerColumn]
+    {
+        let columnsByID = Dictionary(uniqueKeysWithValues: availableColumns.map { ($0.id, $0) })
+        return tableColumns.compactMap { tableColumn in
+            columnsByID[FileManagerColumnID(rawValue: tableColumn.identifier.rawValue)]
+        }
+    }
+
     static func definition(for id: FileManagerColumnID) -> FileManagerColumn {
         knownDefinition(for: id)
             ?? column(for: FileManagerArchiveEntryProperty(id: id,

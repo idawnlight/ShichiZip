@@ -1,3 +1,4 @@
+import AppKit
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
@@ -411,6 +412,18 @@ final class FileManagerColumnTests: XCTestCase {
         XCTAssertEqual(columns.first(where: { $0.id == hostOSColumnID })?.titleFallback, "Host OS")
         XCTAssertEqual(columns.first(where: { $0.id == hostOSColumnID })?.alignment, .left)
         XCTAssertEqual(columns.first(where: { $0.id == checksumColumnID })?.alignment, .right)
+    }
+
+    func testVisibleColumnsFollowTableColumnOrderAndIgnoreUnavailableColumns() {
+        let methodColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(FileManagerColumnID.method.rawValue))
+        let missingColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("missing"))
+        let nameColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(FileManagerColumnID.name.rawValue))
+        let columns = FileManagerColumn.archiveColumns(availablePropertyKeys: ["method"])
+
+        let visibleColumns = FileManagerColumn.visibleColumns(inTableOrder: [methodColumn, missingColumn, nameColumn],
+                                                              availableColumns: columns)
+
+        XCTAssertEqual(visibleColumns.map(\.id), [.method, .name])
     }
 
     func testColumnAlignmentFollowsUpstreamPropertyTypes() {
