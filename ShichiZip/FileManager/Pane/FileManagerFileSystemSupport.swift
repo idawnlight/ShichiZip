@@ -68,6 +68,43 @@ enum FileManagerDirectoryListing {
     }
 }
 
+struct FileManagerDirectorySnapshot {
+    struct EntryFingerprint: Equatable {
+        let path: String
+        let isDirectory: Bool
+        let size: Int
+        let modifiedDate: Date?
+        let createdDate: Date?
+    }
+
+    let url: URL
+    let fingerprint: [EntryFingerprint]
+    let items: [FileSystemItem]
+
+    static func make(for url: URL,
+                     options: FileManager.DirectoryEnumerationOptions) throws -> FileManagerDirectorySnapshot
+    {
+        let entries = try FileManagerDirectoryListing.entriesPreservingPresentedPath(for: url,
+                                                                                     options: options)
+        let pairs: [(EntryFingerprint, FileSystemItem)] = entries.map { entry in
+            let values = entry.resourceValues
+            let fingerprint = EntryFingerprint(
+                path: entry.url.standardizedFileURL.path,
+                isDirectory: values?.isDirectory ?? false,
+                size: values?.fileSize ?? 0,
+                modifiedDate: values?.contentModificationDate,
+                createdDate: values?.creationDate,
+            )
+            let item = FileSystemItem(url: entry.url, resourceValues: values)
+            return (fingerprint, item)
+        }
+
+        return FileManagerDirectorySnapshot(url: url,
+                                            fingerprint: pairs.map(\.0).sorted { $0.path < $1.path },
+                                            items: pairs.map(\.1))
+    }
+}
+
 enum FileManagerTransferPathValidation {
     enum ConflictKind: Equatable {
         case sameDestination

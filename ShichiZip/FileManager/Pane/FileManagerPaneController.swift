@@ -11,14 +11,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         "\(Bundle.main.bundleIdentifier ?? "ShichiZip").file-manager.directory-snapshot"
     }
 
-    private struct DirectoryEntryFingerprint: Equatable {
-        let path: String
-        let isDirectory: Bool
-        let size: Int
-        let modifiedDate: Date?
-        let createdDate: Date?
-    }
-
     // MARK: - Properties
 
     weak var delegate: FileManagerPaneDelegate?
@@ -53,7 +45,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private let iconCache = NSCache<NSString, NSImage>()
     private let iconSize = NSSize(width: 16, height: 16)
     private let listRowHeight: CGFloat = 22
-    private var currentDirectoryFingerprint: [DirectoryEntryFingerprint] = []
+    private var currentDirectoryFingerprint: [FileManagerDirectorySnapshot.EntryFingerprint] = []
     private var currentListViewFolderTypeID: String?
     private(set) var isSuspended = false
     private var suspendedOverlay: NSView?
@@ -415,12 +407,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         static let empty = FileSystemSelectionState(selectedPaths: [], focusedPath: nil)
     }
 
-    private struct DirectorySnapshot {
-        let url: URL
-        let fingerprint: [DirectoryEntryFingerprint]
-        let items: [FileSystemItem]
-    }
-
     private enum DirectorySnapshotPurpose {
         case refresh(selectionState: FileSystemSelectionState)
         case autoRefresh(selectionState: FileSystemSelectionState)
@@ -442,8 +428,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         cancelPendingDirectorySnapshot()
 
         do {
-            let snapshot = try Self.makeDirectorySnapshot(for: url.standardizedFileURL,
-                                                          options: fileManagerDirectoryEnumerationOptions())
+            let snapshot = try FileManagerDirectorySnapshot.make(for: url.standardizedFileURL,
+                                                                 options: fileManagerDirectoryEnumerationOptions())
             applyDirectorySnapshot(snapshot)
             if isSuspended {
                 clearSuspendedState()
@@ -465,29 +451,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func fileManagerDirectoryEnumerationOptions() -> FileManager.DirectoryEnumerationOptions {
         SZSettings.bool(.showHiddenFiles) ? [] : [.skipsHiddenFiles]
-    }
-
-    private nonisolated static func makeDirectorySnapshot(for url: URL,
-                                                          options: FileManager.DirectoryEnumerationOptions) throws -> DirectorySnapshot
-    {
-        let entries = try FileManagerDirectoryListing.entriesPreservingPresentedPath(for: url,
-                                                                                     options: options)
-        let pairs: [(DirectoryEntryFingerprint, FileSystemItem)] = entries.map { entry in
-            let values = entry.resourceValues
-            let fingerprint = DirectoryEntryFingerprint(
-                path: entry.url.standardizedFileURL.path,
-                isDirectory: values?.isDirectory ?? false,
-                size: values?.fileSize ?? 0,
-                modifiedDate: values?.contentModificationDate,
-                createdDate: values?.creationDate,
-            )
-            let item = FileSystemItem(url: entry.url, resourceValues: values)
-            return (fingerprint, item)
-        }
-
-        return DirectorySnapshot(url: url,
-                                 fingerprint: pairs.map(\.0).sorted { $0.path < $1.path },
-                                 items: pairs.map(\.1))
     }
 
     private func captureFileSystemSelectionState() -> FileSystemSelectionState {
@@ -552,8 +515,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         directorySnapshotQueue.async {
             let result = Result {
-                try Self.makeDirectorySnapshot(for: url,
-                                               options: options)
+                try FileManagerDirectorySnapshot.make(for: url,
+                                                      options: options)
             }
 
             DispatchQueue.main.async { [weak self] in
@@ -570,7 +533,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         directorySnapshotGeneration += 1
     }
 
-    private func finishDirectorySnapshot(_ result: Result<DirectorySnapshot, Error>,
+    private func finishDirectorySnapshot(_ result: Result<FileManagerDirectorySnapshot, Error>,
                                          generation: Int,
                                          purpose: DirectorySnapshotPurpose)
     {
@@ -600,8 +563,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func loadInitialDirectory(_ url: URL) {
         do {
-            let snapshot = try Self.makeDirectorySnapshot(for: url.standardizedFileURL,
-                                                          options: fileManagerDirectoryEnumerationOptions())
+            let snapshot = try FileManagerDirectorySnapshot.make(for: url.standardizedFileURL,
+                                                                 options: fileManagerDirectoryEnumerationOptions())
             applyDirectorySnapshot(snapshot)
         } catch {
             currentDirectory = url.standardizedFileURL
@@ -610,7 +573,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    private func applyDirectorySnapshot(_ snapshot: DirectorySnapshot) {
+    private func applyDirectorySnapshot(_ snapshot: FileManagerDirectorySnapshot) {
         currentDirectory = snapshot.url
         recordDirectoryVisit(snapshot.url)
         updatePathField()
