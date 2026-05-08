@@ -136,6 +136,58 @@ enum FileManagerRecentDirectoryHistory {
     }
 }
 
+struct FileManagerFileSystemRevealTarget {
+    let parentDirectory: URL
+    let selectedPaths: Set<String>
+    let focusedPath: String?
+}
+
+enum FileManagerFileSystemOpenTarget {
+    case directory(URL)
+    case file(url: URL, hostDirectory: URL)
+}
+
+enum FileManagerFileSystemNavigation {
+    static func rootURL(for directoryURL: URL) -> URL {
+        let components = directoryURL.standardizedFileURL.pathComponents
+        if components.count >= 3, components[1] == "Volumes" {
+            return URL(fileURLWithPath: NSString.path(withComponents: Array(components.prefix(3))))
+        }
+        return URL(fileURLWithPath: "/")
+    }
+
+    static func revealTarget(for urls: [URL]) -> FileManagerFileSystemRevealTarget? {
+        let standardizedURLs = urls.map(\.standardizedFileURL)
+        guard !standardizedURLs.isEmpty else { return nil }
+
+        let parentDirectory = standardizedURLs[0].deletingLastPathComponent().standardizedFileURL
+        guard standardizedURLs.allSatisfy({ $0.deletingLastPathComponent().standardizedFileURL == parentDirectory }) else {
+            return nil
+        }
+
+        return FileManagerFileSystemRevealTarget(parentDirectory: parentDirectory,
+                                                 selectedPaths: Set(standardizedURLs.map(\.path)),
+                                                 focusedPath: standardizedURLs.first?.path)
+    }
+
+    static func openTarget(for url: URL,
+                           fileManager: FileManager = .default) -> FileManagerFileSystemOpenTarget?
+    {
+        let standardizedURL = url.standardizedFileURL
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory) else {
+            return nil
+        }
+
+        if isDirectory.boolValue {
+            return .directory(standardizedURL)
+        }
+
+        return .file(url: standardizedURL,
+                     hostDirectory: standardizedURL.deletingLastPathComponent().standardizedFileURL)
+    }
+}
+
 enum FileManagerTransferPathValidation {
     enum ConflictKind: Equatable {
         case sameDestination

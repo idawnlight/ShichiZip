@@ -1044,14 +1044,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return
         }
 
-        let components = currentDirectory.standardizedFileURL.pathComponents
-        let rootURL = if components.count >= 3, components[1] == "Volumes" {
-            URL(fileURLWithPath: NSString.path(withComponents: Array(components.prefix(3))))
-        } else {
-            URL(fileURLWithPath: "/")
-        }
-
-        loadDirectory(rootURL)
+        loadDirectory(FileManagerFileSystemNavigation.rootURL(for: currentDirectory))
     }
 
     func recentDirectoryHistory() -> [URL] {
@@ -1352,22 +1345,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     @discardableResult
     func revealFileSystemItemURLs(_ urls: [URL]) -> Bool {
-        let standardizedURLs = urls.map(\.standardizedFileURL)
-        guard !standardizedURLs.isEmpty else { return false }
-
-        let parentDirectory = standardizedURLs[0].deletingLastPathComponent().standardizedFileURL
-        guard standardizedURLs.allSatisfy({ $0.deletingLastPathComponent().standardizedFileURL == parentDirectory }) else {
-            return false
-        }
+        guard let target = FileManagerFileSystemNavigation.revealTarget(for: urls) else { return false }
 
         if isInsideArchive, !closeAllArchives(showError: true) {
             return false
         }
 
-        let selectedPaths = Set(standardizedURLs.map(\.path))
-        let selectionState = FileSystemSelectionState(selectedPaths: selectedPaths,
-                                                      focusedPath: standardizedURLs.first?.path)
-        navigateToDirectory(parentDirectory,
+        let selectionState = FileSystemSelectionState(selectedPaths: target.selectedPaths,
+                                                      focusedPath: target.focusedPath)
+        navigateToDirectory(target.parentDirectory,
                             showError: true,
                             selectionState: selectionState,
                             focusAfterLoad: true)
@@ -1376,25 +1362,29 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     @discardableResult
     func openFileSystemItemURL(_ url: URL) -> Bool {
-        let standardizedURL = url.standardizedFileURL
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory) else {
-            return false
-        }
-
-        if isDirectory.boolValue {
+        switch FileManagerFileSystemNavigation.openTarget(for: url) {
+        case let .directory(directoryURL):
             if isInsideArchive, !closeAllArchives(showError: true) {
                 return false
             }
 
-            navigateToDirectory(standardizedURL,
+            navigateToDirectory(directoryURL,
                                 showError: true,
                                 focusAfterLoad: true)
             return true
+        case let .file(fileURL, hostDirectory):
+            return openFileSystemArchiveURL(fileURL,
+                                            hostDirectory: hostDirectory)
+        case nil:
+            return false
         }
+    }
 
-        switch openArchiveInline(standardizedURL,
-                                 hostDirectory: standardizedURL.deletingLastPathComponent().standardizedFileURL,
+    private func openFileSystemArchiveURL(_ fileURL: URL,
+                                          hostDirectory: URL) -> Bool
+    {
+        switch openArchiveInline(fileURL,
+                                 hostDirectory: hostDirectory,
                                  showError: false,
                                  replaceCurrentState: true)
         {
@@ -1402,7 +1392,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             focusFileList()
             return true
         case .unsupportedArchive:
-            return revealFileSystemItemURLs([standardizedURL])
+            return revealFileSystemItemURLs([fileURL])
         case .cancelled:
             return false
         case let .failed(error):
