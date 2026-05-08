@@ -3588,33 +3588,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private func receivePromisedFiles(_ promiseReceivers: [NSFilePromiseReceiver],
                                       at destinationDirectory: URL)
     {
-        let operationQueue = OperationQueue()
-        operationQueue.qualityOfService = .userInitiated
-
-        let completionGroup = DispatchGroup()
-        let state = OSAllocatedUnfairLock(initialState: nil as Error?)
-
-        for promiseReceiver in promiseReceivers {
-            completionGroup.enter()
-            promiseReceiver.receivePromisedFiles(atDestination: destinationDirectory,
-                                                 options: [:],
-                                                 operationQueue: operationQueue)
-            { @Sendable _, error in
-                if let error {
-                    state.withLock { firstError in
-                        if firstError == nil { firstError = error }
-                    }
-                }
-                completionGroup.leave()
-            }
-        }
-
-        completionGroup.notify(queue: .main) { [weak self] in
-            MainActor.assumeIsolated {
-                self?.refresh()
-                if let error = state.withLock({ $0 }) {
-                    self?.showErrorAlert(error)
-                }
+        FileOperationPromisedFileReceiver.receive(promiseReceivers,
+                                                  at: destinationDirectory)
+        { [weak self] reception in
+            self?.refresh()
+            if let error = reception.firstError {
+                self?.showErrorAlert(error)
             }
         }
     }
@@ -3631,54 +3610,30 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return
         }
 
-        let operationQueue = OperationQueue()
-        operationQueue.qualityOfService = .userInitiated
-
-        let completionGroup = DispatchGroup()
-        let state = OSAllocatedUnfairLock(initialState: (urls: [URL](), firstError: nil as Error?))
-
-        for promiseReceiver in promiseReceivers {
-            completionGroup.enter()
-            promiseReceiver.receivePromisedFiles(atDestination: stagingDirectory,
-                                                 options: [:],
-                                                 operationQueue: operationQueue)
-            { @Sendable fileURL, error in
-                state.withLock { s in
-                    s.urls.append(fileURL.standardizedFileURL)
-                    if let error, s.firstError == nil {
-                        s.firstError = error
-                    }
-                }
-                completionGroup.leave()
+        FileOperationPromisedFileReceiver.receive(promiseReceivers,
+                                                  at: stagingDirectory)
+        { [weak self, weak sourcePane] reception in
+            guard let self else {
+                try? FileManager.default.removeItem(at: stagingDirectory)
+                return
             }
-        }
 
-        completionGroup.notify(queue: .main) { [weak self, weak sourcePane] in
-            MainActor.assumeIsolated {
-                let (receivedURLs, firstError) = state.withLock { ($0.urls, $0.firstError) }
-
-                guard let self else {
-                    try? FileManager.default.removeItem(at: stagingDirectory)
-                    return
-                }
-
-                if let firstError {
-                    try? FileManager.default.removeItem(at: stagingDirectory)
-                    self.showErrorAlert(firstError)
-                    return
-                }
-
-                guard !receivedURLs.isEmpty else {
-                    try? FileManager.default.removeItem(at: stagingDirectory)
-                    return
-                }
-
-                self.beginConfirmedArchiveTransfer(receivedURLs,
-                                                   to: target,
-                                                   operation: .copy,
-                                                   sourcePane: sourcePane,
-                                                   cleanupDirectory: stagingDirectory)
+            if let firstError = reception.firstError {
+                try? FileManager.default.removeItem(at: stagingDirectory)
+                showErrorAlert(firstError)
+                return
             }
+
+            guard !reception.fileURLs.isEmpty else {
+                try? FileManager.default.removeItem(at: stagingDirectory)
+                return
+            }
+
+            beginConfirmedArchiveTransfer(reception.fileURLs,
+                                          to: target,
+                                          operation: .copy,
+                                          sourcePane: sourcePane,
+                                          cleanupDirectory: stagingDirectory)
         }
     }
 

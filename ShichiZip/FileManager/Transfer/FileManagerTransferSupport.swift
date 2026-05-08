@@ -1,4 +1,5 @@
 import AppKit
+import os
 
 func szPresentTransferAncestryConflict(_ conflict: FileManagerTransferPathValidation.Conflict,
                                        move: Bool,
@@ -445,6 +446,50 @@ enum FileOperationDropResolver {
 
     private static func defaultVolumeURL(for url: URL) -> URL? {
         try? url.resourceValues(forKeys: [.volumeURLKey]).volume?.standardizedFileURL
+    }
+}
+
+struct FileOperationPromisedFileReception {
+    let fileURLs: [URL]
+    let firstError: Error?
+}
+
+enum FileOperationPromisedFileReceiver {
+    static func receive(_ promiseReceivers: [NSFilePromiseReceiver],
+                        at destinationDirectory: URL,
+                        completion: @escaping @MainActor (FileOperationPromisedFileReception) -> Void)
+    {
+        let operationQueue = OperationQueue()
+        operationQueue.qualityOfService = .userInitiated
+
+        let completionGroup = DispatchGroup()
+        let state = OSAllocatedUnfairLock(initialState: (fileURLs: [URL](), firstError: nil as Error?))
+
+        for promiseReceiver in promiseReceivers {
+            completionGroup.enter()
+            promiseReceiver.receivePromisedFiles(atDestination: destinationDirectory,
+                                                 options: [:],
+                                                 operationQueue: operationQueue)
+            { @Sendable fileURL, error in
+                state.withLock { reception in
+                    reception.fileURLs.append(fileURL.standardizedFileURL)
+                    if let error, reception.firstError == nil {
+                        reception.firstError = error
+                    }
+                }
+                completionGroup.leave()
+            }
+        }
+
+        completionGroup.notify(queue: .main) {
+            let reception = state.withLock {
+                FileOperationPromisedFileReception(fileURLs: $0.fileURLs,
+                                                   firstError: $0.firstError)
+            }
+            MainActor.assumeIsolated {
+                completion(reception)
+            }
+        }
     }
 }
 
