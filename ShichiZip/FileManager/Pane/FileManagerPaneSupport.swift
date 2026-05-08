@@ -227,6 +227,19 @@ final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate {
         promiseQueue = queue
     }
 
+    static func fileType(for item: ArchiveItem) -> String {
+        if item.isDirectory {
+            return UTType.folder.identifier
+        }
+
+        guard !item.fileExtension.isEmpty,
+              let fileType = UTType(filenameExtension: item.fileExtension)
+        else {
+            return UTType.data.identifier
+        }
+        return fileType.identifier
+    }
+
     nonisolated func filePromiseProvider(_: NSFilePromiseProvider,
                                          fileNameForType _: String) -> String
     {

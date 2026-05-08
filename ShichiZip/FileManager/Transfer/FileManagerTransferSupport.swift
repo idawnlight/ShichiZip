@@ -371,6 +371,15 @@ private func szNormalizedArchiveTransferPath(_ path: String) -> String {
 }
 
 enum FileOperationDropResolver {
+    static var promisedFilePasteboardTypes: [NSPasteboard.PasteboardType] {
+        NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) }
+    }
+
+    static func containsFilePromises(in pasteboard: NSPasteboard) -> Bool {
+        let promisedTypes = Set(promisedFilePasteboardTypes)
+        return pasteboard.types?.contains(where: promisedTypes.contains) ?? false
+    }
+
     static func fileSystemDropOperation(sourceMask: NSDragOperation,
                                         containsFilePromises: Bool,
                                         droppedFileURLs: [URL],

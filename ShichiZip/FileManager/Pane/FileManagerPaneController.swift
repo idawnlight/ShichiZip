@@ -1,6 +1,5 @@
 import Cocoa
 import os
-import UniformTypeIdentifiers
 
 /// Single pane of the file manager — displays file system contents
 class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSTextFieldDelegate, NSMenuItemValidation {
@@ -248,8 +247,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         SZLog.debug("ShichiZip", "File manager pane context menu set with \(tableView.menu?.items.count ?? 0) items")
 
         // Register for drag and drop
-        let promisedFileTypes = NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) }
-        tableView.registerForDraggedTypes([.fileURL] + promisedFileTypes)
+        tableView.registerForDraggedTypes([.fileURL] + FileOperationDropResolver.promisedFilePasteboardTypes)
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         tableView.setDraggingSourceOperationMask(.copy, forLocal: false)
         tableView.setAccessibilityIdentifier("fileManager.tableView")
@@ -3200,7 +3198,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                              context: context,
                                              operationGate: level.operationGate,
                                              workflowService: archiveItemWorkflowService)
-            let provider = NSFilePromiseProvider(fileType: archivePromiseFileType(for: ai),
+            let provider = NSFilePromiseProvider(fileType: ArchiveDragPromise.fileType(for: ai),
                                                  delegate: promise)
             provider.userInfo = promise
             return provider
@@ -3328,7 +3326,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                        destinationDirectory: URL) -> NSDragOperation
     {
         FileOperationDropResolver.fileSystemDropOperation(sourceMask: info.draggingSourceOperationMask,
-                                                          containsFilePromises: pasteboardContainsFilePromises(info.draggingPasteboard),
+                                                          containsFilePromises: FileOperationDropResolver.containsFilePromises(in: info.draggingPasteboard),
                                                           droppedFileURLs: droppedFileURLs(from: info),
                                                           destinationDirectory: destinationDirectory)
     }
@@ -3349,7 +3347,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func resolvedArchiveDropOperation(for info: any NSDraggingInfo) -> NSDragOperation {
         FileOperationDropResolver.archiveDropOperation(sourceMask: info.draggingSourceOperationMask,
-                                                       containsFilePromises: pasteboardContainsFilePromises(info.draggingPasteboard))
+                                                       containsFilePromises: FileOperationDropResolver.containsFilePromises(in: info.draggingPasteboard))
     }
 
     private func takeResolvedArchiveDropOperation(for info: any NSDraggingInfo) -> NSDragOperation {
@@ -3585,24 +3583,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 showErrorAlert(error)
             }
         }
-    }
-
-    private func archivePromiseFileType(for item: ArchiveItem) -> String {
-        if item.isDirectory {
-            return UTType.folder.identifier
-        }
-
-        guard !item.fileExtension.isEmpty,
-              let fileType = UTType(filenameExtension: item.fileExtension)
-        else {
-            return UTType.data.identifier
-        }
-        return fileType.identifier
-    }
-
-    private func pasteboardContainsFilePromises(_ pasteboard: NSPasteboard) -> Bool {
-        let promisedTypes = Set(NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) })
-        return pasteboard.types?.contains(where: promisedTypes.contains) ?? false
     }
 
     private func receivePromisedFiles(_ promiseReceivers: [NSFilePromiseReceiver],
