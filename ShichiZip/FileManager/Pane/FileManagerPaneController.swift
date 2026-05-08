@@ -2818,7 +2818,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                            context: FileManagerArchiveItemWorkflowContext,
                                            strategy: FileManagerArchiveItemOpenStrategy)
     {
-        let displayPath = context.displayPathPrefix + "/" + item.pathParts.joined(separator: "/")
+        let displayPath = context.displayPath(for: item)
 
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -2868,7 +2868,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                            openMode: FileManagerArchiveOpenMode,
                                            preserveTemporaryDirectoryOnUnsupported: Bool)
     {
-        let displayPath = context.displayPathPrefix + "/" + item.pathParts.joined(separator: "/")
+        let displayPath = context.displayPath(for: item)
 
         Task { @MainActor [weak self] in
             guard let self else { return }

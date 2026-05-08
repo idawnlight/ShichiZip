@@ -185,6 +185,10 @@ struct FileManagerArchiveItemWorkflowContext {
     let quarantineSourceArchivePath: String?
     let mutationTarget: FileManagerArchiveMutationTarget?
     var archiveOperationLease: FileManagerArchiveOperationGate.Lease?
+
+    func displayPath(for item: ArchiveItem) -> String {
+        displayPathPrefix + "/" + item.pathParts.joined(separator: "/")
+    }
 }
 
 struct FileManagerArchiveQuickLookPreview {
@@ -445,8 +449,7 @@ final class FileManagerArchiveItemWorkflowService {
             let preparedResult = FileManagerArchiveOpenService.prepareArchiveOpen(url: stagedItem.fileURL,
                                                                                   hostDirectory: context.hostDirectory,
                                                                                   temporaryDirectory: stagedItem.temporaryDirectory,
-                                                                                  displayPathPrefix: nestedDisplayPath(for: item,
-                                                                                                                       displayPathPrefix: context.displayPathPrefix),
+                                                                                  displayPathPrefix: context.displayPath(for: item),
                                                                                   nestedWriteBackInfo: nestedWriteBackInfo,
                                                                                   openMode: openMode,
                                                                                   session: session)
@@ -473,8 +476,7 @@ final class FileManagerArchiveItemWorkflowService {
             throw extractionPreparationError()
         }
 
-        return FileManagerNestedArchiveWriteBackInfo(identity: FileManagerNestedArchiveIdentity(displayPath: nestedDisplayPath(for: item,
-                                                                                                                               displayPathPrefix: context.displayPathPrefix)),
+        return FileManagerNestedArchiveWriteBackInfo(identity: FileManagerNestedArchiveIdentity(displayPath: context.displayPath(for: item)),
                                                      parentTarget: parentTarget,
                                                      parentItemPath: item.path,
                                                      initialFingerprint: initialFingerprint)
@@ -623,12 +625,6 @@ final class FileManagerArchiveItemWorkflowService {
             normalized.removeLast()
         }
         return normalized
-    }
-
-    private func nestedDisplayPath(for item: ArchiveItem,
-                                   displayPathPrefix: String) -> String
-    {
-        displayPathPrefix + "/" + item.pathParts.joined(separator: "/")
     }
 
     private func extractionPreparationError() -> NSError {

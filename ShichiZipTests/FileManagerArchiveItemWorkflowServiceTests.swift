@@ -8,6 +8,18 @@ import Foundation
 import XCTest
 
 final class FileManagerArchiveItemWorkflowServiceTests: XCTestCase {
+    func testWorkflowContextBuildsArchiveItemDisplayPath() {
+        let item = makeArchiveItem(index: 0,
+                                   path: "folder/payload.txt")
+        let context = FileManagerArchiveItemWorkflowContext(archive: SZArchive(),
+                                                            hostDirectory: URL(fileURLWithPath: "/tmp"),
+                                                            displayPathPrefix: "/tmp/source.7z",
+                                                            quarantineSourceArchivePath: nil,
+                                                            mutationTarget: nil)
+
+        XCTAssertEqual(context.displayPath(for: item), "/tmp/source.7z/folder/payload.txt")
+    }
+
     func testPrepareExternalArchiveItemOpenStagesSelectedFile() throws {
         let tempRoot = try makeTemporaryDirectory(named: "external-open")
         let payloadURL = tempRoot.appendingPathComponent("payload.txt")
@@ -60,6 +72,29 @@ final class FileManagerArchiveItemWorkflowServiceTests: XCTestCase {
                                                                         context: context,
                                                                         strategy: .forceInternal(.defaultBehavior),
                                                                         session: SZOperationSession()))
+    }
+
+    private func makeArchiveItem(index: Int,
+                                 path: String,
+                                 isDirectory: Bool = false) -> ArchiveItem
+    {
+        ArchiveItem(index: index,
+                    path: path,
+                    name: path.split(separator: "/").last.map(String.init) ?? path,
+                    size: 0,
+                    packedSize: 0,
+                    modifiedDate: nil,
+                    createdDate: nil,
+                    accessedDate: nil,
+                    crc: 0,
+                    isDirectory: isDirectory,
+                    isEncrypted: false,
+                    isAnti: false,
+                    method: "",
+                    attributes: 0,
+                    position: 0,
+                    block: 0,
+                    comment: "")
     }
 
     func testScheduledExternalCleanupSurvivesPaneCleanupUntilApplicationTerminates() throws {
