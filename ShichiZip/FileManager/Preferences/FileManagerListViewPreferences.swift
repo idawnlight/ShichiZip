@@ -221,6 +221,29 @@ extension FileManagerViewPreferences {
         return orderedIDs
     }
 
+    static func restoredListViewColumnMove(for columnID: FileManagerColumnID,
+                                           currentColumnIDs: [FileManagerColumnID],
+                                           folderTypeID: String,
+                                           availableColumns: [FileManagerColumn],
+                                           defaults: UserDefaults = .standard) -> (from: Int, to: Int)?
+    {
+        let orderedIDs = storedListViewColumnOrderIDs(folderTypeID: folderTypeID,
+                                                      availableColumns: availableColumns,
+                                                      defaults: defaults)
+        guard let restoredOrderIndex = orderedIDs.firstIndex(of: columnID) else { return nil }
+
+        let precedingColumnIDs = Set(orderedIDs.prefix(upTo: restoredOrderIndex))
+        let targetIndex = currentColumnIDs.count(where: { precedingColumnIDs.contains($0) })
+        guard let currentIndex = currentColumnIDs.firstIndex(of: columnID),
+              targetIndex != currentIndex
+        else {
+            return nil
+        }
+
+        return (from: currentIndex,
+                to: min(targetIndex, currentColumnIDs.count - 1))
+    }
+
     static func sortDescriptorsByResettingUnavailableColumn(_ sortDescriptors: [NSSortDescriptor],
                                                             visibleColumnIDs: Set<FileManagerColumnID>,
                                                             availableColumns: [FileManagerColumn]) -> [NSSortDescriptor]

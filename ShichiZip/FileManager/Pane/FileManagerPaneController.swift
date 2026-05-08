@@ -3839,19 +3839,16 @@ extension FileManagerPaneController {
                                        folderTypeID: String,
                                        availableColumns: [FileManagerColumn])
     {
-        let orderedIDs = FileManagerViewPreferences.storedListViewColumnOrderIDs(folderTypeID: folderTypeID,
-                                                                                 availableColumns: availableColumns)
-        guard let restoredOrderIndex = orderedIDs.firstIndex(of: columnID) else { return }
-
-        let precedingColumnIDs = Set(orderedIDs.prefix(upTo: restoredOrderIndex))
-        let targetIndex = tableView.tableColumns.count(where: {
-            precedingColumnIDs.contains(FileManagerColumnID(rawValue: $0.identifier.rawValue))
-        })
-        let currentIndex = tableView.tableColumns.firstIndex { tableColumn in
-            tableColumn.identifier.rawValue == columnID.rawValue
+        let currentColumnIDs = tableView.tableColumns.map { FileManagerColumnID(rawValue: $0.identifier.rawValue) }
+        guard let move = FileManagerViewPreferences.restoredListViewColumnMove(for: columnID,
+                                                                               currentColumnIDs: currentColumnIDs,
+                                                                               folderTypeID: folderTypeID,
+                                                                               availableColumns: availableColumns)
+        else {
+            return
         }
-        guard let currentIndex, targetIndex != currentIndex else { return }
-        tableView.moveColumn(currentIndex, toColumn: min(targetIndex, tableView.tableColumns.count - 1))
+
+        tableView.moveColumn(move.from, toColumn: move.to)
     }
 
     private func buildContextMenu() -> NSMenu {
