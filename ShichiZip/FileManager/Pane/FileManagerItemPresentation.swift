@@ -155,6 +155,84 @@ enum FileManagerItemPresentation {
         )
     }
 
+    static func parentRowListCellText(for columnID: FileManagerColumnID) -> String {
+        columnID == .name ? ".." : ""
+    }
+
+    static func listCellText(for item: FileSystemItem,
+                             columnID: FileManagerColumnID,
+                             dateFormatter: DateFormatter) -> String
+    {
+        switch columnID.rawValue {
+        case FileManagerColumnID.name.rawValue:
+            item.name
+        case FileManagerColumnID.size.rawValue:
+            item.formattedSize
+        case FileManagerColumnID.packedSize.rawValue:
+            item.formattedPackedSize
+        case FileManagerColumnID.modified.rawValue:
+            item.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
+        case FileManagerColumnID.created.rawValue:
+            item.createdDate.map { dateFormatter.string(from: $0) } ?? ""
+        case FileManagerColumnID.accessed.rawValue:
+            item.accessedDate.map { dateFormatter.string(from: $0) } ?? ""
+        case FileManagerColumnID.changed.rawValue:
+            item.changedDate.map { dateFormatter.string(from: $0) } ?? ""
+        case FileManagerColumnID.attributes.rawValue:
+            formattedAttributes(item.attributes)
+        case FileManagerColumnID.inode.rawValue:
+            item.inode.map(String.init) ?? ""
+        case FileManagerColumnID.links.rawValue:
+            item.links.map(String.init) ?? ""
+        default:
+            ""
+        }
+    }
+
+    static func listCellText(for item: ArchiveItem,
+                             columnID: FileManagerColumnID,
+                             dateFormatter: DateFormatter) -> String
+    {
+        switch columnID.rawValue {
+        case FileManagerColumnID.name.rawValue:
+            item.name
+        case FileManagerColumnID.size.rawValue:
+            item.isDirectory ? "--" : fileSizeString(item.size)
+        case FileManagerColumnID.packedSize.rawValue:
+            item.isDirectory ? "" : fileSizeString(item.packedSize)
+        case FileManagerColumnID.modified.rawValue:
+            item.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
+        case FileManagerColumnID.created.rawValue:
+            item.createdDate.map { dateFormatter.string(from: $0) } ?? ""
+        case FileManagerColumnID.accessed.rawValue:
+            item.accessedDate.map { dateFormatter.string(from: $0) } ?? ""
+        case FileManagerColumnID.changed.rawValue:
+            item.propertyValues[FileManagerColumnID.changed.rawValue] ?? ""
+        case FileManagerColumnID.attributes.rawValue:
+            formattedAttributes(item.attributes)
+        case FileManagerColumnID.inode.rawValue:
+            item.propertyValues[FileManagerColumnID.inode.rawValue] ?? ""
+        case FileManagerColumnID.links.rawValue:
+            item.propertyValues[FileManagerColumnID.links.rawValue] ?? ""
+        case FileManagerColumnID.encrypted.rawValue:
+            item.isEncrypted ? "+" : "-"
+        case FileManagerColumnID.anti.rawValue:
+            item.isAnti ? "+" : "-"
+        case FileManagerColumnID.method.rawValue:
+            item.method
+        case FileManagerColumnID.crc.rawValue:
+            item.crc == 0 ? "" : String(format: "%08X", item.crc)
+        case FileManagerColumnID.block.rawValue:
+            String(item.block)
+        case FileManagerColumnID.position.rawValue:
+            String(item.position)
+        case FileManagerColumnID.comment.rawValue:
+            item.comment
+        default:
+            item.propertyValues[columnID.rawValue] ?? ""
+        }
+    }
+
     static func formattedAttributes(_ attributes: UInt32) -> String {
         guard attributes != 0 else { return "" }
 

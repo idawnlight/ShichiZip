@@ -3175,89 +3175,29 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         guard let columnID = tableColumn?.identifier.rawValue else { return nil }
         guard let paneItem = paneItem(at: row) else { return nil }
 
+        let requestedColumnID = FileManagerColumnID(rawValue: columnID)
         let dateFormatter = FileManagerViewPreferences.makeListDateFormatter()
-
-        let itemName: String
-        let itemSize: String
-        let itemModified: String
-        let itemCreated: String
-        let itemAccessed: String
-        let itemChanged: String
-        let itemPackedSize: String
-        let itemAttributes: String
-        let itemInode: String
-        let itemLinks: String
-        let itemEncrypted: String
-        let itemAnti: String
-        let itemMethod: String
-        let itemCRC: String
-        let itemBlock: String
-        let itemPosition: String
-        let itemComment: String
+        let itemText: String
         let itemIsDir: Bool
         let itemIconPath: String
 
         switch paneItem {
         case .parent:
-            itemName = ".."
-            itemSize = ""
-            itemModified = ""
-            itemCreated = ""
-            itemAccessed = ""
-            itemChanged = ""
-            itemPackedSize = ""
-            itemAttributes = ""
-            itemInode = ""
-            itemLinks = ""
-            itemEncrypted = ""
-            itemAnti = ""
-            itemMethod = ""
-            itemCRC = ""
-            itemBlock = ""
-            itemPosition = ""
-            itemComment = ""
+            itemText = FileManagerItemPresentation.parentRowListCellText(for: requestedColumnID)
             itemIsDir = true
             itemIconPath = ""
 
         case let .archive(ai):
-            itemName = ai.name
-            itemSize = ai.isDirectory ? "--" : ByteCountFormatter.string(fromByteCount: Int64(ai.size), countStyle: .file)
-            itemModified = ai.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
-            itemCreated = ai.createdDate.map { dateFormatter.string(from: $0) } ?? ""
-            itemAccessed = ai.accessedDate.map { dateFormatter.string(from: $0) } ?? ""
-            itemChanged = ai.propertyValues[FileManagerColumnID.changed.rawValue] ?? ""
-            itemPackedSize = ai.isDirectory ? "" : ByteCountFormatter.string(fromByteCount: Int64(ai.packedSize), countStyle: .file)
-            itemAttributes = FileManagerItemPresentation.formattedAttributes(ai.attributes)
-            itemInode = ai.propertyValues[FileManagerColumnID.inode.rawValue] ?? ""
-            itemLinks = ai.propertyValues[FileManagerColumnID.links.rawValue] ?? ""
-            itemEncrypted = ai.isEncrypted ? "+" : "-"
-            itemAnti = ai.isAnti ? "+" : "-"
-            itemMethod = ai.method
-            itemCRC = ai.crc == 0 ? "" : String(format: "%08X", ai.crc)
-            itemBlock = String(ai.block)
-            itemPosition = String(ai.position)
-            itemComment = ai.comment
+            itemText = FileManagerItemPresentation.listCellText(for: ai,
+                                                                columnID: requestedColumnID,
+                                                                dateFormatter: dateFormatter)
             itemIsDir = ai.isDirectory
             itemIconPath = ai.name
 
         case let .filesystem(item):
-            itemName = item.name
-            itemSize = item.formattedSize
-            itemModified = item.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
-            itemCreated = item.createdDate.map { dateFormatter.string(from: $0) } ?? ""
-            itemAccessed = item.accessedDate.map { dateFormatter.string(from: $0) } ?? ""
-            itemChanged = item.changedDate.map { dateFormatter.string(from: $0) } ?? ""
-            itemPackedSize = item.formattedPackedSize
-            itemAttributes = FileManagerItemPresentation.formattedAttributes(item.attributes)
-            itemInode = item.inode.map(String.init) ?? ""
-            itemLinks = item.links.map(String.init) ?? ""
-            itemEncrypted = ""
-            itemAnti = ""
-            itemMethod = ""
-            itemCRC = ""
-            itemBlock = ""
-            itemPosition = ""
-            itemComment = ""
+            itemText = FileManagerItemPresentation.listCellText(for: item,
+                                                                columnID: requestedColumnID,
+                                                                dateFormatter: dateFormatter)
             itemIsDir = item.isDirectory
             itemIconPath = item.url.path
         }
@@ -3303,7 +3243,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             }
         }
 
-        let requestedColumnID = FileManagerColumnID(rawValue: columnID)
         let column = currentColumns.first(where: { $0.id == requestedColumnID })
             ?? columnsForCurrentLocation().first(where: { $0.id == requestedColumnID })
             ?? FileManagerColumn.definition(for: requestedColumnID)
@@ -3315,9 +3254,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             cell.textField?.stringValue = column.normalizedDisplayString(text)
         }
 
-        switch columnID {
-        case "name":
-            setDisplayText(itemName)
+        setDisplayText(itemText)
+
+        if requestedColumnID == .name {
             cell.imageView?.image = iconImage(for: paneItem, isDirectory: itemIsDir, iconPath: itemIconPath)
             switch paneItem {
             case .parent:
@@ -3330,61 +3269,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 }
             }
             cell.imageView?.image?.size = iconSize
-
-        case "size":
-            setDisplayText(itemSize)
-
-        case "packedSize":
-            setDisplayText(itemPackedSize)
-
-        case "modified":
-            setDisplayText(itemModified)
-
-        case "created":
-            setDisplayText(itemCreated)
-
-        case "accessed":
-            setDisplayText(itemAccessed)
-
-        case "changed":
-            setDisplayText(itemChanged)
-
-        case "attributes":
-            setDisplayText(itemAttributes)
-
-        case "inode":
-            setDisplayText(itemInode)
-
-        case "links":
-            setDisplayText(itemLinks)
-
-        case "encrypted":
-            setDisplayText(itemEncrypted)
-
-        case "anti":
-            setDisplayText(itemAnti)
-
-        case "method":
-            setDisplayText(itemMethod)
-
-        case "crc":
-            setDisplayText(itemCRC)
-
-        case "block":
-            setDisplayText(itemBlock)
-
-        case "position":
-            setDisplayText(itemPosition)
-
-        case "comment":
-            setDisplayText(itemComment)
-
-        default:
-            if case let .archive(item) = paneItem {
-                setDisplayText(item.propertyValues[columnID] ?? "")
-            } else {
-                setDisplayText("")
-            }
         }
 
         return cell
