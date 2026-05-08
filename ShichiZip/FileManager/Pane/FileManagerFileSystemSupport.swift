@@ -105,6 +105,37 @@ struct FileManagerDirectorySnapshot {
     }
 }
 
+enum FileManagerRecentDirectoryHistory {
+    private static let maxEntries = 20
+
+    static func normalized(_ entries: [URL]) -> [URL] {
+        var normalizedEntries: [URL] = []
+        var seenPaths = Set<String>()
+
+        for url in entries {
+            let standardizedURL = url.standardizedFileURL
+            guard seenPaths.insert(standardizedURL.path).inserted else { continue }
+            normalizedEntries.append(standardizedURL)
+            if normalizedEntries.count == maxEntries {
+                break
+            }
+        }
+
+        return normalizedEntries
+    }
+
+    static func recordingVisit(_ url: URL, in entries: [URL]) -> [URL] {
+        let standardizedURL = url.standardizedFileURL
+        var updatedEntries = entries
+        updatedEntries.removeAll { $0.standardizedFileURL == standardizedURL }
+        updatedEntries.insert(standardizedURL, at: 0)
+        if updatedEntries.count > maxEntries {
+            updatedEntries.removeSubrange(maxEntries ..< updatedEntries.count)
+        }
+        return updatedEntries
+    }
+}
+
 enum FileManagerTransferPathValidation {
     enum ConflictKind: Equatable {
         case sameDestination

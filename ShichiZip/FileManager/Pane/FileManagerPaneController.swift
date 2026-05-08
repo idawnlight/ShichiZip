@@ -1056,19 +1056,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func setRecentDirectoryHistory(_ entries: [URL]) {
-        var normalizedEntries: [URL] = []
-        var seenPaths = Set<String>()
-
-        for url in entries {
-            let standardizedURL = url.standardizedFileURL
-            guard seenPaths.insert(standardizedURL.path).inserted else { continue }
-            normalizedEntries.append(standardizedURL)
-            if normalizedEntries.count == 20 {
-                break
-            }
-        }
-
-        recentDirectories = normalizedEntries
+        recentDirectories = FileManagerRecentDirectoryHistory.normalized(entries)
     }
 
     func openRecentDirectory(_ url: URL) {
@@ -1568,12 +1556,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     private func recordDirectoryVisit(_ url: URL) {
-        let standardizedURL = url.standardizedFileURL
-        recentDirectories.removeAll { $0.standardizedFileURL == standardizedURL }
-        recentDirectories.insert(standardizedURL, at: 0)
-        if recentDirectories.count > 20 {
-            recentDirectories.removeSubrange(20 ..< recentDirectories.count)
-        }
+        recentDirectories = FileManagerRecentDirectoryHistory.recordingVisit(url,
+                                                                             in: recentDirectories)
     }
 
     private func applyFileManagerSettings() {
