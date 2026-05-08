@@ -296,7 +296,7 @@ enum FileOperationDestinationResolver {
 
 enum FileOperationArchiveTransferSelection {
     static func selectionPaths(for sourceURLs: [URL], targetSubdir: String) -> [String] {
-        let normalizedTargetSubdir = normalizeArchivePath(targetSubdir)
+        let normalizedTargetSubdir = szNormalizedArchiveTransferPath(targetSubdir)
         var seenPaths = Set<String>()
         var selectionPaths: [String] = []
 
@@ -305,21 +305,69 @@ enum FileOperationArchiveTransferSelection {
             guard !leafName.isEmpty else { continue }
 
             let path = normalizedTargetSubdir.isEmpty ? leafName : normalizedTargetSubdir + "/" + leafName
-            let normalizedPath = normalizeArchivePath(path)
+            let normalizedPath = szNormalizedArchiveTransferPath(path)
             guard seenPaths.insert(normalizedPath).inserted else { continue }
             selectionPaths.append(normalizedPath)
         }
 
         return selectionPaths
     }
+}
 
-    private static func normalizeArchivePath(_ path: String) -> String {
-        var normalized = path
-        while normalized.hasSuffix("/") {
-            normalized.removeLast()
-        }
-        return normalized
+struct FileOperationArchiveTransferConfirmation {
+    let title: String
+    let message: String
+
+    init(sourceURLs: [URL],
+         archiveName: String,
+         targetSubdir: String,
+         operation: NSDragOperation)
+    {
+        title = Self.title(for: sourceURLs,
+                           operation: operation)
+        message = Self.message(archiveName: archiveName,
+                               targetSubdir: targetSubdir,
+                               operation: operation)
     }
+
+    private static func title(for sourceURLs: [URL],
+                              operation: NSDragOperation) -> String
+    {
+        if sourceURLs.count == 1 {
+            return operation == .move
+                ? SZL10n.string("app.fileManager.archiveTransfer.moveSingle", sourceURLs[0].lastPathComponent)
+                : SZL10n.string("app.fileManager.archiveTransfer.addSingle", sourceURLs[0].lastPathComponent)
+        }
+        return operation == .move
+            ? SZL10n.string("app.fileManager.archiveTransfer.moveMultiple", sourceURLs.count)
+            : SZL10n.string("app.fileManager.archiveTransfer.addMultiple", sourceURLs.count)
+    }
+
+    private static func message(archiveName: String,
+                                targetSubdir: String,
+                                operation: NSDragOperation) -> String
+    {
+        let normalizedSubdir = szNormalizedArchiveTransferPath(targetSubdir)
+        var lines = [SZL10n.string("app.fileManager.archiveTransfer.archive", archiveName)]
+        if !normalizedSubdir.isEmpty {
+            lines.append(SZL10n.string("app.fileManager.archiveTransfer.folder", normalizedSubdir))
+        }
+        lines.append("")
+        lines.append(SZL10n.string("app.fileManager.archiveTransfer.replaceWarning"))
+        if operation == .move {
+            lines.append("")
+            lines.append(SZL10n.string("app.fileManager.archiveTransfer.sourceRemovalWarning"))
+        }
+        return lines.joined(separator: "\n")
+    }
+}
+
+private func szNormalizedArchiveTransferPath(_ path: String) -> String {
+    var normalized = path
+    while normalized.hasSuffix("/") {
+        normalized.removeLast()
+    }
+    return normalized
 }
 
 enum FileOperationDropResolver {

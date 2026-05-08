@@ -3482,11 +3482,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return
         }
 
+        let archiveName = archiveStack.last.map { URL(fileURLWithPath: $0.archivePath).lastPathComponent } ?? "archive"
+        let confirmation = FileOperationArchiveTransferConfirmation(sourceURLs: urls,
+                                                                    archiveName: archiveName,
+                                                                    targetSubdir: target.subdir,
+                                                                    operation: operation)
         let confirmTitle = operation == .move ? SZL10n.string("toolbar.move") : SZL10n.string("toolbar.add")
         szBeginConfirmation(on: window,
-                            title: archiveTransferConfirmationTitle(for: urls, operation: operation),
-                            message: archiveTransferConfirmationMessage(forSubdir: target.subdir,
-                                                                        operation: operation),
+                            title: confirmation.title,
+                            message: confirmation.message,
                             confirmTitle: confirmTitle)
         { [weak self, weak sourcePane] confirmed in
             guard let self else {
@@ -3581,37 +3585,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 showErrorAlert(error)
             }
         }
-    }
-
-    private func archiveTransferConfirmationTitle(for urls: [URL],
-                                                  operation: NSDragOperation) -> String
-    {
-        if urls.count == 1 {
-            return operation == .move
-                ? SZL10n.string("app.fileManager.archiveTransfer.moveSingle", urls[0].lastPathComponent)
-                : SZL10n.string("app.fileManager.archiveTransfer.addSingle", urls[0].lastPathComponent)
-        }
-        return operation == .move
-            ? SZL10n.string("app.fileManager.archiveTransfer.moveMultiple", urls.count)
-            : SZL10n.string("app.fileManager.archiveTransfer.addMultiple", urls.count)
-    }
-
-    private func archiveTransferConfirmationMessage(forSubdir subdir: String,
-                                                    operation: NSDragOperation) -> String
-    {
-        let archiveName = archiveStack.last.map { URL(fileURLWithPath: $0.archivePath).lastPathComponent } ?? "archive"
-        let normalizedSubdir = normalizeArchivePath(subdir)
-        var lines = [SZL10n.string("app.fileManager.archiveTransfer.archive", archiveName)]
-        if !normalizedSubdir.isEmpty {
-            lines.append(SZL10n.string("app.fileManager.archiveTransfer.folder", normalizedSubdir))
-        }
-        lines.append("")
-        lines.append(SZL10n.string("app.fileManager.archiveTransfer.replaceWarning"))
-        if operation == .move {
-            lines.append("")
-            lines.append(SZL10n.string("app.fileManager.archiveTransfer.sourceRemovalWarning"))
-        }
-        return lines.joined(separator: "\n")
     }
 
     private func archivePromiseFileType(for item: ArchiveItem) -> String {
