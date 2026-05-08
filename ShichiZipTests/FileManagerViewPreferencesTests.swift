@@ -236,6 +236,51 @@ final class FileManagerViewPreferencesTests: XCTestCase {
         XCTAssertEqual(fallbackDescriptor?.ascending, true)
     }
 
+    func testStoredListViewColumnWidthUsesSavedValidWidth() throws {
+        let defaults = try makeIsolatedDefaults()
+        let folderTypeID = FileManagerViewPreferences.fileSystemListViewFolderTypeID
+        let info = FileManagerViewPreferences.ListViewInfo(
+            sortKey: "name",
+            ascending: true,
+            columns: [FileManagerViewPreferences.ListViewColumnInfo(id: .size, isVisible: true, width: 1)],
+        )
+        let sizeColumn = try XCTUnwrap(FileManagerColumn.fileSystemColumns.first { $0.id == .size })
+
+        FileManagerViewPreferences.setListViewInfo(info,
+                                                   forFolderTypeID: folderTypeID,
+                                                   defaults: defaults)
+
+        XCTAssertEqual(FileManagerViewPreferences.storedListViewColumnWidth(for: sizeColumn,
+                                                                            folderTypeID: folderTypeID,
+                                                                            defaults: defaults),
+                       sizeColumn.minWidth)
+    }
+
+    func testStoredListViewColumnOrderIDsDeduplicateAndAppendAvailableColumns() throws {
+        let defaults = try makeIsolatedDefaults()
+        let folderTypeID = FileManagerViewPreferences.fileSystemListViewFolderTypeID
+        let info = FileManagerViewPreferences.ListViewInfo(
+            sortKey: "name",
+            ascending: true,
+            columns: [
+                FileManagerViewPreferences.ListViewColumnInfo(id: .crc, isVisible: true, width: 90),
+                FileManagerViewPreferences.ListViewColumnInfo(id: .size, isVisible: true, width: 120),
+                FileManagerViewPreferences.ListViewColumnInfo(id: .size, isVisible: true, width: 140),
+                FileManagerViewPreferences.ListViewColumnInfo(id: .name, isVisible: true, width: 250),
+            ],
+        )
+
+        FileManagerViewPreferences.setListViewInfo(info,
+                                                   forFolderTypeID: folderTypeID,
+                                                   defaults: defaults)
+
+        let orderIDs = FileManagerViewPreferences.storedListViewColumnOrderIDs(folderTypeID: folderTypeID,
+                                                                               availableColumns: FileManagerColumn.fileSystemColumns,
+                                                                               defaults: defaults)
+
+        XCTAssertEqual(Array(orderIDs.prefix(4)), [.size, .name, .modified, .created])
+    }
+
     func testMakeDateFormatterReturnsIndependentInstances() {
         let first = FileManagerViewPreferences.makeDateFormatter(dateStyle: .medium,
                                                                  timeStyle: .medium)

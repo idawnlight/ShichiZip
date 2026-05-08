@@ -3819,7 +3819,8 @@ extension FileManagerPaneController {
             tableView.removeTableColumn(tableColumn)
         } else {
             let tableColumn = column.makeTableColumn()
-            tableColumn.width = storedColumnWidth(for: column, folderTypeID: folderTypeID)
+            tableColumn.width = FileManagerViewPreferences.storedListViewColumnWidth(for: column,
+                                                                                     folderTypeID: folderTypeID)
             tableView.addTableColumn(tableColumn)
             restoreColumnPosition(column.id,
                                   folderTypeID: folderTypeID,
@@ -3838,25 +3839,12 @@ extension FileManagerPaneController {
         tableView.reloadData()
     }
 
-    private func storedColumnWidth(for column: FileManagerColumn,
-                                   folderTypeID: String) -> CGFloat
-    {
-        let storedWidth = FileManagerViewPreferences.listViewInfo(forFolderTypeID: folderTypeID)?
-            .columns
-            .first(where: { $0.id == column.id })?
-            .width
-        guard let storedWidth, storedWidth.isFinite, storedWidth > 0 else {
-            return column.width
-        }
-        return max(storedWidth, column.minWidth)
-    }
-
     private func restoreColumnPosition(_ columnID: FileManagerColumnID,
                                        folderTypeID: String,
                                        availableColumns: [FileManagerColumn])
     {
-        let orderedIDs = storedColumnOrderIDs(folderTypeID: folderTypeID,
-                                              availableColumns: availableColumns)
+        let orderedIDs = FileManagerViewPreferences.storedListViewColumnOrderIDs(folderTypeID: folderTypeID,
+                                                                                 availableColumns: availableColumns)
         guard let restoredOrderIndex = orderedIDs.firstIndex(of: columnID) else { return }
 
         let precedingColumnIDs = Set(orderedIDs.prefix(upTo: restoredOrderIndex))
@@ -3868,27 +3856,6 @@ extension FileManagerPaneController {
         }
         guard let currentIndex, targetIndex != currentIndex else { return }
         tableView.moveColumn(currentIndex, toColumn: min(targetIndex, tableView.tableColumns.count - 1))
-    }
-
-    private func storedColumnOrderIDs(folderTypeID: String,
-                                      availableColumns: [FileManagerColumn]) -> [FileManagerColumnID]
-    {
-        let availableIDs = Set(availableColumns.map(\.id))
-        var orderedIDs: [FileManagerColumnID] = []
-        var seenIDs = Set<FileManagerColumnID>()
-
-        let storedColumns = FileManagerViewPreferences.listViewInfo(forFolderTypeID: folderTypeID)?.columns ?? []
-        for storedColumn in storedColumns where availableIDs.contains(storedColumn.id) {
-            guard seenIDs.insert(storedColumn.id).inserted else { continue }
-            orderedIDs.append(storedColumn.id)
-        }
-
-        for column in availableColumns {
-            guard seenIDs.insert(column.id).inserted else { continue }
-            orderedIDs.append(column.id)
-        }
-
-        return orderedIDs
     }
 
     private func resetSortDescriptorIfNeeded(visibleColumnIDs: Set<FileManagerColumnID>,
