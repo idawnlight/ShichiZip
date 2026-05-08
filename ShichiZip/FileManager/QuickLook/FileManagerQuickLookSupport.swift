@@ -180,6 +180,30 @@ private enum FileManagerQuickLookLimits {
     static let maxSolidArchiveSize: UInt64 = 512 * 1024 * 1024
 }
 
+enum FileManagerQuickLookKeyAction {
+    case ignore
+    case activateSelection
+    case navigateUp
+    case forwardToTable
+}
+
+enum FileManagerQuickLookEventHandling {
+    static func keyAction(for event: NSEvent) -> FileManagerQuickLookKeyAction {
+        if !event.modifierFlags.intersection([.command, .control, .option]).isEmpty {
+            return .ignore
+        }
+
+        switch event.keyCode {
+        case 36, 76:
+            return .activateSelection
+        case 51:
+            return .navigateUp
+        default:
+            return .forwardToTable
+        }
+    }
+}
+
 private struct FileManagerQuickLookGenerationCounter {
     private var value: UInt64 = 0
 

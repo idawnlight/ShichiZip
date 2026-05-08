@@ -1288,19 +1288,22 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return true
         }
 
-        if !event.modifierFlags.intersection([.command, .control, .option]).isEmpty {
+        let action = FileManagerQuickLookEventHandling.keyAction(for: event)
+        guard action != .ignore else {
             return false
         }
 
         delegate?.paneDidBecomeActive(self)
 
-        switch event.keyCode {
-        case 36, 76:
+        switch action {
+        case .activateSelection:
             doubleClickRow(nil)
-        case 51:
+        case .navigateUp:
             goUp()
-        default:
+        case .forwardToTable:
             tableView.keyDown(with: event)
+        case .ignore:
+            return false
         }
 
         return true
