@@ -14,6 +14,65 @@ struct FileManagerQuickLookPreparedPreview {
     let temporaryDirectories: [URL]
 }
 
+enum FileManagerQuickLookPreparation {
+    static func error(_ message: String) -> NSError {
+        NSError(domain: NSCocoaErrorDomain,
+                code: CocoaError.fileReadUnknown.rawValue,
+                userInfo: [NSLocalizedDescriptionKey: message])
+    }
+
+    static func validateArchiveItems(_ archiveItems: [ArchiveItem],
+                                     archiveHasActiveOperations: Bool,
+                                     isSolidArchive: Bool,
+                                     archiveSizeProvider: () -> UInt64,
+                                     maxArchiveItemSize: UInt64,
+                                     maxArchiveCombinedSize: UInt64,
+                                     maxSolidArchiveSize: UInt64) throws
+    {
+        guard !archiveItems.isEmpty else {
+            throw error(SZL10n.string("app.fileManager.quickLook.selectArchiveFiles"))
+        }
+
+        if archiveItems.contains(where: \.isDirectory) {
+            throw error(SZL10n.string("app.fileManager.quickLook.noFolderPreview"))
+        }
+
+        if let oversizedItem = archiveItems.first(where: { $0.size > maxArchiveItemSize }) {
+            throw error(SZL10n.string("app.fileManager.quickLook.fileSizeLimit",
+                                      formattedByteCount(maxArchiveItemSize),
+                                      oversizedItem.name,
+                                      formattedByteCount(oversizedItem.size)))
+        }
+
+        let combinedSize = archiveItems.reduce(into: UInt64.zero) { currentTotal, item in
+            let (sum, overflow) = currentTotal.addingReportingOverflow(item.size)
+            currentTotal = overflow ? .max : sum
+        }
+        if combinedSize > maxArchiveCombinedSize {
+            throw error(SZL10n.string("app.fileManager.quickLook.combinedSizeLimit",
+                                      formattedByteCount(maxArchiveCombinedSize),
+                                      formattedByteCount(combinedSize)))
+        }
+
+        guard !archiveHasActiveOperations else {
+            throw error(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
+        }
+
+        if isSolidArchive {
+            let archiveSize = archiveSizeProvider()
+            if archiveSize > maxSolidArchiveSize {
+                throw error(SZL10n.string("app.fileManager.quickLook.solidArchiveSizeLimit",
+                                          formattedByteCount(maxSolidArchiveSize),
+                                          formattedByteCount(archiveSize)))
+            }
+        }
+    }
+
+    private static func formattedByteCount(_ bytes: UInt64) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(clamping: bytes), countStyle: .file)
+    }
+}
+
 private enum FileManagerQuickLookLimits {
     static let maxArchiveItemSize: UInt64 = 128 * 1024 * 1024
     static let maxArchiveCombinedSize: UInt64 = 256 * 1024 * 1024

@@ -1206,7 +1206,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         let selectedEntries = selectedQuickLookRowsAndItems()
         guard !selectedEntries.isEmpty else {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.selectItems"))
+            throw FileManagerQuickLookPreparation.error(SZL10n.string("app.fileManager.quickLook.selectItems"))
         }
 
         let previewItems = selectedEntries.compactMap { entry -> FileManagerQuickLookPreparedItem? in
@@ -1219,7 +1219,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                     transitionContentRect: source.transitionContentRect)
         }
         guard !previewItems.isEmpty else {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.cannotPreview"))
+            throw FileManagerQuickLookPreparation.error(SZL10n.string("app.fileManager.quickLook.cannotPreview"))
         }
         return FileManagerQuickLookPreparedPreview(items: previewItems,
                                                    temporaryDirectories: [])
@@ -1236,11 +1236,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
         let selectedEntries = selectedQuickLookRowsAndItems()
         guard !selectedEntries.isEmpty else {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.selectItems"))
+            throw FileManagerQuickLookPreparation.error(SZL10n.string("app.fileManager.quickLook.selectItems"))
         }
 
         guard let level = archiveStack.last else {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
+            throw FileManagerQuickLookPreparation.error(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
         }
 
         let archiveSelection = selectedEntries.compactMap { entry -> (row: Int, item: ArchiveItem)? in
@@ -1248,39 +1248,16 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return (entry.row, item)
         }
         let archiveItems = archiveSelection.map(\.item)
-        guard !archiveItems.isEmpty else {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.selectArchiveFiles"))
-        }
-
-        if archiveItems.contains(where: \.isDirectory) {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.noFolderPreview"))
-        }
-
-        if let oversizedItem = archiveItems.first(where: { $0.size > maxArchiveItemSize }) {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.fileSizeLimit", formattedByteCount(maxArchiveItemSize), oversizedItem.name, formattedByteCount(oversizedItem.size)))
-        }
-
-        let combinedSize = archiveItems.reduce(into: UInt64.zero) { partial, item in
-            let (sum, overflow) = partial.addingReportingOverflow(item.size)
-            partial = overflow ? .max : sum
-        }
-        if combinedSize > maxArchiveCombinedSize {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.combinedSizeLimit", formattedByteCount(maxArchiveCombinedSize), formattedByteCount(combinedSize)))
-        }
-
-        guard !level.operationGate.hasActiveLeases else {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
-        }
-
-        if level.archive.isSolidArchive {
-            let archiveSize = archivePhysicalSize(for: level)
-            if archiveSize > maxSolidArchiveSize {
-                throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.solidArchiveSizeLimit", formattedByteCount(maxSolidArchiveSize), formattedByteCount(archiveSize)))
-            }
-        }
+        try FileManagerQuickLookPreparation.validateArchiveItems(archiveItems,
+                                                                 archiveHasActiveOperations: level.operationGate.hasActiveLeases,
+                                                                 isSolidArchive: level.archive.isSolidArchive,
+                                                                 archiveSizeProvider: { archivePhysicalSize(for: level) },
+                                                                 maxArchiveItemSize: maxArchiveItemSize,
+                                                                 maxArchiveCombinedSize: maxArchiveCombinedSize,
+                                                                 maxSolidArchiveSize: maxSolidArchiveSize)
 
         guard let context = currentArchiveItemWorkflowContext() else {
-            throw quickLookPreparationError(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
+            throw FileManagerQuickLookPreparation.error(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
         }
 
         let stagedPreview = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.working"),
@@ -2680,16 +2657,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func showErrorAlert(_ error: Error) {
         szPresentError(error, for: view.window)
-    }
-
-    private func quickLookPreparationError(_ message: String) -> NSError {
-        NSError(domain: NSCocoaErrorDomain,
-                code: CocoaError.fileReadUnknown.rawValue,
-                userInfo: [NSLocalizedDescriptionKey: message])
-    }
-
-    private func formattedByteCount(_ bytes: UInt64) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(clamping: bytes), countStyle: .file)
     }
 
     private func archivePhysicalSize(for level: ArchiveLevel) -> UInt64 {
