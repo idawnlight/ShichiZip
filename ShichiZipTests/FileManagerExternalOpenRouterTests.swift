@@ -35,4 +35,25 @@ final class FileManagerExternalOpenRouterTests: XCTestCase {
 
         XCTAssertNil(result)
     }
+
+    func testShouldSuppressExternalOpenErrorSuppressesCocoaCancellation() {
+        let error = NSError(domain: NSCocoaErrorDomain,
+                            code: NSUserCancelledError)
+
+        XCTAssertTrue(FileManagerExternalOpenRouter.shouldSuppressExternalOpenError(error))
+    }
+
+    func testShouldSuppressExternalOpenErrorSuppressesOSStatusCancellation() {
+        let error = NSError(domain: NSOSStatusErrorDomain,
+                            code: -128)
+
+        XCTAssertTrue(FileManagerExternalOpenRouter.shouldSuppressExternalOpenError(error))
+    }
+
+    func testShouldSuppressExternalOpenErrorKeepsOtherErrors() {
+        let error = NSError(domain: NSCocoaErrorDomain,
+                            code: NSFileNoSuchFileError)
+
+        XCTAssertFalse(FileManagerExternalOpenRouter.shouldSuppressExternalOpenError(error))
+    }
 }

@@ -2541,29 +2541,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                     archiveItemWorkflowService.cleanup(temporaryDirectory)
                 }
 
-                if let error, !self.shouldSuppressExternalOpenError(error) {
+                if let error, !FileManagerExternalOpenRouter.shouldSuppressExternalOpenError(error) {
                     showErrorAlert(error)
                 }
             }
         }
         return true
-    }
-
-    private func shouldSuppressExternalOpenError(_ error: Error) -> Bool {
-        let nsError = error as NSError
-        if nsError.domain == NSCocoaErrorDomain,
-           nsError.code == NSUserCancelledError
-        {
-            return true
-        }
-
-        if nsError.domain == NSOSStatusErrorDomain,
-           nsError.code == -128
-        {
-            return true
-        }
-
-        return false
     }
 
     private func normalizeArchivePath(_ path: String) -> String {

@@ -70,6 +70,23 @@ enum FileManagerExternalOpenRouter {
         !isArchiveLikeURL(url)
     }
 
+    static func shouldSuppressExternalOpenError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain,
+           nsError.code == NSUserCancelledError
+        {
+            return true
+        }
+
+        if nsError.domain == NSOSStatusErrorDomain,
+           nsError.code == -128
+        {
+            return true
+        }
+
+        return false
+    }
+
     private static func shouldPreferExternalOpen(for contentType: UTType, applicationURL: URL) -> Bool {
         guard applicationURL != currentApplicationURL() else {
             return false
