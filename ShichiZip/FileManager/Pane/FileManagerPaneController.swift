@@ -42,8 +42,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var archiveRefreshGeneration = 0
     private var archiveRefreshTask: Task<Void, Never>?
     private var pendingDropOperation: (sequenceNumber: Int, operation: NSDragOperation)?
-    private let iconCache = NSCache<NSString, NSImage>()
-    private let iconSize = NSSize(width: 16, height: 16)
+    private let iconProvider = FileManagerPaneIconProvider(iconSize: NSSize(width: 16, height: 16))
+    private var iconSize: NSSize {
+        iconProvider.iconSize
+    }
+
     private let listRowHeight: CGFloat = 22
     private var currentDirectoryFingerprint: [FileManagerDirectorySnapshot.EntryFingerprint] = []
     private var currentListViewFolderTypeID: String?
@@ -1580,7 +1583,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         switch settingsKey {
         case .showDots, .showRealFileIcons, .showGridLines, .singleClickOpen:
             if settingsKey == .showRealFileIcons {
-                iconCache.removeAllObjects()
+                iconProvider.removeAllCachedImages()
             }
             applyFileManagerSettings()
         case .showHiddenFiles:
@@ -1657,64 +1660,26 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     private func iconImage(for paneItem: PaneItem, isDirectory: Bool, iconPath: String) -> NSImage? {
-        switch paneItem {
-        case .parent:
-            return cachedIcon(forKey: "parent") {
-                let image = NSImage(systemSymbolName: "arrow.up.circle.fill", accessibilityDescription: "Parent")
-                image?.isTemplate = true
-                return image
-            }
-
-        case .archive:
-            guard showsRealFileIcons else {
-                return cachedIcon(forKey: isDirectory ? "template:archive:folder" : "template:archive:file") {
-                    NSImage(systemSymbolName: isDirectory ? "folder.fill" : "doc.fill",
-                            accessibilityDescription: isDirectory ? "Folder" : "File")
-                }
-            }
-
-            if isDirectory {
-                return cachedIcon(forKey: "real:archive:folder") {
-                    NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "Folder")
-                }
-            }
-
-            let ext = (iconPath as NSString).pathExtension
-            if let type = UTType(filenameExtension: ext) {
-                return cachedIcon(forKey: "real:archive:type:\(ext.lowercased())") {
-                    NSWorkspace.shared.icon(for: type)
-                }
-            }
-            return cachedIcon(forKey: "real:archive:data") {
-                NSWorkspace.shared.icon(for: .data)
-            }
-
-        case .filesystem:
-            guard showsRealFileIcons else {
-                return cachedIcon(forKey: isDirectory ? "template:filesystem:folder" : "template:filesystem:file") {
-                    NSImage(systemSymbolName: isDirectory ? "folder.fill" : "doc.fill",
-                            accessibilityDescription: isDirectory ? "Folder" : "File")
-                }
-            }
-            return cachedIcon(forKey: "real:filesystem:\(iconPath)") {
-                NSWorkspace.shared.icon(forFile: iconPath)
-            }
-        }
+        iconProvider.image(for: iconSource(for: paneItem,
+                                           isDirectory: isDirectory,
+                                           iconPath: iconPath),
+                           showsRealFileIcons: showsRealFileIcons)
     }
 
-    private func cachedIcon(forKey key: String, builder: () -> NSImage?) -> NSImage? {
-        if let cachedImage = iconCache.object(forKey: key as NSString) {
-            return cachedImage
+    private func iconSource(for paneItem: PaneItem,
+                            isDirectory: Bool,
+                            iconPath: String) -> FileManagerPaneIconSource
+    {
+        switch paneItem {
+        case .parent:
+            .parent
+        case .archive:
+            .archive(isDirectory: isDirectory,
+                     iconPath: iconPath)
+        case .filesystem:
+            .filesystem(isDirectory: isDirectory,
+                        iconPath: iconPath)
         }
-
-        guard let rawImage = builder() else {
-            return nil
-        }
-
-        let image = (rawImage.copy() as? NSImage) ?? rawImage
-        image.size = iconSize
-        iconCache.setObject(image, forKey: key as NSString)
-        return image
     }
 
     private func activatePaneItem(at row: Int) {

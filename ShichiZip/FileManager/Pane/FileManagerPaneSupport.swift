@@ -1,4 +1,5 @@
 import Cocoa
+import UniformTypeIdentifiers
 
 @MainActor
 struct FileManagerPaneRoutingContext {
@@ -104,6 +105,89 @@ struct FileManagerPaneRoutingContext {
         }
 
         return nil
+    }
+}
+
+enum FileManagerPaneIconSource {
+    case parent
+    case archive(isDirectory: Bool, iconPath: String)
+    case filesystem(isDirectory: Bool, iconPath: String)
+}
+
+@MainActor
+final class FileManagerPaneIconProvider {
+    let iconSize: NSSize
+    private let iconCache = NSCache<NSString, NSImage>()
+
+    init(iconSize: NSSize) {
+        self.iconSize = iconSize
+    }
+
+    func removeAllCachedImages() {
+        iconCache.removeAllObjects()
+    }
+
+    func image(for source: FileManagerPaneIconSource,
+               showsRealFileIcons: Bool) -> NSImage?
+    {
+        switch source {
+        case .parent:
+            return cachedIcon(forKey: "parent") {
+                let image = NSImage(systemSymbolName: "arrow.up.circle.fill", accessibilityDescription: "Parent")
+                image?.isTemplate = true
+                return image
+            }
+
+        case let .archive(isDirectory, iconPath):
+            guard showsRealFileIcons else {
+                return cachedIcon(forKey: isDirectory ? "template:archive:folder" : "template:archive:file") {
+                    NSImage(systemSymbolName: isDirectory ? "folder.fill" : "doc.fill",
+                            accessibilityDescription: isDirectory ? "Folder" : "File")
+                }
+            }
+
+            if isDirectory {
+                return cachedIcon(forKey: "real:archive:folder") {
+                    NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "Folder")
+                }
+            }
+
+            let fileExtension = (iconPath as NSString).pathExtension
+            if let type = UTType(filenameExtension: fileExtension) {
+                return cachedIcon(forKey: "real:archive:type:\(fileExtension.lowercased())") {
+                    NSWorkspace.shared.icon(for: type)
+                }
+            }
+            return cachedIcon(forKey: "real:archive:data") {
+                NSWorkspace.shared.icon(for: .data)
+            }
+
+        case let .filesystem(isDirectory, iconPath):
+            guard showsRealFileIcons else {
+                return cachedIcon(forKey: isDirectory ? "template:filesystem:folder" : "template:filesystem:file") {
+                    NSImage(systemSymbolName: isDirectory ? "folder.fill" : "doc.fill",
+                            accessibilityDescription: isDirectory ? "Folder" : "File")
+                }
+            }
+            return cachedIcon(forKey: "real:filesystem:\(iconPath)") {
+                NSWorkspace.shared.icon(forFile: iconPath)
+            }
+        }
+    }
+
+    private func cachedIcon(forKey key: String, builder: () -> NSImage?) -> NSImage? {
+        if let cachedImage = iconCache.object(forKey: key as NSString) {
+            return cachedImage
+        }
+
+        guard let rawImage = builder() else {
+            return nil
+        }
+
+        let image = (rawImage.copy() as? NSImage) ?? rawImage
+        image.size = iconSize
+        iconCache.setObject(image, forKey: key as NSString)
+        return image
     }
 }
 
