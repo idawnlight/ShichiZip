@@ -281,6 +281,29 @@ final class FileManagerViewPreferencesTests: XCTestCase {
         XCTAssertEqual(Array(orderIDs.prefix(4)), [.size, .name, .modified, .created])
     }
 
+    func testSortDescriptorsByResettingUnavailableColumnKeepsVisibleSortColumn() {
+        let columns = FileManagerColumn.fileSystemColumns
+        let sizeDescriptor = FileManagerColumn.definition(for: .size).sortDescriptorPrototype
+
+        let descriptors = FileManagerViewPreferences.sortDescriptorsByResettingUnavailableColumn([sizeDescriptor],
+                                                                                                 visibleColumnIDs: [.name, .size],
+                                                                                                 availableColumns: columns)
+
+        XCTAssertEqual(descriptors.first?.key, "size")
+    }
+
+    func testSortDescriptorsByResettingUnavailableColumnFallsBackToName() {
+        let columns = FileManagerColumn.fileSystemColumns
+        let sizeDescriptor = FileManagerColumn.definition(for: .size).sortDescriptorPrototype
+
+        let descriptors = FileManagerViewPreferences.sortDescriptorsByResettingUnavailableColumn([sizeDescriptor],
+                                                                                                 visibleColumnIDs: [.name, .modified],
+                                                                                                 availableColumns: columns)
+
+        XCTAssertEqual(descriptors.first?.key, "name")
+        XCTAssertEqual(descriptors.first?.ascending, true)
+    }
+
     func testMakeDateFormatterReturnsIndependentInstances() {
         let first = FileManagerViewPreferences.makeDateFormatter(dateStyle: .medium,
                                                                  timeStyle: .medium)

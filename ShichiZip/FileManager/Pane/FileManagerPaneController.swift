@@ -3829,8 +3829,9 @@ extension FileManagerPaneController {
 
         currentColumns = visibleColumnsInTableOrder(availableColumns: availableColumns)
         let visibleIDs = Set(currentColumns.map(\.id))
-        resetSortDescriptorIfNeeded(visibleColumnIDs: visibleIDs,
-                                    availableColumns: availableColumns)
+        tableView.sortDescriptors = FileManagerViewPreferences.sortDescriptorsByResettingUnavailableColumn(tableView.sortDescriptors,
+                                                                                                           visibleColumnIDs: visibleIDs,
+                                                                                                           availableColumns: availableColumns)
         isApplyingListViewPreferences = false
 
         sortCurrentItems(by: tableView.sortDescriptors)
@@ -3856,19 +3857,6 @@ extension FileManagerPaneController {
         }
         guard let currentIndex, targetIndex != currentIndex else { return }
         tableView.moveColumn(currentIndex, toColumn: min(targetIndex, tableView.tableColumns.count - 1))
-    }
-
-    private func resetSortDescriptorIfNeeded(visibleColumnIDs: Set<FileManagerColumnID>,
-                                             availableColumns: [FileManagerColumn])
-    {
-        guard let sortKey = tableView.sortDescriptors.first?.key else { return }
-        let sortedColumnID = FileManagerViewPreferences.highlightedColumnID(for: sortKey,
-                                                                            columns: availableColumns)
-        guard sortedColumnID.map({ !visibleColumnIDs.contains($0) }) ?? true else { return }
-
-        tableView.sortDescriptors = availableColumns
-            .first(where: { $0.id == .name })
-            .map { [$0.sortDescriptorPrototype] } ?? []
     }
 
     private func buildContextMenu() -> NSMenu {
