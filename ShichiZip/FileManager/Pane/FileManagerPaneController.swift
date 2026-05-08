@@ -1209,20 +1209,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             throw FileManagerQuickLookPreparation.error(SZL10n.string("app.fileManager.quickLook.selectItems"))
         }
 
-        let previewItems = selectedEntries.compactMap { entry -> FileManagerQuickLookPreparedItem? in
+        let selection = selectedEntries.compactMap { entry -> FileManagerQuickLookFileSystemSelection? in
             guard case let .filesystem(item) = entry.item else { return nil }
-            let source = quickLookSourceInfo(forRow: entry.row, paneItem: entry.item)
-            return FileManagerQuickLookPreparedItem(url: item.url.standardizedFileURL,
-                                                    title: item.name,
-                                                    sourceFrameOnScreen: source.frameOnScreen,
-                                                    transitionImage: source.transitionImage,
-                                                    transitionContentRect: source.transitionContentRect)
+            return FileManagerQuickLookFileSystemSelection(item: item,
+                                                           source: quickLookSourceInfo(forRow: entry.row,
+                                                                                       paneItem: entry.item))
         }
-        guard !previewItems.isEmpty else {
-            throw FileManagerQuickLookPreparation.error(SZL10n.string("app.fileManager.quickLook.cannotPreview"))
-        }
-        return FileManagerQuickLookPreparedPreview(items: previewItems,
-                                                   temporaryDirectories: [])
+        return try FileManagerQuickLookPreparation.fileSystemPreview(for: selection)
     }
 
     @MainActor
@@ -1251,7 +1244,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         try FileManagerQuickLookPreparation.validateArchiveItems(archiveItems,
                                                                  archiveHasActiveOperations: level.operationGate.hasActiveLeases,
                                                                  isSolidArchive: level.archive.isSolidArchive,
-                                                                 archiveSizeProvider: { archivePhysicalSize(for: level) },
+                                                                 archiveSizeProvider: {
+                                                                     FileManagerQuickLookPreparation.archivePhysicalSize(reportedSize: level.archive.archivePhysicalSize,
+                                                                                                                         archivePath: level.archivePath)
+                                                                 },
                                                                  maxArchiveItemSize: maxArchiveItemSize,
                                                                  maxArchiveCombinedSize: maxArchiveCombinedSize,
                                                                  maxSolidArchiveSize: maxSolidArchiveSize)
@@ -1270,14 +1266,13 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                                     session: session)
         }
 
-        let previewItems = zip(archiveSelection, stagedPreview.fileURLs).map { selection, url in
-            let source = quickLookSourceInfo(forRow: selection.row, paneItem: .archive(selection.item))
-            return FileManagerQuickLookPreparedItem(url: url,
-                                                    title: selection.item.name,
-                                                    sourceFrameOnScreen: source.frameOnScreen,
-                                                    transitionImage: source.transitionImage,
-                                                    transitionContentRect: source.transitionContentRect)
+        let previewSelection = archiveSelection.map { selection in
+            FileManagerQuickLookArchiveSelection(item: selection.item,
+                                                 source: quickLookSourceInfo(forRow: selection.row,
+                                                                             paneItem: .archive(selection.item)))
         }
+        let previewItems = FileManagerQuickLookPreparation.archivePreviewItems(for: previewSelection,
+                                                                               stagedFileURLs: stagedPreview.fileURLs)
         return FileManagerQuickLookPreparedPreview(items: previewItems,
                                                    temporaryDirectories: [stagedPreview.temporaryDirectory])
     }
@@ -1576,36 +1571,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     private func quickLookSourceInfo(forRow row: Int,
-                                     paneItem: PaneItem) -> (frameOnScreen: NSRect, transitionImage: NSImage?, transitionContentRect: NSRect)
+                                     paneItem: PaneItem) -> FileManagerQuickLookItemSource
     {
         let transitionImage = makeQuickLookTransitionImage(for: paneItem)
-        let transitionContentRect = transitionImage.map { NSRect(origin: .zero, size: $0.size) } ?? .zero
-        return (quickLookSourceFrameOnScreen(forRow: row), transitionImage, transitionContentRect)
-    }
-
-    private func quickLookSourceFrameOnScreen(forRow row: Int) -> NSRect {
-        let identifier = NSUserInterfaceItemIdentifier("name")
-        let column = tableView.column(withIdentifier: identifier)
-        guard column >= 0,
-              let window = view.window
-        else {
-            return .zero
-        }
-
-        if let cellView = tableView.view(atColumn: column, row: row, makeIfNecessary: false) as? NSTableCellView,
-           let imageView = cellView.imageView
-        {
-            let rectInWindow = imageView.convert(imageView.bounds, to: nil)
-            return window.convertToScreen(rectInWindow)
-        }
-
-        let cellRect = tableView.frameOfCell(atColumn: column, row: row)
-        let iconRect = NSRect(x: cellRect.minX + 4,
-                              y: cellRect.midY - (iconSize.height / 2),
-                              width: iconSize.width,
-                              height: iconSize.height)
-        let rectInWindow = tableView.convert(iconRect, to: nil)
-        return window.convertToScreen(rectInWindow)
+        return FileManagerQuickLookItemSource(frameOnScreen: FileManagerQuickLookSourceGeometry.frameOnScreen(forRow: row,
+                                                                                                              in: tableView,
+                                                                                                              window: view.window,
+                                                                                                              iconSize: iconSize),
+                                              transitionImage: transitionImage)
     }
 
     private func makeQuickLookTransitionImage(for paneItem: PaneItem) -> NSImage? {
@@ -1626,12 +1599,11 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             iconPath = item.path
         }
 
-        guard let image = iconImage(for: paneItem, isDirectory: isDirectory, iconPath: iconPath)?.copy() as? NSImage else {
-            return nil
-        }
-        image.size = iconSize
-        image.accessibilityDescription = itemName
-        return image
+        return iconProvider.transitionImage(for: iconSource(for: paneItem,
+                                                            isDirectory: isDirectory,
+                                                            iconPath: iconPath),
+                                            accessibilityDescription: itemName,
+                                            showsRealFileIcons: showsRealFileIcons)
     }
 
     private func iconImage(for paneItem: PaneItem, isDirectory: Bool, iconPath: String) -> NSImage? {
@@ -2657,21 +2629,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func showErrorAlert(_ error: Error) {
         szPresentError(error, for: view.window)
-    }
-
-    private func archivePhysicalSize(for level: ArchiveLevel) -> UInt64 {
-        let bridgedSize = level.archive.archivePhysicalSize
-        if bridgedSize > 0 {
-            return bridgedSize
-        }
-
-        if let attributes = try? FileManager.default.attributesOfItem(atPath: level.archivePath),
-           let size = attributes[.size] as? NSNumber
-        {
-            return size.uint64Value
-        }
-
-        return 0
     }
 
     private func showUnsupportedArchiveOperationAlert(action: String) {

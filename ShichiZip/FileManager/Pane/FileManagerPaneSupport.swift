@@ -175,6 +175,21 @@ final class FileManagerPaneIconProvider {
         }
     }
 
+    func transitionImage(for source: FileManagerPaneIconSource,
+                         accessibilityDescription: String?,
+                         showsRealFileIcons: Bool) -> NSImage?
+    {
+        guard let image = image(for: source,
+                                showsRealFileIcons: showsRealFileIcons)?.copy() as? NSImage
+        else {
+            return nil
+        }
+
+        image.size = iconSize
+        image.accessibilityDescription = accessibilityDescription
+        return image
+    }
+
     private func cachedIcon(forKey key: String, builder: () -> NSImage?) -> NSImage? {
         if let cachedImage = iconCache.object(forKey: key as NSString) {
             return cachedImage
