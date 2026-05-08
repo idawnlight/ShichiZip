@@ -2687,18 +2687,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         let path = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         if path.isEmpty { return }
 
-        // Expand ~ to home directory
-        let expanded = NSString(string: path).expandingTildeInPath
-        let url = URL(fileURLWithPath: expanded)
-
-        var isDir: ObjCBool = false
-        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
+        switch FileManagerFileSystemNavigation.addressBarTarget(for: path) {
+        case let .directory(url):
             guard closeAllArchives(showError: true) else {
                 updatePathField()
                 return
             }
             loadDirectory(url)
-        } else if FileManager.default.fileExists(atPath: url.path) {
+        case let .file(url, hostDirectory):
             if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(url) {
                 updatePathField()
                 if !openExternallyIfPossible(url) {
@@ -2722,7 +2718,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 return
             }
             switch openArchiveInline(url,
-                                     hostDirectory: url.deletingLastPathComponent(),
+                                     hostDirectory: hostDirectory,
                                      showError: false)
             {
             case .opened:
@@ -2743,7 +2739,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 updatePathField()
                 showErrorAlert(error)
             }
-        } else {
+        case nil:
             updatePathField()
             showErrorAlert(invalidAddressBarPathError(for: path))
         }

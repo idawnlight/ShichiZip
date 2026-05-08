@@ -186,6 +186,25 @@ enum FileManagerFileSystemNavigation {
         return .file(url: standardizedURL,
                      hostDirectory: standardizedURL.deletingLastPathComponent().standardizedFileURL)
     }
+
+    static func addressBarTarget(for enteredPath: String,
+                                 fileManager: FileManager = .default) -> FileManagerFileSystemOpenTarget?
+    {
+        let expandedPath = NSString(string: enteredPath).expandingTildeInPath
+        let url = URL(fileURLWithPath: expandedPath)
+
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) else {
+            return nil
+        }
+
+        if isDirectory.boolValue {
+            return .directory(url)
+        }
+
+        return .file(url: url,
+                     hostDirectory: url.deletingLastPathComponent())
+    }
 }
 
 enum FileManagerTransferPathValidation {
