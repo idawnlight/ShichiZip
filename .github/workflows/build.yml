@@ -241,13 +241,6 @@ jobs:
             CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
             test
 
-      - name: Open upterm session
-        if: ${{ failure() }}
-        uses: owenthereal/action-upterm@v1
-        with:
-          limit-access-to-actor: true
-          wait-timeout-minutes: 60
-
       - name: Run UI tests
         run: |
           derived_data_path="build/DerivedData/${{ matrix.scheme }}"

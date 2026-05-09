@@ -6,6 +6,7 @@ import Foundation
 #endif
 import XCTest
 
+@available(macOS 26.4, *)
 @MainActor
 final class FileManagerPaneDirectoryCoordinatorTests: XCTestCase {
     func testLoadDirectoryAppliesSnapshotAndPresentationCallbacks() throws {
