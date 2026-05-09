@@ -118,5 +118,4 @@ final class FileManagerPaneDirectoryCoordinatorTests: XCTestCase {
                                             showError: showError,
                                             directoryDidChange: directoryDidChange)
     }
-
 }
