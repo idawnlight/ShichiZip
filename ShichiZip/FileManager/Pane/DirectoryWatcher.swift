@@ -62,6 +62,10 @@ final class DirectoryWatcher {
         }
     }
 
+    isolated deinit {
+        stop()
+    }
+
     /// Returns whether any events arrived since the last poll.
     func wasChanged() -> Bool {
         guard changed else { return false }
