@@ -26,6 +26,13 @@ For a earlier update, the Homebrew Tap can be used:
 brew tap ChiahongHong/shichizip
 ```
 
+For users who require Zstandard Support, please *currently* use:
+
+```bash
+brew tap szw0407/shichizip-zs
+brew install --cask shichizip-zs
+```
+
 Alternatively, the latest [GitHub Release](https://github.com/idawnlight/ShichiZip/releases/latest) can also be used. Unzip the ZIP file and drag the app directly into `Applications`.
 
 ## Build
