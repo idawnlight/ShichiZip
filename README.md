@@ -12,6 +12,22 @@ The missing 7-Zip derivative intended for macOS.
 - In-archive Quick Look support for previewing files without extracting.
 - Additional macOS-specific features, including stripping resource forks and best-effort integration with Finder.
 
+## Install
+
+Thanks to @ChiahongHong, this program can be installed directly via Homebrew:
+
+```bash
+brew install --cask shichizip
+```
+
+For a earlier update, the Homebrew Tap can be used:
+
+```bash
+brew tap ChiahongHong/shichizip
+```
+
+Alternatively, the latest [GitHub Release](https://github.com/idawnlight/ShichiZip/releases/latest) can also be used. Unzip the ZIP file and drag the app directly into `Applications`.
+
 ## Build
 
 - Install prerequisites: `brew install xcodegen zig`
