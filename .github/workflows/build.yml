@@ -255,6 +255,10 @@ jobs:
         run: |
           derived_data_path="build/DerivedData/${{ matrix.scheme }}"
 
+          # Persist info/debug os_log entries so they survive until log show
+          sudo log config --subsystem ee.dawn.ShichiZip --mode level:debug || true
+          sudo log config --subsystem ee.dawn.ShichiZipZS --mode level:debug || true
+
           xcodebuild \
             -project "$XCODE_PROJECT" \
             -scheme "${{ matrix.scheme }}" \
@@ -294,7 +298,7 @@ jobs:
 
           # Collect unified log entries from the app under test
           log show --predicate 'subsystem BEGINSWITH "ee.dawn.ShichiZip"' \
-            --last 30m --style compact \
+            --info --debug --last 30m --style compact \
             > "$diagnostics_dir/app-unified-log.txt" 2>&1 || true
 
           # Check for saved application state

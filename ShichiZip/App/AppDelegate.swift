@@ -57,6 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
         ShichiZipQuickActionTransport.cleanupStalePayloads()
         MainMenu.setup()
         let isDefaultLaunch = notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool ?? true
+        SZLog.info("AppDelegate", "didFinishLaunching isDefaultLaunch=\(isDefaultLaunch)")
         if !isDefaultLaunch {
             launchOpenCoordinator.noteLaunchExpectsExternalOpen()
         }
@@ -64,11 +65,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
         // Only show file manager if no documents are being opened
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if !launchOpenCoordinator.shouldSuppressInitialFileManager,
-               NSDocumentController.shared.documents.isEmpty,
-               NSApp.windows.filter(\.isVisible).isEmpty
-            {
+            let suppress = launchOpenCoordinator.shouldSuppressInitialFileManager
+            let docsEmpty = NSDocumentController.shared.documents.isEmpty
+            let noWindows = NSApp.windows.filter(\.isVisible).isEmpty
+            if !suppress, docsEmpty, noWindows {
                 showFileManager(nil)
+            } else {
+                SZLog.info("AppDelegate", "skipped file manager: suppress=\(suppress) docsEmpty=\(docsEmpty) noWindows=\(noWindows)")
             }
         }
     }
