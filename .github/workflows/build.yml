@@ -152,14 +152,17 @@ jobs:
           CERTIFICATE_P12_BASE64: ${{ secrets.CERTIFICATE_P12_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_P12_PASSWORD }}
           SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [[ -n "$CERTIFICATE_P12_BASE64" && -n "$CERTIFICATE_PASSWORD" && -n "$SIGNING_IDENTITY" ]]; then
             echo "has_certificate=true" >> "$GITHUB_OUTPUT"
             echo "code_sign_identity=$SIGNING_IDENTITY" >> "$GITHUB_OUTPUT"
+            echo "development_team=${APPLE_TEAM_ID:-}" >> "$GITHUB_OUTPUT"
             echo "Using imported signing certificate."
           else
             echo "has_certificate=false" >> "$GITHUB_OUTPUT"
             echo "code_sign_identity=-" >> "$GITHUB_OUTPUT"
+            echo "development_team=" >> "$GITHUB_OUTPUT"
             echo "Signing secrets are unavailable; using ad-hoc signing for validation."
           fi
 
@@ -201,6 +204,7 @@ jobs:
             -arch "${{ matrix.target_arch }}" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
+            DEVELOPMENT_TEAM="${{ steps.signing.outputs.development_team }}" \
             build
 
       - name: Verify app bundle signature
@@ -249,6 +253,7 @@ jobs:
             "-only-testing:${{ matrix.scheme }}Tests" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
+            DEVELOPMENT_TEAM="${{ steps.signing.outputs.development_team }}" \
             test
 
       - name: Run UI tests
@@ -268,6 +273,7 @@ jobs:
             "-only-testing:${{ matrix.scheme }}UITests" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
+            DEVELOPMENT_TEAM="${{ steps.signing.outputs.development_team }}" \
             test
 
       - name: Collect failed test diagnostics
