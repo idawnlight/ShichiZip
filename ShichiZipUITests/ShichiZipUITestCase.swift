@@ -49,7 +49,9 @@ class ShichiZipUITestCase: XCTestCase {
 
     /// Returns the path field in the left pane.
     var leftPanePathField: XCUIElement {
-        app.textFields.matching(identifier: "fileManager.pathField").firstMatch
+        fileManagerWindow.descendants(matching: .any)
+            .matching(identifier: "fileManager.pathField")
+            .firstMatch
     }
 
     /// Navigates the left pane to the given directory path by pasting into the path field.

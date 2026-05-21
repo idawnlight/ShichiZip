@@ -38,11 +38,15 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
     }
 
     private var leftPathField: XCUIElement {
-        fileManagerWindow.textFields.matching(identifier: "fileManager.pathField").element(boundBy: 0)
+        fileManagerWindow.descendants(matching: .any)
+            .matching(identifier: "fileManager.pathField")
+            .element(boundBy: 0)
     }
 
     private var rightPathField: XCUIElement {
-        fileManagerWindow.textFields.matching(identifier: "fileManager.pathField").element(boundBy: 1)
+        fileManagerWindow.descendants(matching: .any)
+            .matching(identifier: "fileManager.pathField")
+            .element(boundBy: 1)
     }
 
     // MARK: - Navigation helpers (pane-scoped)
