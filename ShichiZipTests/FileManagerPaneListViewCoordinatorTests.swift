@@ -90,16 +90,9 @@ final class FileManagerPaneListViewCoordinatorTests: XCTestCase {
     }
 
     private func withDisabledListViewInfoPersistence(_ body: () -> Void) {
-        let defaults = UserDefaults.standard
-        let key = FileManagerViewPreferences.disableListViewInfoPersistenceDefaultsKey
-        let previousValue = defaults.object(forKey: key)
-        defaults.set(true, forKey: key)
+        setenv("SHICHIZIP_DISABLE_LIST_VIEW_INFO_PERSISTENCE", "1", 1)
         defer {
-            if let previousValue {
-                defaults.set(previousValue, forKey: key)
-            } else {
-                defaults.removeObject(forKey: key)
-            }
+            unsetenv("SHICHIZIP_DISABLE_LIST_VIEW_INFO_PERSISTENCE")
         }
 
         body()

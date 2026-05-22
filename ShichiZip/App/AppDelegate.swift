@@ -1,35 +1,20 @@
 import Cocoa
 import os
 
-private enum AppDelegateTestingOverrides {
-    private static let shouldRevealSmartQuickExtractDestinationStorage = OSAllocatedUnfairLock(initialState: nil as Bool?)
-
-    static var shouldRevealSmartQuickExtractDestination: Bool? {
-        get { shouldRevealSmartQuickExtractDestinationStorage.withLock { $0 } }
-        set { shouldRevealSmartQuickExtractDestinationStorage.withLock { $0 = newValue } }
-    }
-}
-
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouting {
-    private static let disableSmartQuickExtractRevealEnvironmentKey = "SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL"
-
-    /// Test-only override for smart quick extract reveal behavior.
-    nonisolated static var testingShouldRevealSmartQuickExtractDestinationOverride: Bool? {
-        get { AppDelegateTestingOverrides.shouldRevealSmartQuickExtractDestination }
-        set { AppDelegateTestingOverrides.shouldRevealSmartQuickExtractDestination = newValue }
-    }
+    #if DEBUG
+        private static let disableSmartQuickExtractRevealEnvironmentKey = "SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL"
+    #endif
 
     private static var shouldRevealSmartQuickExtractDestination: Bool {
-        if let override = testingShouldRevealSmartQuickExtractDestinationOverride {
-            return override
-        }
+        #if DEBUG
+            if let value = getenv(disableSmartQuickExtractRevealEnvironmentKey) {
+                return String(cString: value) != "1"
+            }
+        #endif
 
-        guard let value = getenv(disableSmartQuickExtractRevealEnvironmentKey) else {
-            return true
-        }
-
-        return String(cString: value) != "1"
+        return true
     }
 
     private let fileManagerWindowRegistry: FileManagerWindowRegistry
@@ -56,12 +41,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
     func applicationDidFinishLaunching(_ notification: Notification) {
         ShichiZipQuickActionTransport.cleanupStalePayloads()
         MainMenu.setup()
-        let isDefaultLaunch = notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool ?? true
+        var isDefaultLaunch = notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool ?? true
+        #if DEBUG
+            if getenv("SHICHIZIP_FORCE_DEFAULT_LAUNCH") != nil {
+                isDefaultLaunch = true
+            }
+        #endif
         SZLog.info("AppDelegate", "didFinishLaunching isDefaultLaunch=\(isDefaultLaunch)")
         if !isDefaultLaunch {
             launchOpenCoordinator.noteLaunchExpectsExternalOpen()
         }
-        // Delay slightly — if we're opening a file, the document system will handle it
         // Only show file manager if no documents are being opened
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }

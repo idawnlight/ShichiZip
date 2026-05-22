@@ -14,8 +14,13 @@ class ShichiZipUITestCase: XCTestCase {
         []
     }
 
-    private static let defaultLaunchArguments: [String] =
-        ["-FileManager.DisableListViewInfoPersistence", "YES"]
+    private static let defaultLaunchArguments: [String] = []
+
+    private static let defaultLaunchEnvironment: [String: String] = [
+        "SHICHIZIP_FORCE_DEFAULT_LAUNCH": "1",
+        "SHICHIZIP_DISABLE_LIST_VIEW_INFO_PERSISTENCE": "1",
+        "SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL": "1",
+    ]
 
     override func setUp() async throws {
         try await super.setUp()
@@ -23,6 +28,7 @@ class ShichiZipUITestCase: XCTestCase {
         app = XCUIApplication()
         app.launchArguments += Self.defaultLaunchArguments
         app.launchArguments += additionalLaunchArguments
+        app.launchEnvironment.merge(Self.defaultLaunchEnvironment) { _, new in new }
         app.launch()
     }
 

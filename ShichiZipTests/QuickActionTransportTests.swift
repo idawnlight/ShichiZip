@@ -11,17 +11,18 @@ final class QuickActionTransportTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        // Use the test override instead of mutating process-wide environment state.
-        AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = false
+        setenv("SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL", "1", 1)
         requestDirectoryURL = try? makeTemporaryDirectory(named: #function,
                                                           prefix: "ShichiZipQuickActionRequests")
-        ShichiZipQuickActionTransport.testingRequestDirectoryURLOverride = requestDirectoryURL
+        if let requestDirectoryURL {
+            setenv("SHICHIZIP_QUICK_ACTION_REQUEST_DIRECTORY", requestDirectoryURL.path, 1)
+        }
     }
 
     override func tearDown() {
-        ShichiZipQuickActionTransport.testingRequestDirectoryURLOverride = nil
+        unsetenv("SHICHIZIP_QUICK_ACTION_REQUEST_DIRECTORY")
         requestDirectoryURL = nil
-        AppDelegate.testingShouldRevealSmartQuickExtractDestinationOverride = nil
+        unsetenv("SHICHIZIP_DISABLE_SMART_QUICK_EXTRACT_REVEAL")
         super.tearDown()
     }
 

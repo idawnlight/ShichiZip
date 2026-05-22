@@ -5,8 +5,8 @@ enum FileManagerTemporaryDirectorySupport {
     static let dragPrefix = "7zE"
     static let quickLookPrefix = "7zQ"
     static let stagingPrefix = "7zS"
-    // Destination-side extraction sidecars reuse the temp naming scheme but are not
-    // temp-root managed items.
+    /// Destination-side extraction sidecars reuse the temp naming scheme but are not
+    /// temp-root managed items.
     static let extractionSidecarPrefix = ".7zT"
 
     private static let randomSuffixLength = 8

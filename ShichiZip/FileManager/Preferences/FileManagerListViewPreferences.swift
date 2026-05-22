@@ -20,14 +20,21 @@ extension FileManagerViewPreferences {
 
     static let fileSystemListViewFolderTypeID = "FSFolder"
     static let listViewPreferencesResetUserInfoKey = "FileManager.ListViewPreferencesReset"
-    static let disableListViewInfoPersistenceDefaultsKey = "FileManager.DisableListViewInfoPersistence"
+
+    #if DEBUG
+        private static let disableListViewInfoPersistenceEnvironmentKey = "SHICHIZIP_DISABLE_LIST_VIEW_INFO_PERSISTENCE"
+    #endif
 
     private static let listViewInfoKeyPrefix = "FileManager.ListViewInfo."
     private static let listViewInfoVersion = 1
     private static let maximumStoredColumnWidth: CGFloat = 4000
 
     static var isListViewInfoPersistenceDisabled: Bool {
-        UserDefaults.standard.bool(forKey: disableListViewInfoPersistenceDefaultsKey)
+        #if DEBUG
+            return getenv(disableListViewInfoPersistenceEnvironmentKey) != nil
+        #else
+            return false
+        #endif
     }
 
     static func archiveListViewFolderTypeID(formatName: String?) -> String {

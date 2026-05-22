@@ -2,15 +2,6 @@ import Foundation
 import os
 import Security
 
-private enum QuickActionTransportTestingOverrides {
-    private static let requestDirectoryURLStorage = OSAllocatedUnfairLock(initialState: nil as URL?)
-
-    static var requestDirectoryURL: URL? {
-        get { requestDirectoryURLStorage.withLock { $0 } }
-        set { requestDirectoryURLStorage.withLock { $0 = newValue } }
-    }
-}
-
 enum ShichiZipQuickActionTransport {
     private static let launchHost = "quick-action"
     private static let launchPath = "/finder"
@@ -22,10 +13,9 @@ enum ShichiZipQuickActionTransport {
     private static let requestDirectoryName = "QuickActionRequests"
     private static let staleRequestLifetime: TimeInterval = 24 * 60 * 60
 
-    static var testingRequestDirectoryURLOverride: URL? {
-        get { QuickActionTransportTestingOverrides.requestDirectoryURL }
-        set { QuickActionTransportTestingOverrides.requestDirectoryURL = newValue }
-    }
+    #if DEBUG
+        private static let requestDirectoryOverrideEnvironmentKey = "SHICHIZIP_QUICK_ACTION_REQUEST_DIRECTORY"
+    #endif
 
     private static var bundleIdentifier: String {
         Bundle.main.bundleIdentifier ?? "<unknown>"
@@ -185,10 +175,13 @@ enum ShichiZipQuickActionTransport {
     }
 
     private static func requestDirectoryURL() throws -> URL {
-        if let testingRequestDirectoryURLOverride {
-            log("using test request directory bundle=\(bundleIdentifier) requestDirectory=\(testingRequestDirectoryURLOverride.path)")
-            return testingRequestDirectoryURLOverride
-        }
+        #if DEBUG
+            if let override = getenv(requestDirectoryOverrideEnvironmentKey) {
+                let url = URL(fileURLWithPath: String(cString: override))
+                log("using test request directory bundle=\(bundleIdentifier) requestDirectory=\(url.path)")
+                return url
+            }
+        #endif
 
         guard let appGroupIdentifier else {
             log("transport unavailable missing app group identifier bundle=\(bundleIdentifier) infoKey=\(appGroupIdentifierInfoKey)")
