@@ -42,12 +42,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
         ShichiZipQuickActionTransport.cleanupStalePayloads()
         MainMenu.setup()
         var isDefaultLaunch = notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool ?? true
+        SZLog.info("AppDelegate", "didFinishLaunching isDefaultLaunch=\(isDefaultLaunch)")
         #if DEBUG
             if getenv("SHICHIZIP_FORCE_DEFAULT_LAUNCH") != nil {
                 isDefaultLaunch = true
+                SZLog.info("AppDelegate", "Forcing isDefaultLaunch=true due to environment variable")
             }
         #endif
-        SZLog.info("AppDelegate", "didFinishLaunching isDefaultLaunch=\(isDefaultLaunch)")
         if !isDefaultLaunch {
             launchOpenCoordinator.noteLaunchExpectsExternalOpen()
         }
