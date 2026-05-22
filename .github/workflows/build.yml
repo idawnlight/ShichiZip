@@ -276,8 +276,7 @@ jobs:
             DEVELOPMENT_TEAM="${{ steps.signing.outputs.development_team }}" \
             test
 
-      - name: Collect failed test diagnostics
-        if: failure()
+      - name: Collect all test diagnostics
         run: |
           diagnostics_dir="build/test-diagnostics/${{ matrix.scheme }}-${{ matrix.target_arch }}"
           test_logs_dir="build/DerivedData/${{ matrix.scheme }}/Logs/Test"
@@ -311,8 +310,7 @@ jobs:
           ls -laR "$HOME/Library/Saved Application State"/ee.dawn.ShichiZip*.savedState/ \
             > "$diagnostics_dir/saved-application-state.txt" 2>&1 || true
 
-      - name: Upload failed test diagnostics
-        if: failure()
+      - name: Upload all test diagnostics
         uses: actions/upload-artifact@v7
         with:
           name: test-diagnostics-${{ matrix.artifact_prefix }}-${{ matrix.target_arch }}-${{ github.run_attempt }}
