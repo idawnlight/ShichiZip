@@ -127,7 +127,9 @@ jobs:
           cache-key: ${{ matrix.zig_variant }}-${{ matrix.zig_target }}
 
       - name: Select Xcode 26.5
-        run: sudo xcode-select -s /Applications/Xcode_26.5.app/Contents/Developer
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.5.app/Contents/Developer
+          sudo xcodebuild -runFirstLaunch
 
       - name: Build archive core artifacts
         run: |
