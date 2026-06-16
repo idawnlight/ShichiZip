@@ -213,6 +213,33 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTableVie
         resetFileListPreferencesNote.preferredMaxLayoutWidth = 480
         stack.addArrangedSubview(resetFileListPreferencesNote)
 
+        let statusBarSizeRow = NSStackView()
+        statusBarSizeRow.orientation = .horizontal
+        statusBarSizeRow.alignment = .centerY
+        statusBarSizeRow.spacing = 8
+
+        let statusBarSizeLabel = NSTextField(labelWithString: SZL10n.string("app.settings.statusBarSize"))
+        statusBarSizeRow.addArrangedSubview(statusBarSizeLabel)
+
+        let statusBarSizePopup = NSPopUpButton()
+        let statusBarSizeItems: [(String, Int)] = [
+            (SZL10n.string("app.settings.statusBarSize.always"), 0),
+            (SZL10n.string("app.settings.statusBarSize.archiveOnly"), 1),
+        ]
+        for item in statusBarSizeItems {
+            statusBarSizePopup.addItem(withTitle: item.0)
+            statusBarSizePopup.lastItem?.tag = item.1
+        }
+        if let item = statusBarSizePopup.itemArray.first(where: { $0.tag == SZSettings.statusBarSizeMode }) {
+            statusBarSizePopup.select(item)
+        }
+        statusBarSizePopup.target = self
+        statusBarSizePopup.action = #selector(statusBarSizeModeChanged(_:))
+        statusBarSizePopup.setAccessibilityIdentifier("settings.statusBarSizeMode")
+        statusBarSizeRow.addArrangedSubview(statusBarSizePopup)
+
+        stack.addArrangedSubview(statusBarSizeRow)
+
         let compressionSeparator = makeSettingsSeparator()
         stack.addArrangedSubview(compressionSeparator)
         compressionSeparator.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -1028,6 +1055,10 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTableVie
 
     @objc private func memLimitChanged(_ sender: NSTextField) {
         SZSettings.set(max(1, sender.integerValue), for: .memLimitGB)
+    }
+
+    @objc private func statusBarSizeModeChanged(_ sender: NSPopUpButton) {
+        SZSettings.set(sender.selectedItem?.tag ?? 0, for: .statusBarSizeMode)
     }
 
     @objc private func launchOpenActionChanged(_ sender: NSButton) {

@@ -42,9 +42,12 @@ enum FileManagerItemPresentation {
     }
 
     static func statusBarText(displayed: FileManagerItemStatusSummary,
-                              selected: FileManagerItemStatusSummary?) -> String
+                              selected: FileManagerItemStatusSummary?,
+                              sizeMode: Int = 0,
+                              isInsideArchive: Bool = false) -> String
     {
-        let displayedSummaryText = summaryText(displayed)
+        let includeSize = !(sizeMode == 1 && !isInsideArchive)
+        let displayedSummaryText = summaryText(displayed, includeSize: includeSize)
         guard let selected, !selected.isEmpty else {
             return displayedSummaryText
         }
@@ -300,10 +303,13 @@ enum FileManagerItemPresentation {
                                             folderSize: folderSize)
     }
 
-    private static func summaryText(_ summary: FileManagerItemStatusSummary) -> String {
+    private static func summaryText(_ summary: FileManagerItemStatusSummary, includeSize: Bool = true) -> String {
         let sizeString = fileSizeString(summary.totalSize)
         let fileWord = summary.fileCount == 1 ? SZL10n.string("app.fileManager.statusFile") : SZL10n.string("app.fileManager.statusFiles")
         let folderWord = summary.folderCount == 1 ? SZL10n.string("app.fileManager.statusFolder") : SZL10n.string("app.fileManager.statusFolders")
+        guard includeSize else {
+            return "\(summary.fileCount) \(fileWord), \(summary.folderCount) \(folderWord)"
+        }
         return "\(summary.fileCount) \(fileWord), \(summary.folderCount) \(folderWord) — \(sizeString)"
     }
 

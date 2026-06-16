@@ -21,6 +21,7 @@ enum SZSettingsKey: String {
     case inheritDownloadedFileQuarantine = "InheritDownloadedFileQuarantine"
     case memLimitEnabled = "MemLimitEnabled"
     case memLimitGB = "MemLimitGB"
+    case statusBarSizeMode = "StatusBarSizeMode"
 
     // Shortcuts page
     case fileManagerShortcutPreset = "FileManagerShortcutPreset"
@@ -147,6 +148,10 @@ enum SZSettings {
     static var memLimitGB: Int {
         let v = defaults.integer(forKey: SZSettingsKey.memLimitGB.rawValue)
         return v > 0 ? v : 4
+    }
+
+    static var statusBarSizeMode: Int {
+        integer(.statusBarSizeMode)
     }
 
     static var quickLookPreviewExpansionDepth: Int {

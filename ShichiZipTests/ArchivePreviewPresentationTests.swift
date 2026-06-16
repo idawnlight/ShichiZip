@@ -43,6 +43,88 @@ final class ArchivePreviewPresentationTests: XCTestCase {
                        "2 \(ArchivePreviewLocalization.string("app.fileManager.statusFiles")), 1 \(ArchivePreviewLocalization.string("app.fileManager.statusFolder")) — \(ByteCountFormatter.string(fromByteCount: 7, countStyle: .file))")
     }
 
+    func testStatusBarArchiveOnlyModeOmitsDisplayedSizeOutsideArchives() {
+        let summary = makeStatusSummary(fileCount: 2,
+                                        folderCount: 1,
+                                        fileSize: 42)
+
+        let text = FileManagerItemPresentation.statusBarText(displayed: summary,
+                                                             selected: nil,
+                                                             sizeMode: 1,
+                                                             isInsideArchive: false)
+
+        XCTAssertTrue(text.contains("2 \(SZL10n.string("app.fileManager.statusFiles"))"))
+        XCTAssertTrue(text.contains("1 \(SZL10n.string("app.fileManager.statusFolder"))"))
+        XCTAssertFalse(text.contains(statusSizeString(42)))
+    }
+
+    func testStatusBarArchiveOnlyModeShowsDisplayedSizeInsideArchives() {
+        let summary = makeStatusSummary(fileCount: 2,
+                                        folderCount: 1,
+                                        fileSize: 42)
+
+        let text = FileManagerItemPresentation.statusBarText(displayed: summary,
+                                                             selected: nil,
+                                                             sizeMode: 1,
+                                                             isInsideArchive: true)
+
+        XCTAssertTrue(text.contains(statusSizeString(42)))
+    }
+
+    func testStatusBarDefaultModeShowsDisplayedSizeInBothContexts() {
+        let summary = makeStatusSummary(fileCount: 2,
+                                        folderCount: 1,
+                                        fileSize: 42)
+        let defaultText = FileManagerItemPresentation.statusBarText(displayed: summary,
+                                                                    selected: nil)
+        let folderText = FileManagerItemPresentation.statusBarText(displayed: summary,
+                                                                   selected: nil,
+                                                                   sizeMode: 0,
+                                                                   isInsideArchive: false)
+        let archiveText = FileManagerItemPresentation.statusBarText(displayed: summary,
+                                                                    selected: nil,
+                                                                    sizeMode: 0,
+                                                                    isInsideArchive: true)
+
+        XCTAssertEqual(folderText, defaultText)
+        XCTAssertEqual(archiveText, defaultText)
+        XCTAssertTrue(folderText.contains(statusSizeString(42)))
+        XCTAssertTrue(archiveText.contains(statusSizeString(42)))
+    }
+
+    func testStatusBarArchiveOnlyModeKeepsSelectionSizeOutsideArchives() {
+        let displayed = makeStatusSummary(fileCount: 3,
+                                          folderCount: 1,
+                                          fileSize: 4_096)
+        let selected = makeStatusSummary(fileCount: 1,
+                                         folderCount: 0,
+                                         fileSize: 123)
+
+        let text = FileManagerItemPresentation.statusBarText(displayed: displayed,
+                                                             selected: selected,
+                                                             sizeMode: 1,
+                                                             isInsideArchive: false)
+
+        XCTAssertFalse(text.contains(statusSizeString(4_096)))
+        XCTAssertTrue(text.contains(statusSizeString(123)))
+    }
+
+    func testStatusBarEmptySummariesRenderUnderBothModes() {
+        let empty = makeStatusSummary()
+
+        for sizeMode in [0, 1] {
+            for isInsideArchive in [false, true] {
+                let text = FileManagerItemPresentation.statusBarText(displayed: empty,
+                                                                     selected: nil,
+                                                                     sizeMode: sizeMode,
+                                                                     isInsideArchive: isInsideArchive)
+
+                XCTAssertTrue(text.contains("0 \(SZL10n.string("app.fileManager.statusFiles"))"))
+                XCTAssertTrue(text.contains("0 \(SZL10n.string("app.fileManager.statusFolders"))"))
+            }
+        }
+    }
+
     func testArchiveColumnsUseMainAppArchiveDefaults() {
         let columns = ArchivePreviewColumn.archiveColumns(entryProperties: [
             ArchivePreviewEntryProperty(id: .size,
@@ -192,5 +274,20 @@ final class ArchivePreviewPresentationTests: XCTestCase {
                     position: 0,
                     block: 0,
                     comment: "")
+    }
+
+    private func makeStatusSummary(fileCount: Int = 0,
+                                   folderCount: Int = 0,
+                                   fileSize: UInt64 = 0,
+                                   folderSize: UInt64 = 0) -> FileManagerItemStatusSummary
+    {
+        FileManagerItemStatusSummary(fileCount: fileCount,
+                                     folderCount: folderCount,
+                                     fileSize: fileSize,
+                                     folderSize: folderSize)
+    }
+
+    private func statusSizeString(_ size: UInt64) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(clamping: size), countStyle: .file)
     }
 }

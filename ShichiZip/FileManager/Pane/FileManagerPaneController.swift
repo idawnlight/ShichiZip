@@ -1110,7 +1110,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         statusLabel.stringValue = FileManagerItemPresentation.statusBarText(displayed: displayedSummary,
-                                                                            selected: selectedSummary)
+                                                                            selected: selectedSummary,
+                                                                            sizeMode: SZSettings.statusBarSizeMode,
+                                                                            isInsideArchive: isInsideArchive)
     }
 
     // MARK: - Settings
@@ -1147,6 +1149,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return
         case .fileManagerShortcutPreset, .fileManagerCustomShortcuts:
             refreshContextMenu()
+            return
+        case .statusBarSizeMode:
+            updateStatusBar()
             return
         default:
             return

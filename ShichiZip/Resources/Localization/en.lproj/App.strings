@@ -213,6 +213,9 @@
 "app.settings.resetFileListLayoutNote" = "Clears saved sort order, column order, and column widths for File Manager lists.";
 "app.settings.resetFileManagerWindowFrame" = "Reset Saved Window Size and Position";
 "app.settings.scheme" = "Scheme:";
+"app.settings.statusBarSize" = "Status bar size:";
+"app.settings.statusBarSize.always" = "Always show total size";
+"app.settings.statusBarSize.archiveOnly" = "Only inside archives";
 "app.settings.setAllAsDefault" = "Set All as Default";
 "app.settings.shortcuts" = "Shortcuts";
 "app.settings.shortcutsCustomNote" = "Changing an individual binding switches the preset to Custom. Reusing a shortcut clears it from the previous command. Click a shortcut field and press any key combination. Press Escape to cancel recording.";
