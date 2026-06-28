@@ -1,5 +1,5 @@
 diff --git a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
-index 6631629..dc373e3 100644
+index 7f6da0c..888e2cb 100644
 --- a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
 +++ b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
 @@ -28,6 +28,10 @@
@@ -63,7 +63,7 @@ index 6631629..dc373e3 100644
      if (isFinalDir)
      {
        if (!NFile::NFind::DoesDirExist(fullPath))
-@@ -1969,6 +1997,12 @@ HRESULT CArchiveExtractCallback::CloseFile()
+@@ -1974,6 +2002,12 @@ HRESULT CArchiveExtractCallback::CloseFile()
        }
      }
    }
