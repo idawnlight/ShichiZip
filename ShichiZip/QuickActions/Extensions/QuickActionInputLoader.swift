@@ -79,18 +79,6 @@ enum ShichiZipQuickActionInputLoader {
             }
 
             do {
-                if let itemURL = try await loadItemFileURL(from: itemProvider,
-                                                           typeIdentifier: typeIdentifier,
-                                                           logger: logger)
-                {
-                    return itemURL
-                }
-            } catch {
-                logger.log("loadItem failed for type=\(typeIdentifier) error=\(String(describing: error))")
-                firstError = firstError ?? error
-            }
-
-            do {
                 if let dataURL = try await loadDataFileURL(from: itemProvider,
                                                            typeIdentifier: typeIdentifier,
                                                            logger: logger)
@@ -101,6 +89,17 @@ enum ShichiZipQuickActionInputLoader {
                 logger.log("loadDataRepresentation failed for type=\(typeIdentifier) error=\(String(describing: error))")
                 firstError = firstError ?? error
             }
+        }
+
+        do {
+            if let stringObjectURL = try await loadStringObjectFileURL(from: itemProvider,
+                                                                       logger: logger)
+            {
+                return stringObjectURL
+            }
+        } catch {
+            logger.log("loadObject(NSString) failed error=\(String(describing: error))")
+            firstError = firstError ?? error
         }
 
         if let temporaryRepresentationURL {
@@ -184,25 +183,28 @@ enum ShichiZipQuickActionInputLoader {
         }
     }
 
-    private static func loadItemFileURL(from itemProvider: NSItemProvider,
-                                        typeIdentifier: String,
-                                        logger: ShichiZipQuickActionLogger) async throws -> URL?
+    private static func loadStringObjectFileURL(from itemProvider: NSItemProvider,
+                                                logger: ShichiZipQuickActionLogger) async throws -> URL?
     {
-        try await withCheckedThrowingContinuation { continuation in
-            itemProvider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { item, error in
+        guard itemProvider.canLoadObject(ofClass: NSString.self) else {
+            return nil
+        }
+
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL?, Error>) in
+            itemProvider.loadObject(ofClass: NSString.self) { item, error in
                 if let error {
                     continuation.resume(throwing: error)
                     return
                 }
 
-                do {
-                    let url = try parseFileURL(from: item)
-                    continuation.resume(returning: url.standardizedFileURL)
-                } catch {
+                guard let string = item as? String else {
                     let itemTypeDescription = item.map { String(describing: type(of: $0)) } ?? "nil"
-                    logger.log("loadItem returned unparseable item for type=\(typeIdentifier) itemType=\(itemTypeDescription)")
+                    logger.log("loadObject(NSString) returned unparseable item itemType=\(itemTypeDescription)")
                     continuation.resume(returning: nil)
+                    return
                 }
+
+                continuation.resume(returning: fileURL(from: string).standardizedFileURL)
             }
         }
     }
