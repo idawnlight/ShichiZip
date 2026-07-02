@@ -3009,6 +3009,108 @@ SZMapCompressionPathMode(SZCompressionPathMode mode) {
     }
 }
 
+static NSString* SZDirectoryPathWithTrailingSeparator(NSString* path) {
+    if (path.length == 0 || [path hasSuffix:@"/"]) {
+        return path;
+    }
+    return [path stringByAppendingString:@"/"];
+}
+
+static NSString* SZStandardizedSourcePath(NSString* path) {
+    return [NSURL fileURLWithPath:path].standardizedURL.path;
+}
+
+static BOOL SZBuildRelativeCompressionSourceMap(
+    NSArray<NSString*>* sourcePaths,
+    NSString* __autoreleasing *commonDirectoryOut,
+    NSArray<NSString*>* __autoreleasing *relativePathsOut) {
+    if (sourcePaths.count == 0) {
+        return NO;
+    }
+
+    NSMutableArray<NSArray<NSString*>*>* sourceComponents =
+        [NSMutableArray arrayWithCapacity:sourcePaths.count];
+    NSMutableArray<NSString*>* commonParentComponents = nil;
+
+    for (NSString* sourcePath in sourcePaths) {
+        if (![sourcePath isAbsolutePath]) {
+            return NO;
+        }
+
+        NSString* standardizedPath = SZStandardizedSourcePath(sourcePath);
+        NSArray<NSString*>* components = standardizedPath.pathComponents;
+        [sourceComponents addObject:components];
+
+        NSArray<NSString*>* parentComponents =
+            [standardizedPath.stringByDeletingLastPathComponent pathComponents];
+        if (!commonParentComponents) {
+            commonParentComponents = [parentComponents mutableCopy];
+            continue;
+        }
+
+        NSUInteger commonCount = 0;
+        NSUInteger upperBound =
+            MIN(commonParentComponents.count, parentComponents.count);
+        while (commonCount < upperBound
+            && [commonParentComponents[commonCount] isEqualToString:parentComponents[commonCount]]) {
+            commonCount++;
+        }
+        [commonParentComponents removeObjectsInRange:
+            NSMakeRange(commonCount, commonParentComponents.count - commonCount)];
+    }
+
+    NSMutableArray<NSString*>* relativePaths = [NSMutableArray arrayWithCapacity:sourcePaths.count];
+    for (NSArray<NSString*>* components in sourceComponents) {
+        NSArray<NSString*>* relativeComponents =
+            [components subarrayWithRange:NSMakeRange(commonParentComponents.count,
+                                                      components.count - commonParentComponents.count)];
+        if (relativeComponents.count == 0) {
+            return NO;
+        }
+        [relativePaths addObject:[NSString pathWithComponents:relativeComponents]];
+    }
+
+    NSString* commonDirectory = [NSString pathWithComponents:commonParentComponents];
+    if (commonDirectoryOut) {
+        *commonDirectoryOut = commonDirectory;
+    }
+    if (relativePathsOut) {
+        *relativePathsOut = relativePaths;
+    }
+    return YES;
+}
+
+static void SZAddNoWildcardCensorItem(NWildcard::CPair& pair, NSString* relativePath) {
+    NWildcard::CItem item;
+    SplitPathToParts(ToU(relativePath), item.PathParts);
+    item.Recursive = false;
+    item.ForFile = true;
+    item.ForDir = true;
+    item.WildcardMatching = false;
+    pair.Head.AddItem(true, item);
+}
+
+static void SZAddCompressionSourcesToCensor(
+    NWildcard::CCensor& censor,
+    NSArray<NSString*>* sourcePaths,
+    SZCompressionPathMode pathMode) {
+    NSString* commonDirectory = nil;
+    NSArray<NSString*>* relativePaths = nil;
+    if (pathMode == SZCompressionPathModeRelativePaths
+        && SZBuildRelativeCompressionSourceMap(sourcePaths, &commonDirectory, &relativePaths)) {
+        NWildcard::CPair& pair = censor.Pairs.AddNew();
+        pair.Prefix = ToU(SZDirectoryPathWithTrailingSeparator(commonDirectory));
+        for (NSString* relativePath in relativePaths) {
+            SZAddNoWildcardCensorItem(pair, relativePath);
+        }
+        return;
+    }
+
+    for (NSString* sourcePath in sourcePaths) {
+        censor.AddPreItem_NoWildcard(ToU(sourcePath));
+    }
+}
+
 static void SZAddCompressionProperty(CObjectVector<CProperty>& properties,
     const wchar_t* name,
     const UString& value) {
@@ -3406,9 +3508,7 @@ static bool SZParseVolumeSizes(const UString& text,
     }
 
     NWildcard::CCensor censor;
-    for (NSString* srcPath in src) {
-        censor.AddPreItem_NoWildcard(ToU(srcPath));
-    }
+    SZAddCompressionSourcesToCensor(censor, src, s.pathMode);
     if (s.excludeMacResourceFiles) {
         SZAddMacResourceFileExcludes(censor);
     }
@@ -3436,8 +3536,31 @@ static bool SZParseVolumeSizes(const UString& text,
         return NO;
     }
 
-    HRESULT r = UpdateArchive(codecs, types, ToU(archivePath), censor, options,
-        errorInfo, &openCallbackUI, &callbackUI, true);
+    NSString* compressionFailedDescription = [NSString
+        stringWithFormat:SZLocalizedString(@"app.archive.error.compressionFailedFormat"),
+                         (unsigned)E_FAIL];
+    HRESULT r;
+    try {
+        r = UpdateArchive(codecs, types, ToU(archivePath), censor, options,
+            errorInfo, &openCallbackUI, &callbackUI, true);
+    } catch (const UString& message) {
+        if (error)
+            *error = SZMakeDetailedError(E_FAIL,
+                compressionFailedDescription,
+                ToNS(message));
+        return NO;
+    } catch (const char* message) {
+        if (error)
+            *error = SZMakeDetailedError(E_FAIL,
+                compressionFailedDescription,
+                NSFromCString(message));
+        return NO;
+    } catch (...) {
+        if (error)
+            *error = SZMakeError(E_FAIL,
+                compressionFailedDescription);
+        return NO;
+    }
 
     if (r != S_OK) {
         NSString* desc;

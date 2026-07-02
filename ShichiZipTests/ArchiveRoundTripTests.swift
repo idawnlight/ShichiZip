@@ -215,6 +215,55 @@ final class ArchiveRoundTripTests: XCTestCase {
         }
     }
 
+    func testCreatingArchiveFromAbsoluteSourcesPreservesCommonParentRelativePaths() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "roundtrip-create-common-parent")
+        let sourceURLs = try writePayloads([
+            "folder-a/alpha.txt": "alpha",
+            "folder-a/payload.txt": "first",
+            "folder-b/payload.txt": "second",
+        ], into: tempRoot)
+        let archiveURL = tempRoot.appendingPathComponent("out.7z")
+
+        let settings = SZCompressionSettings()
+        settings.pathMode = .relativePaths
+
+        try SZArchive.create(atPath: archiveURL.path,
+                             fromPaths: sourceURLs.map(\.path),
+                             settings: settings,
+                             session: nil)
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        let listedPaths = Set(archive.entries().map(\.path))
+        XCTAssertTrue(listedPaths.contains("folder-a/alpha.txt"),
+                      "unique leaves from nested parents should retain their parent path; got \(listedPaths)")
+        XCTAssertTrue(listedPaths.contains("folder-a/payload.txt"),
+                      "first duplicate leaf should retain enough parent path; got \(listedPaths)")
+        XCTAssertTrue(listedPaths.contains("folder-b/payload.txt"),
+                      "second duplicate leaf should retain enough parent path; got \(listedPaths)")
+
+        let extractDir = tempRoot.appendingPathComponent("extract", isDirectory: true)
+        try FileManager.default.createDirectory(at: extractDir,
+                                                withIntermediateDirectories: true)
+        let extractionSettings = SZExtractionSettings()
+        extractionSettings.pathMode = .fullPaths
+        try archive.extract(toPath: extractDir.path,
+                            settings: extractionSettings,
+                            session: nil)
+
+        XCTAssertEqual(try String(contentsOf: extractDir.appendingPathComponent("folder-a/alpha.txt"),
+                                  encoding: .utf8),
+                       "alpha")
+        XCTAssertEqual(try String(contentsOf: extractDir.appendingPathComponent("folder-a/payload.txt"),
+                                  encoding: .utf8),
+                       "first")
+        XCTAssertEqual(try String(contentsOf: extractDir.appendingPathComponent("folder-b/payload.txt"),
+                                  encoding: .utf8),
+                       "second")
+    }
+
     func testExtractingZipPreservesVersionedFrameworkSymlinks() throws {
         let tempRoot = try makeTemporaryDirectory(named: "roundtrip-zip-framework-symlinks")
         let archiveURL = tempRoot.appendingPathComponent("framework.zip")
