@@ -21,7 +21,7 @@ final class AppQuickActionHandler {
         do {
             SZLog.info(Self.logPrefix, "consuming launchURL=\(url.absoluteString)")
             let request = try ShichiZipQuickActionTransport.consumeRequest(from: url)
-            SZLog.info(Self.logPrefix, "decoded request action=\(request.action.rawValue) paths=\(request.paths.joined(separator: ", "))")
+            SZLog.info(Self.logPrefix, "decoded request action=\(request.action.rawValue) pathCount=\(request.paths.count)")
             NSApp.activate(ignoringOtherApps: true)
             try handle(request)
         } catch {
@@ -52,7 +52,7 @@ final class AppQuickActionHandler {
         }
 
         for group in groups {
-            SZLog.info(Self.logPrefix, "show-in-file-manager opening new window urls=\(group.map(\.path).joined(separator: ", "))")
+            SZLog.info(Self.logPrefix, "show-in-file-manager opening new window urlCount=\(group.count)")
             fileManagerWindowRegistry.revealFileSystemItemsInNewWindow(group)
         }
     }
@@ -66,7 +66,7 @@ final class AppQuickActionHandler {
 
     private func handleCompress(_ request: ShichiZipQuickActionRequest) throws {
         let fileURLs = try existingFileURLs(from: request)
-        SZLog.info(Self.logPrefix, "compress presenting dialog urls=\(fileURLs.map(\.path).joined(separator: ", "))")
+        SZLog.info(Self.logPrefix, "compress presenting dialog urlCount=\(fileURLs.count)")
 
         Task { @MainActor in
             let dialog = CompressDialogController(sourceURLs: fileURLs)

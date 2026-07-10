@@ -1,12 +1,18 @@
 import Foundation
 import UniformTypeIdentifiers
 
+enum ShichiZipQuickActionInputError: Error, Sendable {
+    case emptyExtensionContext
+}
+
 @MainActor
 enum ShichiZipQuickActionInputLoader {
     private enum LoadedFileReference {
         case durable(URL)
         case temporary(URL)
     }
+
+    private static let maxConcurrentProviderLoads = 32
 
     static func fileURLs(from context: NSExtensionContext,
                          action: ShichiZipQuickAction) async throws -> [URL]
@@ -24,14 +30,17 @@ enum ShichiZipQuickActionInputLoader {
 
         guard !itemProviders.isEmpty else {
             logger.log("no item providers in extension context")
+            if !extensionItems.isEmpty {
+                throw ShichiZipQuickActionInputError.emptyExtensionContext
+            }
             throw ShichiZipQuickActionError.unsupportedSelection("No files were provided to the Quick Action.")
         }
 
-        var urls: [URL] = []
-        for (index, itemProvider) in itemProviders.enumerated() {
-            logger.log("provider[\(index)] registeredTypeIdentifiers=\(itemProvider.registeredTypeIdentifiers.joined(separator: ", "))")
-            try await urls.append(loadFileURL(from: itemProvider,
-                                              action: action))
+        let urls = try await shichiZipBoundedConcurrentMap(itemProviders,
+                                                           maxConcurrentTasks: maxConcurrentProviderLoads)
+        { itemProvider in
+            try await loadFileURL(from: itemProvider,
+                                  action: action)
         }
 
         return urls.map(\.standardizedFileURL)

@@ -90,7 +90,6 @@ targets:
               NSExtensionServiceRoleType: NSExtensionServiceRoleTypeViewer
             NSExtensionActivationRule: >-
               SUBQUERY(extensionItems, $extensionItem, $extensionItem.attachments.@count >= 1 &&
-              $extensionItem.attachments.@count <= 64 &&
               SUBQUERY($extensionItem.attachments, $attachment,
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.item").@count ==
               $extensionItem.attachments.@count).@count == 1
@@ -152,7 +151,6 @@ targets:
             <<: *quick_action_extension_attributes_common
             NSExtensionActivationRule: >-
               SUBQUERY(extensionItems, $extensionItem, $extensionItem.attachments.@count >= 1 &&
-              $extensionItem.attachments.@count <= 64 &&
               SUBQUERY($extensionItem.attachments, $attachment,
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.item").@count ==
               $extensionItem.attachments.@count).@count == 1

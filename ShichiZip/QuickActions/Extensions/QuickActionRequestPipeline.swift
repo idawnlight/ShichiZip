@@ -30,7 +30,7 @@ struct ShichiZipQuickActionRequestPipeline {
         do {
             let fileURLs = try await ShichiZipQuickActionInputLoader.fileURLs(from: context,
                                                                               action: policy.action)
-            logger.log("resolved fileURLs=\(fileURLs.map(\.path).joined(separator: ", "))")
+            logger.log("resolved fileURLCount=\(fileURLs.count)")
             let request = try policy.makeRequest(from: fileURLs)
             let launchURL = try ShichiZipQuickActionTransport.launchURL(for: request)
             let didLaunch = launcher.open(launchURL)
@@ -43,6 +43,9 @@ struct ShichiZipQuickActionRequestPipeline {
                 ShichiZipQuickActionTransport.releasePayload(for: launchURL)
                 cancel(context, error: ShichiZipQuickActionError.launchFailed)
             }
+        } catch ShichiZipQuickActionInputError.emptyExtensionContext {
+            logger.log("completing host request with an empty extension context")
+            complete(context)
         } catch {
             logger.log("canceling with error=\(String(describing: error))")
             cancel(context, error: error)
