@@ -181,8 +181,9 @@ private struct SettingsNavigationButtonStyle: ButtonStyle {
     let isKeyboardFocused: Bool
 
     func makeBody(configuration: Configuration) -> some View {
+        let keyboardNavigationEnabled = NSApplication.shared.isFullKeyboardAccessEnabled
         let usesEmphasizedSelection = controlActiveState == .key
-            && (isKeyboardFocused || configuration.isPressed)
+            && (!keyboardNavigationEnabled || isKeyboardFocused || configuration.isPressed)
 
         configuration.label
             .foregroundStyle(foregroundColor(emphasized: usesEmphasizedSelection))

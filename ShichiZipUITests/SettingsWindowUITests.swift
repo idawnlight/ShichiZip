@@ -1,20 +1,8 @@
 import XCTest
 
 final class SettingsWindowUITests: ShichiZipUITestCase {
-    override var additionalLaunchArguments: [String] {
-        // Keep arrow navigation independent of the user's Full Keyboard Access setting.
-        ["-AppleKeyboardUIMode", "0"]
-    }
-
     func testSwiftUISettingsNavigationAndFileTypeSearch() {
         openSettings()
-
-        let generalNavigation = settingsNavigation("general")
-        generalNavigation.click()
-        app.typeKey(.downArrow, modifierFlags: [])
-        waitForSelection(settingsNavigation("archives"))
-        app.typeKey(.downArrow, modifierFlags: [])
-        waitForSelection(settingsNavigation("shortcuts"))
 
         let fileTypesNavigation = settingsNavigation("fileTypes")
         XCTAssertTrue(fileTypesNavigation.waitForExistence(timeout: 10))
@@ -41,15 +29,15 @@ final class SettingsWindowUITests: ShichiZipUITestCase {
 }
 
 final class SettingsWindowRovingFocusUITests: ShichiZipUITestCase {
-    override var additionalLaunchArguments: [String] {
-        ["-AppleKeyboardUIMode", "3"]
-    }
+    func testSettingsNavigationUsesSingleTabStop() throws {
+        try XCTSkipUnless(
+            UserDefaults.standard.integer(forKey: "AppleKeyboardUIMode") & 0x2 != 0,
+            "Requires Keyboard Navigation to be enabled.",
+        )
 
-    func testSettingsNavigationUsesSingleTabStop() {
         openSettings()
 
         let generalNavigation = settingsNavigation("general")
-        generalNavigation.click()
         app.typeKey(.downArrow, modifierFlags: [])
         waitForSelection(settingsNavigation("archives"))
 

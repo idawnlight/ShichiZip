@@ -264,17 +264,38 @@ jobs:
           sudo log config --subsystem ee.dawn.ShichiZip --mode level:debug || true
           sudo log config --subsystem ee.dawn.ShichiZipZS --mode level:debug || true
 
-          xcodebuild \
-            -project "$XCODE_PROJECT" \
-            -scheme "${{ matrix.scheme }}" \
-            -configuration "$XCODE_CONFIGURATION" \
-            -derivedDataPath "$derived_data_path" \
-            -arch "${{ matrix.target_arch }}" \
+          run_ui_tests() {
+            xcodebuild \
+              -project "$XCODE_PROJECT" \
+              -scheme "${{ matrix.scheme }}" \
+              -configuration "$XCODE_CONFIGURATION" \
+              -derivedDataPath "$derived_data_path" \
+              -arch "${{ matrix.target_arch }}" \
+              "$@" \
+              CODE_SIGN_STYLE=Manual \
+              CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
+              DEVELOPMENT_TEAM="${{ steps.signing.outputs.development_team }}" \
+              test
+          }
+
+          run_ui_tests \
             "-only-testing:${{ matrix.scheme }}UITests" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
-            DEVELOPMENT_TEAM="${{ steps.signing.outputs.development_team }}" \
-            test
+            "-skip-testing:${{ matrix.scheme }}UITests/SettingsWindowRovingFocusUITests"
+
+          (
+            original_keyboard_mode="$(defaults read -g AppleKeyboardUIMode 2>/dev/null || true)"
+            restore_keyboard_mode() {
+              if [[ -n "$original_keyboard_mode" ]]; then
+                defaults write -g AppleKeyboardUIMode -int "$original_keyboard_mode"
+              else
+                defaults delete -g AppleKeyboardUIMode >/dev/null 2>&1 || true
+              fi
+            }
+            trap restore_keyboard_mode EXIT
+
+            defaults write -g AppleKeyboardUIMode -int 3
+            run_ui_tests "-only-testing:${{ matrix.scheme }}UITests/SettingsWindowRovingFocusUITests"
+          )
 
       - name: Collect all test diagnostics
         if: ${{ always() }}
