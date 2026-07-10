@@ -7,12 +7,11 @@ extension FileManager {
     }
 
     func szExistingItemKind(at url: URL) -> SZExistingItemKind? {
-        guard fileExists(atPath: url.path) else {
+        var isDirectory: ObjCBool = false
+        guard fileExists(atPath: url.path, isDirectory: &isDirectory) else {
             return nil
         }
-
-        let values = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey])
-        return values?.isDirectory == true ? .directory : .nonDirectory
+        return isDirectory.boolValue ? .directory : .nonDirectory
     }
 
     func szDirectoryExists(at url: URL) -> Bool {

@@ -13,6 +13,17 @@ final class FileManagerUITests: ShichiZipUITestCase {
         XCTAssertFalse(pathField.value as? String == "", "Path field should show a directory path")
     }
 
+    func testPathFieldNavigatesToSystemTemporaryDirectory() {
+        navigateLeftPane(to: "/tmp")
+
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "/tmp"),
+            object: leftPanePathField,
+        )
+        wait(for: [expectation], timeout: 5)
+        XCTAssertFalse(app.alerts.firstMatch.exists)
+    }
+
     func testNavigateToDirectory() throws {
         let tempDir = try makeTemporaryDirectory(named: "NavTest")
         let testFile = tempDir.appendingPathComponent("hello.txt")
