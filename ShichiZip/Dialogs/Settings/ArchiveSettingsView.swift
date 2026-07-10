@@ -21,6 +21,7 @@ struct ArchiveSettingsView: View {
                 SZL10n.string("app.settings.excludeMacResourceForks"),
                 isOn: store.boolBinding(.excludeMacResourceFilesByDefault),
             )
+            .accessibilityIdentifier("settings.excludeMacResourceFiles")
         }
     }
 
