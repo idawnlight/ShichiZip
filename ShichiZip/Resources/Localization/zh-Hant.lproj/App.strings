@@ -117,12 +117,16 @@
 "app.fileManager.selectArchiveToTest" = "請選取要測試的壓縮檔。";
 "app.fileManager.selectFilesToAdd" = "請選取要加入壓縮檔的檔案或資料夾。";
 "app.fileManager.smartExtract" = "快速解壓縮";
+"app.fileManager.statusArchiveUncompressedSize" = "壓縮檔：%@（解壓縮後）";
 "app.fileManager.statusFile" = "個檔案";
 "app.fileManager.statusFiles" = "個檔案";
 "app.fileManager.statusFolder" = "個資料夾";
 "app.fileManager.statusFolders" = "個資料夾";
-"app.fileManager.statusSelected" = "已選取";
-"app.fileManager.statusTotal" = "總計";
+"app.fileManager.statusItemCount" = "%1$d %2$@";
+"app.fileManager.statusItemCountWithSize" = "%1$d %2$@（%3$@）";
+"app.fileManager.statusSelection" = "已選取 %1$d/%2$d 個項目";
+"app.fileManager.statusShownFilesSize" = "顯示的檔案：%@";
+"app.fileManager.statusSummaryPair" = "%1$@，%2$@";
 "app.fileManager.suspendedDescription" = "窗格已關閉。按一下下方按鈕，或在位址列輸入路徑以重新開啟。";
 "app.fileManager.testOK" = "測試正常";
 

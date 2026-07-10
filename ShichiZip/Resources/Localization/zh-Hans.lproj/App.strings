@@ -117,12 +117,16 @@
 "app.fileManager.selectArchiveToTest" = "请选择要测试的压缩包。";
 "app.fileManager.selectFilesToAdd" = "选择要添加到压缩包的文件或文件夹。";
 "app.fileManager.smartExtract" = "智能解压";
+"app.fileManager.statusArchiveUncompressedSize" = "压缩包：%@（解压后）";
 "app.fileManager.statusFile" = "个文件";
 "app.fileManager.statusFiles" = "个文件";
 "app.fileManager.statusFolder" = "个文件夹";
 "app.fileManager.statusFolders" = "个文件夹";
-"app.fileManager.statusSelected" = "已选择";
-"app.fileManager.statusTotal" = "共计";
+"app.fileManager.statusItemCount" = "%1$d %2$@";
+"app.fileManager.statusItemCountWithSize" = "%1$d %2$@（%3$@）";
+"app.fileManager.statusSelection" = "已选择 %1$d/%2$d 项";
+"app.fileManager.statusShownFilesSize" = "显示的文件：%@";
+"app.fileManager.statusSummaryPair" = "%1$@，%2$@";
 "app.fileManager.suspendedDescription" = "此窗格已关闭，点击下方按钮或在地址栏中输入路径以重新打开。";
 "app.fileManager.testOK" = "测试通过";
 

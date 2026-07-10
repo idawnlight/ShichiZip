@@ -1,12 +1,79 @@
 import Cocoa
 
+final class FileManagerPaneStatusView: NSStackView {
+    let summaryLabel = NSTextField(labelWithString: "")
+    let detailLabel = NSTextField(labelWithString: "")
+    private let spacer = NSView()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+
+        orientation = .horizontal
+        alignment = .centerY
+        spacing = 12
+
+        configure(summaryLabel, lineBreakMode: .byTruncatingTail)
+        summaryLabel.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        summaryLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        summaryLabel.setAccessibilityIdentifier("fileManager.statusLabel")
+
+        configure(detailLabel, lineBreakMode: .byTruncatingMiddle)
+        detailLabel.alignment = .right
+        detailLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        detailLabel.setContentHuggingPriority(.required, for: .horizontal)
+        detailLabel.setAccessibilityIdentifier("fileManager.statusDetailLabel")
+        detailLabel.isHidden = true
+
+        spacer.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        spacer.setContentHuggingPriority(.init(1), for: .horizontal)
+
+        addArrangedSubview(summaryLabel)
+        addArrangedSubview(spacer)
+        addArrangedSubview(detailLabel)
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func setContent(_ content: FileManagerStatusBarContent) {
+        summaryLabel.stringValue = content.summary
+        summaryLabel.toolTip = content.summary
+
+        detailLabel.stringValue = content.detail ?? ""
+        detailLabel.toolTip = content.detail
+        detailLabel.isHidden = content.detail == nil
+    }
+
+    func clear() {
+        summaryLabel.stringValue = ""
+        summaryLabel.toolTip = nil
+        detailLabel.stringValue = ""
+        detailLabel.toolTip = nil
+        detailLabel.isHidden = true
+    }
+
+    private func configure(_ label: NSTextField,
+                           lineBreakMode: NSLineBreakMode)
+    {
+        label.font = .systemFont(ofSize: 11)
+        label.textColor = .secondaryLabelColor
+        label.lineBreakMode = lineBreakMode
+        label.maximumNumberOfLines = 1
+        label.cell?.wraps = false
+        label.cell?.usesSingleLineMode = true
+        label.cell?.truncatesLastVisibleLine = true
+    }
+}
+
 final class FileManagerPaneView: NSView {
     let upButton: NSButton
     let locationIconView: NSImageView
     let pathField: NSTextField
     let tableView: FileManagerTableView
     let scrollView: NSScrollView
-    let statusLabel: NSTextField
+    let statusView: FileManagerPaneStatusView
 
     init(currentDirectory: URL,
          addressBarIconSize: CGFloat,
@@ -17,7 +84,7 @@ final class FileManagerPaneView: NSView {
         pathField = NSTextField()
         tableView = FileManagerTableView()
         scrollView = NSScrollView()
-        statusLabel = NSTextField(labelWithString: "")
+        statusView = FileManagerPaneStatusView()
 
         super.init(frame: NSRect(x: 0, y: 0, width: 500, height: 600))
 
@@ -26,7 +93,7 @@ final class FileManagerPaneView: NSView {
         configurePathField(currentDirectory: currentDirectory)
         configureTableView(rowHeight: listRowHeight)
         configureScrollView()
-        configureStatusLabel()
+        configureStatusView()
         installLayout(addressBarIconSize: addressBarIconSize)
     }
 
@@ -87,19 +154,9 @@ final class FileManagerPaneView: NSView {
         addSubview(scrollView)
     }
 
-    private func configureStatusLabel() {
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.font = .systemFont(ofSize: 11)
-        statusLabel.textColor = .secondaryLabelColor
-        statusLabel.lineBreakMode = .byTruncatingTail
-        statusLabel.maximumNumberOfLines = 1
-        statusLabel.cell?.wraps = false
-        statusLabel.cell?.usesSingleLineMode = true
-        statusLabel.cell?.truncatesLastVisibleLine = true
-        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        statusLabel.setAccessibilityIdentifier("fileManager.statusLabel")
-        addSubview(statusLabel)
+    private func configureStatusView() {
+        statusView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(statusView)
     }
 
     private func installLayout(addressBarIconSize: CGFloat) {
@@ -122,12 +179,12 @@ final class FileManagerPaneView: NSView {
             scrollView.topAnchor.constraint(equalTo: pathField.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: statusLabel.topAnchor, constant: -2),
+            scrollView.bottomAnchor.constraint(equalTo: statusView.topAnchor, constant: -2),
 
-            statusLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            statusLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            statusLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
-            statusLabel.heightAnchor.constraint(equalToConstant: 16),
+            statusView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            statusView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            statusView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
+            statusView.heightAnchor.constraint(equalToConstant: 16),
         ])
     }
 }

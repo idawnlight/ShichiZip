@@ -10,17 +10,24 @@ struct FileManagerItemStatusSummary: Equatable {
         fileCount + folderCount
     }
 
-    var totalSize: UInt64 {
-        fileSize
-    }
-
     var copyDialogTotalSize: UInt64 {
-        fileSize + folderSize
+        let (total, overflow) = fileSize.addingReportingOverflow(folderSize)
+        return overflow ? .max : total
     }
 
     var isEmpty: Bool {
         itemCount == 0
     }
+}
+
+enum FileManagerStatusBarLocation: Equatable {
+    case fileSystem
+    case archive(uncompressedSize: UInt64)
+}
+
+struct FileManagerStatusBarContent: Equatable {
+    let summary: String
+    let detail: String?
 }
 
 struct FileManagerItemDetails {
@@ -37,24 +44,34 @@ enum FileManagerItemPresentation {
 
     static func summary(for archiveItems: [ArchiveItem]) -> FileManagerItemStatusSummary {
         summary(for: archiveItems.map { item in
-            (isDirectory: item.isDirectory, size: item.size)
+            (isDirectory: item.isDirectory, size: item.isAnti ? 0 : item.size)
         })
     }
 
-    static func statusBarText(displayed: FileManagerItemStatusSummary,
-                              selected: FileManagerItemStatusSummary?) -> String
+    static func statusBarContent(displayed: FileManagerItemStatusSummary,
+                                 selected: FileManagerItemStatusSummary?,
+                                 location: FileManagerStatusBarLocation) -> FileManagerStatusBarContent
     {
-        let displayedSummaryText = summaryText(displayed)
         guard let selected, !selected.isEmpty else {
-            return displayedSummaryText
+            let detail = switch location {
+            case .fileSystem:
+                displayed.fileCount > 0
+                    ? SZL10n.string("app.fileManager.statusShownFilesSize", fileSizeString(displayed.fileSize))
+                    : nil
+            case let .archive(uncompressedSize):
+                SZL10n.string("app.fileManager.statusArchiveUncompressedSize",
+                              fileSizeString(uncompressedSize))
+            }
+            return FileManagerStatusBarContent(summary: countSummaryText(displayed),
+                                               detail: detail)
         }
 
-        let segments = [
-            "\(selected.itemCount)/\(displayed.itemCount) \(SZL10n.string("app.fileManager.statusSelected")) — \(selectedSummaryText(selected))",
-            "\(SZL10n.string("app.fileManager.statusTotal")) \(displayedSummaryText)",
-        ]
-
-        return segments.joined(separator: "  •  ")
+        return FileManagerStatusBarContent(
+            summary: SZL10n.string("app.fileManager.statusSelection",
+                                   selected.itemCount,
+                                   displayed.itemCount),
+            detail: selectedSummaryText(selected),
+        )
     }
 
     static func copyDialogSummaryLines(for summary: FileManagerItemStatusSummary) -> [String] {
@@ -287,10 +304,10 @@ enum FileManagerItemPresentation {
         for item in items {
             if item.isDirectory {
                 folderCount += 1
-                folderSize += item.size
+                folderSize = addingClamped(folderSize, item.size)
             } else {
                 fileCount += 1
-                fileSize += item.size
+                fileSize = addingClamped(fileSize, item.size)
             }
         }
 
@@ -300,26 +317,53 @@ enum FileManagerItemPresentation {
                                             folderSize: folderSize)
     }
 
-    private static func summaryText(_ summary: FileManagerItemStatusSummary) -> String {
-        let sizeString = fileSizeString(summary.totalSize)
-        let fileWord = summary.fileCount == 1 ? SZL10n.string("app.fileManager.statusFile") : SZL10n.string("app.fileManager.statusFiles")
-        let folderWord = summary.folderCount == 1 ? SZL10n.string("app.fileManager.statusFolder") : SZL10n.string("app.fileManager.statusFolders")
-        return "\(summary.fileCount) \(fileWord), \(summary.folderCount) \(folderWord) — \(sizeString)"
+    private static func countSummaryText(_ summary: FileManagerItemStatusSummary) -> String {
+        SZL10n.string("app.fileManager.statusSummaryPair",
+                      itemCountText(summary.fileCount,
+                                    singularKey: "app.fileManager.statusFile",
+                                    pluralKey: "app.fileManager.statusFiles"),
+                      itemCountText(summary.folderCount,
+                                    singularKey: "app.fileManager.statusFolder",
+                                    pluralKey: "app.fileManager.statusFolders"))
     }
 
     private static func selectedSummaryText(_ summary: FileManagerItemStatusSummary) -> String {
-        let sizeString = fileSizeString(summary.totalSize)
-        let fileWord = summary.fileCount == 1 ? SZL10n.string("app.fileManager.statusFile") : SZL10n.string("app.fileManager.statusFiles")
-        let folderWord = summary.folderCount == 1 ? SZL10n.string("app.fileManager.statusFolder") : SZL10n.string("app.fileManager.statusFolders")
+        let filesText = itemCountText(summary.fileCount,
+                                      singularKey: "app.fileManager.statusFile",
+                                      pluralKey: "app.fileManager.statusFiles",
+                                      size: summary.fileSize)
+        let foldersText = itemCountText(summary.folderCount,
+                                        singularKey: "app.fileManager.statusFolder",
+                                        pluralKey: "app.fileManager.statusFolders")
 
         return switch (summary.fileCount, summary.folderCount) {
         case (_, 0):
-            "\(summary.fileCount) \(fileWord), \(sizeString)"
+            filesText
         case (0, _):
-            "\(summary.folderCount) \(folderWord)"
+            foldersText
         default:
-            "\(summary.fileCount) \(fileWord), \(summary.folderCount) \(folderWord), \(sizeString)"
+            SZL10n.string("app.fileManager.statusSummaryPair", filesText, foldersText)
         }
+    }
+
+    private static func itemCountText(_ count: Int,
+                                      singularKey: String,
+                                      pluralKey: String,
+                                      size: UInt64? = nil) -> String
+    {
+        let itemWord = SZL10n.string(count == 1 ? singularKey : pluralKey)
+        if let size {
+            return SZL10n.string("app.fileManager.statusItemCountWithSize",
+                                 count,
+                                 itemWord,
+                                 fileSizeString(size))
+        }
+        return SZL10n.string("app.fileManager.statusItemCount", count, itemWord)
+    }
+
+    private static func addingClamped(_ lhs: UInt64, _ rhs: UInt64) -> UInt64 {
+        let (sum, overflow) = lhs.addingReportingOverflow(rhs)
+        return overflow ? .max : sum
     }
 
     private static func copyDialogValuePairLine(title: String, count: Int, size: UInt64) -> String {

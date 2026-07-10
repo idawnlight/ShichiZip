@@ -59,6 +59,8 @@ final class FileManagerUITests: ShichiZipUITestCase {
 
         let statusLabel = app.staticTexts.matching(identifier: "fileManager.statusLabel").firstMatch
         XCTAssertTrue(statusLabel.waitForExistence(timeout: 5))
+        let statusDetailLabel = app.staticTexts.matching(identifier: "fileManager.statusDetailLabel").firstMatch
+        XCTAssertTrue(statusDetailLabel.waitForExistence(timeout: 5))
 
         // Wait for the listing to complete
         let expectation = XCTNSPredicateExpectation(

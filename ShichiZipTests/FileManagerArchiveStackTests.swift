@@ -54,7 +54,8 @@ final class FileManagerArchiveStackTests: XCTestCase {
         var stack = FileManagerArchiveStack()
         let level = makeLevel(archivePath: "/tmp/source.7z")
         let replacementEntry = makeArchiveItem(index: 1,
-                                               path: "folder/payload.txt")
+                                               path: "folder/payload.txt",
+                                               size: 42)
 
         stack.append(level)
         let didReplace = stack.replaceEntries(at: 0,
@@ -63,6 +64,7 @@ final class FileManagerArchiveStackTests: XCTestCase {
 
         XCTAssertTrue(didReplace)
         XCTAssertEqual(stack.last?.allEntries.map(\.path), ["folder/payload.txt"])
+        XCTAssertEqual(stack.last?.statistics.uncompressedSize, 42)
         XCTAssertEqual(stack.last?.currentSubdir, "folder")
         XCTAssertEqual(stack.archiveURL(for: level.archive), URL(fileURLWithPath: "/tmp/source.7z").standardizedFileURL)
     }
@@ -169,12 +171,13 @@ final class FileManagerArchiveStackTests: XCTestCase {
 
     private func makeArchiveItem(index: Int,
                                  path: String,
+                                 size: UInt64 = 0,
                                  isDirectory: Bool = false) -> ArchiveItem
     {
         ArchiveItem(index: index,
                     path: path,
                     name: path.split(separator: "/").last.map(String.init) ?? path,
-                    size: 0,
+                    size: size,
                     packedSize: 0,
                     modifiedDate: nil,
                     createdDate: nil,

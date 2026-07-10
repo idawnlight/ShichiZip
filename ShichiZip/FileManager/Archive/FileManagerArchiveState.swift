@@ -34,6 +34,18 @@ enum FileManagerArchiveListing {
     }
 }
 
+struct FileManagerArchiveStatistics: Equatable {
+    let uncompressedSize: UInt64
+
+    init(entries: [ArchiveItem]) {
+        uncompressedSize = entries.reduce(into: UInt64.zero) { total, entry in
+            guard !entry.isDirectory, !entry.isAnti else { return }
+            let (sum, overflow) = total.addingReportingOverflow(entry.size)
+            total = overflow ? .max : sum
+        }
+    }
+}
+
 struct FileManagerArchiveLevel {
     let filesystemDirectory: URL
     let archivePath: String
@@ -41,11 +53,65 @@ struct FileManagerArchiveLevel {
     let archive: SZArchive
     let operationGate: FileManagerArchiveOperationGate
     let allEntries: [ArchiveItem]
+    let statistics: FileManagerArchiveStatistics
     let entryProperties: [FileManagerArchiveEntryProperty]
     let currentSubdir: String
     let temporaryDirectory: URL?
     let nestedIdentity: FileManagerNestedArchiveIdentity?
     let nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo?
+
+    init(filesystemDirectory: URL,
+         archivePath: String,
+         displayPathPrefix: String,
+         archive: SZArchive,
+         operationGate: FileManagerArchiveOperationGate,
+         allEntries: [ArchiveItem],
+         entryProperties: [FileManagerArchiveEntryProperty],
+         currentSubdir: String,
+         temporaryDirectory: URL?,
+         nestedIdentity: FileManagerNestedArchiveIdentity?,
+         nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo?)
+    {
+        self.filesystemDirectory = filesystemDirectory
+        self.archivePath = archivePath
+        self.displayPathPrefix = displayPathPrefix
+        self.archive = archive
+        self.operationGate = operationGate
+        self.allEntries = allEntries
+        statistics = FileManagerArchiveStatistics(entries: allEntries)
+        self.entryProperties = entryProperties
+        self.currentSubdir = currentSubdir
+        self.temporaryDirectory = temporaryDirectory
+        self.nestedIdentity = nestedIdentity
+        self.nestedWriteBackInfo = nestedWriteBackInfo
+    }
+
+    private init(filesystemDirectory: URL,
+                 archivePath: String,
+                 displayPathPrefix: String,
+                 archive: SZArchive,
+                 operationGate: FileManagerArchiveOperationGate,
+                 allEntries: [ArchiveItem],
+                 statistics: FileManagerArchiveStatistics,
+                 entryProperties: [FileManagerArchiveEntryProperty],
+                 currentSubdir: String,
+                 temporaryDirectory: URL?,
+                 nestedIdentity: FileManagerNestedArchiveIdentity?,
+                 nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo?)
+    {
+        self.filesystemDirectory = filesystemDirectory
+        self.archivePath = archivePath
+        self.displayPathPrefix = displayPathPrefix
+        self.archive = archive
+        self.operationGate = operationGate
+        self.allEntries = allEntries
+        self.statistics = statistics
+        self.entryProperties = entryProperties
+        self.currentSubdir = currentSubdir
+        self.temporaryDirectory = temporaryDirectory
+        self.nestedIdentity = nestedIdentity
+        self.nestedWriteBackInfo = nestedWriteBackInfo
+    }
 
     var topLevelArchiveURL: URL? {
         guard temporaryDirectory == nil,
@@ -86,6 +152,7 @@ struct FileManagerArchiveLevel {
                                 archive: archive,
                                 operationGate: operationGate,
                                 allEntries: allEntries,
+                                statistics: statistics,
                                 entryProperties: entryProperties,
                                 currentSubdir: subdir,
                                 temporaryDirectory: temporaryDirectory,

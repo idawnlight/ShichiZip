@@ -16,7 +16,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     private var pathField: NSTextField!
     private var tableView: NSTableView!
     private var scrollView: NSScrollView!
-    private var statusLabel: NSTextField!
+    private var statusView: FileManagerPaneStatusView!
     private var directoryLoadingOverlay: NSView?
     private var listViewCoordinator: FileManagerPaneListViewCoordinator!
     private var menuHandler: FileManagerPaneMenuHandler!
@@ -221,7 +221,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 self?.archiveSession.clearDisplayItems()
             },
             clearStatusText: { [weak self] in
-                self?.statusLabel.stringValue = ""
+                self?.statusView?.clear()
             },
             containerView: { [weak self] in
                 guard let self, isViewLoaded else { return nil }
@@ -306,7 +306,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         configurePathField(paneView.pathField)
         configureTableView(paneView.tableView)
         scrollView = paneView.scrollView
-        statusLabel = paneView.statusLabel
+        statusView = paneView.statusView
     }
 
     private func configurePathField(_ textField: NSTextField) {
@@ -1097,20 +1097,20 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     // MARK: - Presentation State
 
     private func updateStatusBar() {
-        let displayedSummary = if isInsideArchive {
-            FileManagerItemPresentation.summary(for: archiveSession.displayItems)
+        let content: FileManagerStatusBarContent = if let archiveLevel = archiveSession.currentLevel {
+            FileManagerItemPresentation.statusBarContent(
+                displayed: FileManagerItemPresentation.summary(for: archiveSession.displayItems),
+                selected: FileManagerItemPresentation.summary(for: paneSelectionState.archiveItems),
+                location: .archive(uncompressedSize: archiveLevel.statistics.uncompressedSize),
+            )
         } else {
-            FileManagerItemPresentation.summary(for: directoryCoordinator.items)
+            FileManagerItemPresentation.statusBarContent(
+                displayed: FileManagerItemPresentation.summary(for: directoryCoordinator.items),
+                selected: FileManagerItemPresentation.summary(for: paneSelectionState.fileSystemItems),
+                location: .fileSystem,
+            )
         }
-
-        let selectedSummary: FileManagerItemStatusSummary? = if isInsideArchive {
-            FileManagerItemPresentation.summary(for: paneSelectionState.archiveItems)
-        } else {
-            FileManagerItemPresentation.summary(for: paneSelectionState.fileSystemItems)
-        }
-
-        statusLabel.stringValue = FileManagerItemPresentation.statusBarText(displayed: displayedSummary,
-                                                                            selected: selectedSummary)
+        statusView.setContent(content)
     }
 
     // MARK: - Settings

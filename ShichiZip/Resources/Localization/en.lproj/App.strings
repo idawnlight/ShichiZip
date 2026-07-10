@@ -117,12 +117,16 @@
 "app.fileManager.selectArchiveToTest" = "Select an archive to test.";
 "app.fileManager.selectFilesToAdd" = "Select files or folders to add to the archive.";
 "app.fileManager.smartExtract" = "Smart Extract";
+"app.fileManager.statusArchiveUncompressedSize" = "Archive: %@ uncompressed";
 "app.fileManager.statusFile" = "file";
 "app.fileManager.statusFiles" = "files";
 "app.fileManager.statusFolder" = "folder";
 "app.fileManager.statusFolders" = "folders";
-"app.fileManager.statusSelected" = "selected";
-"app.fileManager.statusTotal" = "total";
+"app.fileManager.statusItemCount" = "%1$d %2$@";
+"app.fileManager.statusItemCountWithSize" = "%1$d %2$@ (%3$@)";
+"app.fileManager.statusSelection" = "%1$d of %2$d selected";
+"app.fileManager.statusShownFilesSize" = "Shown files: %@";
+"app.fileManager.statusSummaryPair" = "%1$@, %2$@";
 "app.fileManager.suspendedDescription" = "This pane has been closed. Click the button below or type a path in the address bar to reopen it.";
 "app.fileManager.testOK" = "Test OK";
 
