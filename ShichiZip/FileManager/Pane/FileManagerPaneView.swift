@@ -59,6 +59,7 @@ final class FileManagerPaneView: NSView {
         pathField.cell?.usesSingleLineMode = true
         pathField.cell?.wraps = false
         pathField.cell?.isScrollable = true
+        pathField.isAutomaticTextCompletionEnabled = false
         pathField.stringValue = currentDirectory.path
         pathField.setAccessibilityIdentifier("fileManager.pathField")
         addSubview(pathField)

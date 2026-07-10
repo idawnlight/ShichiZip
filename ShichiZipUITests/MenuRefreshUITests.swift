@@ -19,8 +19,8 @@ final class MenuRefreshUITests: ShichiZipUITestCase {
         let originalTitle = langPopup.value as? String ?? ""
         langPopup.click()
 
-        // Pick a different language — try Japanese, fall back to second item
-        let targetItem = langPopup.menus.menuItems["日本語 – Japanese"]
+        // Simplified Chinese covers the manually localized Settings navigation.
+        let targetItem = langPopup.menus.menuItems["简体中文 – Chinese, Simplified"]
         if targetItem.waitForExistence(timeout: 3) {
             targetItem.click()
         } else {
@@ -39,11 +39,21 @@ final class MenuRefreshUITests: ShichiZipUITestCase {
         XCTAssertTrue(app.state == .runningForeground,
                       "App should not crash after language switch")
 
-        // Verify the settings window title changed to Japanese
+        // Verify the title and navigation update without another interaction.
         let settingsWindow = app.windows.firstMatch
-        let titlePredicate = NSPredicate(format: "title CONTAINS %@", "オプション")
+        let titlePredicate = NSPredicate(format: "title CONTAINS %@", "选项")
         let titleExpectation = XCTNSPredicateExpectation(predicate: titlePredicate, object: settingsWindow)
         wait(for: [titleExpectation], timeout: 5)
+
+        let generalNavigation = app.buttons.matching(
+            identifier: "settings.navigation.general",
+        ).firstMatch
+        let navigationPredicate = NSPredicate(format: "label == %@", "通用")
+        let navigationExpectation = XCTNSPredicateExpectation(
+            predicate: navigationPredicate,
+            object: generalNavigation,
+        )
+        wait(for: [navigationExpectation], timeout: 5)
 
         // Switch back to original language
         let langPopup2 = app.popUpButtons.matching(identifier: "settings.language").firstMatch

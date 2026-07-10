@@ -209,17 +209,6 @@ enum FileManagerShortcutPreset: Int, CaseIterable {
             SZL10n.string("app.settings.custom")
         }
     }
-
-    var descriptionText: String {
-        switch self {
-        case .finder:
-            SZL10n.string("app.settings.finderLikeDescription")
-        case .commander:
-            SZL10n.string("app.settings.commanderLikeDescription")
-        case .custom:
-            SZL10n.string("app.settings.customDescription")
-        }
-    }
 }
 
 enum FileManagerShortcutCommand: String, CaseIterable {

@@ -1,38 +1,5 @@
 import Cocoa
 
-final class SettingsPageContainerView: NSView {
-    private let contentStack: NSStackView
-    private let contentInsets: NSEdgeInsets
-
-    init(contentStack: NSStackView,
-         contentInsets: NSEdgeInsets = NSEdgeInsets(top: 0, left: 16, bottom: 16, right: 16))
-    {
-        self.contentStack = contentStack
-        self.contentInsets = contentInsets
-        super.init(frame: .zero)
-
-        contentStack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(contentStack)
-
-        NSLayoutConstraint.activate([
-            contentStack.topAnchor.constraint(equalTo: topAnchor, constant: contentInsets.top),
-            contentStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: contentInsets.left),
-            contentStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -contentInsets.right),
-            bottomAnchor.constraint(equalTo: contentStack.bottomAnchor, constant: contentInsets.bottom),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder _: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    var preferredHeight: CGFloat {
-        layoutSubtreeIfNeeded()
-        return contentStack.fittingSize.height + contentInsets.top + contentInsets.bottom
-    }
-}
-
 final class ShortcutRecorderButton: NSButton {
     var shortcut: FileManagerShortcut? {
         didSet {
