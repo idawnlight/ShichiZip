@@ -1616,7 +1616,7 @@
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
-					<string>msi</string>
+					<string>cab</string>
 				</array>
 				<key>public.mime-type</key>
 				<array>
@@ -1638,11 +1638,11 @@
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
-					<string>cab</string>
+					<string>msi</string>
 				</array>
 				<key>public.mime-type</key>
 				<array>
-					<string>application/vnd.ms-cab-compressed</string>
+					<string>application/x-msi</string>
 				</array>
 			</dict>
 		</dict>
