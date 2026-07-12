@@ -229,14 +229,13 @@ enum FileManagerTransferPathValidation {
     }
 
     static func ancestryConflict(sourceURLs: [URL],
-                                 destinationURL: URL,
-                                 fileManager: FileManager = .default) -> Conflict?
+                                 destinationURL: URL) -> Conflict?
     {
         let normalizedDestinationURL = normalizedFileSystemURL(destinationURL)
         var fileSourceURLs: [URL] = []
 
         for sourceURL in sourceURLs {
-            guard isDirectory(at: sourceURL, fileManager: fileManager) else {
+            guard isDirectory(at: sourceURL) else {
                 fileSourceURLs.append(sourceURL.standardizedFileURL)
                 continue
             }
@@ -276,11 +275,13 @@ enum FileManagerTransferPathValidation {
         url.resolvingSymlinksInPath().standardizedFileURL
     }
 
-    private static func isDirectory(at url: URL,
-                                    fileManager: FileManager) -> Bool
-    {
-        let normalizedURL = normalizedFileSystemURL(url)
-        return fileManager.szDirectoryExists(at: normalizedURL)
+    private static func isDirectory(at url: URL) -> Bool {
+        var status = stat()
+        let result = url.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return Int32(-1) }
+            return lstat(path, &status)
+        }
+        return result == 0 && status.st_mode & mode_t(S_IFMT) == mode_t(S_IFDIR)
     }
 
     private static func isDescendant(_ url: URL,

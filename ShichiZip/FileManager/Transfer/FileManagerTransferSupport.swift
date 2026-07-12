@@ -1037,6 +1037,15 @@ final class FileManagerPaneTransferCoordinator {
 
         Task { @MainActor [weak host, weak sourceHost] in
             guard let host else { return }
+            defer {
+                host.transferRefresh()
+                if operation == .move,
+                   let sourceHost,
+                   sourceHost.transferIdentity != host.transferIdentity
+                {
+                    sourceHost.transferRefresh()
+                }
+            }
 
             do {
                 try await ArchiveOperationRunner.run(operationTitle: operationTitle,
@@ -1049,13 +1058,6 @@ final class FileManagerPaneTransferCoordinator {
                                                                 session: session)
                 }
 
-                host.transferRefresh()
-                if operation == .move,
-                   let sourceHost,
-                   sourceHost.transferIdentity != host.transferIdentity
-                {
-                    sourceHost.transferRefresh()
-                }
             } catch {
                 host.transferShowError(error)
             }
@@ -1195,6 +1197,7 @@ enum FileOperationFileSystemTransfer {
         let standardizedURLs = urls.map(\.standardizedFileURL)
         let standardizedDestinationDirectory = destinationDirectory.standardizedFileURL
         let fileManager = FileManager.default
+        let transferEngine = FileSystemTransferEngine(fileManager: fileManager)
         var skipAll = false
         var overwriteAll = false
 
@@ -1215,13 +1218,20 @@ enum FileOperationFileSystemTransfer {
             session.reportProgressFraction(fraction)
             session.reportCurrentFileName(sourceURL.lastPathComponent)
 
-            if fileManager.fileExists(atPath: destinationFileURL.path) {
-                if skipAll { continue }
+            let outcome = try transferEngine.transfer(
+                from: sourceURL,
+                to: destinationFileURL,
+                operation: operation == .move ? .move : .copy,
+                session: session,
+            ) { conflictingSourceURL, conflictingDestinationURL in
+                if skipAll {
+                    return .skip
+                }
                 if !overwriteAll {
                     let choice = session.requestChoice(with: .warning,
                                                        title: SZL10n.string("replace.confirmTitle"),
-                                                       message: overwritePromptMessage(sourceURL: sourceURL,
-                                                                                       destinationURL: destinationFileURL,
+                                                       message: overwritePromptMessage(sourceURL: conflictingSourceURL,
+                                                                                       destinationURL: conflictingDestinationURL,
                                                                                        fileManager: fileManager),
                                                        buttonTitles: [SZL10n.string("common.yes"),
                                                                       SZL10n.string("common.yesToAll"),
@@ -1230,26 +1240,23 @@ enum FileOperationFileSystemTransfer {
                                                                       SZL10n.string("common.cancel")])
                     switch choice {
                     case 0:
-                        break
+                        return .overwrite
                     case 1:
                         overwriteAll = true
+                        return .overwrite
                     case 2:
-                        continue
+                        return .skip
                     case 3:
                         skipAll = true
-                        continue
+                        return .skip
                     default:
-                        return
+                        return .cancel
                     }
                 }
-
-                try fileManager.removeItem(at: destinationFileURL)
+                return .overwrite
             }
-
-            if operation == .move {
-                try moveItemPreservingMetadata(from: sourceURL, to: destinationFileURL)
-            } else {
-                try copyItemPreservingMetadata(from: sourceURL, to: destinationFileURL)
+            if outcome == .cancelled {
+                return
             }
         }
 
@@ -1305,52 +1312,6 @@ enum FileOperationFileSystemTransfer {
         \(fileName)
         \(bytesText)  \(modifiedTitle): \(modifiedText)
         """
-    }
-
-    private static func moveItemPreservingMetadata(from sourceURL: URL,
-                                                   to destinationURL: URL) throws
-    {
-        do {
-            try FileManager.default.moveItem(at: sourceURL, to: destinationURL)
-            return
-        } catch {
-            if FileManager.default.fileExists(atPath: destinationURL.path) {
-                throw error
-            }
-        }
-
-        try copyItemPreservingMetadata(from: sourceURL, to: destinationURL)
-        try FileManager.default.removeItem(at: sourceURL)
-    }
-
-    private static func copyItemPreservingMetadata(from sourceURL: URL,
-                                                   to destinationURL: URL) throws
-    {
-        let cloneResult = sourceURL.path.withCString { sourcePath in
-            destinationURL.path.withCString { destinationPath in
-                copyfile(sourcePath,
-                         destinationPath,
-                         nil,
-                         copyfile_flags_t(COPYFILE_ALL | COPYFILE_CLONE_FORCE))
-            }
-        }
-        if cloneResult == 0 {
-            return
-        }
-
-        let copyResult = sourceURL.path.withCString { sourcePath in
-            destinationURL.path.withCString { destinationPath in
-                copyfile(sourcePath,
-                         destinationPath,
-                         nil,
-                         copyfile_flags_t(COPYFILE_ALL))
-            }
-        }
-        if copyResult == 0 {
-            return
-        }
-
-        throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
     }
 }
 

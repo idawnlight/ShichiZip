@@ -750,6 +750,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             let operationTitle = SZL10n.string(move ? "fileop.moving" : "fileop.copying")
             guard let parentWindow = window else { return }
             do {
+                defer {
+                    refreshAfterFilesystemTransfer(from: pane,
+                                                   to: destURL,
+                                                   operation: dragOperation)
+                }
                 try await ArchiveOperationRunner.run(operationTitle: operationTitle,
                                                      parentWindow: parentWindow)
                 { session in
@@ -758,9 +763,6 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                                 operation: dragOperation,
                                                                 session: session)
                 }
-                refreshAfterFilesystemTransfer(from: pane,
-                                               to: destURL,
-                                               operation: dragOperation)
             } catch {
                 showErrorAlert(error)
             }

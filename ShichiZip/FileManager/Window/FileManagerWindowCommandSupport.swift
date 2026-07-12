@@ -536,6 +536,9 @@ enum FileManagerClipboardSupport {
 
         Task { @MainActor [weak pane, weak parentWindow] in
             guard let pane, let parentWindow else { return }
+            defer {
+                refreshAfterFilesystemTransfer(pane, destinationURL, .copy)
+            }
             do {
                 try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("app.progress.pasting"),
                                                      parentWindow: parentWindow)
@@ -545,7 +548,6 @@ enum FileManagerClipboardSupport {
                                                                 operation: .copy,
                                                                 session: session)
                 }
-                refreshAfterFilesystemTransfer(pane, destinationURL, .copy)
             } catch {
                 showError(error)
             }

@@ -152,4 +152,19 @@ final class TransferPathValidationTests: XCTestCase {
         XCTAssertEqual(conflict?.sourceIsDirectory, false)
         XCTAssertEqual(conflict?.kind, .sameDestination)
     }
+
+    func testAncestryConflictDoesNotTraverseSelectedDirectorySymlink() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "symlink-source-ancestry")
+        let actualDirectory = tempRoot.appendingPathComponent("Actual", isDirectory: true)
+        let nestedDestination = actualDirectory.appendingPathComponent("Nested", isDirectory: true)
+        let sourceLink = tempRoot.appendingPathComponent("SourceLink")
+
+        try FileManager.default.createDirectory(at: nestedDestination,
+                                                withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(atPath: sourceLink.path,
+                                                   withDestinationPath: actualDirectory.path)
+
+        XCTAssertNil(FileManagerTransferPathValidation.ancestryConflict(sourceURLs: [sourceLink],
+                                                                        destinationURL: nestedDestination))
+    }
 }
