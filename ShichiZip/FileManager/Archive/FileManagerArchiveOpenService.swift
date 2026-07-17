@@ -94,19 +94,19 @@ enum FileManagerPreparedArchiveOpenResult {
 
 enum FileManagerArchiveOpenService {
     @MainActor
-    static func openSynchronously(url: URL,
-                                  hostDirectory: URL,
-                                  temporaryDirectory: URL?,
-                                  displayPathPrefix: String,
-                                  parentWindow: NSWindow? = nil,
-                                  nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo? = nil,
-                                  openMode: FileManagerArchiveOpenMode = .defaultBehavior) -> FileManagerPreparedArchiveOpenResult
+    static func open(url: URL,
+                     hostDirectory: URL,
+                     temporaryDirectory: URL?,
+                     displayPathPrefix: String,
+                     parentWindow: NSWindow? = nil,
+                     nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo? = nil,
+                     openMode: FileManagerArchiveOpenMode = .defaultBehavior) async -> FileManagerPreparedArchiveOpenResult
     {
         do {
-            return try ArchiveOperationRunner.runSynchronously(operationTitle: SZL10n.string("progress.opening"),
-                                                               initialFileName: displayPathPrefix,
-                                                               parentWindow: parentWindow,
-                                                               deferredDisplay: true)
+            return try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.opening"),
+                                                        initialFileName: displayPathPrefix,
+                                                        parentWindow: parentWindow,
+                                                        deferredDisplay: true)
             { session in
                 prepareArchiveOpen(url: url,
                                    hostDirectory: hostDirectory,

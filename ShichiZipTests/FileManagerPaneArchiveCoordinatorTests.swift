@@ -114,6 +114,46 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         XCTAssertTrue(didReloadTableData)
     }
 
+    func testOpenArchiveInlineCommitsPreparedArchiveAsynchronously() async throws {
+        let archiveURL = try makeArchive(named: "async-open",
+                                         prefix: "ShichiZipArchiveCoordinatorTests")
+        let session = FileManagerArchiveSession()
+        let coordinator = makeCoordinator(session: session)
+        defer { _ = coordinator.closeAll(showError: false) }
+
+        let result = await coordinator.openArchiveInline(archiveURL,
+                                                         hostDirectory: archiveURL.deletingLastPathComponent())
+
+        guard case .opened = result else {
+            XCTFail("Expected asynchronous archive open to commit")
+            return
+        }
+        XCTAssertEqual(session.currentLevel?.archivePath, archiveURL.path)
+        XCTAssertEqual(session.displayItems.map(\.name), ["payload.txt"])
+    }
+
+    func testAsyncArchiveOpenReplacesExistingArchive() async throws {
+        let session = FileManagerArchiveSession()
+        session.appendPreparedArchive(try makePreparedArchive(named: "async-open-original"))
+        let replacementURL = try makeArchive(named: "async-open-replacement",
+                                             prefix: "ShichiZipArchiveCoordinatorTests",
+                                             payloadFileName: "replacement.txt")
+        let coordinator = makeCoordinator(session: session)
+        defer { _ = coordinator.closeAll(showError: false) }
+
+        let result = await coordinator.openArchiveInline(replacementURL,
+                                                         hostDirectory: replacementURL.deletingLastPathComponent(),
+                                                         replaceCurrentState: true)
+
+        guard case .opened = result else {
+            XCTFail("Expected asynchronous replacement archive open to commit")
+            return
+        }
+        XCTAssertEqual(session.count, 1)
+        XCTAssertEqual(session.currentLevel?.archivePath, replacementURL.path)
+        XCTAssertEqual(session.displayItems.map(\.name), ["replacement.txt"])
+    }
+
     func testCloseNestedArchiveRestoresParentSubdirWhenViewIsLoaded() throws {
         let session = FileManagerArchiveSession()
         let parent = try makePreparedArchive(named: "parent",

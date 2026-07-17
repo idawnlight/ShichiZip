@@ -33,9 +33,11 @@ enum FileManagerPaneNavigationCommands {
         case let .directory(url):
             guard pane.navigationCommandCloseAllArchives(showError: true) else {
                 pane.navigationCommandRestorePathField()
+                pane.navigationCommandReturnFocusToFileList()
                 return
             }
             pane.navigationCommandLoadDirectory(url)
+            pane.navigationCommandReturnFocusToFileList()
 
         case let .file(url, hostDirectory):
             openAddressBarFile(url,
@@ -45,9 +47,8 @@ enum FileManagerPaneNavigationCommands {
         case nil:
             pane.navigationCommandRestorePathField()
             pane.navigationCommandShowError(invalidPathError(for: path))
+            pane.navigationCommandReturnFocusToFileList()
         }
-
-        pane.navigationCommandReturnFocusToFileList()
     }
 
     static func goUp(in pane: FileManagerPaneController) {
@@ -85,33 +86,40 @@ enum FileManagerPaneNavigationCommands {
 
         guard pane.navigationCommandCloseAllArchives(showError: true) else {
             pane.navigationCommandRestorePathField()
+            pane.navigationCommandReturnFocusToFileList()
             return
         }
 
-        switch pane.navigationCommandOpenArchiveInline(url,
-                                                       hostDirectory: hostDirectory,
-                                                       showError: false)
-        {
-        case .opened:
-            break
+        Task { @MainActor [weak pane] in
+            guard let pane else { return }
 
-        case let .unsupportedArchive(error):
-            pane.navigationCommandRestorePathField()
-            let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: url)
-            if shouldFallbackExternally {
-                if !pane.navigationCommandOpenExternallyIfPossible(url) {
+            switch await pane.navigationCommandOpenArchiveInline(url,
+                                                                 hostDirectory: hostDirectory,
+                                                                 showError: false)
+            {
+            case .opened:
+                break
+
+            case let .unsupportedArchive(error):
+                pane.navigationCommandRestorePathField()
+                let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: url)
+                if shouldFallbackExternally {
+                    if !pane.navigationCommandOpenExternallyIfPossible(url) {
+                        pane.navigationCommandShowError(error)
+                    }
+                } else {
                     pane.navigationCommandShowError(error)
                 }
-            } else {
+
+            case .cancelled:
+                pane.navigationCommandRestorePathField()
+
+            case let .failed(error):
+                pane.navigationCommandRestorePathField()
                 pane.navigationCommandShowError(error)
             }
 
-        case .cancelled:
-            pane.navigationCommandRestorePathField()
-
-        case let .failed(error):
-            pane.navigationCommandRestorePathField()
-            pane.navigationCommandShowError(error)
+            pane.navigationCommandReturnFocusToFileList()
         }
     }
 

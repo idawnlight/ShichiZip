@@ -273,8 +273,9 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     /// Navigate the active pane to show an archive's contents
     @discardableResult
-    func navigateToArchive(_ url: URL, revealWindow: Bool = true) -> Bool {
-        let opened = activePane.showArchive(at: url)
+    func navigateToArchive(_ url: URL, revealWindow: Bool = true) async -> Bool {
+        let targetPane = activePane
+        let opened = await targetPane.showArchive(at: url)
         if opened, revealWindow {
             window?.makeKeyAndOrderFront(nil)
         }
@@ -296,7 +297,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     @discardableResult
-    func openFileSystemItem(_ url: URL, revealWindow: Bool = true) -> Bool {
+    func openFileSystemItem(_ url: URL, revealWindow: Bool = true) async -> Bool {
         let standardizedURL = url.standardizedFileURL
         guard let itemKind = FileManager.default.szExistingItemKind(at: standardizedURL) else {
             return false
@@ -305,7 +306,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         let targetPane = paneRoutingContext.targetPaneForOpeningFileSystemItem(standardizedURL,
                                                                                isDirectory: itemKind == .directory)
 
-        let opened = targetPane.openFileSystemItemURL(standardizedURL)
+        let opened = await targetPane.openInitialFileSystemItemURL(standardizedURL)
         if opened, revealWindow {
             window?.makeKeyAndOrderFront(nil)
         }
@@ -1006,7 +1007,9 @@ protocol FileManagerPaneDelegate: AnyObject {
 
 extension FileManagerWindowController: FileManagerPaneDelegate {
     func paneDidRequestOpenArchiveInNewWindow(_ url: URL) {
-        windowCoordinator.openArchiveInNewFileManager(url)
+        Task { @MainActor [windowCoordinator] in
+            await windowCoordinator.openArchiveInNewFileManager(url)
+        }
     }
 
     func paneDidBecomeActive(_ pane: FileManagerPaneController) {

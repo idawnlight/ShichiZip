@@ -150,7 +150,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
                                             self?.endExternalArchiveOpen()
                                         },
                                         proceed: { [weak self] in
-                                            self?.openArchiveURLs(urls, preferReusableWindow: false)
+                                            guard let self else { return }
+                                            await openArchiveURLs(urls,
+                                                                  preferReusableWindow: false)
                                         })
     }
 
@@ -191,23 +193,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
 
         panel.begin { [weak self] response in
             guard response == .OK else { return }
-            self?.openArchiveURLs(panel.urls, preferReusableWindow: true)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await openArchiveURLs(panel.urls,
+                                      preferReusableWindow: true)
+            }
         }
     }
 
     /// Open an archive file in the file manager (navigate into it inline)
-    func openArchiveInFileManager(_ url: URL) {
-        fileManagerWindowRegistry.openArchiveInFileManager(url)
+    func openArchiveInFileManager(_ url: URL) async {
+        await fileManagerWindowRegistry.openArchiveInFileManager(url)
     }
 
     /// Open an archive in a NEW file manager window (for "Open With" from Finder)
-    func openArchiveInNewFileManager(_ url: URL) {
-        fileManagerWindowRegistry.openArchiveInNewFileManager(url)
+    func openArchiveInNewFileManager(_ url: URL) async {
+        await fileManagerWindowRegistry.openArchiveInNewFileManager(url)
     }
 
     @discardableResult
-    func openFileSystemItemInNewFileManager(_ url: URL) -> Bool {
-        fileManagerWindowRegistry.openFileSystemItemInNewFileManager(url)
+    func openFileSystemItemInNewFileManager(_ url: URL) async -> Bool {
+        await fileManagerWindowRegistry.openFileSystemItemInNewFileManager(url)
     }
 
     func beginExternalArchiveOpen() {
@@ -218,19 +224,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
         launchOpenCoordinator.endExternalOpen()
     }
 
-    private func openArchiveURLs(_ urls: [URL], preferReusableWindow: Bool) {
+    private func openArchiveURLs(_ urls: [URL], preferReusableWindow: Bool) async {
         guard !urls.isEmpty else { return }
 
         if preferReusableWindow {
-            openArchiveInFileManager(urls[0])
+            await openArchiveInFileManager(urls[0])
             for url in urls.dropFirst() {
-                openArchiveInNewFileManager(url)
+                await openArchiveInNewFileManager(url)
             }
             return
         }
 
         for url in urls {
-            openArchiveInNewFileManager(url)
+            await openArchiveInNewFileManager(url)
         }
     }
 

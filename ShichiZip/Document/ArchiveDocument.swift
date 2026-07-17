@@ -52,7 +52,10 @@ class ArchiveDocument: NSDocument {
         LaunchOpenHUDController.present(urls: [url],
                                         holdAlive: { openRouter?.beginExternalArchiveOpen() },
                                         release: { openRouter?.endExternalArchiveOpen() },
-                                        proceed: { openRouter?.openArchiveInNewFileManager(url) })
+                                        proceed: {
+                                            guard let openRouter else { return }
+                                            await openRouter.openArchiveInNewFileManager(url)
+                                        })
         close()
     }
 

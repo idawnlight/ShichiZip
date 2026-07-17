@@ -21,9 +21,12 @@ enum FileManagerPaneOpenCommandSupport {
                 pane.loadDirectory(fileSystemItem.url,
                                    budget: FileManagerPaneDirectoryCoordinator.navigationBudget)
             } else {
-                _ = pane.openCommandOpenArchiveInline(fileSystemItem.url,
-                                                      hostDirectory: pane.currentDirectoryURL,
-                                                      openMode: openMode)
+                Task { @MainActor [weak pane] in
+                    guard let pane else { return }
+                    _ = await pane.openCommandOpenArchiveInline(fileSystemItem.url,
+                                                                hostDirectory: pane.currentDirectoryURL,
+                                                                openMode: openMode)
+                }
             }
 
         case let .archive(archiveItem):
@@ -104,25 +107,29 @@ enum FileManagerPaneOpenCommandSupport {
             return
         }
 
-        switch pane.openCommandOpenArchiveInline(fileSystemItem.url,
-                                                 hostDirectory: pane.currentDirectoryURL,
-                                                 showError: false)
-        {
-        case .opened:
-            break
-        case let .unsupportedArchive(error):
-            let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: fileSystemItem.url)
-            if shouldFallbackExternally {
-                if !pane.openCommandOpenExternallyIfPossible(fileSystemItem.url) {
+        Task { @MainActor [weak pane] in
+            guard let pane else { return }
+
+            switch await pane.openCommandOpenArchiveInline(fileSystemItem.url,
+                                                           hostDirectory: pane.currentDirectoryURL,
+                                                           showError: false)
+            {
+            case .opened:
+                break
+            case let .unsupportedArchive(error):
+                let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: fileSystemItem.url)
+                if shouldFallbackExternally {
+                    if !pane.openCommandOpenExternallyIfPossible(fileSystemItem.url) {
+                        pane.openCommandShowError(error)
+                    }
+                } else {
                     pane.openCommandShowError(error)
                 }
-            } else {
+            case .cancelled:
+                break
+            case let .failed(error):
                 pane.openCommandShowError(error)
             }
-        case .cancelled:
-            break
-        case let .failed(error):
-            pane.openCommandShowError(error)
         }
     }
 

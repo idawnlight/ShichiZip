@@ -5,6 +5,7 @@ import Cocoa
 @MainActor
 final class LaunchOpenHUDController: NSObject {
     typealias Handler = @MainActor @Sendable () -> Void
+    typealias AsyncHandler = @MainActor @Sendable () async -> Void
 
     /// Single live HUD; subsequent opens merge into it.
     private static var activeController: LaunchOpenHUDController?
@@ -18,7 +19,7 @@ final class LaunchOpenHUDController: NSObject {
     static func present(urls: [URL],
                         holdAlive: Handler = {},
                         release: @escaping Handler = {},
-                        proceed: @escaping Handler)
+                        proceed: @escaping AsyncHandler)
     {
         let seconds = configuredDelaySeconds
         // Show contents bypasses the HUD.
@@ -42,13 +43,15 @@ final class LaunchOpenHUDController: NSObject {
     /// No-HUD path: show contents immediately, or extract while holding alive.
     @MainActor
     private static func runDefaultAction(urls: [URL],
-                                         proceed: Handler,
+                                         proceed: @escaping AsyncHandler,
                                          release: @escaping Handler)
     {
         switch SZSettings.launchOpenDefaultAction {
         case .browse:
-            proceed()
-            release()
+            Task { @MainActor in
+                await proceed()
+                release()
+            }
         case .extract:
             let reveal = SZSettings.launchOpenRevealAfterExtract
             runSmartExtract(urls: urls,
@@ -90,7 +93,7 @@ final class LaunchOpenHUDController: NSObject {
 
     /// Fold another open request into the live HUD.
     private func merge(urls newURLs: [URL],
-                       proceed: @escaping Handler,
+                       proceed: @escaping AsyncHandler,
                        release: @escaping Handler)
     {
         urls.append(contentsOf: newURLs)
@@ -114,7 +117,7 @@ final class LaunchOpenHUDController: NSObject {
     private var timer: Timer?
     private var startDate: Date?
     private var didFinish = false
-    private var proceedHandlers: [Handler] = []
+    private var proceedHandlers: [AsyncHandler] = []
     private var releaseHandlers: [Handler] = []
 
     private init(urls: [URL], seconds: TimeInterval) {
@@ -125,7 +128,7 @@ final class LaunchOpenHUDController: NSObject {
         super.init()
     }
 
-    private func show(proceed: @escaping Handler, release: @escaping Handler) {
+    private func show(proceed: @escaping AsyncHandler, release: @escaping Handler) {
         proceedHandlers.append(proceed)
         releaseHandlers.append(release)
 
@@ -474,7 +477,7 @@ final class LaunchOpenHUDController: NSObject {
                 }
             case .browse:
                 for p in proceeds {
-                    p()
+                    await p()
                 }
                 for r in releases {
                     r()

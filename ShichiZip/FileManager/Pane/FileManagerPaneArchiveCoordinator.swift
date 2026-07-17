@@ -1,6 +1,42 @@
 import Cocoa
 
 @MainActor
+private final class FileManagerLegacyArchiveCommitQueue {
+    static let shared = FileManagerLegacyArchiveCommitQueue()
+
+    private var pendingOperations: [@MainActor () -> Void] = []
+    private var isRunning = false
+
+    func perform(
+        _ operation: @escaping @MainActor () -> FileManagerArchiveOpenResult,
+    ) async -> FileManagerArchiveOpenResult {
+        await withCheckedContinuation { continuation in
+            pendingOperations.append {
+                continuation.resume(returning: operation())
+            }
+            scheduleNextIfNeeded()
+        }
+    }
+
+    private func scheduleNextIfNeeded() {
+        guard !isRunning, !pendingOperations.isEmpty else { return }
+        isRunning = true
+
+        // Phase 2 will make archive closing asynchronous. Until then, begin the
+        // legacy close/write-back path from a RunLoop callback rather than a
+        // MainActor task so its synchronous UI callbacks remain serviceable.
+        RunLoop.main.perform(inModes: [.default]) { [self] in
+            MainActor.assumeIsolated {
+                let operation = pendingOperations.removeFirst()
+                operation()
+                isRunning = false
+                scheduleNextIfNeeded()
+            }
+        }
+    }
+}
+
+@MainActor
 final class FileManagerPaneArchiveCoordinator {
     private let archiveSession: FileManagerArchiveSession
     private let observerIdentifier: ObjectIdentifier
@@ -21,6 +57,7 @@ final class FileManagerPaneArchiveCoordinator {
 
     private var archiveRefreshGeneration = 0
     private var archiveRefreshTask: Task<Void, Never>?
+    private var archiveOpenGeneration = 0
 
     init(archiveSession: FileManagerArchiveSession,
          observerIdentifier: ObjectIdentifier,
@@ -68,35 +105,76 @@ final class FileManagerPaneArchiveCoordinator {
                            openMode: FileManagerArchiveOpenMode = .defaultBehavior,
                            showError: Bool = true,
                            preserveTemporaryDirectoryOnUnsupported: Bool = false,
-                           replaceCurrentState: Bool = false) -> FileManagerArchiveOpenResult
+                           replaceCurrentState: Bool = false) async -> FileManagerArchiveOpenResult
     {
+        archiveOpenGeneration += 1
+        let openGeneration = archiveOpenGeneration
         let paneHostDirectory = hostDirectory ?? archiveHostDirectory()
         let resolvedDisplayPathPrefix = displayPathPrefix ?? url.path
         let progressParentWindow = parentWindow().flatMap { window in
             window.isVisible ? window : nil
         }
 
-        let preparedResult = FileManagerArchiveOpenService.openSynchronously(url: url,
-                                                                             hostDirectory: paneHostDirectory,
-                                                                             temporaryDirectory: temporaryDirectory,
-                                                                             displayPathPrefix: resolvedDisplayPathPrefix,
-                                                                             parentWindow: progressParentWindow,
-                                                                             nestedWriteBackInfo: nestedWriteBackInfo,
-                                                                             openMode: openMode)
+        let preparedResult = await FileManagerArchiveOpenService.open(url: url,
+                                                                     hostDirectory: paneHostDirectory,
+                                                                     temporaryDirectory: temporaryDirectory,
+                                                                     displayPathPrefix: resolvedDisplayPathPrefix,
+                                                                     parentWindow: progressParentWindow,
+                                                                     nestedWriteBackInfo: nestedWriteBackInfo,
+                                                                     openMode: openMode)
 
-        return finishArchiveOpen(preparedResult,
-                                 temporaryDirectory: temporaryDirectory,
-                                 preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
-                                 replaceCurrentState: replaceCurrentState,
-                                 showError: showError)
+        guard !Task.isCancelled, openGeneration == archiveOpenGeneration else {
+            discardPreparedArchiveOpen(preparedResult,
+                                       temporaryDirectory: temporaryDirectory)
+            return .cancelled
+        }
+
+        let finish = {
+            self.finishArchiveOpen(preparedResult,
+                                   temporaryDirectory: temporaryDirectory,
+                                   preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
+                                   replaceCurrentState: replaceCurrentState,
+                                   showError: showError,
+                                   invalidatePendingOpen: false)
+        }
+
+        guard replaceCurrentState, archiveSession.isInsideArchive else {
+            return finish()
+        }
+
+        return await FileManagerLegacyArchiveCommitQueue.shared.perform {
+            guard openGeneration == self.archiveOpenGeneration else {
+                self.discardPreparedArchiveOpen(preparedResult,
+                                                temporaryDirectory: temporaryDirectory)
+                return .cancelled
+            }
+            return finish()
+        }
+    }
+
+    private func discardPreparedArchiveOpen(_ preparedResult: FileManagerPreparedArchiveOpenResult,
+                                            temporaryDirectory: URL?)
+    {
+        if case let .opened(prepared) = preparedResult {
+            prepared.archive.close()
+            archiveSession.cleanupTemporaryDirectory(prepared.temporaryDirectory)
+            return
+        }
+
+        archiveSession.cleanupTemporaryDirectory(temporaryDirectory)
     }
 
     func finishArchiveOpen(_ preparedResult: FileManagerPreparedArchiveOpenResult,
                            temporaryDirectory: URL?,
                            preserveTemporaryDirectoryOnUnsupported: Bool,
                            replaceCurrentState: Bool,
-                           showError: Bool) -> FileManagerArchiveOpenResult
+                           showError: Bool,
+                           invalidatePendingOpen: Bool = true) -> FileManagerArchiveOpenResult
     {
+        if invalidatePendingOpen {
+            invalidatePendingArchiveOpen()
+        }
+
         let result: FileManagerArchiveOpenResult
         switch preparedResult {
         case let .opened(prepared):
@@ -144,6 +222,7 @@ final class FileManagerPaneArchiveCoordinator {
     }
 
     func navigateSubdir(_ subdir: String) {
+        invalidatePendingArchiveOpen()
         guard archiveSession.navigateSubdir(subdir) else { return }
         presentCurrentArchiveSubdir()
     }
@@ -428,12 +507,17 @@ final class FileManagerPaneArchiveCoordinator {
         archiveRefreshTask = nil
     }
 
+    func invalidatePendingArchiveOpen() {
+        archiveOpenGeneration += 1
+    }
+
     // MARK: - Closing And Temporary Directories
 
     @discardableResult
     func closeLevel(_ level: FileManagerArchiveLevel,
                     showError: Bool = false) -> Bool
     {
+        invalidatePendingArchiveOpen()
         cancelPendingReload()
         level.operationGate.beginClosingAndWaitForLeases()
 
@@ -476,6 +560,7 @@ final class FileManagerPaneArchiveCoordinator {
 
     @discardableResult
     func closeAll(showError: Bool = false) -> Bool {
+        invalidatePendingArchiveOpen()
         while let level = archiveSession.currentLevel {
             guard closeLevel(level, showError: showError) else {
                 return false

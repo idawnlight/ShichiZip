@@ -409,9 +409,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                        showError: Bool = true,
                        budget: Duration? = nil) -> Bool
     {
-        directoryCoordinator.loadDirectory(url,
-                                           showError: showError,
-                                           budget: budget)
+        archiveCoordinatorStorage?.invalidatePendingArchiveOpen()
+        return directoryCoordinator.loadDirectory(url,
+                                                  showError: showError,
+                                                  budget: budget)
     }
 
     @discardableResult
@@ -421,11 +422,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                      focusAfterLoad: Bool = false,
                                      budget: Duration? = nil) -> Bool
     {
-        directoryCoordinator.navigateToDirectory(url,
-                                                 showError: showError,
-                                                 selectionState: selectionState,
-                                                 focusAfterLoad: focusAfterLoad,
-                                                 budget: budget)
+        archiveCoordinatorStorage?.invalidatePendingArchiveOpen()
+        return directoryCoordinator.navigateToDirectory(url,
+                                                       showError: showError,
+                                                       selectionState: selectionState,
+                                                       focusAfterLoad: focusAfterLoad,
+                                                       budget: budget)
     }
 
     private func setDirectoryLoadingOverlayVisible(_ visible: Bool) {
@@ -641,12 +643,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     func openCommandOpenArchiveInline(_ url: URL,
                                       hostDirectory: URL? = nil,
                                       openMode: FileManagerArchiveOpenMode = .defaultBehavior,
-                                      showError: Bool = true) -> FileManagerArchiveOpenResult
+                                      showError: Bool = true) async -> FileManagerArchiveOpenResult
     {
-        archiveCoordinator.openArchiveInline(url,
-                                             hostDirectory: hostDirectory,
-                                             openMode: openMode,
-                                             showError: showError)
+        await archiveCoordinator.openArchiveInline(url,
+                                                   hostDirectory: hostDirectory,
+                                                   openMode: openMode,
+                                                   showError: showError)
     }
 
     func openCommandFinishArchiveOpen(_ preparedResult: FileManagerPreparedArchiveOpenResult,
@@ -734,12 +736,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     func navigationCommandOpenArchiveInline(_ url: URL,
                                             hostDirectory: URL? = nil,
                                             openMode: FileManagerArchiveOpenMode = .defaultBehavior,
-                                            showError: Bool = true) -> FileManagerArchiveOpenResult
+                                            showError: Bool = true) async -> FileManagerArchiveOpenResult
     {
-        archiveCoordinator.openArchiveInline(url,
-                                             hostDirectory: hostDirectory,
-                                             openMode: openMode,
-                                             showError: showError)
+        await archiveCoordinator.openArchiveInline(url,
+                                                   hostDirectory: hostDirectory,
+                                                   openMode: openMode,
+                                                   showError: showError)
     }
 
     @discardableResult
@@ -1041,33 +1043,31 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     @discardableResult
-    func openFileSystemItemURL(_ url: URL) -> Bool {
+    func openInitialFileSystemItemURL(_ url: URL) async -> Bool {
+        precondition(!isInsideArchive,
+                     "Initial file-system navigation requires an empty archive stack")
+
         switch FileManagerFileSystemNavigation.openTarget(for: url) {
         case let .directory(directoryURL):
-            if isInsideArchive, !closeAllArchives(showError: true) {
-                return false
-            }
-
             navigateToDirectory(directoryURL,
                                 showError: true,
                                 focusAfterLoad: true,
                                 budget: FileManagerPaneDirectoryCoordinator.navigationBudget)
             return true
         case let .file(fileURL, hostDirectory):
-            return openFileSystemArchiveURL(fileURL,
-                                            hostDirectory: hostDirectory)
+            return await openInitialFileSystemArchiveURL(fileURL,
+                                                         hostDirectory: hostDirectory)
         case nil:
             return false
         }
     }
 
-    private func openFileSystemArchiveURL(_ fileURL: URL,
-                                          hostDirectory: URL) -> Bool
+    private func openInitialFileSystemArchiveURL(_ fileURL: URL,
+                                                 hostDirectory: URL) async -> Bool
     {
-        switch archiveCoordinator.openArchiveInline(fileURL,
-                                                    hostDirectory: hostDirectory,
-                                                    showError: false,
-                                                    replaceCurrentState: true)
+        switch await archiveCoordinator.openArchiveInline(fileURL,
+                                                          hostDirectory: hostDirectory,
+                                                          showError: false)
         {
         case .opened:
             focusFileList()
@@ -1226,19 +1226,19 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     // MARK: - Archive Opening
 
     @discardableResult
-    func showArchive(at url: URL) -> Bool {
-        showArchive(at: url, openMode: .defaultBehavior)
+    func showArchive(at url: URL) async -> Bool {
+        await showArchive(at: url, openMode: .defaultBehavior)
     }
 
     @discardableResult
     func showArchive(at url: URL,
-                     openMode: FileManagerArchiveOpenMode) -> Bool
+                     openMode: FileManagerArchiveOpenMode) async -> Bool
     {
         let parentDirectory = url.deletingLastPathComponent()
-        let result = archiveCoordinator.openArchiveInline(url,
-                                                          hostDirectory: parentDirectory,
-                                                          openMode: openMode,
-                                                          replaceCurrentState: true)
+        let result = await archiveCoordinator.openArchiveInline(url,
+                                                                hostDirectory: parentDirectory,
+                                                                openMode: openMode,
+                                                                replaceCurrentState: true)
         if case .opened = result {
             return true
         }
@@ -1532,12 +1532,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     @discardableResult
     func prepareForClose(showError: Bool = true) -> Bool {
-        suspensionCoordinator.prepareForClose(showError: showError)
+        archiveCoordinatorStorage?.invalidatePendingArchiveOpen()
+        return suspensionCoordinator.prepareForClose(showError: showError)
     }
 
     @discardableResult
     func prepareForDeactivation(showError: Bool = true) -> Bool {
-        suspensionCoordinator.prepareForDeactivation(showError: showError)
+        archiveCoordinatorStorage?.invalidatePendingArchiveOpen()
+        return suspensionCoordinator.prepareForDeactivation(showError: showError)
     }
 
     func reactivateIfSuspended() {
@@ -1545,6 +1547,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func closeDirectory() {
+        archiveCoordinatorStorage?.invalidatePendingArchiveOpen()
         suspensionCoordinator.closeDirectory()
     }
 

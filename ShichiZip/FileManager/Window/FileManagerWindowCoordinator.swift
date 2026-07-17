@@ -7,14 +7,14 @@ protocol FileManagerArchiveCoordinationProviding: AnyObject {
 
 @MainActor
 protocol FileManagerWindowCoordinating: FileManagerArchiveCoordinationProviding {
-    func openArchiveInNewFileManager(_ url: URL)
+    func openArchiveInNewFileManager(_ url: URL) async
 }
 
 @MainActor
 protocol FileManagerDocumentOpenRouting: AnyObject {
     func beginExternalArchiveOpen()
     func endExternalArchiveOpen()
-    func openArchiveInNewFileManager(_ url: URL)
+    func openArchiveInNewFileManager(_ url: URL) async
 }
 
 @MainActor
@@ -36,37 +36,43 @@ final class FileManagerWindowRegistry: FileManagerWindowCoordinating {
                               sender: sender)
     }
 
-    func openArchiveInFileManager(_ url: URL) {
+    func openArchiveInFileManager(_ url: URL) async {
         let reusableController = reusableFileManagerWindowController()
-        let controller = reusableController ?? makeFileManagerWindowController()
-        if controller.navigateToArchive(url, revealWindow: false) {
+        let controller = reusableController ?? makeFileManagerWindowController(register: false)
+        if await controller.navigateToArchive(url, revealWindow: false) {
+            if reusableController != nil,
+               !isRegisteredFileManagerWindowController(controller)
+            {
+                _ = controller.prepareForClose(showError: false)
+                return
+            }
+            if reusableController == nil {
+                registerFileManagerWindowController(controller)
+            }
             showFileManagerWindow(controller,
                                   sender: nil)
-        } else if reusableController == nil {
-            removeFileManagerWindowController(controller)
         }
     }
 
-    func openArchiveInNewFileManager(_ url: URL) {
-        let controller = makeFileManagerWindowController()
-        if controller.navigateToArchive(url, revealWindow: false) {
+    func openArchiveInNewFileManager(_ url: URL) async {
+        let controller = makeFileManagerWindowController(register: false)
+        if await controller.navigateToArchive(url, revealWindow: false) {
+            registerFileManagerWindowController(controller)
             showFileManagerWindow(controller,
                                   sender: nil)
-        } else {
-            removeFileManagerWindowController(controller)
         }
     }
 
     @discardableResult
-    func openFileSystemItemInNewFileManager(_ url: URL) -> Bool {
-        let controller = makeFileManagerWindowController()
-        if controller.openFileSystemItem(url, revealWindow: false) {
+    func openFileSystemItemInNewFileManager(_ url: URL) async -> Bool {
+        let controller = makeFileManagerWindowController(register: false)
+        if await controller.openFileSystemItem(url, revealWindow: false) {
+            registerFileManagerWindowController(controller)
             showFileManagerWindow(controller,
                                   sender: nil)
             return true
         }
 
-        removeFileManagerWindowController(controller)
         return false
     }
 
@@ -101,13 +107,24 @@ final class FileManagerWindowRegistry: FileManagerWindowCoordinating {
         return controllers.last { $0.window?.isVisible == true } ?? controllers.last
     }
 
-    private func makeFileManagerWindowController() -> FileManagerWindowController {
+    private func makeFileManagerWindowController(register: Bool = true) -> FileManagerWindowController {
         let controller = FileManagerWindowController(windowCoordinator: self)
         controller.onWindowWillClose = { [weak self] closingController in
             self?.removeFileManagerWindowController(closingController)
         }
-        controllers.append(controller)
+        if register {
+            registerFileManagerWindowController(controller)
+        }
         return controller
+    }
+
+    private func registerFileManagerWindowController(_ controller: FileManagerWindowController) {
+        guard !isRegisteredFileManagerWindowController(controller) else { return }
+        controllers.append(controller)
+    }
+
+    private func isRegisteredFileManagerWindowController(_ controller: FileManagerWindowController) -> Bool {
+        controllers.contains { $0 === controller }
     }
 
     private func showFileManagerWindow(_ controller: FileManagerWindowController,

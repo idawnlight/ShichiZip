@@ -61,7 +61,9 @@ final class AppQuickActionHandler {
         let itemURL = try existingSingleURL(from: request,
                                             selectionError: SZL10n.string("archive.selectOneFile"))
         SZLog.info(Self.logPrefix, "open-in-shichizip opening new window item=\(itemURL.path)")
-        _ = fileManagerWindowRegistry.openFileSystemItemInNewFileManager(itemURL)
+        Task { @MainActor [fileManagerWindowRegistry] in
+            _ = await fileManagerWindowRegistry.openFileSystemItemInNewFileManager(itemURL)
+        }
     }
 
     private func handleCompress(_ request: ShichiZipQuickActionRequest) throws {
