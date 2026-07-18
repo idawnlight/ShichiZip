@@ -28,10 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
                     buttonTitle:(NSString*)buttonTitle
                       forWindow:(nullable NSWindow*)window;
 
-+ (NSInteger)runMessageWithStyle:(SZDialogStyle)style
-                           title:(NSString*)title
-                         message:(nullable NSString*)message
-                    buttonTitles:(NSArray<NSString*>*)buttonTitles;
++ (NSInteger)runChoiceRequest:(SZOperationChoiceRequest*)request;
 
 + (BOOL)promptForPasswordWithTitle:(NSString*)title
                            message:(nullable NSString*)message

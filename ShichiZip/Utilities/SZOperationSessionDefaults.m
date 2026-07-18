@@ -14,14 +14,8 @@ SZOperationSession* SZMakeDefaultOperationSession(id<SZProgressDelegate> progres
                                                 initialValue:initialValue
                                                     password:password];
     };
-    session.choiceRequestHandler = ^NSInteger(SZOperationPromptStyle style,
-        NSString* title,
-        NSString* message,
-        NSArray<NSString*>* buttonTitles) {
-        return [SZDialogPresenter runMessageWithStyle:[SZDialogPresenter dialogStyleForPromptStyle:style]
-                                                title:title
-                                              message:message
-                                         buttonTitles:buttonTitles];
+    session.choiceRequestHandler = ^NSInteger(SZOperationChoiceRequest* request) {
+        return [SZDialogPresenter runChoiceRequest:request];
     };
     return session;
 }

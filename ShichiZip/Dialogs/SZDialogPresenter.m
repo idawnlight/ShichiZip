@@ -5,6 +5,10 @@
 
 static NSString* const SZShowPasswordPreferenceKey = @"SZShowPasswordInPrompts";
 
+static SZDialogAction* SZDialogActionMake(NSString* title, SZDialogActionRole roles) {
+    return [[SZDialogAction alloc] initWithTitle:title roles:roles];
+}
+
 static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     if (byteCount == 0) {
         return 1;
@@ -381,10 +385,9 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     SZModalDialogController* controller = [[SZModalDialogController alloc] initWithStyle:style
                                                                                    title:title
                                                                                  message:message
-                                                                            buttonTitles:@[ SZLocalizedString(@"common.ok") ]
+                                                                                 actions:@[ SZDialogActionMake(SZLocalizedString(@"common.ok"), SZDialogActionRoleDefault | SZDialogActionRoleCancel) ]
                                                                            accessoryView:nil
-                                                                 preferredFirstResponder:nil
-                                                                       cancelButtonIndex:0];
+                                                                 preferredFirstResponder:nil];
     if (window) {
         [controller beginSheetModalForWindow:window completionHandler:^(__unused NSInteger selectedButtonIndex) { }];
     } else {
@@ -400,10 +403,9 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     SZModalDialogController* controller = [[SZModalDialogController alloc] initWithStyle:style
                                                                                    title:title
                                                                                  message:message
-                                                                            buttonTitles:@[ buttonTitle ]
+                                                                                 actions:@[ SZDialogActionMake(buttonTitle, SZDialogActionRoleDefault | SZDialogActionRoleCancel) ]
                                                                            accessoryView:nil
-                                                                 preferredFirstResponder:nil
-                                                                       cancelButtonIndex:0];
+                                                                 preferredFirstResponder:nil];
     if (window) {
         [controller beginSheetModalForWindow:window completionHandler:^(__unused NSInteger selectedButtonIndex) { }];
     } else {
@@ -411,28 +413,25 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     }
 }
 
-+ (NSInteger)runMessageWithStyle:(SZDialogStyle)style
-                           title:(NSString*)title
-                         message:(NSString*)message
-                    buttonTitles:(NSArray<NSString*>*)buttonTitles {
-    NSInteger cancelButtonIndex = buttonTitles.count > 0 ? (NSInteger)buttonTitles.count - 1 : 0;
-    NSString* localizedCancelTitle = SZLocalizedString(@"common.cancel");
-    for (NSInteger index = 0; index < (NSInteger)buttonTitles.count; index++) {
-        NSString* buttonTitle = buttonTitles[(NSUInteger)index];
-        if ([buttonTitle caseInsensitiveCompare:@"Cancel"] == NSOrderedSame
-            || [buttonTitle caseInsensitiveCompare:localizedCancelTitle] == NSOrderedSame) {
-            cancelButtonIndex = index;
-            break;
++ (NSInteger)runChoiceRequest:(SZOperationChoiceRequest*)request {
+    NSMutableArray<SZDialogAction*>* actions = [NSMutableArray arrayWithCapacity:request.buttonTitles.count];
+    for (NSInteger index = 0; index < (NSInteger)request.buttonTitles.count; index++) {
+        SZDialogActionRole roles = SZDialogActionRoleNone;
+        if (index == request.defaultButtonIndex) {
+            roles |= SZDialogActionRoleDefault;
         }
+        if (index == request.cancelButtonIndex) {
+            roles |= SZDialogActionRoleCancel;
+        }
+        [actions addObject:SZDialogActionMake(request.buttonTitles[(NSUInteger)index], roles)];
     }
 
-    SZModalDialogController* controller = [[SZModalDialogController alloc] initWithStyle:style
-                                                                                   title:title
-                                                                                 message:message
-                                                                            buttonTitles:buttonTitles
+    SZModalDialogController* controller = [[SZModalDialogController alloc] initWithStyle:[self dialogStyleForPromptStyle:request.style]
+                                                                                   title:request.title
+                                                                                 message:request.message
+                                                                                 actions:actions
                                                                            accessoryView:nil
-                                                                 preferredFirstResponder:nil
-                                                                       cancelButtonIndex:cancelButtonIndex];
+                                                                 preferredFirstResponder:nil];
     return [controller runModal];
 }
 
@@ -444,10 +443,12 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     SZModalDialogController* controller = [[SZModalDialogController alloc] initWithStyle:SZDialogStyleWarning
                                                                                    title:title
                                                                                  message:message
-                                                                            buttonTitles:@[ SZLocalizedString(@"common.cancel"), SZLocalizedString(@"common.ok") ]
+                                                                                 actions:@[
+                                                                                     SZDialogActionMake(SZLocalizedString(@"common.cancel"), SZDialogActionRoleCancel),
+                                                                                     SZDialogActionMake(SZLocalizedString(@"common.ok"), SZDialogActionRoleDefault),
+                                                                                 ]
                                                                            accessoryView:accessoryController.view
-                                                                 preferredFirstResponder:accessoryController.preferredFirstResponderView
-                                                                       cancelButtonIndex:0];
+                                                                 preferredFirstResponder:accessoryController.preferredFirstResponderView];
 
     NSInteger selectedButtonIndex = [controller runModal];
     if (selectedButtonIndex != 1) {
@@ -483,10 +484,12 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     SZModalDialogController* controller = [[SZModalDialogController alloc] initWithStyle:(accessoryController.installedRAMIsInsufficient ? SZDialogStyleCritical : SZDialogStyleWarning)
                                                                                    title:SZLocalizedString(@"memory.usageRequest")
                                                                                  message:message
-                                                                            buttonTitles:@[ SZLocalizedString(@"common.cancel"), SZLocalizedString(@"common.continue") ]
+                                                                                 actions:@[
+                                                                                     SZDialogActionMake(SZLocalizedString(@"common.cancel"), SZDialogActionRoleCancel),
+                                                                                     SZDialogActionMake(SZLocalizedString(@"common.continue"), SZDialogActionRoleDefault),
+                                                                                 ]
                                                                            accessoryView:accessoryController.view
-                                                                 preferredFirstResponder:accessoryController.preferredFirstResponderView
-                                                                       cancelButtonIndex:0];
+                                                                 preferredFirstResponder:accessoryController.preferredFirstResponderView];
 
     NSInteger selectedButtonIndex = [controller runModal];
     if (selectedButtonIndex != 1) {

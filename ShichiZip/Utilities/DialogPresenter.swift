@@ -58,15 +58,8 @@ func szPresentMessage(title: String,
     }
 }
 
-func szRunChoiceDialog(title: String,
-                       message: String,
-                       style: SZDialogStyle = .informational,
-                       buttons: [String]) -> Int
-{
-    SZDialogPresenter.runMessage(with: style,
-                                 title: title,
-                                 message: message,
-                                 buttonTitles: buttons)
+func szRunChoiceDialog(_ request: SZOperationChoiceRequest) -> Int {
+    SZDialogPresenter.run(request)
 }
 
 func szPromptForPasswordSync(title: String,
@@ -115,10 +108,14 @@ func szBeginConfirmation(on window: NSWindow,
     let controller = SZModalDialogController(style: style,
                                              title: title,
                                              message: message,
-                                             buttonTitles: [SZL10n.string("common.cancel"), confirmTitle],
+                                             actions: [
+                                                 SZDialogAction(title: SZL10n.string("common.cancel"),
+                                                                roles: .cancel),
+                                                 SZDialogAction(title: confirmTitle,
+                                                                roles: .default),
+                                             ],
                                              accessoryView: nil,
-                                             preferredFirstResponder: nil,
-                                             cancelButtonIndex: 0)
+                                             preferredFirstResponder: nil)
     controller.szBeginSheetOrRunModal(for: window) { buttonIndex in
         completion(buttonIndex == 1)
     }
@@ -141,10 +138,14 @@ func szBeginTextInput(on window: NSWindow,
     let controller = SZModalDialogController(style: style,
                                              title: title,
                                              message: message,
-                                             buttonTitles: [SZL10n.string("common.cancel"), confirmTitle],
+                                             actions: [
+                                                 SZDialogAction(title: SZL10n.string("common.cancel"),
+                                                                roles: .cancel),
+                                                 SZDialogAction(title: confirmTitle,
+                                                                roles: .default),
+                                             ],
                                              accessoryView: inputField,
-                                             preferredFirstResponder: inputField,
-                                             cancelButtonIndex: 0)
+                                             preferredFirstResponder: inputField)
     controller.szBeginSheetOrRunModal(for: window) { buttonIndex in
         completion(buttonIndex == 1 ? inputField.stringValue : nil)
     }
@@ -190,10 +191,12 @@ func szShowDetailsDialog(title: String,
             let controller = SZModalDialogController(style: style,
                                                      title: title,
                                                      message: summary,
-                                                     buttonTitles: [SZL10n.string("common.ok")],
+                                                     actions: [
+                                                         SZDialogAction(title: SZL10n.string("common.ok"),
+                                                                        roles: [.default, .cancel]),
+                                                     ],
                                                      accessoryView: scrollView,
-                                                     preferredFirstResponder: nil,
-                                                     cancelButtonIndex: 0)
+                                                     preferredFirstResponder: nil)
 
             controller.szBeginSheetOrRunModal(for: window) { _ in }
         }

@@ -20,6 +20,37 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     }
 }
 
+@implementation SZOperationChoiceRequest
+
+- (instancetype)initWithStyle:(SZOperationPromptStyle)style
+                        title:(NSString*)title
+                      message:(NSString*)message
+                 buttonTitles:(NSArray<NSString*>*)buttonTitles
+           defaultButtonIndex:(NSInteger)defaultButtonIndex
+            cancelButtonIndex:(NSInteger)cancelButtonIndex {
+    const NSInteger buttonCount = (NSInteger)buttonTitles.count;
+    if (buttonCount == 0
+        || defaultButtonIndex < 0
+        || defaultButtonIndex >= buttonCount
+        || cancelButtonIndex < 0
+        || cancelButtonIndex >= buttonCount) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"SZOperationChoiceRequest requires nonempty buttons and in-range default and cancel indices"];
+    }
+
+    if ((self = [super init])) {
+        _style = style;
+        _title = [title copy];
+        _message = [message copy];
+        _buttonTitles = [buttonTitles copy];
+        _defaultButtonIndex = defaultButtonIndex;
+        _cancelButtonIndex = cancelButtonIndex;
+    }
+    return self;
+}
+
+@end
+
 @interface SZOperationSession () {
     double _progressFraction;
     NSString* _currentFileName;
@@ -376,25 +407,24 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     return confirmed;
 }
 
-- (NSInteger)requestChoiceWithStyle:(SZOperationPromptStyle)style
-                              title:(NSString*)title
-                            message:(NSString*)message
-                       buttonTitles:(NSArray<NSString*>*)buttonTitles {
+- (NSInteger)requestChoice:(SZOperationChoiceRequest*)request {
     [self prepareForUserInteraction];
 
-    NSInteger defaultChoice = buttonTitles.count > 0 ? (NSInteger)buttonTitles.count - 1 : 0;
     SZOperationChoiceRequestHandler handler = self.choiceRequestHandler;
     if (!handler) {
         [self finishUserInteraction];
-        return defaultChoice;
+        return request.cancelButtonIndex;
     }
 
-    __block NSInteger choice = defaultChoice;
+    __block NSInteger choice = request.cancelButtonIndex;
     SZDispatchSyncOnMain(^{
-        choice = handler(style, title, message, buttonTitles);
+        choice = handler(request);
     });
 
     [self finishUserInteraction];
+    if (choice < 0 || choice >= (NSInteger)request.buttonTitles.count) {
+        return request.cancelButtonIndex;
+    }
     return choice;
 }
 

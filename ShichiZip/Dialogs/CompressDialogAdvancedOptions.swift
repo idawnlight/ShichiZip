@@ -541,10 +541,14 @@ extension CompressDialogController {
             let controller = SZModalDialogController(style: .informational,
                                                      title: SZL10n.string("compress.options"),
                                                      message: nil,
-                                                     buttonTitles: [SZL10n.string("common.cancel"), SZL10n.string("common.ok")],
+                                                     actions: [
+                                                         SZDialogAction(title: SZL10n.string("common.cancel"),
+                                                                        roles: .cancel),
+                                                         SZDialogAction(title: SZL10n.string("common.ok"),
+                                                                        roles: .default),
+                                                     ],
                                                      accessoryView: wrapper,
-                                                     preferredFirstResponder: nil,
-                                                     cancelButtonIndex: 0)
+                                                     preferredFirstResponder: nil)
             let buttonIndex = await controller.modalResult(for: parentWindow)
             withExtendedLifetime(refreshHandler) {}
             guard buttonIndex == 1 else {

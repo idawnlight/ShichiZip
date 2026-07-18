@@ -317,12 +317,17 @@ Z7_COM7F_IMF(SZFolderExtractCallback::AskOverwrite(
             [info appendFormat:@"\n%@: %@", SZLocalizedString(@"column.modified"), newDateStr];
         }
 
-        NSInteger choice = Session
-            ? [Session requestChoiceWithStyle:SZOperationPromptStyleWarning
-                                        title:SZLocalizedString(@"replace.confirmTitle")
-                                      message:info
-                                 buttonTitles:@[ SZLocalizedString(@"common.yes"), SZLocalizedString(@"common.yesToAll"), SZLocalizedString(@"common.no"), SZLocalizedString(@"common.noToAll"), SZLocalizedString(@"replace.autoRename"), SZLocalizedString(@"common.cancel") ]]
-            : 5;
+        NSInteger choice = 5;
+        if (Session) {
+            SZOperationChoiceRequest* request = [[SZOperationChoiceRequest alloc]
+                initWithStyle:SZOperationPromptStyleWarning
+                          title:SZLocalizedString(@"replace.confirmTitle")
+                        message:info
+                   buttonTitles:@[ SZLocalizedString(@"common.yes"), SZLocalizedString(@"common.yesToAll"), SZLocalizedString(@"common.no"), SZLocalizedString(@"common.noToAll"), SZLocalizedString(@"replace.autoRename"), SZLocalizedString(@"common.cancel") ]
+             defaultButtonIndex:0
+              cancelButtonIndex:5];
+            choice = [Session requestChoice:request];
+        }
         if (choice == 0)
             result = NOverwriteAnswer::kYes;
         else if (choice == 1)

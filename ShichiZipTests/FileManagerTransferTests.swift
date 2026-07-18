@@ -57,7 +57,9 @@ final class FileSystemTransferTests: XCTestCase {
 
         let session = SZOperationSession()
         var promptCount = 0
-        session.choiceRequestHandler = { _, _, _, _ in
+        session.choiceRequestHandler = { request in
+            XCTAssertEqual(request.defaultButtonIndex, 0)
+            XCTAssertEqual(request.cancelButtonIndex, 4)
             promptCount += 1
             return 0
         }
@@ -93,7 +95,7 @@ final class FileSystemTransferTests: XCTestCase {
         try Data("keep".utf8).write(to: destinationURL.appendingPathComponent("keep.txt"))
 
         let session = SZOperationSession()
-        session.choiceRequestHandler = { _, _, _, _ in 2 }
+        session.choiceRequestHandler = { _ in 2 }
 
         try FileOperationFileSystemTransfer.perform([sourceURL],
                                                     to: destinationDirectoryURL,
@@ -125,7 +127,7 @@ final class FileSystemTransferTests: XCTestCase {
         let originalDestinationInode = try inode(at: destinationURL)
 
         let session = SZOperationSession()
-        session.choiceRequestHandler = { _, _, _, _ in 0 }
+        session.choiceRequestHandler = { _ in 0 }
         try FileOperationFileSystemTransfer.perform([sourceURL],
                                                     to: destinationDirectoryURL,
                                                     operation: .move,
@@ -171,7 +173,7 @@ final class FileSystemTransferTests: XCTestCase {
         try Data("original".utf8).write(to: destinationURL)
 
         let session = SZOperationSession()
-        session.choiceRequestHandler = { _, _, _, _ in
+        session.choiceRequestHandler = { _ in
             try? FileManager.default.removeItem(at: sourceURL)
             return 0
         }
@@ -276,7 +278,7 @@ final class FileSystemTransferTests: XCTestCase {
         try Data("destination".utf8).write(to: destinationURL)
 
         let session = SZOperationSession()
-        session.choiceRequestHandler = { _, _, _, _ in
+        session.choiceRequestHandler = { _ in
             XCTFail("Incompatible item kinds must not request overwrite")
             return 0
         }

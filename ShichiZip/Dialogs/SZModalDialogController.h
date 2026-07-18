@@ -8,6 +8,22 @@ typedef NS_ENUM(NSInteger, SZDialogStyle) {
     SZDialogStyleCritical,
 };
 
+typedef NS_OPTIONS(NSUInteger, SZDialogActionRole) {
+    SZDialogActionRoleNone = 0,
+    SZDialogActionRoleDefault = 1 << 0,
+    SZDialogActionRoleCancel = 1 << 1,
+};
+
+@interface SZDialogAction : NSObject
+
+- (instancetype)init NS_UNAVAILABLE;
+- (instancetype)initWithTitle:(NSString*)title roles:(SZDialogActionRole)roles NS_DESIGNATED_INITIALIZER;
+
+@property (nonatomic, copy, readonly) NSString* title;
+@property (nonatomic, readonly) SZDialogActionRole roles;
+
+@end
+
 typedef void(NS_SWIFT_UI_ACTOR ^ SZModalDialogCompletionHandler)(NSInteger selectedButtonIndex);
 typedef BOOL(NS_SWIFT_UI_ACTOR ^ SZModalDialogShouldFinishHandler)(NSInteger selectedButtonIndex);
 
@@ -20,10 +36,9 @@ typedef BOOL(NS_SWIFT_UI_ACTOR ^ SZModalDialogShouldFinishHandler)(NSInteger sel
 - (instancetype)initWithStyle:(SZDialogStyle)style
                         title:(NSString*)title
                       message:(nullable NSString*)message
-                 buttonTitles:(NSArray<NSString*>*)buttonTitles
+                      actions:(NSArray<SZDialogAction*>*)actions
                 accessoryView:(nullable NSView*)accessoryView
-      preferredFirstResponder:(nullable NSView*)preferredFirstResponder
-            cancelButtonIndex:(NSInteger)cancelButtonIndex;
+      preferredFirstResponder:(nullable NSView*)preferredFirstResponder;
 
 // Presents as a sheet and returns immediately; the result is delivered in the completion handler.
 - (void)beginSheetModalForWindow:(NSWindow*)window

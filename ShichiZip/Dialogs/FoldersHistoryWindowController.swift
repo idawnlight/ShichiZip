@@ -60,10 +60,14 @@ final class FoldersHistoryWindowController: NSObject, NSTableViewDataSource, NST
         let controller = SZModalDialogController(style: .informational,
                                                  title: SZL10n.string("properties.foldersHistory"),
                                                  message: nil,
-                                                 buttonTitles: [SZL10n.string("common.cancel"), SZL10n.string("menu.open")],
+                                                 actions: [
+                                                     SZDialogAction(title: SZL10n.string("common.cancel"),
+                                                                    roles: .cancel),
+                                                     SZDialogAction(title: SZL10n.string("menu.open"),
+                                                                    roles: .default),
+                                                 ],
                                                  accessoryView: accessoryView,
-                                                 preferredFirstResponder: tableView,
-                                                 cancelButtonIndex: ButtonIndex.cancel)
+                                                 preferredFirstResponder: tableView)
         dialogController = controller
         controller.setButtonEnabled(selectedEntry() != nil, at: ButtonIndex.open)
         controller.szBeginSheetOrRunModal(for: window) { [weak self] buttonIndex in

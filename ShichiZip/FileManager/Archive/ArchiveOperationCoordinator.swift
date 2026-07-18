@@ -47,12 +47,9 @@ final class ArchiveOperationCoordinator {
             return true
         }
 
-        session.choiceRequestHandler = { [weak self] style, title, message, buttonTitles in
+        session.choiceRequestHandler = { [weak self] request in
             self?.prepareForPromptIfNeeded()
-            return szRunChoiceDialog(title: title,
-                                     message: message ?? "",
-                                     style: SZDialogPresenter.dialogStyle(for: style),
-                                     buttons: buttonTitles)
+            return szRunChoiceDialog(request)
         }
     }
 
@@ -81,15 +78,8 @@ final class ArchiveOperationCoordinator {
         hideProgressIfVisible()
     }
 
-    func requestChoice(style: SZOperationPromptStyle,
-                       title: String,
-                       message: String,
-                       buttonTitles: [String]) -> Int
-    {
-        session.requestChoice(with: style,
-                              title: title,
-                              message: message,
-                              buttonTitles: buttonTitles)
+    func requestChoice(_ request: SZOperationChoiceRequest) -> Int {
+        session.requestChoice(request)
     }
 
     @objc private func updateFromSession() {

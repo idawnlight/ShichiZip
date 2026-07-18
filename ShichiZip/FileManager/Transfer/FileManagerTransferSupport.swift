@@ -1228,16 +1228,23 @@ enum FileOperationFileSystemTransfer {
                     return .skip
                 }
                 if !overwriteAll {
-                    let choice = session.requestChoice(with: .warning,
-                                                       title: SZL10n.string("replace.confirmTitle"),
-                                                       message: overwritePromptMessage(sourceURL: conflictingSourceURL,
-                                                                                       destinationURL: conflictingDestinationURL,
-                                                                                       fileManager: fileManager),
-                                                       buttonTitles: [SZL10n.string("common.yes"),
-                                                                      SZL10n.string("common.yesToAll"),
-                                                                      SZL10n.string("common.no"),
-                                                                      SZL10n.string("common.noToAll"),
-                                                                      SZL10n.string("common.cancel")])
+                    let request = SZOperationChoiceRequest(
+                        style: .warning,
+                        title: SZL10n.string("replace.confirmTitle"),
+                        message: overwritePromptMessage(sourceURL: conflictingSourceURL,
+                                                        destinationURL: conflictingDestinationURL,
+                                                        fileManager: fileManager),
+                        buttonTitles: [
+                            SZL10n.string("common.yes"),
+                            SZL10n.string("common.yesToAll"),
+                            SZL10n.string("common.no"),
+                            SZL10n.string("common.noToAll"),
+                            SZL10n.string("common.cancel"),
+                        ],
+                        defaultButtonIndex: 0,
+                        cancelButtonIndex: 4,
+                    )
+                    let choice = session.requestChoice(request)
                     switch choice {
                     case 0:
                         return .overwrite
@@ -1455,10 +1462,14 @@ final class FileOperationDestinationPrompt {
         let controller = SZModalDialogController(style: .informational,
                                                  title: title,
                                                  message: infoText,
-                                                 buttonTitles: [SZL10n.string("common.cancel"), actionTitle],
+                                                 actions: [
+                                                     SZDialogAction(title: SZL10n.string("common.cancel"),
+                                                                    roles: .cancel),
+                                                     SZDialogAction(title: actionTitle,
+                                                                    roles: .default),
+                                                 ],
                                                  accessoryView: stack,
-                                                 preferredFirstResponder: pathField,
-                                                 cancelButtonIndex: 0)
+                                                 preferredFirstResponder: pathField)
 
         let windowBoundPicker = FileOperationDestinationPicker(ownerWindow: controller.window,
                                                                pathField: pathField,

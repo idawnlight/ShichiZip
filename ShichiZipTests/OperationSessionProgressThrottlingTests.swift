@@ -3,7 +3,135 @@
 // Covers progress throttling and terminal update delivery in
 // SZOperationSession.
 
+import AppKit
 import XCTest
+
+@MainActor
+final class OperationSessionChoiceRequestTests: XCTestCase {
+    func testDialogKeyboardRolesDoNotDependOnButtonOrderOrTitle() throws {
+        let controller = SZModalDialogController(
+            style: .warning,
+            title: "Replace?",
+            message: nil,
+            actions: [
+                SZDialogAction(title: "Cancel", roles: []),
+                SZDialogAction(title: "Proceed", roles: .default),
+                SZDialogAction(title: "Localized Abort", roles: .cancel),
+            ],
+            accessoryView: nil,
+            preferredFirstResponder: nil,
+        )
+        let window = try XCTUnwrap(controller.window)
+        let defaultButton = try XCTUnwrap(button(titled: "Proceed", in: window))
+        XCTAssertTrue(window.defaultButtonCell === defaultButton.cell)
+
+        var selectedIndices: [Int] = []
+        controller.shouldFinishHandler = { index in
+            selectedIndices.append(index)
+            return false
+        }
+
+        XCTAssertTrue(window.performKeyEquivalent(with: keyEvent(character: "\r", keyCode: 36, window: window)))
+        XCTAssertTrue(window.performKeyEquivalent(with: keyEvent(character: "\u{1b}", keyCode: 53, window: window)))
+        XCTAssertEqual(selectedIndices, [1, 2])
+    }
+
+    func testSingleActionCanHandleReturnAndEscape() throws {
+        let controller = SZModalDialogController(
+            style: .informational,
+            title: "Complete",
+            message: nil,
+            actions: [
+                SZDialogAction(title: "OK", roles: [.default, .cancel]),
+            ],
+            accessoryView: nil,
+            preferredFirstResponder: nil,
+        )
+        let window = try XCTUnwrap(controller.window)
+        let button = try XCTUnwrap(button(titled: "OK", in: window))
+        XCTAssertTrue(window.defaultButtonCell === button.cell)
+
+        var selectedIndices: [Int] = []
+        controller.shouldFinishHandler = { index in
+            selectedIndices.append(index)
+            return false
+        }
+
+        XCTAssertTrue(window.performKeyEquivalent(with: keyEvent(character: "\r", keyCode: 36, window: window)))
+        XCTAssertTrue(window.performKeyEquivalent(with: keyEvent(character: "\u{1b}", keyCode: 53, window: window)))
+        XCTAssertEqual(selectedIndices, [0, 0])
+    }
+
+    func testMissingOrInvalidChoiceHandlerResponseFallsBackToCancel() {
+        let request = SZOperationChoiceRequest(
+            style: .warning,
+            title: "Replace?",
+            message: nil,
+            buttonTitles: ["Yes", "No", "Cancel"],
+            defaultButtonIndex: 0,
+            cancelButtonIndex: 2,
+        )
+        let session = SZOperationSession()
+
+        XCTAssertEqual(session.requestChoice(request), 2)
+
+        session.choiceRequestHandler = { _ in 99 }
+        XCTAssertEqual(session.requestChoice(request), 2)
+    }
+
+    func testChoiceHandlerReceivesExplicitKeyboardSemantics() {
+        let request = SZOperationChoiceRequest(
+            style: .critical,
+            title: "Question",
+            message: "Details",
+            buttonTitles: ["Continue", "Stop"],
+            defaultButtonIndex: 0,
+            cancelButtonIndex: 1,
+        )
+        let session = SZOperationSession()
+        session.choiceRequestHandler = { receivedRequest in
+            XCTAssertTrue(receivedRequest === request)
+            XCTAssertEqual(receivedRequest.defaultButtonIndex, 0)
+            XCTAssertEqual(receivedRequest.cancelButtonIndex, 1)
+            return receivedRequest.defaultButtonIndex
+        }
+
+        XCTAssertEqual(session.requestChoice(request), 0)
+    }
+
+    private func button(titled title: String, in window: NSWindow) -> NSButton? {
+        guard let rootView = window.contentViewController?.view else { return nil }
+        return button(titled: title, in: rootView)
+    }
+
+    private func button(titled title: String, in view: NSView) -> NSButton? {
+        if let button = view as? NSButton, button.title == title {
+            return button
+        }
+        for subview in view.subviews {
+            if let button = button(titled: title, in: subview) {
+                return button
+            }
+        }
+        return nil
+    }
+
+    private func keyEvent(character: String,
+                          keyCode: UInt16,
+                          window: NSWindow) -> NSEvent
+    {
+        NSEvent.keyEvent(with: .keyDown,
+                         location: .zero,
+                         modifierFlags: [],
+                         timestamp: 0,
+                         windowNumber: window.windowNumber,
+                         context: nil,
+                         characters: character,
+                         charactersIgnoringModifiers: character,
+                         isARepeat: false,
+                         keyCode: keyCode)!
+    }
+}
 
 @MainActor
 final class OperationSessionProgressThrottlingTests: XCTestCase {

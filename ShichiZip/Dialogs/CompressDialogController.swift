@@ -154,10 +154,14 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             let controller = SZModalDialogController(style: .informational,
                                                      title: SZL10n.string("compress.title"),
                                                      message: messageText,
-                                                     buttonTitles: [SZL10n.string("common.cancel"), SZL10n.string("common.ok")],
+                                                     actions: [
+                                                         SZDialogAction(title: SZL10n.string("common.cancel"),
+                                                                        roles: .cancel),
+                                                         SZDialogAction(title: SZL10n.string("common.ok"),
+                                                                        roles: .default),
+                                                     ],
                                                      accessoryView: contentController.accessoryView,
-                                                     preferredFirstResponder: contentController.preferredFirstResponder,
-                                                     cancelButtonIndex: 0)
+                                                     preferredFirstResponder: contentController.preferredFirstResponder)
             currentDialogWindow = controller.window
             self.contentController = contentController
             advancedOptionsState = initialState.advancedOptions

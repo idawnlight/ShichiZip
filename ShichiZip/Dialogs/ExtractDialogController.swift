@@ -179,10 +179,14 @@ final class ExtractDialogController: NSObject {
         let controller = SZModalDialogController(style: .informational,
                                                  title: SZL10n.string("extract.title"),
                                                  message: messageText,
-                                                 buttonTitles: [SZL10n.string("common.cancel"), SZL10n.string("extract.title")],
+                                                 actions: [
+                                                     SZDialogAction(title: SZL10n.string("common.cancel"),
+                                                                    roles: .cancel),
+                                                     SZDialogAction(title: SZL10n.string("extract.title"),
+                                                                    roles: .default),
+                                                 ],
                                                  accessoryView: contentController.view,
-                                                 preferredFirstResponder: contentController.preferredFirstResponder,
-                                                 cancelButtonIndex: 0)
+                                                 preferredFirstResponder: contentController.preferredFirstResponder)
         contentController.attach(to: controller.window)
 
         let resultBuilder = ExtractDialogResultBuilder(baseDirectory: baseDirectory)

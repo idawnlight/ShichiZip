@@ -15,10 +15,26 @@ typedef BOOL (^SZOperationPasswordRequestHandler)(NSString* title,
     NSString* _Nullable initialValue,
     NSString* _Nullable* _Nullable password);
 
-typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationPromptStyle style,
-    NSString* title,
-    NSString* _Nullable message,
-    NSArray<NSString*>* buttonTitles);
+@interface SZOperationChoiceRequest : NSObject
+
+- (instancetype)init NS_UNAVAILABLE;
+- (instancetype)initWithStyle:(SZOperationPromptStyle)style
+                        title:(NSString*)title
+                      message:(nullable NSString*)message
+                 buttonTitles:(NSArray<NSString*>*)buttonTitles
+           defaultButtonIndex:(NSInteger)defaultButtonIndex
+            cancelButtonIndex:(NSInteger)cancelButtonIndex NS_DESIGNATED_INITIALIZER;
+
+@property (nonatomic, readonly) SZOperationPromptStyle style;
+@property (nonatomic, copy, readonly) NSString* title;
+@property (nonatomic, copy, readonly, nullable) NSString* message;
+@property (nonatomic, copy, readonly) NSArray<NSString*>* buttonTitles;
+@property (nonatomic, readonly) NSInteger defaultButtonIndex;
+@property (nonatomic, readonly) NSInteger cancelButtonIndex;
+
+@end
+
+typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationChoiceRequest* request);
 
 @interface SZOperationSnapshot : NSObject
 
@@ -62,10 +78,7 @@ typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationPromptStyle styl
                          message:(nullable NSString*)message
                     initialValue:(nullable NSString*)initialValue
                         password:(NSString* _Nullable* _Nullable)password;
-- (NSInteger)requestChoiceWithStyle:(SZOperationPromptStyle)style
-                              title:(NSString*)title
-                            message:(nullable NSString*)message
-                       buttonTitles:(NSArray<NSString*>*)buttonTitles;
+- (NSInteger)requestChoice:(SZOperationChoiceRequest*)request;
 
 @end
 

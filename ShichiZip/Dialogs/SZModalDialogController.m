@@ -5,6 +5,69 @@
 static const CGFloat SZModalDialogMinimumContentWidth = 440.0;
 static const CGFloat SZModalDialogMaximumTextColumnWidth = 520.0;
 
+@implementation SZDialogAction
+
+- (instancetype)initWithTitle:(NSString*)title roles:(SZDialogActionRole)roles {
+    if ((self = [super init])) {
+        _title = [title copy];
+        _roles = roles;
+    }
+    return self;
+}
+
+@end
+
+@interface SZModalDialogWindow : NSWindow
+
+@property (nonatomic, weak, nullable) NSButton* cancelButton;
+
+@end
+
+@implementation SZModalDialogWindow
+
+- (BOOL)performKeyEquivalent:(NSEvent*)event {
+    const NSEventModifierFlags disallowedModifiers = NSEventModifierFlagCommand
+        | NSEventModifierFlagControl
+        | NSEventModifierFlagOption
+        | NSEventModifierFlagShift;
+    if ((event.modifierFlags & disallowedModifiers) == 0
+        && [event.charactersIgnoringModifiers isEqualToString:@"\e"]) {
+        if (self.cancelButton.enabled) {
+            [self.cancelButton performClick:nil];
+        } else {
+            NSBeep();
+        }
+        return YES;
+    }
+
+    return [super performKeyEquivalent:event];
+}
+
+@end
+
+static NSInteger SZModalDialogUniqueActionIndex(NSArray<SZDialogAction*>* actions,
+                                                SZDialogActionRole role,
+                                                NSString* roleName) {
+    NSInteger matchingIndex = NSNotFound;
+    for (NSInteger index = 0; index < (NSInteger)actions.count; index++) {
+        SZDialogAction* action = actions[(NSUInteger)index];
+        if ((action.roles & role) == 0) {
+            continue;
+        }
+        if (matchingIndex != NSNotFound) {
+            [NSException raise:NSInvalidArgumentException
+                        format:@"SZModalDialogController requires exactly one %@ action", roleName];
+        }
+        matchingIndex = index;
+    }
+
+    if (matchingIndex == NSNotFound) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"SZModalDialogController requires exactly one %@ action", roleName];
+    }
+    return matchingIndex;
+}
+
 static NSString* SZModalDialogAppDisplayName(void) {
     NSBundle* bundle = NSBundle.mainBundle;
     NSString* displayName = [bundle objectForInfoDictionaryKey:@"CFBundleDisplayName"];
@@ -25,10 +88,9 @@ static NSString* SZModalDialogAppDisplayName(void) {
 - (instancetype)initWithStyle:(SZDialogStyle)style
                         title:(NSString*)title
                       message:(nullable NSString*)message
-                 buttonTitles:(NSArray<NSString*>*)buttonTitles
+                      actions:(NSArray<SZDialogAction*>*)actions
                 accessoryView:(nullable NSView*)accessoryView
       preferredFirstResponder:(nullable NSView*)preferredFirstResponder
-            cancelButtonIndex:(NSInteger)cancelButtonIndex
                        target:(id)target
                        action:(SEL)action;
 
@@ -51,13 +113,12 @@ static NSString* SZModalDialogAppDisplayName(void) {
     SZDialogStyle _style;
     NSString* _dialogTitle;
     NSString* _dialogMessage;
-    NSArray<NSString*>* _buttonTitles;
+    NSArray<SZDialogAction*>* _actions;
     NSView* _accessoryView;
     NSView* _preferredFirstResponderView;
     NSArray<NSButton*>* _dialogButtons;
     __weak id _target;
     SEL _action;
-    NSInteger _cancelButtonIndex;
 }
 
 - (CGFloat)minimumContentWidth {
@@ -76,15 +137,15 @@ static NSString* SZModalDialogAppDisplayName(void) {
 }
 
 - (CGFloat)minimumButtonRowWidth {
-    if (_buttonTitles.count == 0) {
+    if (_actions.count == 0) {
         return 0;
     }
 
     CGFloat totalWidth = 40;
-    totalWidth += (_buttonTitles.count - 1) * 8;
+    totalWidth += (_actions.count - 1) * 8;
 
-    for (NSString* title in _buttonTitles) {
-        NSButton* button = [NSButton buttonWithTitle:title target:nil action:NULL];
+    for (SZDialogAction* action in _actions) {
+        NSButton* button = [NSButton buttonWithTitle:action.title target:nil action:NULL];
         NSSize fittingSize = button.fittingSize;
         totalWidth += ceil(fittingSize.width);
     }
@@ -95,20 +156,18 @@ static NSString* SZModalDialogAppDisplayName(void) {
 - (instancetype)initWithStyle:(SZDialogStyle)style
                         title:(NSString*)title
                       message:(NSString*)message
-                 buttonTitles:(NSArray<NSString*>*)buttonTitles
+                      actions:(NSArray<SZDialogAction*>*)actions
                 accessoryView:(NSView*)accessoryView
       preferredFirstResponder:(NSView*)preferredFirstResponder
-            cancelButtonIndex:(NSInteger)cancelButtonIndex
                        target:(id)target
                        action:(SEL)action {
     if ((self = [super initWithNibName:nil bundle:nil])) {
         _style = style;
         _dialogTitle = [title copy];
         _dialogMessage = [message copy] ?: @"";
-        _buttonTitles = [buttonTitles copy];
+        _actions = [actions copy];
         _accessoryView = accessoryView;
         _preferredFirstResponderView = preferredFirstResponder;
-        _cancelButtonIndex = cancelButtonIndex;
         _target = target;
         _action = action;
     }
@@ -220,20 +279,14 @@ static NSString* SZModalDialogAppDisplayName(void) {
     [buttonStack setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
     [container addSubview:buttonStack];
 
-    NSMutableArray<NSButton*>* buttons = [NSMutableArray arrayWithCapacity:_buttonTitles.count];
+    NSMutableArray<NSButton*>* buttons = [NSMutableArray arrayWithCapacity:_actions.count];
 
-    for (NSInteger index = 0; index < (NSInteger)_buttonTitles.count; index++) {
-        NSString* title = _buttonTitles[(NSUInteger)index];
-        NSButton* button = [NSButton buttonWithTitle:title target:_target action:_action];
+    for (NSInteger index = 0; index < (NSInteger)_actions.count; index++) {
+        SZDialogAction* dialogAction = _actions[(NSUInteger)index];
+        NSButton* button = [NSButton buttonWithTitle:dialogAction.title target:_target action:_action];
         button.translatesAutoresizingMaskIntoConstraints = NO;
         button.tag = index;
         button.accessibilityIdentifier = [NSString stringWithFormat:@"modal.button.%ld", (long)index];
-        if (index == (NSInteger)_buttonTitles.count - 1) {
-            button.keyEquivalent = @"\r";
-        }
-        if (index == _cancelButtonIndex) {
-            button.keyEquivalent = @"\e";
-        }
         [buttonStack addArrangedSubview:button];
         [buttons addObject:button];
     }
@@ -300,14 +353,24 @@ static NSString* SZModalDialogAppDisplayName(void) {
 - (instancetype)initWithStyle:(SZDialogStyle)style
                         title:(NSString*)title
                       message:(NSString*)message
-                 buttonTitles:(NSArray<NSString*>*)buttonTitles
+                      actions:(NSArray<SZDialogAction*>*)actions
                 accessoryView:(NSView*)accessoryView
-      preferredFirstResponder:(NSView*)preferredFirstResponder
-            cancelButtonIndex:(NSInteger)cancelButtonIndex {
-    NSWindow* window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 440, 200)
-                                                   styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskFullSizeContentView)
-                                                     backing:NSBackingStoreBuffered
-                                                       defer:NO];
+      preferredFirstResponder:(NSView*)preferredFirstResponder {
+    if (actions.count == 0) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"SZModalDialogController requires at least one action"];
+    }
+    const NSInteger defaultButtonIndex = SZModalDialogUniqueActionIndex(actions,
+                                                                        SZDialogActionRoleDefault,
+                                                                        @"default");
+    const NSInteger cancelButtonIndex = SZModalDialogUniqueActionIndex(actions,
+                                                                       SZDialogActionRoleCancel,
+                                                                       @"cancel");
+
+    SZModalDialogWindow* window = [[SZModalDialogWindow alloc] initWithContentRect:NSMakeRect(0, 0, 440, 200)
+                                                                         styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskFullSizeContentView)
+                                                                           backing:NSBackingStoreBuffered
+                                                                             defer:NO];
     if ((self = [self initWithWindow:window])) {
         _cancelButtonIndex = cancelButtonIndex;
         _selectedButtonIndex = cancelButtonIndex;
@@ -322,14 +385,17 @@ static NSString* SZModalDialogAppDisplayName(void) {
         _contentController = [[SZModalDialogContentViewController alloc] initWithStyle:style
                                                                                  title:title
                                                                                message:message
-                                                                          buttonTitles:buttonTitles
+                                                                               actions:actions
                                                                          accessoryView:accessoryView
                                                                preferredFirstResponder:preferredFirstResponder
-                                                                     cancelButtonIndex:cancelButtonIndex
                                                                                 target:self
                                                                                 action:@selector(buttonClicked:)];
         window.contentViewController = _contentController;
         [window.contentView layoutSubtreeIfNeeded];
+
+        NSButton* defaultButton = _contentController.dialogButtons[(NSUInteger)defaultButtonIndex];
+        window.defaultButtonCell = (NSButtonCell*)defaultButton.cell;
+        window.cancelButton = _contentController.dialogButtons[(NSUInteger)cancelButtonIndex];
 
         NSSize fittingSize = _contentController.view.fittingSize;
         const CGFloat minimumWidth = [_contentController minimumContentWidth];
