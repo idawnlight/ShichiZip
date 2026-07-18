@@ -40,31 +40,48 @@ final class FileManagerArchiveOperationGateTests: XCTestCase {
         withExtendedLifetime(lease) {}
     }
 
-    func testWaitsForActiveLeaseBeforeClosing() throws {
+    func testWaitsForActiveLeaseBeforeClosing() async throws {
         let gate = FileManagerArchiveOperationGate()
         var lease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(gate.acquireLease())
         XCTAssertNotNil(lease)
         let didFinish = OSAllocatedUnfairLock(initialState: false)
         let closeFinished = expectation(description: "archive operation gate close finished")
 
-        gate.beginClosing()
-        DispatchQueue.global(qos: .userInitiated).async {
-            gate.waitForLeasesToDrain()
+        let closeTask = Task {
+            await gate.beginClosingAndWaitForLeases()
             didFinish.withLock { $0 = true }
             closeFinished.fulfill()
         }
 
-        let deadline = Date().addingTimeInterval(0.05)
-        while Date() < deadline {
-            if didFinish.withLock({ $0 }) {
-                break
-            }
-            RunLoop.current.run(mode: .default,
-                                before: Date().addingTimeInterval(0.005))
-        }
+        try await Task.sleep(for: .milliseconds(50))
         XCTAssertFalse(didFinish.withLock { $0 })
 
         lease = nil
-        wait(for: [closeFinished], timeout: 1)
+        await fulfillment(of: [closeFinished], timeout: 1)
+        await closeTask.value
+    }
+
+    func testResumesAllCloseWaitersWhenLeasesDrain() async throws {
+        let gate = FileManagerArchiveOperationGate()
+        var lease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(gate.acquireLease())
+        XCTAssertNotNil(lease)
+
+        let firstWaiter = Task {
+            await gate.beginClosingAndWaitForLeases()
+            return true
+        }
+        let secondWaiter = Task {
+            await gate.beginClosingAndWaitForLeases()
+            return true
+        }
+
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertNil(gate.acquireLease())
+
+        lease = nil
+        let firstFinished = await firstWaiter.value
+        let secondFinished = await secondWaiter.value
+        XCTAssertTrue(firstFinished)
+        XCTAssertTrue(secondFinished)
     }
 }

@@ -20,11 +20,26 @@ protocol FileManagerDocumentOpenRouting: AnyObject {
 @MainActor
 final class FileManagerWindowRegistry: FileManagerWindowCoordinating {
     private var controllers: [FileManagerWindowController] = []
+    private var pendingOpenControllers: [UUID: FileManagerWindowController] = [:]
+    private var pendingOpenWaiters: [CheckedContinuation<Void, Never>] = []
+    private var isPreparingForTermination = false
 
     @discardableResult
-    func prepareForApplicationTermination(showError: Bool = true) -> Bool {
+    func prepareForApplicationTermination(showError: Bool = true) async -> Bool {
+        isPreparingForTermination = true
+
+        for controller in uniquePendingOpenControllers() {
+            guard await controller.prepareForClose(showError: showError) else {
+                cancelTerminationPreparation()
+                return false
+            }
+        }
+
+        await waitForPendingOpenOperations()
+
         for controller in controllers {
-            guard controller.prepareForClose(showError: showError) else {
+            guard await controller.prepareForClose(showError: showError) else {
+                cancelTerminationPreparation()
                 return false
             }
         }
@@ -32,18 +47,27 @@ final class FileManagerWindowRegistry: FileManagerWindowCoordinating {
     }
 
     func showFileManager(_ sender: Any?) {
+        guard !isPreparingForTermination else { return }
         showFileManagerWindow(reusableFileManagerWindowController() ?? makeFileManagerWindowController(),
                               sender: sender)
     }
 
     func openArchiveInFileManager(_ url: URL) async {
+        guard !isPreparingForTermination else { return }
         let reusableController = reusableFileManagerWindowController()
         let controller = reusableController ?? makeFileManagerWindowController(register: false)
+        let pendingIdentifier = beginPendingOpen(for: controller)
+        defer { finishPendingOpen(pendingIdentifier) }
+
         if await controller.navigateToArchive(url, revealWindow: false) {
+            guard !isPreparingForTermination else {
+                _ = await controller.prepareForClose(showError: false)
+                return
+            }
             if reusableController != nil,
                !isRegisteredFileManagerWindowController(controller)
             {
-                _ = controller.prepareForClose(showError: false)
+                _ = await controller.prepareForClose(showError: false)
                 return
             }
             if reusableController == nil {
@@ -55,8 +79,16 @@ final class FileManagerWindowRegistry: FileManagerWindowCoordinating {
     }
 
     func openArchiveInNewFileManager(_ url: URL) async {
+        guard !isPreparingForTermination else { return }
         let controller = makeFileManagerWindowController(register: false)
+        let pendingIdentifier = beginPendingOpen(for: controller)
+        defer { finishPendingOpen(pendingIdentifier) }
+
         if await controller.navigateToArchive(url, revealWindow: false) {
+            guard !isPreparingForTermination else {
+                _ = await controller.prepareForClose(showError: false)
+                return
+            }
             registerFileManagerWindowController(controller)
             showFileManagerWindow(controller,
                                   sender: nil)
@@ -65,8 +97,16 @@ final class FileManagerWindowRegistry: FileManagerWindowCoordinating {
 
     @discardableResult
     func openFileSystemItemInNewFileManager(_ url: URL) async -> Bool {
+        guard !isPreparingForTermination else { return false }
         let controller = makeFileManagerWindowController(register: false)
+        let pendingIdentifier = beginPendingOpen(for: controller)
+        defer { finishPendingOpen(pendingIdentifier) }
+
         if await controller.openFileSystemItem(url, revealWindow: false) {
+            guard !isPreparingForTermination else {
+                _ = await controller.prepareForClose(showError: false)
+                return false
+            }
             registerFileManagerWindowController(controller)
             showFileManagerWindow(controller,
                                   sender: nil)
@@ -76,14 +116,20 @@ final class FileManagerWindowRegistry: FileManagerWindowCoordinating {
         return false
     }
 
-    func revealFileSystemItemsInNewWindow(_ urls: [URL]) {
-        let controller = makeFileManagerWindowController()
+    func revealFileSystemItemsInNewWindow(_ urls: [URL]) async {
+        guard !isPreparingForTermination else { return }
+        let controller = makeFileManagerWindowController(register: false)
+        let pendingIdentifier = beginPendingOpen(for: controller)
+        defer { finishPendingOpen(pendingIdentifier) }
 
-        if controller.revealFileSystemItems(urls, revealWindow: false) {
+        if await controller.revealFileSystemItems(urls, revealWindow: false) {
+            guard !isPreparingForTermination else {
+                _ = await controller.prepareForClose(showError: false)
+                return
+            }
+            registerFileManagerWindowController(controller)
             showFileManagerWindow(controller,
                                   sender: nil)
-        } else {
-            removeFileManagerWindowController(controller)
         }
     }
 
@@ -125,6 +171,48 @@ final class FileManagerWindowRegistry: FileManagerWindowCoordinating {
 
     private func isRegisteredFileManagerWindowController(_ controller: FileManagerWindowController) -> Bool {
         controllers.contains { $0 === controller }
+    }
+
+    private func beginPendingOpen(for controller: FileManagerWindowController) -> UUID {
+        let identifier = UUID()
+        pendingOpenControllers[identifier] = controller
+        return identifier
+    }
+
+    private func finishPendingOpen(_ identifier: UUID) {
+        pendingOpenControllers[identifier] = nil
+        guard pendingOpenControllers.isEmpty else { return }
+
+        let waiters = pendingOpenWaiters
+        pendingOpenWaiters.removeAll()
+        for waiter in waiters {
+            waiter.resume()
+        }
+    }
+
+    private func waitForPendingOpenOperations() async {
+        guard !pendingOpenControllers.isEmpty else { return }
+        await withCheckedContinuation { continuation in
+            pendingOpenWaiters.append(continuation)
+        }
+    }
+
+    private func uniquePendingOpenControllers() -> [FileManagerWindowController] {
+        var seen = Set<ObjectIdentifier>()
+        return pendingOpenControllers.values.filter { controller in
+            seen.insert(ObjectIdentifier(controller)).inserted
+        }
+    }
+
+    private func cancelTerminationPreparation() {
+        var seen = Set<ObjectIdentifier>()
+        let affectedControllers = (controllers + Array(pendingOpenControllers.values)).filter { controller in
+            seen.insert(ObjectIdentifier(controller)).inserted
+        }
+        for controller in affectedControllers {
+            controller.cancelClosePreparation()
+        }
+        isPreparingForTermination = false
     }
 
     private func showFileManagerWindow(_ controller: FileManagerWindowController,

@@ -3,24 +3,41 @@ import Foundation
 @MainActor
 enum FileManagerPaneNavigationCommands {
     static func openRootFolder(in pane: FileManagerPaneController) {
+        guard let navigationGeneration = pane.navigationCommandBeginNavigation() else { return }
         if pane.navigationCommandIsInsideArchive {
-            pane.navigationCommandNavigateArchiveSubdir("")
+            pane.navigationCommandNavigateArchiveSubdir("",
+                                                        expectedNavigationGeneration: navigationGeneration)
             return
         }
 
-        pane.navigationCommandLoadDirectory(FileManagerFileSystemNavigation.rootURL(for: pane.currentDirectoryURL))
+        pane.navigationCommandLoadDirectory(
+            FileManagerFileSystemNavigation.rootURL(for: pane.currentDirectoryURL),
+            expectedNavigationGeneration: navigationGeneration,
+        )
     }
 
     static func openRecentDirectory(_ url: URL,
                                     in pane: FileManagerPaneController)
     {
-        if pane.navigationCommandIsInsideArchive,
-           !pane.navigationCommandCloseAllArchives(showError: true)
-        {
+        guard let navigationGeneration = pane.navigationCommandBeginNavigation() else { return }
+        guard pane.navigationCommandIsInsideArchive else {
+            pane.navigationCommandLoadDirectory(url,
+                                                expectedNavigationGeneration: navigationGeneration)
+            return
+        }
+        guard let transitionToken = pane.navigationCommandBeginTransition(navigationGeneration) else {
             return
         }
 
-        pane.navigationCommandLoadDirectory(url)
+        Task { @MainActor [weak pane] in
+            guard let pane else { return }
+            defer { pane.navigationCommandEndTransition(transitionToken) }
+            guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+            guard await pane.navigationCommandCloseAllArchives(showError: true) else { return }
+            guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+            pane.navigationCommandLoadDirectory(url,
+                                                expectedNavigationGeneration: navigationGeneration)
+        }
     }
 
     static func submitPath(_ enteredPath: String,
@@ -28,20 +45,39 @@ enum FileManagerPaneNavigationCommands {
     {
         let path = enteredPath.trimmingCharacters(in: .whitespacesAndNewlines)
         if path.isEmpty { return }
+        guard let navigationGeneration = pane.navigationCommandBeginNavigation() else { return }
 
         switch FileManagerFileSystemNavigation.addressBarTarget(for: path) {
         case let .directory(url):
-            guard pane.navigationCommandCloseAllArchives(showError: true) else {
-                pane.navigationCommandRestorePathField()
+            if pane.navigationCommandIsInsideArchive {
+                guard let transitionToken = pane.navigationCommandBeginTransition(navigationGeneration) else {
+                    return
+                }
+                Task { @MainActor [weak pane] in
+                    guard let pane else { return }
+                    defer { pane.navigationCommandEndTransition(transitionToken) }
+                    guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+                    guard await pane.navigationCommandCloseAllArchives(showError: true) else {
+                        guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+                        pane.navigationCommandRestorePathField()
+                        pane.navigationCommandReturnFocusToFileList()
+                        return
+                    }
+                    guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+                    pane.navigationCommandLoadDirectory(url,
+                                                        expectedNavigationGeneration: navigationGeneration)
+                    pane.navigationCommandReturnFocusToFileList()
+                }
+            } else {
+                pane.navigationCommandLoadDirectory(url,
+                                                    expectedNavigationGeneration: navigationGeneration)
                 pane.navigationCommandReturnFocusToFileList()
-                return
             }
-            pane.navigationCommandLoadDirectory(url)
-            pane.navigationCommandReturnFocusToFileList()
 
         case let .file(url, hostDirectory):
             openAddressBarFile(url,
                                hostDirectory: hostDirectory,
+                               navigationGeneration: navigationGeneration,
                                in: pane)
 
         case nil:
@@ -52,16 +88,22 @@ enum FileManagerPaneNavigationCommands {
     }
 
     static func goUp(in pane: FileManagerPaneController) {
+        guard let navigationGeneration = pane.navigationCommandBeginNavigation() else { return }
         if pane.navigationCommandIsInsideArchive {
-            goUpInArchive(in: pane)
+            goUpInArchive(navigationGeneration: navigationGeneration,
+                          in: pane)
             return
         }
 
-        pane.navigationCommandLoadDirectory(pane.currentDirectoryURL.deletingLastPathComponent())
+        pane.navigationCommandLoadDirectory(
+            pane.currentDirectoryURL.deletingLastPathComponent(),
+            expectedNavigationGeneration: navigationGeneration,
+        )
     }
 
     private static func openAddressBarFile(_ url: URL,
                                            hostDirectory: URL,
+                                           navigationGeneration: Int,
                                            in pane: FileManagerPaneController)
     {
         if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(url) {
@@ -84,19 +126,43 @@ enum FileManagerPaneNavigationCommands {
             return
         }
 
-        guard pane.navigationCommandCloseAllArchives(showError: true) else {
-            pane.navigationCommandRestorePathField()
-            pane.navigationCommandReturnFocusToFileList()
-            return
+        let transitionToken: UUID?
+        if pane.navigationCommandIsInsideArchive {
+            guard let token = pane.navigationCommandBeginTransition(navigationGeneration) else {
+                return
+            }
+            transitionToken = token
+        } else {
+            transitionToken = nil
         }
 
         Task { @MainActor [weak pane] in
             guard let pane else { return }
+            defer {
+                if let transitionToken {
+                    pane.navigationCommandEndTransition(transitionToken)
+                }
+            }
+            guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
 
-            switch await pane.navigationCommandOpenArchiveInline(url,
-                                                                 hostDirectory: hostDirectory,
-                                                                 showError: false)
+            if pane.navigationCommandIsInsideArchive,
+               !(await pane.navigationCommandCloseAllArchives(showError: true))
             {
+                guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+                pane.navigationCommandRestorePathField()
+                pane.navigationCommandReturnFocusToFileList()
+                return
+            }
+
+            guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+            let result = await pane.navigationCommandOpenArchiveInline(
+                url,
+                hostDirectory: hostDirectory,
+                showError: false,
+                expectedNavigationGeneration: navigationGeneration,
+            )
+            guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+            switch result {
             case .opened:
                 break
 
@@ -123,11 +189,16 @@ enum FileManagerPaneNavigationCommands {
         }
     }
 
-    private static func goUpInArchive(in pane: FileManagerPaneController) {
+    private static func goUpInArchive(navigationGeneration: Int,
+                                      in pane: FileManagerPaneController)
+    {
         guard let level = pane.navigationCommandCurrentArchiveLevel else { return }
 
         if !level.currentSubdir.isEmpty {
-            pane.navigationCommandNavigateArchiveSubdir(parentSubdir(for: level.currentSubdir))
+            pane.navigationCommandNavigateArchiveSubdir(
+                parentSubdir(for: level.currentSubdir),
+                expectedNavigationGeneration: navigationGeneration,
+            )
             return
         }
 
@@ -142,18 +213,33 @@ enum FileManagerPaneNavigationCommands {
             pane.navigationCommandShowError(error)
             return
         }
-
-        guard pane.navigationCommandCloseArchiveLevel(level,
-                                                      showError: true)
-        else {
+        guard let transitionToken = pane.navigationCommandBeginTransition(navigationGeneration) else {
             return
         }
 
-        if !pane.navigationCommandIsInsideArchive {
-            pane.navigationCommandLoadDirectory(fileSystemDirectory)
-        } else {
-            guard let outer = pane.navigationCommandCurrentArchiveLevel else { return }
-            pane.navigationCommandNavigateArchiveSubdir(outer.currentSubdir)
+        Task { @MainActor [weak pane] in
+            guard let pane else { return }
+            defer { pane.navigationCommandEndTransition(transitionToken) }
+            guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+            guard await pane.navigationCommandCloseArchiveLevel(level,
+                                                                showError: true)
+            else {
+                return
+            }
+            guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
+
+            if !pane.navigationCommandIsInsideArchive {
+                pane.navigationCommandLoadDirectory(
+                    fileSystemDirectory,
+                    expectedNavigationGeneration: navigationGeneration,
+                )
+            } else {
+                guard let outer = pane.navigationCommandCurrentArchiveLevel else { return }
+                pane.navigationCommandNavigateArchiveSubdir(
+                    outer.currentSubdir,
+                    expectedNavigationGeneration: navigationGeneration,
+                )
+            }
         }
     }
 

@@ -24,6 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
     private var benchmarkWindowController: BenchmarkWindowController?
     private var deleteTemporaryFilesWindowController: DeleteTemporaryFilesWindowController?
     private var settingsWindowController: SettingsWindowController?
+    private var applicationTerminationTask: Task<Void, Never>?
     private let launchOpenCoordinator = LaunchOpenCoordinator()
     private lazy var lastWindowCloseTerminationDeferrer = LastWindowCloseTerminationDeferrer(
         shouldTerminate: { [weak self] in
@@ -98,11 +99,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
         false
     }
 
-    func applicationShouldTerminate(_: NSApplication) -> NSApplication.TerminateReply {
-        guard fileManagerWindowRegistry.prepareForApplicationTermination() else {
-            return .terminateCancel
+    func applicationShouldTerminate(_ application: NSApplication) -> NSApplication.TerminateReply {
+        guard applicationTerminationTask == nil else {
+            return .terminateLater
         }
-        return .terminateNow
+
+        applicationTerminationTask = Task { @MainActor [weak self] in
+            guard let self else {
+                application.reply(toApplicationShouldTerminate: false)
+                return
+            }
+
+            let shouldTerminate = await fileManagerWindowRegistry.prepareForApplicationTermination()
+            applicationTerminationTask = nil
+            application.reply(toApplicationShouldTerminate: shouldTerminate)
+        }
+        return .terminateLater
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_: NSApplication) -> Bool {

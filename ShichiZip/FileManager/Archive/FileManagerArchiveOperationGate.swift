@@ -17,6 +17,7 @@ final class FileManagerArchiveOperationGate: @unchecked Sendable {
     private let condition = NSCondition()
     private var activeLeaseCount = 0
     private var isClosing = false
+    private var drainWaiters: [CheckedContinuation<Void, Never>] = []
 
     func acquireLease() -> Lease? {
         condition.lock()
@@ -36,11 +37,6 @@ final class FileManagerArchiveOperationGate: @unchecked Sendable {
         condition.unlock()
     }
 
-    func beginClosingAndWaitForLeases() {
-        beginClosing()
-        waitForLeasesToDrain()
-    }
-
     var hasActiveLeases: Bool {
         condition.lock()
         let hasActiveLeases = activeLeaseCount > 0
@@ -48,22 +44,18 @@ final class FileManagerArchiveOperationGate: @unchecked Sendable {
         return hasActiveLeases
     }
 
-    func waitForLeasesToDrain() {
-        while true {
+    func beginClosingAndWaitForLeases() async {
+        await withCheckedContinuation { continuation in
             condition.lock()
+            isClosing = true
             if activeLeaseCount == 0 {
                 condition.unlock()
+                continuation.resume()
                 return
             }
 
-            if Thread.isMainThread {
-                condition.unlock()
-                _ = RunLoop.current.run(mode: .default,
-                                        before: Date().addingTimeInterval(0.05))
-            } else {
-                _ = condition.wait(until: Date().addingTimeInterval(0.05))
-                condition.unlock()
-            }
+            drainWaiters.append(continuation)
+            condition.unlock()
         }
     }
 
@@ -75,12 +67,21 @@ final class FileManagerArchiveOperationGate: @unchecked Sendable {
     }
 
     private func releaseLease() {
+        let waiters: [CheckedContinuation<Void, Never>]
         condition.lock()
         activeLeaseCount -= 1
         precondition(activeLeaseCount >= 0)
         if activeLeaseCount == 0 {
             condition.broadcast()
+            waiters = drainWaiters
+            drainWaiters.removeAll()
+        } else {
+            waiters = []
         }
         condition.unlock()
+
+        for waiter in waiters {
+            waiter.resume()
+        }
     }
 }

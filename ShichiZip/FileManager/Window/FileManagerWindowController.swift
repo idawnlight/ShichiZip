@@ -3,6 +3,16 @@ import Cocoa
 /// Dual-pane file manager window replicating 7-Zip File Manager
 @MainActor
 class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserInterfaceValidations, NSMenuItemValidation {
+    private struct ClosePreparationOperation {
+        let token: UUID
+        let task: Task<Bool, Never>
+    }
+
+    private struct ClosePreparationPane {
+        let controller: FileManagerPaneController
+        let token: UUID
+    }
+
     private var splitView: NSSplitView!
     private var leftPane: FileManagerPaneController!
     private var rightPane: FileManagerPaneController!
@@ -14,6 +24,13 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     private var autoRefreshTimer: Timer?
     private var foldersHistoryWindowController: FoldersHistoryWindowController?
     private var pendingEvenSplitLayout = false
+    private var closePreparationOperation: ClosePreparationOperation?
+    private var windowCloseTask: Task<Void, Never>?
+    private var dualPaneTransitionTask: Task<Void, Never>?
+    private var allowsWindowClose = false
+    private var isClosePreparationActive = false
+    private var isPreparedForClose = false
+    private var closePreparationPanes: [ClosePreparationPane] = []
     let quickLookPanelController = FileManagerQuickLookPanelController()
     private let windowCoordinator: any FileManagerWindowCoordinating
 
@@ -74,18 +91,86 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     @discardableResult
-    func prepareForClose(showError: Bool = true) -> Bool {
-        let panes = isDualPane ? [leftPane, rightPane] : [leftPane]
-        for pane in panes {
-            guard pane?.prepareForClose(showError: showError) != false else {
+    func prepareForClose(showError: Bool = true) async -> Bool {
+        if isPreparedForClose {
+            return true
+        }
+        if let closePreparationOperation {
+            return await closePreparationOperation.task.value
+        }
+
+        beginClosePreparation()
+        let token = UUID()
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return false }
+            return await performClosePreparation(showError: showError)
+        }
+        closePreparationOperation = ClosePreparationOperation(token: token,
+                                                              task: task)
+        let result = await task.value
+        if closePreparationOperation?.token == token {
+            closePreparationOperation = nil
+        }
+        if result {
+            isPreparedForClose = true
+        } else {
+            cancelClosePreparation()
+        }
+        return result
+    }
+
+    private func performClosePreparation(showError: Bool) async -> Bool {
+        for pane in closePreparationPanes {
+            guard await pane.controller.prepareForClose(closePreparationToken: pane.token,
+                                                        showError: showError)
+            else {
                 return false
             }
         }
         return true
     }
 
-    func windowShouldClose(_: NSWindow) -> Bool {
-        prepareForClose(showError: true)
+    private func beginClosePreparation() {
+        guard !isClosePreparationActive else { return }
+        isClosePreparationActive = true
+        let paneControllers: [FileManagerPaneController] = isDualPane ? [leftPane, rightPane] : [leftPane]
+        closePreparationPanes = paneControllers.map { pane in
+            ClosePreparationPane(controller: pane,
+                                 token: pane.beginClosePreparation())
+        }
+    }
+
+    func cancelClosePreparation() {
+        guard closePreparationOperation == nil else { return }
+        for pane in closePreparationPanes {
+            pane.controller.cancelClosePreparation(pane.token,
+                                                   reactivateIfSuspended: true)
+        }
+        closePreparationPanes.removeAll()
+        isClosePreparationActive = false
+        isPreparedForClose = false
+    }
+
+    func windowShouldClose(_ window: NSWindow) -> Bool {
+        if allowsWindowClose {
+            return true
+        }
+        guard windowCloseTask == nil else {
+            return false
+        }
+
+        beginClosePreparation()
+        windowCloseTask = Task { @MainActor [weak self, weak window] in
+            guard let self, let window else { return }
+            let shouldClose = await prepareForClose(showError: true)
+            windowCloseTask = nil
+            guard shouldClose else { return }
+
+            allowsWindowClose = true
+            window.performClose(nil)
+            allowsWindowClose = false
+        }
+        return false
     }
 
     func windowWillClose(_: Notification) {
@@ -149,7 +234,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             splitView.addArrangedSubview(rightPane.view)
             pendingEvenSplitLayout = true
         } else {
-            rightPane.prepareForDeactivation(showError: false)
+            rightPane.prepareEmptyPaneForDeactivation()
         }
 
         contentView.addSubview(splitView)
@@ -274,6 +359,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     /// Navigate the active pane to show an archive's contents
     @discardableResult
     func navigateToArchive(_ url: URL, revealWindow: Bool = true) async -> Bool {
+        guard !isClosePreparationActive else { return false }
         let targetPane = activePane
         let opened = await targetPane.showArchive(at: url)
         if opened, revealWindow {
@@ -283,13 +369,14 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     @discardableResult
-    func revealFileSystemItems(_ urls: [URL], revealWindow: Bool = true) -> Bool {
+    func revealFileSystemItems(_ urls: [URL], revealWindow: Bool = true) async -> Bool {
+        guard !isClosePreparationActive else { return false }
         let standardizedURLs = urls.map(\.standardizedFileURL)
         guard !standardizedURLs.isEmpty else { return false }
 
         let targetPane = paneRoutingContext.targetPaneForRevealingFileSystemItems(standardizedURLs)
 
-        let revealed = targetPane.revealFileSystemItemURLs(standardizedURLs)
+        let revealed = await targetPane.revealFileSystemItemURLs(standardizedURLs)
         if revealed, revealWindow {
             window?.makeKeyAndOrderFront(nil)
         }
@@ -298,6 +385,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     @discardableResult
     func openFileSystemItem(_ url: URL, revealWindow: Bool = true) async -> Bool {
+        guard !isClosePreparationActive else { return false }
         let standardizedURL = url.standardizedFileURL
         guard let itemKind = FileManager.default.szExistingItemKind(at: standardizedURL) else {
             return false
@@ -314,20 +402,27 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     @objc func toggleDualPane(_: Any?) {
+        guard !isClosePreparationActive else { return }
         if isDualPane {
+            guard dualPaneTransitionTask == nil else { return }
             let wasRightPaneActive = activePane === rightPane
-            guard rightPane.prepareForDeactivation(showError: true) else {
-                return
-            }
+            dualPaneTransitionTask = Task { @MainActor [weak self] in
+                guard let self else { return }
+                defer { dualPaneTransitionTask = nil }
+                guard await rightPane.prepareForDeactivation(showError: true) else {
+                    return
+                }
 
-            isDualPane = false
-            FileManagerPanePreferences.setShowsDualPane(false)
-            rightPane.view.removeFromSuperview()
-            pendingEvenSplitLayout = false
-            if wasRightPaneActive {
-                leftPane.focusFileList()
+                isDualPane = false
+                FileManagerPanePreferences.setShowsDualPane(false)
+                rightPane.view.removeFromSuperview()
+                pendingEvenSplitLayout = false
+                if wasRightPaneActive {
+                    leftPane.focusFileList()
+                }
             }
         } else {
+            guard dualPaneTransitionTask == nil else { return }
             isDualPane = true
             FileManagerPanePreferences.setShowsDualPane(true)
             splitView.addArrangedSubview(rightPane.view)
@@ -432,7 +527,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     @objc func closeDirectory(_: Any?) {
-        activePane.closeDirectory()
+        let pane = activePane
+        Task { @MainActor in
+            await pane.closeDirectory()
+        }
     }
 
     @objc func showCRC32Hash(_: Any?) {

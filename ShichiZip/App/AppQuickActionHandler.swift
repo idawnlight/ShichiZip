@@ -51,9 +51,11 @@ final class AppQuickActionHandler {
             throw ShichiZipQuickActionError.unsupportedSelection(SZL10n.string("archive.selectOneOrMoreFiles"))
         }
 
-        for group in groups {
-            SZLog.info(Self.logPrefix, "show-in-file-manager opening new window urlCount=\(group.count)")
-            fileManagerWindowRegistry.revealFileSystemItemsInNewWindow(group)
+        Task { @MainActor [fileManagerWindowRegistry] in
+            for group in groups {
+                SZLog.info(Self.logPrefix, "show-in-file-manager opening new window urlCount=\(group.count)")
+                await fileManagerWindowRegistry.revealFileSystemItemsInNewWindow(group)
+            }
         }
     }
 

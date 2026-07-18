@@ -60,21 +60,48 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         wait(for: [unexpectedPublish], timeout: 0.1)
     }
 
-    func testCloseAllArchivesClearsSessionAndRunsRefreshCallbacks() throws {
+    func testCloseAllArchivesClearsSessionAndRunsRefreshCallbacks() async throws {
         let session = FileManagerArchiveSession()
         try session.appendPreparedArchive(makePreparedArchive(named: "close-all"))
         var didUpdateTableColumns = false
         let coordinator = makeCoordinator(session: session,
                                           updateTableColumns: { didUpdateTableColumns = true })
 
-        XCTAssertTrue(coordinator.closeAll(showError: true))
+        let didClose = await coordinator.closeAll(showError: true)
+        XCTAssertTrue(didClose)
 
         XCTAssertFalse(session.isInsideArchive)
         XCTAssertTrue(session.displayItems.isEmpty)
         XCTAssertTrue(didUpdateTableColumns)
     }
 
-    func testFinishArchiveOpenCommitsPreparedArchiveAndPresentsSubdir() throws {
+    func testConcurrentCloseAllRequestsShareOneCloseOperation() async throws {
+        let session = FileManagerArchiveSession()
+        session.appendPreparedArchive(try makePreparedArchive(named: "coalesced-close-all"))
+        let level = try XCTUnwrap(session.currentLevel)
+        var lease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(level.operationGate.acquireLease())
+        XCTAssertNotNil(lease)
+        let coordinator = makeCoordinator(session: session)
+
+        let firstClose = Task { @MainActor in
+            await coordinator.closeAll(showError: true)
+        }
+        let secondClose = Task { @MainActor in
+            await coordinator.closeAll(showError: true)
+        }
+
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertTrue(session.isInsideArchive)
+
+        lease = nil
+        let firstResult = await firstClose.value
+        let secondResult = await secondClose.value
+        XCTAssertTrue(firstResult)
+        XCTAssertTrue(secondResult)
+        XCTAssertFalse(session.isInsideArchive)
+    }
+
+    func testFinishArchiveOpenCommitsPreparedArchiveAndPresentsSubdir() async throws {
         let session = FileManagerArchiveSession()
         let prepared = try makePreparedArchive(named: "finish-open-commit",
                                                entries: [
@@ -93,13 +120,11 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                           },
                                           updateTableColumns: { didUpdateTableColumns = true },
                                           reloadTableData: { didReloadTableData = true })
-        defer { _ = coordinator.closeAll(showError: false) }
-
-        let result = coordinator.finishArchiveOpen(.opened(prepared),
-                                                   temporaryDirectory: nil,
-                                                   preserveTemporaryDirectoryOnUnsupported: false,
-                                                   replaceCurrentState: false,
-                                                   showError: true)
+        let result = await coordinator.finishArchiveOpen(.opened(prepared),
+                                                         temporaryDirectory: nil,
+                                                         preserveTemporaryDirectoryOnUnsupported: false,
+                                                         replaceCurrentState: false,
+                                                         showError: true)
 
         guard case .opened = result else {
             XCTFail("Expected archive open to commit")
@@ -112,6 +137,8 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         XCTAssertEqual(preparedDirectory, prepared.hostDirectory)
         XCTAssertTrue(didUpdateTableColumns)
         XCTAssertTrue(didReloadTableData)
+        let didClose = await coordinator.closeAll(showError: false)
+        XCTAssertTrue(didClose)
     }
 
     func testOpenArchiveInlineCommitsPreparedArchiveAsynchronously() async throws {
@@ -119,7 +146,6 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                          prefix: "ShichiZipArchiveCoordinatorTests")
         let session = FileManagerArchiveSession()
         let coordinator = makeCoordinator(session: session)
-        defer { _ = coordinator.closeAll(showError: false) }
 
         let result = await coordinator.openArchiveInline(archiveURL,
                                                          hostDirectory: archiveURL.deletingLastPathComponent())
@@ -130,6 +156,8 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         }
         XCTAssertEqual(session.currentLevel?.archivePath, archiveURL.path)
         XCTAssertEqual(session.displayItems.map(\.name), ["payload.txt"])
+        let didClose = await coordinator.closeAll(showError: false)
+        XCTAssertTrue(didClose)
     }
 
     func testAsyncArchiveOpenReplacesExistingArchive() async throws {
@@ -139,7 +167,6 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                              prefix: "ShichiZipArchiveCoordinatorTests",
                                              payloadFileName: "replacement.txt")
         let coordinator = makeCoordinator(session: session)
-        defer { _ = coordinator.closeAll(showError: false) }
 
         let result = await coordinator.openArchiveInline(replacementURL,
                                                          hostDirectory: replacementURL.deletingLastPathComponent(),
@@ -152,9 +179,126 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         XCTAssertEqual(session.count, 1)
         XCTAssertEqual(session.currentLevel?.archivePath, replacementURL.path)
         XCTAssertEqual(session.displayItems.map(\.name), ["replacement.txt"])
+        let didClose = await coordinator.closeAll(showError: false)
+        XCTAssertTrue(didClose)
     }
 
-    func testCloseNestedArchiveRestoresParentSubdirWhenViewIsLoaded() throws {
+    func testAsyncArchiveReplacementDoesNotCommitAfterOpenInvalidation() async throws {
+        let session = FileManagerArchiveSession()
+        session.appendPreparedArchive(try makePreparedArchive(named: "invalidated-open-original"))
+        let originalLevel = try XCTUnwrap(session.currentLevel)
+        var lease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(originalLevel.operationGate.acquireLease())
+        XCTAssertNotNil(lease)
+        let replacementURL = try makeArchive(named: "invalidated-open-replacement",
+                                             prefix: "ShichiZipArchiveCoordinatorTests")
+        var activeReplacementToken: UUID?
+        let coordinator = makeCoordinator(
+            session: session,
+            beginStateReplacement: {
+                let token = UUID()
+                activeReplacementToken = token
+                return token
+            },
+            endStateReplacement: { token in
+                XCTAssertEqual(activeReplacementToken, token)
+                activeReplacementToken = nil
+            },
+        )
+
+        let openTask = Task { @MainActor in
+            await coordinator.openArchiveInline(replacementURL,
+                                                hostDirectory: replacementURL.deletingLastPathComponent(),
+                                                replaceCurrentState: true)
+        }
+
+        var closeStarted = false
+        for _ in 0 ..< 200 {
+            if let probeLease = originalLevel.operationGate.acquireLease() {
+                withExtendedLifetime(probeLease) {}
+                try await Task.sleep(for: .milliseconds(10))
+            } else {
+                closeStarted = true
+                break
+            }
+        }
+        guard closeStarted else {
+            lease = nil
+            _ = await openTask.value
+            XCTFail("Archive replacement did not begin closing the existing stack")
+            return
+        }
+        XCTAssertNotNil(activeReplacementToken)
+
+        coordinator.invalidatePendingArchiveOpen()
+        lease = nil
+
+        let result = await openTask.value
+        guard case .cancelled = result else {
+            XCTFail("Invalidated archive replacement must not commit")
+            _ = await coordinator.closeAll(showError: false)
+            return
+        }
+        XCTAssertFalse(session.isInsideArchive)
+        XCTAssertNil(activeReplacementToken)
+    }
+
+    func testPendingNestedOpenIsDiscardedWhenParentCloseBegins() async throws {
+        let session = FileManagerArchiveSession()
+        session.appendPreparedArchive(try makePreparedArchive(named: "pending-nested-parent"))
+        let parentLevel = try XCTUnwrap(session.currentLevel)
+        var parentLease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(
+            parentLevel.operationGate.acquireLease(),
+        )
+        XCTAssertNotNil(parentLease)
+        let coordinator = makeCoordinator(session: session)
+        let openGeneration = coordinator.beginArchiveOpen()
+        let nestedPrepared = try makePreparedArchive(named: "pending-nested-child")
+
+        let closeTask = Task { @MainActor in
+            await coordinator.closeAll(showError: true)
+        }
+
+        var closeStarted = false
+        for _ in 0 ..< 200 {
+            if let probeLease = parentLevel.operationGate.acquireLease() {
+                withExtendedLifetime(probeLease) {}
+                try await Task.sleep(for: .milliseconds(10))
+            } else {
+                closeStarted = true
+                break
+            }
+        }
+        guard closeStarted else {
+            parentLease = nil
+            _ = await closeTask.value
+            nestedPrepared.archive.close()
+            XCTFail("Parent close did not begin waiting for the nested-open lease")
+            return
+        }
+
+        let nestedResult = await coordinator.finishArchiveOpen(
+            .opened(nestedPrepared),
+            temporaryDirectory: nil,
+            preserveTemporaryDirectoryOnUnsupported: false,
+            replaceCurrentState: false,
+            showError: true,
+            invalidatePendingOpen: false,
+            expectedOpenGeneration: openGeneration,
+        )
+        guard case .cancelled = nestedResult else {
+            parentLease = nil
+            _ = await closeTask.value
+            XCTFail("Nested open must be discarded after parent close invalidates its token")
+            return
+        }
+
+        parentLease = nil
+        let didClose = await closeTask.value
+        XCTAssertTrue(didClose)
+        XCTAssertFalse(session.isInsideArchive)
+    }
+
+    func testCloseNestedArchiveRestoresParentSubdirWhenViewIsLoaded() async throws {
         let session = FileManagerArchiveSession()
         let parent = try makePreparedArchive(named: "parent",
                                              entries: [
@@ -169,15 +313,105 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         let coordinator = makeCoordinator(session: session,
                                           isViewLoaded: { true },
                                           reloadTableData: { didPresentParentSubdir = true })
-        defer { _ = coordinator.closeAll(showError: false) }
 
-        XCTAssertTrue(coordinator.closeLevel(nestedLevel,
-                                             showError: true))
+        let didCloseNested = await coordinator.closeLevel(nestedLevel,
+                                                          showError: true)
+        XCTAssertTrue(didCloseNested)
 
         XCTAssertEqual(session.currentLevel?.archivePath, parent.archivePath)
         XCTAssertEqual(session.currentLevel?.currentSubdir, "folder")
         XCTAssertEqual(session.displayItems.map(\.path), ["folder/payload.txt"])
         XCTAssertTrue(didPresentParentSubdir)
+        let didCloseParent = await coordinator.closeAll(showError: false)
+        XCTAssertTrue(didCloseParent)
+    }
+
+    func testCloseNestedArchiveWritesModifiedTemporaryArchiveBackToParent() async throws {
+        let nestedSourceURL = try makeArchive(named: "nested-write-back-source",
+                                              prefix: "ShichiZipArchiveCoordinatorTests")
+        let parentDirectory = try makeTemporaryDirectory(named: "nested-write-back-parent",
+                                                         prefix: "ShichiZipArchiveCoordinatorTests")
+        let parentURL = parentDirectory.appendingPathComponent("parent.7z")
+        try createArchive(at: parentURL,
+                          from: [nestedSourceURL])
+
+        let parentArchive = SZArchive()
+        try parentArchive.open(atPath: parentURL.path,
+                               session: SZOperationSession())
+        let parentEntries = try FileManagerArchiveListing.items(from: parentArchive,
+                                                                session: SZOperationSession())
+        let session = FileManagerArchiveSession()
+        session.appendPreparedArchive(FileManagerPreparedArchiveOpen(
+            hostDirectory: parentDirectory,
+            archivePath: parentURL.path,
+            displayPathPrefix: parentURL.path,
+            archive: parentArchive,
+            entries: parentEntries,
+            temporaryDirectory: nil,
+            nestedWriteBackInfo: nil,
+        ))
+
+        let stagedDirectory = try makeTemporaryDirectory(named: "nested-write-back-staged",
+                                                         prefix: "ShichiZipArchiveCoordinatorTests")
+        let stagedArchiveURL = stagedDirectory.appendingPathComponent(nestedSourceURL.lastPathComponent)
+        try FileManager.default.copyItem(at: nestedSourceURL,
+                                         to: stagedArchiveURL)
+        let initialFingerprint = try XCTUnwrap(
+            FileManagerArchiveFileFingerprint.captureIfPossible(for: stagedArchiveURL),
+        )
+        let nestedArchive = SZArchive()
+        try nestedArchive.open(atPath: stagedArchiveURL.path,
+                               session: SZOperationSession())
+        let nestedEntries = try FileManagerArchiveListing.items(from: nestedArchive,
+                                                                session: SZOperationSession())
+        let parentItemPath = try XCTUnwrap(parentEntries.first(where: { !$0.isDirectory })?.path)
+        let writeBackInfo = FileManagerNestedArchiveWriteBackInfo(
+            identity: FileManagerNestedArchiveIdentity(displayPath: "\(parentURL.path)/\(parentItemPath)"),
+            parentTarget: FileManagerArchiveMutationTarget(archive: parentArchive,
+                                                           subdir: "",
+                                                           topLevelArchiveURL: parentURL),
+            parentItemPath: parentItemPath,
+            initialFingerprint: initialFingerprint,
+        )
+        session.appendPreparedArchive(FileManagerPreparedArchiveOpen(
+            hostDirectory: parentDirectory,
+            archivePath: stagedArchiveURL.path,
+            displayPathPrefix: writeBackInfo.identity.displayPath,
+            archive: nestedArchive,
+            entries: nestedEntries,
+            temporaryDirectory: stagedDirectory,
+            nestedWriteBackInfo: writeBackInfo,
+        ))
+
+        try nestedArchive.createFolderNamed("changed",
+                                            inArchiveSubdir: "",
+                                            session: nil)
+        let nestedLevel = try XCTUnwrap(session.currentLevel)
+        let coordinator = makeCoordinator(session: session)
+
+        let didCloseNested = await coordinator.closeLevel(nestedLevel,
+                                                          showError: true)
+        XCTAssertTrue(didCloseNested)
+
+        let extractedDirectory = try makeTemporaryDirectory(named: "nested-write-back-extracted",
+                                                            prefix: "ShichiZipArchiveCoordinatorTests")
+        let extractionSettings = SZExtractionSettings()
+        extractionSettings.pathMode = .fullPaths
+        try parentArchive.extract(toPath: extractedDirectory.path,
+                                  settings: extractionSettings,
+                                  session: nil)
+
+        let roundTrippedNestedURL = extractedDirectory.appendingPathComponent(parentItemPath)
+        let roundTrippedNestedArchive = SZArchive()
+        try roundTrippedNestedArchive.open(atPath: roundTrippedNestedURL.path,
+                                           session: SZOperationSession())
+        let roundTrippedPaths = Set(try FileManagerArchiveListing.items(from: roundTrippedNestedArchive,
+                                                                        session: SZOperationSession()).map(\.path))
+        roundTrippedNestedArchive.close()
+        XCTAssertTrue(roundTrippedPaths.contains("changed"))
+
+        let didCloseParent = await coordinator.closeAll(showError: false)
+        XCTAssertTrue(didCloseParent)
     }
 
     func testMutationTargetsResolveCurrentArchiveAndRevalidateByArchiveURL() throws {
@@ -328,6 +562,36 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         }
     }
 
+    func testArchiveReadOperationsAreRejectedAfterGateBeginsClosing() async throws {
+        let session = FileManagerArchiveSession()
+        let item = makeArchiveItem(index: 3,
+                                   path: "folder/file.txt")
+        let prepared = try makePreparedArchive(named: "closing-read-gate",
+                                               entries: [item])
+        session.appendPreparedArchive(prepared)
+        let level = try XCTUnwrap(session.currentLevel)
+        let coordinator = makeCoordinator(session: session)
+
+        await level.operationGate.beginClosingAndWaitForLeases()
+        defer { level.operationGate.cancelClosing() }
+
+        XCTAssertThrowsError(try coordinator.currentArchiveForTest())
+        XCTAssertThrowsError(
+            try coordinator.prepareExtraction(
+                of: [item],
+                emptySelectionMessage: "Select something",
+                to: URL(fileURLWithPath: "/tmp/out", isDirectory: true),
+                overwriteMode: .ask,
+                pathMode: .currentPaths,
+                password: nil,
+                preserveNtSecurityInfo: false,
+                eliminateDuplicates: false,
+                inheritDownloadedFileQuarantine: false,
+                quarantineSourceArchivePath: nil,
+            ),
+        )
+    }
+
     func testReapplyHiddenVisibilityFiltersAndRestoresSelectionWithoutReloadingEntries() {
         var showHidden = true
         let session = FileManagerArchiveSession(showsHiddenFiles: { showHidden })
@@ -369,7 +633,9 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                  reloadTableData: @escaping () -> Void = {},
                                  selectArchivePaths: @escaping ([String]) -> Void = { _ in },
                                  selectedArchivePaths: @escaping () -> [String] = { [] },
-                                 hasConflictingNestedArchiveInstance: @escaping (FileManagerNestedArchiveIdentity) -> Bool = { _ in false }) -> FileManagerPaneArchiveCoordinator
+                                 hasConflictingNestedArchiveInstance: @escaping (FileManagerNestedArchiveIdentity) -> Bool = { _ in false },
+                                 beginStateReplacement: @escaping () -> UUID? = { UUID() },
+                                 endStateReplacement: @escaping (UUID) -> Void = { _ in }) -> FileManagerPaneArchiveCoordinator
     {
         FileManagerPaneArchiveCoordinator(archiveSession: session,
                                           observerIdentifier: observerIdentifier,
@@ -382,6 +648,8 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                           selectArchivePaths: selectArchivePaths,
                                           selectedArchivePaths: selectedArchivePaths,
                                           hasConflictingNestedArchiveInstance: hasConflictingNestedArchiveInstance,
+                                          beginStateReplacement: beginStateReplacement,
+                                          endStateReplacement: endStateReplacement,
                                           showError: { error in
                                               XCTFail("Unexpected archive coordinator error: \(error)")
                                           })

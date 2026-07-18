@@ -1,43 +1,12 @@
 import Cocoa
 
 @MainActor
-private final class FileManagerLegacyArchiveCommitQueue {
-    static let shared = FileManagerLegacyArchiveCommitQueue()
-
-    private var pendingOperations: [@MainActor () -> Void] = []
-    private var isRunning = false
-
-    func perform(
-        _ operation: @escaping @MainActor () -> FileManagerArchiveOpenResult,
-    ) async -> FileManagerArchiveOpenResult {
-        await withCheckedContinuation { continuation in
-            pendingOperations.append {
-                continuation.resume(returning: operation())
-            }
-            scheduleNextIfNeeded()
-        }
-    }
-
-    private func scheduleNextIfNeeded() {
-        guard !isRunning, !pendingOperations.isEmpty else { return }
-        isRunning = true
-
-        // Phase 2 will make archive closing asynchronous. Until then, begin the
-        // legacy close/write-back path from a RunLoop callback rather than a
-        // MainActor task so its synchronous UI callbacks remain serviceable.
-        RunLoop.main.perform(inModes: [.default]) { [self] in
-            MainActor.assumeIsolated {
-                let operation = pendingOperations.removeFirst()
-                operation()
-                isRunning = false
-                scheduleNextIfNeeded()
-            }
-        }
-    }
-}
-
-@MainActor
 final class FileManagerPaneArchiveCoordinator {
+    private struct CloseOperation {
+        let token: UUID
+        let task: Task<Bool, Never>
+    }
+
     private let archiveSession: FileManagerArchiveSession
     private let observerIdentifier: ObjectIdentifier
     private let parentWindow: () -> NSWindow?
@@ -53,11 +22,15 @@ final class FileManagerPaneArchiveCoordinator {
     private let selectedArchivePaths: () -> [String]
     private let hasConflictingNestedArchiveInstance: (FileManagerNestedArchiveIdentity) -> Bool
     private let hasDirtyNestedArchiveInstance: (FileManagerNestedArchiveIdentity) -> Bool
+    private let beginStateReplacement: () -> UUID?
+    private let endStateReplacement: (UUID) -> Void
     private let showError: (Error) -> Void
 
     private var archiveRefreshGeneration = 0
     private var archiveRefreshTask: Task<Void, Never>?
     private var archiveOpenGeneration = 0
+    private var closeAllOperation: CloseOperation?
+    private var closeLevelOperations: [ObjectIdentifier: CloseOperation] = [:]
 
     init(archiveSession: FileManagerArchiveSession,
          observerIdentifier: ObjectIdentifier,
@@ -74,6 +47,8 @@ final class FileManagerPaneArchiveCoordinator {
          selectedArchivePaths: @escaping () -> [String] = { [] },
          hasConflictingNestedArchiveInstance: @escaping (FileManagerNestedArchiveIdentity) -> Bool = { _ in false },
          hasDirtyNestedArchiveInstance: @escaping (FileManagerNestedArchiveIdentity) -> Bool = { _ in false },
+         beginStateReplacement: @escaping () -> UUID? = { UUID() },
+         endStateReplacement: @escaping (UUID) -> Void = { _ in },
          showError: @escaping (Error) -> Void)
     {
         self.archiveSession = archiveSession
@@ -91,6 +66,8 @@ final class FileManagerPaneArchiveCoordinator {
         self.selectedArchivePaths = selectedArchivePaths
         self.hasConflictingNestedArchiveInstance = hasConflictingNestedArchiveInstance
         self.hasDirtyNestedArchiveInstance = hasDirtyNestedArchiveInstance
+        self.beginStateReplacement = beginStateReplacement
+        self.endStateReplacement = endStateReplacement
         self.showError = showError
     }
 
@@ -107,8 +84,7 @@ final class FileManagerPaneArchiveCoordinator {
                            preserveTemporaryDirectoryOnUnsupported: Bool = false,
                            replaceCurrentState: Bool = false) async -> FileManagerArchiveOpenResult
     {
-        archiveOpenGeneration += 1
-        let openGeneration = archiveOpenGeneration
+        let openGeneration = beginArchiveOpen()
         let paneHostDirectory = hostDirectory ?? archiveHostDirectory()
         let resolvedDisplayPathPrefix = displayPathPrefix ?? url.path
         let progressParentWindow = parentWindow().flatMap { window in
@@ -129,27 +105,18 @@ final class FileManagerPaneArchiveCoordinator {
             return .cancelled
         }
 
-        let finish = {
-            self.finishArchiveOpen(preparedResult,
-                                   temporaryDirectory: temporaryDirectory,
-                                   preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
-                                   replaceCurrentState: replaceCurrentState,
-                                   showError: showError,
-                                   invalidatePendingOpen: false)
-        }
+        return await finishArchiveOpen(preparedResult,
+                                       temporaryDirectory: temporaryDirectory,
+                                       preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
+                                       replaceCurrentState: replaceCurrentState,
+                                       showError: showError,
+                                       invalidatePendingOpen: false,
+                                       expectedOpenGeneration: openGeneration)
+    }
 
-        guard replaceCurrentState, archiveSession.isInsideArchive else {
-            return finish()
-        }
-
-        return await FileManagerLegacyArchiveCommitQueue.shared.perform {
-            guard openGeneration == self.archiveOpenGeneration else {
-                self.discardPreparedArchiveOpen(preparedResult,
-                                                temporaryDirectory: temporaryDirectory)
-                return .cancelled
-            }
-            return finish()
-        }
+    func beginArchiveOpen() -> Int {
+        archiveOpenGeneration += 1
+        return archiveOpenGeneration
     }
 
     private func discardPreparedArchiveOpen(_ preparedResult: FileManagerPreparedArchiveOpenResult,
@@ -169,8 +136,17 @@ final class FileManagerPaneArchiveCoordinator {
                            preserveTemporaryDirectoryOnUnsupported: Bool,
                            replaceCurrentState: Bool,
                            showError: Bool,
-                           invalidatePendingOpen: Bool = true) -> FileManagerArchiveOpenResult
+                           invalidatePendingOpen: Bool = true,
+                           expectedOpenGeneration: Int? = nil) async -> FileManagerArchiveOpenResult
     {
+        if let expectedOpenGeneration,
+           expectedOpenGeneration != archiveOpenGeneration
+        {
+            discardPreparedArchiveOpen(preparedResult,
+                                       temporaryDirectory: temporaryDirectory)
+            return .cancelled
+        }
+
         if invalidatePendingOpen {
             invalidatePendingArchiveOpen()
         }
@@ -187,8 +163,9 @@ final class FileManagerPaneArchiveCoordinator {
                 break
             }
 
-            if commitPreparedArchive(prepared,
-                                     replaceCurrentState: replaceCurrentState)
+            if await commitPreparedArchive(prepared,
+                                           replaceCurrentState: replaceCurrentState,
+                                           expectedOpenGeneration: expectedOpenGeneration)
             {
                 return .opened
             }
@@ -232,9 +209,38 @@ final class FileManagerPaneArchiveCoordinator {
     }
 
     private func commitPreparedArchive(_ prepared: FileManagerPreparedArchiveOpen,
-                                       replaceCurrentState: Bool) -> Bool
+                                       replaceCurrentState: Bool,
+                                       expectedOpenGeneration: Int?) async -> Bool
     {
-        if replaceCurrentState, !closeAll(showError: true) {
+        if replaceCurrentState {
+            let replacementToken: UUID? = if archiveSession.isInsideArchive {
+                beginStateReplacement()
+            } else {
+                nil
+            }
+            if archiveSession.isInsideArchive,
+               replacementToken == nil
+            {
+                prepared.archive.close()
+                archiveSession.cleanupTemporaryDirectory(prepared.temporaryDirectory)
+                return false
+            }
+            defer {
+                if let replacementToken {
+                    endStateReplacement(replacementToken)
+                }
+            }
+
+            if !(await closeAllPreservingPendingArchiveOpen(showError: true)) {
+                prepared.archive.close()
+                archiveSession.cleanupTemporaryDirectory(prepared.temporaryDirectory)
+                return false
+            }
+        }
+
+        if let expectedOpenGeneration,
+           expectedOpenGeneration != archiveOpenGeneration
+        {
             prepared.archive.close()
             archiveSession.cleanupTemporaryDirectory(prepared.temporaryDirectory)
             return false
@@ -381,9 +387,10 @@ final class FileManagerPaneArchiveCoordinator {
             throw operationError(SZL10n.string("app.fileManager.error.cannotExtractSelected"))
         }
 
-        // Lease the gate so `closeLevel`'s drain waits for a background extraction instead of letting
-        // `close()` hard-block the main thread. Best-effort: `nil` when already closing.
-        preparedExtraction.archiveOperationLease = archiveSession.currentLevel?.operationGate.acquireLease()
+        guard let archiveOperationLease = archiveSession.currentLevel?.operationGate.acquireLease() else {
+            throw operationError(SZL10n.string("app.fileManager.error.noArchiveOpen"))
+        }
+        preparedExtraction.archiveOperationLease = archiveOperationLease
         return preparedExtraction
     }
 
@@ -423,10 +430,11 @@ final class FileManagerPaneArchiveCoordinator {
         guard let level = archiveSession.currentLevel else {
             throw operationError(SZL10n.string("app.fileManager.error.noArchiveOpen"))
         }
-        // Lease the gate so `closeLevel`'s drain waits for a background test instead of hard-blocking
-        // the main thread. Best-effort: `nil` when already closing.
+        guard let lease = level.operationGate.acquireLease() else {
+            throw operationError(SZL10n.string("app.fileManager.error.noArchiveOpen"))
+        }
         return FileManagerLeasedArchive(archive: level.archive,
-                                        lease: level.operationGate.acquireLease())
+                                        lease: lease)
     }
 
     private func currentDisplayPathPrefix() -> String {
@@ -515,14 +523,58 @@ final class FileManagerPaneArchiveCoordinator {
 
     @discardableResult
     func closeLevel(_ level: FileManagerArchiveLevel,
-                    showError: Bool = false) -> Bool
+                    showError: Bool = false) async -> Bool
     {
         invalidatePendingArchiveOpen()
+        if let closeAllOperation {
+            return await closeAllOperation.task.value
+        }
+        return await closeLevelCoalesced(level,
+                                         showError: showError)
+    }
+
+    private func closeLevelCoalesced(_ level: FileManagerArchiveLevel,
+                                     showError: Bool) async -> Bool
+    {
+        let archiveIdentifier = ObjectIdentifier(level.archive)
+        if let operation = closeLevelOperations[archiveIdentifier] {
+            return await operation.task.value
+        }
+
+        let token = UUID()
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return false }
+            return await performCloseLevel(level,
+                                           showError: showError)
+        }
+        closeLevelOperations[archiveIdentifier] = CloseOperation(token: token,
+                                                                 task: task)
+        let result = await task.value
+        if closeLevelOperations[archiveIdentifier]?.token == token {
+            closeLevelOperations[archiveIdentifier] = nil
+        }
+        return result
+    }
+
+    private func performCloseLevel(_ level: FileManagerArchiveLevel,
+                                   showError: Bool) async -> Bool
+    {
+        guard let currentLevel = archiveSession.currentLevel else {
+            return true
+        }
+        guard currentLevel.archive === level.archive else {
+            return false
+        }
+
         cancelPendingReload()
-        level.operationGate.beginClosingAndWaitForLeases()
+        await level.operationGate.beginClosingAndWaitForLeases()
+        guard archiveSession.currentLevel?.archive === level.archive else {
+            level.operationGate.cancelClosing()
+            return false
+        }
 
         do {
-            let nestedWriteBackResult = try writeBackNestedArchiveChangesIfNeeded(for: level)
+            let nestedWriteBackResult = try await writeBackNestedArchiveChangesIfNeeded(for: level)
             level.archive.close()
             archiveSession.cleanupTemporaryDirectory(level.temporaryDirectory)
 
@@ -559,10 +611,35 @@ final class FileManagerPaneArchiveCoordinator {
     }
 
     @discardableResult
-    func closeAll(showError: Bool = false) -> Bool {
+    func closeAll(showError: Bool = false) async -> Bool {
         invalidatePendingArchiveOpen()
+        return await closeAllPreservingPendingArchiveOpen(showError: showError)
+    }
+
+    private func closeAllPreservingPendingArchiveOpen(showError: Bool) async -> Bool {
+        if let closeAllOperation {
+            return await closeAllOperation.task.value
+        }
+
+        let token = UUID()
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return false }
+            return await performCloseAll(showError: showError)
+        }
+        closeAllOperation = CloseOperation(token: token,
+                                           task: task)
+        let result = await task.value
+        if closeAllOperation?.token == token {
+            closeAllOperation = nil
+        }
+        return result
+    }
+
+    private func performCloseAll(showError: Bool) async -> Bool {
         while let level = archiveSession.currentLevel {
-            guard closeLevel(level, showError: showError) else {
+            guard await closeLevelCoalesced(level,
+                                            showError: showError)
+            else {
                 return false
             }
         }
@@ -673,7 +750,7 @@ final class FileManagerPaneArchiveCoordinator {
 
     // MARK: - Close Implementation
 
-    private func writeBackNestedArchiveChangesIfNeeded(for level: FileManagerArchiveLevel) throws -> (refreshedParent: (index: Int, entries: [ArchiveItem])?, publishedChange: FileManagerArchiveChange?) {
+    private func writeBackNestedArchiveChangesIfNeeded(for level: FileManagerArchiveLevel) async throws -> (refreshedParent: (index: Int, entries: [ArchiveItem])?, publishedChange: FileManagerArchiveChange?) {
         guard let writeBackInfo = level.nestedWriteBackInfo else {
             return (nil, nil)
         }
@@ -687,18 +764,24 @@ final class FileManagerPaneArchiveCoordinator {
             return (nil, nil)
         }
 
-        let refreshedParentEntries = try ArchiveOperationRunner.runSynchronously(operationTitle: SZL10n.string("progress.updating"),
-                                                                                 initialFileName: (writeBackInfo.parentItemPath as NSString).lastPathComponent,
-                                                                                 parentWindow: parentWindow(),
-                                                                                 deferredDisplay: true)
-        { session -> [ArchiveItem] in
-            try writeBackInfo.parentTarget.archive.replaceItem(atPath: writeBackInfo.parentItemPath,
-                                                               inArchiveSubdir: writeBackInfo.parentTarget.subdir,
-                                                               withFileAtPath: temporaryArchiveURL.path,
-                                                               session: session)
-            return try FileManagerArchiveListing.items(from: writeBackInfo.parentTarget.archive,
-                                                       session: session)
+        // Once parent-archive replacement begins, caller cancellation must not
+        // interrupt the write. The operation's own Cancel button remains
+        // available through its SZOperationSession, matching prior behavior.
+        let writeBackTask = Task { @MainActor in
+            try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.updating"),
+                                                 initialFileName: (writeBackInfo.parentItemPath as NSString).lastPathComponent,
+                                                 parentWindow: parentWindow(),
+                                                 deferredDisplay: true)
+            { session -> [ArchiveItem] in
+                try writeBackInfo.parentTarget.archive.replaceItem(atPath: writeBackInfo.parentItemPath,
+                                                                   inArchiveSubdir: writeBackInfo.parentTarget.subdir,
+                                                                   withFileAtPath: temporaryArchiveURL.path,
+                                                                   session: session)
+                return try FileManagerArchiveListing.items(from: writeBackInfo.parentTarget.archive,
+                                                           session: session)
+            }
         }
+        let refreshedParentEntries = try await writeBackTask.value
 
         let publishedChange = writeBackInfo.parentTarget.topLevelArchiveURL.map {
             FileManagerArchiveChange(archiveURL: $0,

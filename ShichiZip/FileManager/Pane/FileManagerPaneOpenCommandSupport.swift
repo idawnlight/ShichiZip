@@ -21,11 +21,13 @@ enum FileManagerPaneOpenCommandSupport {
                 pane.loadDirectory(fileSystemItem.url,
                                    budget: FileManagerPaneDirectoryCoordinator.navigationBudget)
             } else {
+                guard let navigationGeneration = pane.openCommandBeginNavigation() else { return }
                 Task { @MainActor [weak pane] in
                     guard let pane else { return }
                     _ = await pane.openCommandOpenArchiveInline(fileSystemItem.url,
                                                                 hostDirectory: pane.currentDirectoryURL,
-                                                                openMode: openMode)
+                                                                openMode: openMode,
+                                                                expectedNavigationGeneration: navigationGeneration)
                 }
             }
 
@@ -107,12 +109,14 @@ enum FileManagerPaneOpenCommandSupport {
             return
         }
 
+        guard let navigationGeneration = pane.openCommandBeginNavigation() else { return }
         Task { @MainActor [weak pane] in
             guard let pane else { return }
 
             switch await pane.openCommandOpenArchiveInline(fileSystemItem.url,
                                                            hostDirectory: pane.currentDirectoryURL,
-                                                           showError: false)
+                                                           showError: false,
+                                                           expectedNavigationGeneration: navigationGeneration)
             {
             case .opened:
                 break
@@ -239,6 +243,7 @@ enum FileManagerPaneOpenCommandSupport {
                                                   in pane: FileManagerPaneController)
     {
         let displayPath = context.displayPath(for: item)
+        guard let openGeneration = pane.openCommandBeginArchiveOpen() else { return }
 
         Task { @MainActor [weak pane] in
             guard let pane else { return }
@@ -256,11 +261,12 @@ enum FileManagerPaneOpenCommandSupport {
                                                                    session: session)
                 }
 
-                let result = pane.openCommandFinishArchiveOpen(preparedOpen.preparedResult,
-                                                               temporaryDirectory: preparedOpen.temporaryDirectory,
-                                                               preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
-                                                               replaceCurrentState: false,
-                                                               showError: false)
+                let result = await pane.openCommandFinishArchiveOpen(preparedOpen.preparedResult,
+                                                                     temporaryDirectory: preparedOpen.temporaryDirectory,
+                                                                     preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
+                                                                     replaceCurrentState: false,
+                                                                     showError: false,
+                                                                     expectedOpenGeneration: openGeneration)
 
                 switch result {
                 case .opened, .cancelled:
