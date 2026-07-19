@@ -617,7 +617,9 @@ protocol FileManagerPaneTransferHost: FileManagerPaneTransferSourceHost {
     func transferCurrentArchiveMutationTarget() -> FileManagerPaneArchiveTransferTarget?
     func transferArchiveMutationTarget(for archive: SZArchive, subdir: String) -> FileManagerPaneArchiveTransferTarget?
     func transferLeasedArchiveMutationTarget(for archive: SZArchive, subdir: String) -> FileManagerLeasedArchiveMutationTarget?
-    func transferDidMutateArchive(targetSubdir: String?, selectingPaths paths: [String])
+    func transferDidMutateArchive(targetSubdir: String?,
+                                  selectingPaths paths: [String],
+                                  reopenBeforeListing: Bool)
     func transferShowReadOnlyArchiveMutationAlert(action: String)
     func transferShowError(_ error: Error)
 }
@@ -1092,23 +1094,32 @@ final class FileManagerPaneTransferCoordinator {
                                                                                       targetSubdir: currentTarget.subdir)
 
             do {
-                try await ArchiveOperationRunner.run(operationTitle: resolvedOperationTitle,
-                                                     parentWindow: host.transferLocation.presentationWindow,
-                                                     deferredDisplay: true)
-                { session in
-                    try currentTarget.archive.addPaths(urls.map(\.path),
-                                                       toArchiveSubdir: currentTarget.subdir,
-                                                       moveMode: operation == .move,
-                                                       session: session)
+                let outcome = try await ArchiveOperationRunner.run(
+                    operationTitle: resolvedOperationTitle,
+                    parentWindow: host.transferLocation.presentationWindow,
+                    deferredDisplay: true
+                ) { session in
+                    try FileManagerArchiveMutationOutcome.perform {
+                        try currentTarget.archive.addPaths(
+                            urls.map(\.path),
+                            toArchiveSubdir: currentTarget.subdir,
+                            moveMode: operation == .move,
+                            session: session,
+                        )
+                    }
                 }
 
                 host.transferDidMutateArchive(targetSubdir: currentTarget.subdir,
-                                              selectingPaths: selectionPaths)
+                                              selectingPaths: selectionPaths,
+                                              reopenBeforeListing: outcome.requiresReopenBeforeRefresh)
                 if operation == .move,
                    let sourceHost,
                    sourceHost.transferIdentity != host.transferIdentity
                 {
                     sourceHost.transferRefresh()
+                }
+                if let committedError = outcome.committedError {
+                    host.transferShowError(committedError)
                 }
             } catch {
                 host.transferShowError(error)
@@ -1330,10 +1341,25 @@ enum FileOperationArchiveDestinationTransfer {
                         subdir: String,
                         move: Bool,
                         candidatePanes: [FileManagerPaneController],
+                        hasConflictingOpenNestedArchive: Bool,
                         parentWindow: NSWindow?,
                         showError: @escaping @MainActor (Error) -> Void)
     {
         let operation: NSDragOperation = move ? .move : .copy
+        let action = SZL10n.string(
+            move
+                ? "app.fileManager.action.movingFilesIntoArchive"
+                : "app.fileManager.action.addingFilesToArchive"
+        )
+
+        if hasConflictingOpenNestedArchive {
+            szPresentMessage(
+                title: SZL10n.string("app.fileManager.alert.actionNotAvailableTitle", action),
+                message: SZL10n.string("app.fileManager.alert.nestedArchiveConflict"),
+                for: parentWindow,
+            )
+            return
+        }
 
         if let (pane, target) = archiveDestinationTarget(in: candidatePanes,
                                                          archiveURL: archiveURL,
@@ -1348,6 +1374,15 @@ enum FileOperationArchiveDestinationTransfer {
             return
         }
 
+        if candidatePanes.contains(where: { $0.containsOpenArchive(at: archiveURL) }) {
+            szPresentMessage(
+                title: SZL10n.string("app.fileManager.alert.actionNotAvailableTitle", action),
+                message: SZL10n.string("app.fileManager.operationNotAvailable"),
+                for: parentWindow,
+            )
+            return
+        }
+
         let operationTitle = SZL10n.string(move ? "fileop.moving" : "fileop.copying")
         let selectionPaths = FileOperationArchiveTransferSelection.selectionPaths(for: sourceURLs,
                                                                                   targetSubdir: subdir)
@@ -1355,16 +1390,21 @@ enum FileOperationArchiveDestinationTransfer {
         Task { @MainActor [weak sourcePane, weak parentWindow] in
             guard let parentWindow else { return }
             do {
-                try await ArchiveOperationRunner.run(operationTitle: operationTitle,
-                                                     parentWindow: parentWindow)
-                { session in
+                let outcome = try await ArchiveOperationRunner.run(
+                    operationTitle: operationTitle,
+                    parentWindow: parentWindow
+                ) { session in
                     let archive = SZArchive()
                     try archive.open(atPath: archiveURL.path, session: session)
                     defer { archive.close() }
-                    try archive.addPaths(sourceURLs.map(\.path),
-                                         toArchiveSubdir: subdir,
-                                         moveMode: move,
-                                         session: session)
+                    return try FileManagerArchiveMutationOutcome.perform {
+                        try archive.addPaths(
+                            sourceURLs.map(\.path),
+                            toArchiveSubdir: subdir,
+                            moveMode: move,
+                            session: session,
+                        )
+                    }
                 }
 
                 FileManagerArchiveChangeBus.publish(
@@ -1374,6 +1414,9 @@ enum FileOperationArchiveDestinationTransfer {
                 )
                 if move {
                     sourcePane?.refresh()
+                }
+                if let committedError = outcome.committedError {
+                    showError(committedError)
                 }
             } catch {
                 showError(error)

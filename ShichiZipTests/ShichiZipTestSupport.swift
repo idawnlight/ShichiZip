@@ -82,6 +82,50 @@ extension XCTestCase {
         }
     }
 
+    /// Creates a TAR fixture while preserving entry order and allowing the
+    /// same archive path to appear more than once.
+    func createTarFixture(at archiveURL: URL,
+                          entries: [(path: String, contents: String)]) throws
+    {
+        let sourceRoot = archiveURL.deletingLastPathComponent()
+            .appendingPathComponent("tar-fixture-\(UUID().uuidString)",
+                                    isDirectory: true)
+        try FileManager.default.createDirectory(at: sourceRoot,
+                                                withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: sourceRoot)
+        }
+
+        var arguments = ["-cf", archiveURL.path]
+        for (index, entry) in entries.enumerated() {
+            let entryRoot = sourceRoot.appendingPathComponent(String(index),
+                                                              isDirectory: true)
+            let entryURL = entryRoot.appendingPathComponent(entry.path)
+            try FileManager.default.createDirectory(
+                at: entryURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true,
+            )
+            try entry.contents.write(to: entryURL,
+                                     atomically: true,
+                                     encoding: .utf8)
+            arguments.append(contentsOf: ["-C", entryRoot.path, entry.path])
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        process.arguments = arguments
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            throw NSError(domain: NSCocoaErrorDomain,
+                          code: CocoaError.fileWriteUnknown.rawValue,
+                          userInfo: [NSLocalizedDescriptionKey: "/usr/bin/tar failed to create fixture at \(archiveURL.path)"])
+        }
+    }
+
     @discardableResult
     func makeArchive(named name: String,
                      prefix: String = "ShichiZipTests",

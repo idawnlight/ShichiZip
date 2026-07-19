@@ -858,6 +858,7 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::MoveArc_Finish()) {
         [session reportProgressFraction:1.0];
         [session reportBytesCompleted:TotalSize total:TotalSize];
     }
+    // Preserve upstream's delayed cancellation after the archive was replaced.
     return SZAgentCheckBreak(session);
 }
 

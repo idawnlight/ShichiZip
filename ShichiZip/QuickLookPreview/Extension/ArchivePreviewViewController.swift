@@ -17,7 +17,7 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
     private var rootNodes: [ArchivePreviewTreeNode] = []
     private var visibleColumns: [ArchivePreviewColumn] = []
     private var iconCache: [ArchivePreviewIconKey: NSImage] = [:]
-    private var expandedNodePaths = Set<String>()
+    private var expandedDirectoryIDs = Set<ArchiveDirectoryID>()
     private var hasRecordedExpansionState = false
 
     override func loadView() {
@@ -49,7 +49,7 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
 
     private func applyPreview(_ loadedSnapshot: ArchivePreviewSnapshot) {
         snapshot = loadedSnapshot
-        expandedNodePaths.removeAll()
+        expandedDirectoryIDs.removeAll()
         hasRecordedExpansionState = false
         configureColumns(for: loadedSnapshot)
         hiddenItemsButton.isEnabled = true
@@ -218,12 +218,14 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
     private func recordExpansionState(for nodes: [ArchivePreviewTreeNode]) {
         var stack = nodes
         while let node = stack.popLast() {
-            guard !node.children.isEmpty else { continue }
+            guard !node.children.isEmpty,
+                  let directoryID = node.directoryID
+            else { continue }
             if tableView.isItemExpanded(node) {
-                expandedNodePaths.insert(node.row.path)
+                expandedDirectoryIDs.insert(directoryID)
                 stack.append(contentsOf: node.children)
             } else {
-                expandedNodePaths.remove(node.row.path)
+                expandedDirectoryIDs.remove(directoryID)
             }
         }
     }
@@ -241,7 +243,8 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
         var stack = nodes
         while let node = stack.popLast() {
             guard !node.children.isEmpty,
-                  expandedNodePaths.contains(node.row.path)
+                  let directoryID = node.directoryID,
+                  expandedDirectoryIDs.contains(directoryID)
             else { continue }
             tableView.expandItem(node)
             stack.append(contentsOf: node.children)

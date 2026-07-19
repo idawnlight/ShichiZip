@@ -433,6 +433,11 @@ enum FileManagerArchiveExtraction {
                              allEntries: [ArchiveItem]) -> [NSNumber]
     {
         var indices = Set<Int>()
+        let hierarchy = ArchiveHierarchy(records: allEntries.enumerated().map { itemIndex, entry in
+            ArchiveHierarchyRecord(itemIndex: itemIndex,
+                                   pathParts: entry.pathParts,
+                                   isDirectory: entry.isDirectory)
+        })
 
         for item in selectedItems {
             if item.index >= 0 {
@@ -440,13 +445,12 @@ enum FileManagerArchiveExtraction {
             }
 
             if item.isDirectory || item.index < 0 {
-                let directoryPath = normalizeArchivePath(item.path)
-                let prefix = directoryPath.isEmpty ? "" : directoryPath + "/"
-
-                for entry in allEntries where entry.index >= 0 {
-                    let entryPath = normalizeArchivePath(entry.path)
-                    if entryPath == directoryPath || (!prefix.isEmpty && entryPath.hasPrefix(prefix)) {
-                        indices.insert(entry.index)
+                if let directory = hierarchy.directory(at: item.pathParts) {
+                    for itemIndex in hierarchy.recordIndices(in: directory) {
+                        let entry = allEntries[itemIndex]
+                        if entry.index >= 0 {
+                            indices.insert(entry.index)
+                        }
                     }
                 }
             }

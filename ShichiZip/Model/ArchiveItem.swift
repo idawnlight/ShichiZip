@@ -1,7 +1,7 @@
 import Foundation
 
 /// Swift-friendly wrapper around SZArchiveEntry
-struct ArchiveItem {
+struct ArchiveItem: @unchecked Sendable {
     let index: Int
     let path: String
     let pathParts: [String]
@@ -21,6 +21,7 @@ struct ArchiveItem {
     let block: UInt64
     let comment: String
     let propertyValues: [String: String]
+    let reference: SZArchiveItemReference?
 
     private static func derivePathParts(from path: String) -> [String] {
         let trimmed = path.hasSuffix("/") ? String(path.dropLast()) : path
@@ -232,12 +233,14 @@ struct ArchiveItem {
         block = entry.block
         comment = entry.comment ?? ""
         propertyValues = entry.propertyValues
+        reference = entry.reference
     }
 
     init(index: Int, path: String, pathParts: [String] = [], name: String, size: UInt64, packedSize: UInt64,
          modifiedDate: Date?, createdDate: Date?, accessedDate: Date?, crc: UInt32, isDirectory: Bool,
          isEncrypted: Bool, isAnti: Bool, method: String, attributes: UInt32, position: UInt64, block: UInt64,
-         comment: String, propertyValues: [String: String] = [:])
+         comment: String, propertyValues: [String: String] = [:],
+         reference: SZArchiveItemReference? = nil)
     {
         self.index = index; self.path = path
         self.pathParts = pathParts.isEmpty ? Self.derivePathParts(from: path) : pathParts
@@ -251,6 +254,7 @@ struct ArchiveItem {
         self.position = position; self.block = block
         self.comment = comment
         self.propertyValues = propertyValues
+        self.reference = reference
     }
 }
 

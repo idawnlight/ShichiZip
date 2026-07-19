@@ -7,6 +7,23 @@ final class FileManagerPaneArchiveCoordinator {
         let task: Task<Bool, Never>
     }
 
+    private struct ParentReloadRequest {
+        let index: Int
+        let selectingPaths: [String]
+    }
+
+    private struct NestedParentMutationResult {
+        let entries: [ArchiveItem]?
+        let committedError: Error?
+    }
+
+    private struct NestedWriteBackResult {
+        let refreshedParent: (index: Int, entries: [ArchiveItem])?
+        let parentReload: ParentReloadRequest?
+        let publishedChange: FileManagerArchiveChange?
+        let committedError: Error?
+    }
+
     private let archiveSession: FileManagerArchiveSession
     private let observerIdentifier: ObjectIdentifier
     private let parentWindow: () -> NSWindow?
@@ -154,7 +171,7 @@ final class FileManagerPaneArchiveCoordinator {
         let result: FileManagerArchiveOpenResult
         switch preparedResult {
         case let .opened(prepared):
-            if let nestedIdentity = prepared.nestedWriteBackInfo?.identity,
+            if let nestedIdentity = prepared.nestedIdentity,
                hasDirtyNestedArchiveInstance(nestedIdentity)
             {
                 prepared.archive.close()
@@ -447,11 +464,14 @@ final class FileManagerPaneArchiveCoordinator {
 
     // MARK: - Reloads And Change Propagation
 
-    func reloadCurrentArchiveEntries(selectingPaths paths: [String] = []) {
+    func reloadCurrentArchiveEntries(selectingPaths paths: [String] = [],
+                                     reopenBeforeListing: Bool = false)
+    {
         guard let level = archiveSession.currentLevel else { return }
         scheduleEntriesReload(at: archiveSession.count - 1,
                               selectingPaths: paths,
-                              preservingSubdir: level.currentSubdir)
+                              preservingSubdir: level.currentSubdir,
+                              reopenBeforeListing: reopenBeforeListing)
     }
 
     func reapplyHiddenVisibility() {
@@ -495,14 +515,16 @@ final class FileManagerPaneArchiveCoordinator {
     }
 
     func refreshAfterMutation(targetSubdir: String? = nil,
-                              selectingPaths paths: [String] = [])
+                              selectingPaths paths: [String] = [],
+                              reopenBeforeListing: Bool = false)
     {
         let normalizedTargetSubdir = normalizeArchivePath(targetSubdir ?? archiveSession.currentLevel?.currentSubdir ?? "")
         let normalizedCurrentSubdir = normalizeArchivePath(archiveSession.currentLevel?.currentSubdir ?? "")
         let selectionPaths = normalizedTargetSubdir == normalizedCurrentSubdir
             ? paths.map(normalizeArchivePath)
             : []
-        reloadCurrentArchiveEntries(selectingPaths: selectionPaths)
+        reloadCurrentArchiveEntries(selectingPaths: selectionPaths,
+                                    reopenBeforeListing: reopenBeforeListing)
     }
 
     func refreshAfterMutation(selectingPath path: String? = nil) {
@@ -599,6 +621,23 @@ final class FileManagerPaneArchiveCoordinator {
                 presentCurrentArchiveSubdir()
             }
             updateTableColumns()
+
+            if let parentReload = nestedWriteBackResult.parentReload,
+               closeAllOperation == nil,
+               let parentLevel = archiveSession.level(at: parentReload.index)
+            {
+                scheduleEntriesReload(
+                    at: parentReload.index,
+                    selectingPaths: parentReload.selectingPaths,
+                    preservingSubdir: parentLevel.currentSubdir,
+                    reopenBeforeListing: true,
+                )
+            }
+            if showError,
+               let committedError = nestedWriteBackResult.committedError
+            {
+                self.showError(committedError)
+            }
 
             return true
         } catch {
@@ -750,9 +789,14 @@ final class FileManagerPaneArchiveCoordinator {
 
     // MARK: - Close Implementation
 
-    private func writeBackNestedArchiveChangesIfNeeded(for level: FileManagerArchiveLevel) async throws -> (refreshedParent: (index: Int, entries: [ArchiveItem])?, publishedChange: FileManagerArchiveChange?) {
+    private func writeBackNestedArchiveChangesIfNeeded(
+        for level: FileManagerArchiveLevel
+    ) async throws -> NestedWriteBackResult {
         guard let writeBackInfo = level.nestedWriteBackInfo else {
-            return (nil, nil)
+            return NestedWriteBackResult(refreshedParent: nil,
+                                         parentReload: nil,
+                                         publishedChange: nil,
+                                         committedError: nil)
         }
 
         let temporaryArchiveURL = URL(fileURLWithPath: level.archivePath).standardizedFileURL
@@ -761,8 +805,18 @@ final class FileManagerPaneArchiveCoordinator {
         }
 
         guard currentFingerprint != writeBackInfo.initialFingerprint else {
-            return (nil, nil)
+            return NestedWriteBackResult(refreshedParent: nil,
+                                         parentReload: nil,
+                                         publishedChange: nil,
+                                         committedError: nil)
         }
+        guard writeBackInfo.parentArchiveFingerprint.matchesCurrentFile(
+            at: writeBackInfo.parentArchiveURL
+        ) else {
+            throw operationError(SZL10n.string("app.fileManager.error.nestedArchiveSyncFailed"))
+        }
+        let parentArchiveChangedError =
+            operationError(SZL10n.string("app.fileManager.error.nestedArchiveSyncFailed"))
 
         // Once parent-archive replacement begins, caller cancellation must not
         // interrupt the write. The operation's own Cancel button remains
@@ -772,16 +826,42 @@ final class FileManagerPaneArchiveCoordinator {
                                                  initialFileName: (writeBackInfo.parentItemPath as NSString).lastPathComponent,
                                                  parentWindow: parentWindow(),
                                                  deferredDisplay: true)
-            { session -> [ArchiveItem] in
-                try writeBackInfo.parentTarget.archive.replaceItem(atPath: writeBackInfo.parentItemPath,
-                                                                   inArchiveSubdir: writeBackInfo.parentTarget.subdir,
-                                                                   withFileAtPath: temporaryArchiveURL.path,
-                                                                   session: session)
-                return try FileManagerArchiveListing.items(from: writeBackInfo.parentTarget.archive,
-                                                           session: session)
+            { session -> NestedParentMutationResult in
+                guard writeBackInfo.parentArchiveFingerprint.matchesCurrentFile(
+                    at: writeBackInfo.parentArchiveURL
+                ) else {
+                    throw parentArchiveChangedError
+                }
+                let outcome = try FileManagerArchiveMutationOutcome.perform {
+                    try writeBackInfo.parentTarget.archive.replaceItem(
+                        at: writeBackInfo.parentItemReference,
+                        inArchiveSubdir: writeBackInfo.parentTarget.subdir,
+                        withFileAtPath: temporaryArchiveURL.path,
+                        session: session,
+                    )
+                }
+                do {
+                    if outcome.requiresReopenBeforeRefresh {
+                        try writeBackInfo.parentTarget.archive
+                            .reopenAfterExternalMutation(with: nil)
+                    }
+                    let entries = try FileManagerArchiveListing.items(
+                        from: writeBackInfo.parentTarget.archive,
+                        session: nil
+                    )
+                    return NestedParentMutationResult(
+                        entries: entries,
+                        committedError: outcome.committedError
+                    )
+                } catch {
+                    return NestedParentMutationResult(
+                        entries: nil,
+                        committedError: outcome.committedError ?? error
+                    )
+                }
             }
         }
-        let refreshedParentEntries = try await writeBackTask.value
+        let parentMutationResult = try await writeBackTask.value
 
         let publishedChange = writeBackInfo.parentTarget.topLevelArchiveURL.map {
             FileManagerArchiveChange(archiveURL: $0,
@@ -789,9 +869,22 @@ final class FileManagerPaneArchiveCoordinator {
                                      selectingPaths: [writeBackInfo.parentItemPath],
                                      sourceIdentifier: observerIdentifier)
         }
-        let refreshedParent = archiveSession.parentIndexForCurrentNestedArchive
-            .map { (index: $0, entries: refreshedParentEntries) }
-        return (refreshedParent, publishedChange)
+        let parentIndex = archiveSession.parentIndexForCurrentNestedArchive
+        let refreshedParent = parentMutationResult.entries.flatMap { entries in
+            parentIndex.map { (index: $0, entries: entries) }
+        }
+        let parentReload = parentMutationResult.entries == nil
+            ? parentIndex.map {
+                ParentReloadRequest(index: $0,
+                                    selectingPaths: [writeBackInfo.parentItemPath])
+            }
+            : nil
+        return NestedWriteBackResult(
+            refreshedParent: refreshedParent,
+            parentReload: parentReload,
+            publishedChange: publishedChange,
+            committedError: parentMutationResult.committedError
+        )
     }
 
     private func normalizeArchivePath(_ path: String) -> String {

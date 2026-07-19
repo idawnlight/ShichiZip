@@ -38,6 +38,31 @@ final class FileManagerArchiveExtractionTests: XCTestCase {
         XCTAssertEqual(indices.map(\.intValue), [3])
     }
 
+    func testEntryIndicesUseArchiveHierarchyComponentIdentity() {
+        let composedDirectoryName = "caf\u{00E9}"
+        let decomposedDirectoryName = "cafe\u{0301}"
+        let syntheticDirectory = makeArchiveItem(index: -1,
+                                                 path: composedDirectoryName,
+                                                 isDirectory: true)
+        let selectedChild = makeArchiveItem(index: 3,
+                                            path: "\(composedDirectoryName)/selected.txt")
+        let canonicallyEquivalentSibling = makeArchiveItem(
+            index: 4,
+            path: "\(decomposedDirectoryName)/sibling.txt",
+        )
+        XCTAssertNotEqual(
+            SZArchive.fileNameComparisonKey(forArchivePathComponent: composedDirectoryName),
+            SZArchive.fileNameComparisonKey(forArchivePathComponent: decomposedDirectoryName),
+        )
+
+        let indices = FileManagerArchiveExtraction.entryIndices(
+            for: [syntheticDirectory],
+            allEntries: [selectedChild, canonicallyEquivalentSibling],
+        )
+
+        XCTAssertEqual(indices.map(\.intValue), [3])
+    }
+
     func testPathPrefixUsesCurrentSubdirAndDuplicateRoot() {
         let context = makeContext(currentSubdir: "root")
         let destinationURL = URL(fileURLWithPath: "/tmp/Payload", isDirectory: true)

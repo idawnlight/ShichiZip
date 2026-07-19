@@ -101,10 +101,58 @@ struct FileManagerArchiveItemWorkflowContext {
     let displayPathPrefix: String
     let quarantineSourceArchivePath: String?
     let mutationTarget: FileManagerArchiveMutationTarget?
+    let backingArchiveURL: URL?
+    let topLevelArchiveURL: URL?
+    let parentNestedIdentity: FileManagerNestedArchiveIdentity?
     var archiveOperationLease: FileManagerArchiveOperationGate.Lease?
+
+    init(archive: SZArchive,
+         hostDirectory: URL,
+         displayPathPrefix: String,
+         quarantineSourceArchivePath: String?,
+         mutationTarget: FileManagerArchiveMutationTarget?,
+         backingArchiveURL: URL? = nil,
+         topLevelArchiveURL: URL? = nil,
+         parentNestedIdentity: FileManagerNestedArchiveIdentity? = nil,
+         archiveOperationLease: FileManagerArchiveOperationGate.Lease? = nil)
+    {
+        self.archive = archive
+        self.hostDirectory = hostDirectory
+        self.displayPathPrefix = displayPathPrefix
+        self.quarantineSourceArchivePath = quarantineSourceArchivePath
+        self.mutationTarget = mutationTarget
+        self.backingArchiveURL = backingArchiveURL?.standardizedFileURL
+        self.topLevelArchiveURL = topLevelArchiveURL?.standardizedFileURL
+        self.parentNestedIdentity = parentNestedIdentity
+        self.archiveOperationLease = archiveOperationLease
+    }
 
     func displayPath(for item: ArchiveItem) -> String {
         displayPathPrefix + "/" + item.pathParts.joined(separator: "/")
+    }
+
+    func nestedIdentity(for item: ArchiveItem) -> FileManagerNestedArchiveIdentity? {
+        guard let itemReference = item.reference,
+              itemReference.hasArchiveIndex,
+              itemReference.archiveIndex <= UInt(Int.max),
+              let topLevelArchiveURL = parentNestedIdentity?.topLevelArchiveURL
+                ?? self.topLevelArchiveURL
+                ?? mutationTarget?.topLevelArchiveURL
+        else {
+            return nil
+        }
+
+        let parentLineage = parentNestedIdentity?.entryLineage ?? []
+        let entry = FileManagerNestedArchiveIdentity.Entry(
+            archiveIndex: Int(itemReference.archiveIndex),
+            path: itemReference.path,
+            isDirectory: itemReference.isDirectory,
+        )
+        return FileManagerNestedArchiveIdentity(
+            topLevelArchiveURL: topLevelArchiveURL,
+            entryLineage: parentLineage + [entry],
+            displayPath: displayPath(for: item),
+        )
     }
 }
 
@@ -135,6 +183,14 @@ final class FileManagerArchiveItemWorkflowService {
     private struct StagedArchiveItem {
         let temporaryDirectory: URL
         let fileURL: URL
+    }
+
+    private struct NestedArchiveParentSnapshot {
+        let identity: FileManagerNestedArchiveIdentity
+        let parentTarget: FileManagerArchiveMutationTarget
+        let parentItemReference: SZArchiveItemReference
+        let parentArchiveURL: URL
+        let parentArchiveFingerprint: FileManagerArchiveFileFingerprint
     }
 
     private let fileManager: FileManager
@@ -236,17 +292,84 @@ final class FileManagerArchiveItemWorkflowService {
 
         do {
             let settings = stagingExtractionSettings(for: context)
-            let indices = items.map { NSNumber(value: $0.index) }
-            try context.archive.extractEntries(indices,
-                                               toPath: temporaryDirectory.path,
-                                               settings: settings,
-                                               session: session)
+            let relativePaths = try items.map(stagedRelativePath)
+            let collisionKeys = relativePaths.map(stagingCollisionKey)
+            let pathCounts = collisionKeys.reduce(into: [String: Int]()) { counts, key in
+                counts[key, default: 0] += 1
+            }
+            let collidingPositions = items.indices.filter {
+                pathCounts[collisionKeys[$0], default: 0] > 1
+            }
 
-            let fileURLs = try items.map { try stagedFileURL(for: $0,
-                                                             in: temporaryDirectory) }
+            if collidingPositions.isEmpty {
+                let indices = items.map { NSNumber(value: $0.index) }
+                try context.archive.extractEntries(indices,
+                                                   toPath: temporaryDirectory.path,
+                                                   settings: settings,
+                                                   session: session)
+
+                let fileURLs = try items.map {
+                    try stagedFileURL(for: $0,
+                                      in: temporaryDirectory)
+                }
+                return FileManagerArchiveQuickLookPreview(temporaryDirectory: temporaryDirectory,
+                                                          fileURLs: fileURLs)
+            }
+
+            var fileURLs = Array<URL?>(repeating: nil,
+                                       count: items.count)
+            let noncollidingPositions = items.indices.filter {
+                pathCounts[collisionKeys[$0], default: 0] == 1
+            }
+            if !noncollidingPositions.isEmpty {
+                let batchDirectory = temporaryDirectory
+                    .appendingPathComponent("batch", isDirectory: true)
+                try fileManager.createDirectory(at: batchDirectory,
+                                                withIntermediateDirectories: true)
+                let indices = noncollidingPositions.map {
+                    NSNumber(value: items[$0].index)
+                }
+                try context.archive.extractEntries(indices,
+                                                   toPath: batchDirectory.path,
+                                                   settings: settings,
+                                                   session: session)
+                for position in noncollidingPositions {
+                    fileURLs[position] = try stagedFileURL(
+                        for: items[position],
+                        in: batchDirectory,
+                    )
+                }
+            }
+
+            let occurrencesDirectory = temporaryDirectory
+                .appendingPathComponent("occurrences", isDirectory: true)
+            try fileManager.createDirectory(at: occurrencesDirectory,
+                                            withIntermediateDirectories: true)
+            for position in collidingPositions {
+                let occurrenceDirectory = occurrencesDirectory
+                    .appendingPathComponent("\(position)",
+                                            isDirectory: true)
+                try fileManager.createDirectory(at: occurrenceDirectory,
+                                                withIntermediateDirectories: true)
+                try context.archive.extractEntries(
+                    [NSNumber(value: items[position].index)],
+                    toPath: occurrenceDirectory.path,
+                    settings: settings,
+                    session: session,
+                )
+                fileURLs[position] = try stagedFileURL(
+                    for: items[position],
+                    in: occurrenceDirectory,
+                )
+            }
 
             return FileManagerArchiveQuickLookPreview(temporaryDirectory: temporaryDirectory,
-                                                      fileURLs: fileURLs)
+                                                      fileURLs: try fileURLs.map {
+                                                          guard let fileURL = $0 else {
+                                                              throw extractionPreparationError()
+                                                          }
+                                                          return fileURL
+                                                      })
         } catch {
             cleanup(temporaryDirectory)
             throw error
@@ -315,25 +438,8 @@ final class FileManagerArchiveItemWorkflowService {
     {
         let archiveItems = try FileManagerArchiveListing.items(from: context.archive,
                                                                session: session)
-        var indices = Set<Int>()
-
-        if item.index >= 0 {
-            indices.insert(item.index)
-        }
-
-        if item.isDirectory || item.index < 0 {
-            let directoryPath = normalizeArchivePath(item.path)
-            let prefix = directoryPath.isEmpty ? "" : directoryPath + "/"
-
-            for entry in archiveItems where entry.index >= 0 {
-                let entryPath = normalizeArchivePath(entry.path)
-                if entryPath == directoryPath || (!prefix.isEmpty && entryPath.hasPrefix(prefix)) {
-                    indices.insert(entry.index)
-                }
-            }
-        }
-
-        return indices.sorted().map { NSNumber(value: $0) }
+        return FileManagerArchiveExtraction.entryIndices(for: [item],
+                                                         allEntries: archiveItems)
     }
 
     func prepareInternalArchiveOpen(for item: ArchiveItem,
@@ -341,18 +447,26 @@ final class FileManagerArchiveItemWorkflowService {
                                     openMode: FileManagerArchiveOpenMode,
                                     session: SZOperationSession) throws -> FileManagerPreparedArchiveItemInternalOpen
     {
+        guard let nestedIdentity = context.nestedIdentity(for: item) else {
+            throw extractionPreparationError()
+        }
+        let parentSnapshot = try makeNestedArchiveParentSnapshot(
+            for: item,
+            identity: nestedIdentity,
+            context: context,
+        )
         let stagedItem = try stage(item: item,
                                    context: context,
                                    temporaryDirectoryPrefix: FileManagerTemporaryDirectorySupport.openArchivePrefix,
                                    session: session)
         do {
-            let nestedWriteBackInfo = try makeNestedArchiveWriteBackInfo(for: item,
-                                                                         context: context,
+            let nestedWriteBackInfo = try makeNestedArchiveWriteBackInfo(parentSnapshot: parentSnapshot,
                                                                          stagedArchiveURL: stagedItem.fileURL)
             let preparedResult = FileManagerArchiveOpenService.prepareArchiveOpen(url: stagedItem.fileURL,
                                                                                   hostDirectory: context.hostDirectory,
                                                                                   temporaryDirectory: stagedItem.temporaryDirectory,
                                                                                   displayPathPrefix: context.displayPath(for: item),
+                                                                                  nestedIdentity: nestedIdentity,
                                                                                   nestedWriteBackInfo: nestedWriteBackInfo,
                                                                                   openMode: openMode,
                                                                                   session: session)
@@ -365,24 +479,65 @@ final class FileManagerArchiveItemWorkflowService {
         }
     }
 
-    private func makeNestedArchiveWriteBackInfo(for item: ArchiveItem,
-                                                context: FileManagerArchiveItemWorkflowContext,
-                                                stagedArchiveURL: URL) throws -> FileManagerNestedArchiveWriteBackInfo?
+    private func makeNestedArchiveParentSnapshot(
+        for item: ArchiveItem,
+        identity: FileManagerNestedArchiveIdentity,
+        context: FileManagerArchiveItemWorkflowContext
+    ) throws -> NestedArchiveParentSnapshot?
     {
         guard let parentTarget = context.mutationTarget else {
             return nil
         }
-
-        guard let initialFingerprint = FileManagerArchiveFileFingerprint.captureIfPossible(for: stagedArchiveURL,
-                                                                                           fileManager: fileManager)
+        guard let parentItemReference = item.reference else {
+            throw extractionPreparationError()
+        }
+        guard let parentArchiveURL = context.backingArchiveURL
+                ?? parentTarget.topLevelArchiveURL,
+              let parentArchiveFingerprint =
+                FileManagerArchiveFileFingerprint.captureIfPossible(
+                    for: parentArchiveURL,
+                    fileManager: fileManager
+                )
         else {
             throw extractionPreparationError()
         }
 
-        return FileManagerNestedArchiveWriteBackInfo(identity: FileManagerNestedArchiveIdentity(displayPath: context.displayPath(for: item)),
-                                                     parentTarget: parentTarget,
-                                                     parentItemPath: item.path,
-                                                     initialFingerprint: initialFingerprint)
+        return NestedArchiveParentSnapshot(
+            identity: identity,
+            parentTarget: parentTarget,
+            parentItemReference: parentItemReference,
+            parentArchiveURL: parentArchiveURL,
+            parentArchiveFingerprint: parentArchiveFingerprint,
+        )
+    }
+
+    private func makeNestedArchiveWriteBackInfo(
+        parentSnapshot: NestedArchiveParentSnapshot?,
+        stagedArchiveURL: URL
+    ) throws -> FileManagerNestedArchiveWriteBackInfo?
+    {
+        guard let parentSnapshot else { return nil }
+        guard let initialFingerprint =
+            FileManagerArchiveFileFingerprint.captureIfPossible(
+                for: stagedArchiveURL,
+                fileManager: fileManager
+            ),
+            parentSnapshot.parentArchiveFingerprint.matchesCurrentFile(
+                at: parentSnapshot.parentArchiveURL,
+                fileManager: fileManager
+            )
+        else {
+            throw extractionPreparationError()
+        }
+
+        return FileManagerNestedArchiveWriteBackInfo(
+            identity: parentSnapshot.identity,
+            parentTarget: parentSnapshot.parentTarget,
+            parentItemReference: parentSnapshot.parentItemReference,
+            parentArchiveURL: parentSnapshot.parentArchiveURL,
+            parentArchiveFingerprint: parentSnapshot.parentArchiveFingerprint,
+            initialFingerprint: initialFingerprint,
+        )
     }
 
     private func extractPromiseDirectory(for item: ArchiveItem,
@@ -474,11 +629,7 @@ final class FileManagerArchiveItemWorkflowService {
     private func stagedFileURL(for item: ArchiveItem,
                                in temporaryDirectory: URL) throws -> URL
     {
-        let relativePath = SZArchive.correctedFileSystemRelativePath(forArchivePath: item.path,
-                                                                     isDirectory: item.isDirectory)
-        guard !relativePath.isEmpty else {
-            throw extractionPreparationError()
-        }
+        let relativePath = try stagedRelativePath(for: item)
 
         let fileURL = temporaryDirectory.appendingPathComponent(relativePath,
                                                                 isDirectory: item.isDirectory)
@@ -488,8 +639,24 @@ final class FileManagerArchiveItemWorkflowService {
         else {
             throw extractionPreparationError()
         }
-
         return fileURL
+    }
+
+    private func stagedRelativePath(for item: ArchiveItem) throws -> String {
+        let relativePath = SZArchive.correctedFileSystemRelativePath(
+            forArchivePath: item.path,
+            isDirectory: item.isDirectory,
+        )
+        guard !relativePath.isEmpty else {
+            throw extractionPreparationError()
+        }
+        return relativePath
+    }
+
+    private func stagingCollisionKey(for relativePath: String) -> String {
+        relativePath.precomposedStringWithCanonicalMapping
+            .folding(options: [.caseInsensitive],
+                     locale: Locale(identifier: "en_US_POSIX"))
     }
 
     private func isStagedURL(_ candidate: URL,

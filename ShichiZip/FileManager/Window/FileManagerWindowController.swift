@@ -1023,12 +1023,18 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                    subdir: String,
                                                    move: Bool)
     {
+        let hasConflictingOpenNestedArchive =
+            FileManagerNestedArchiveConflictDetector.hasConflictingOpenInstance(
+                for: .root(topLevelArchiveURL: archiveURL),
+                in: windowCoordinator.archiveCoordinationSnapshots(),
+            )
         FileOperationArchiveDestinationTransfer.perform(sourceURLs,
                                                         from: sourcePane,
                                                         toArchiveURL: archiveURL,
                                                         subdir: subdir,
                                                         move: move,
                                                         candidatePanes: archiveCoordinationPaneControllers,
+                                                        hasConflictingOpenNestedArchive: hasConflictingOpenNestedArchive,
                                                         parentWindow: window)
         { [weak self] error in
             self?.showErrorAlert(error)

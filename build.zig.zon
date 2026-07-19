@@ -6,6 +6,7 @@
     .paths = .{
         "build.zig",
         "build.zig.zon",
+        "project/scripts/repack-darwin-archive.sh",
         "vendor",
     },
 }

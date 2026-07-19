@@ -53,6 +53,7 @@ struct FileManagerArchiveLevel {
     let archive: SZArchive
     let operationGate: FileManagerArchiveOperationGate
     let allEntries: [ArchiveItem]
+    let hierarchy: ArchiveHierarchy
     let statistics: FileManagerArchiveStatistics
     let entryProperties: [FileManagerArchiveEntryProperty]
     let currentSubdir: String
@@ -78,6 +79,7 @@ struct FileManagerArchiveLevel {
         self.archive = archive
         self.operationGate = operationGate
         self.allEntries = allEntries
+        hierarchy = Self.makeHierarchy(entries: allEntries)
         statistics = FileManagerArchiveStatistics(entries: allEntries)
         self.entryProperties = entryProperties
         self.currentSubdir = currentSubdir
@@ -92,6 +94,7 @@ struct FileManagerArchiveLevel {
                  archive: SZArchive,
                  operationGate: FileManagerArchiveOperationGate,
                  allEntries: [ArchiveItem],
+                 hierarchy: ArchiveHierarchy,
                  statistics: FileManagerArchiveStatistics,
                  entryProperties: [FileManagerArchiveEntryProperty],
                  currentSubdir: String,
@@ -105,6 +108,7 @@ struct FileManagerArchiveLevel {
         self.archive = archive
         self.operationGate = operationGate
         self.allEntries = allEntries
+        self.hierarchy = hierarchy
         self.statistics = statistics
         self.entryProperties = entryProperties
         self.currentSubdir = currentSubdir
@@ -152,12 +156,21 @@ struct FileManagerArchiveLevel {
                                 archive: archive,
                                 operationGate: operationGate,
                                 allEntries: allEntries,
+                                hierarchy: hierarchy,
                                 statistics: statistics,
                                 entryProperties: entryProperties,
                                 currentSubdir: subdir,
                                 temporaryDirectory: temporaryDirectory,
                                 nestedIdentity: nestedIdentity,
                                 nestedWriteBackInfo: nestedWriteBackInfo)
+    }
+
+    private static func makeHierarchy(entries: [ArchiveItem]) -> ArchiveHierarchy {
+        ArchiveHierarchy(records: entries.enumerated().map { itemIndex, entry in
+            ArchiveHierarchyRecord(itemIndex: itemIndex,
+                                  pathParts: entry.pathParts,
+                                  isDirectory: entry.isDirectory)
+        })
     }
 
     func supportsInPlaceMutation(hasConflictingNestedArchiveInstance: (FileManagerNestedArchiveIdentity) -> Bool) -> Bool {
@@ -173,11 +186,16 @@ struct FileManagerArchiveLevel {
             return false
         }
 
-        guard let nestedIdentity else {
-            return true
+        if let nestedIdentity {
+            return !hasConflictingNestedArchiveInstance(nestedIdentity)
         }
 
-        return !hasConflictingNestedArchiveInstance(nestedIdentity)
+        guard let topLevelArchiveURL else {
+            return true
+        }
+        return !hasConflictingNestedArchiveInstance(
+            .root(topLevelArchiveURL: topLevelArchiveURL),
+        )
     }
 
     func mutationTarget(subdir: String? = nil,
@@ -272,6 +290,13 @@ struct FileManagerArchiveStack {
         }
 
         return nil
+    }
+
+    func containsArchive(at archiveURL: URL) -> Bool {
+        let standardizedURL = archiveURL.standardizedFileURL
+        return levels.contains {
+            URL(fileURLWithPath: $0.archivePath).standardizedFileURL == standardizedURL
+        }
     }
 
     func coordinationSnapshots(isDirty: (FileManagerArchiveLevel) -> Bool) -> [FileManagerNestedArchiveOpenSnapshot] {
@@ -381,6 +406,10 @@ final class FileManagerArchiveSession {
         stack.archiveURL(for: archive)
     }
 
+    func containsArchive(at archiveURL: URL) -> Bool {
+        stack.containsArchive(at: archiveURL)
+    }
+
     func coordinatedLocation() -> FileManagerCoordinatedArchiveLocation? {
         stack.last?.coordinatedLocation
     }
@@ -400,7 +429,7 @@ final class FileManagerArchiveSession {
             entryProperties: prepared.archive.entryProperties.map(FileManagerArchiveEntryProperty.init),
             currentSubdir: "",
             temporaryDirectory: prepared.temporaryDirectory,
-            nestedIdentity: prepared.nestedWriteBackInfo?.identity,
+            nestedIdentity: prepared.nestedIdentity,
             nestedWriteBackInfo: prepared.nestedWriteBackInfo,
         )
         stack.append(level)
@@ -412,50 +441,50 @@ final class FileManagerArchiveSession {
         guard let level = stack.replaceCurrentSubdir(subdir) else { return false }
 
         let subdirParts = subdir.split(separator: "/").map(String.init)
-        let currentDepth = subdirParts.count
-        var seenDirs = Set<String>()
         var visibleItems: [ArchiveItem] = []
-        var realDirectoriesByPath: [String: ArchiveItem] = [:]
 
-        for entry in level.allEntries where entry.isDirectory {
-            realDirectoriesByPath[entry.pathParts.joined(separator: "/")] = entry
-        }
+        if let directory = level.hierarchy.directory(at: subdirParts) {
+            for child in directory.childrenInArchiveOrder {
+                switch child {
+                case let .entry(itemIndex):
+                    visibleItems.append(level.allEntries[itemIndex])
 
-        for entry in level.allEntries {
-            let parts = entry.pathParts
-            guard !parts.isEmpty else { continue }
-            guard parts.count > currentDepth else { continue }
-
-            if currentDepth > 0, Array(parts.prefix(currentDepth)) != subdirParts {
-                continue
-            }
-
-            if parts.count == currentDepth + 1 {
-                if !entry.isDirectory || !seenDirs.contains(entry.name) {
-                    visibleItems.append(entry)
-                    if entry.isDirectory {
-                        seenDirs.insert(entry.name)
+                case let .directory(childDirectory):
+                    if let representativeItemIndex = childDirectory.representativeItemIndex {
+                        visibleItems.append(level.allEntries[representativeItemIndex])
+                        continue
                     }
+
+                    let firstEntry = level.allEntries[childDirectory.firstItemIndex]
+                    let childPath = childDirectory.pathParts.joined(separator: "/")
+                    let reference = level.archive.entrySnapshotIdentifier.map {
+                        SZArchiveItemReference(
+                            logicalDirectoryPath: childPath,
+                            snapshotIdentifier: $0,
+                        )
+                    }
+                    visibleItems.append(ArchiveItem(
+                        index: -1,
+                        path: childPath,
+                        pathParts: childDirectory.pathParts,
+                        name: childDirectory.name,
+                        size: 0,
+                        packedSize: 0,
+                        modifiedDate: firstEntry.modifiedDate,
+                        createdDate: nil,
+                        accessedDate: nil,
+                        crc: 0,
+                        isDirectory: true,
+                        isEncrypted: false,
+                        isAnti: false,
+                        method: "",
+                        attributes: 0,
+                        position: 0,
+                        block: 0,
+                        comment: "",
+                        reference: reference,
+                    ))
                 }
-                continue
-            }
-
-            let childParts = Array(parts.prefix(currentDepth + 1))
-            let childName = childParts[currentDepth]
-            guard !seenDirs.contains(childName) else { continue }
-
-            seenDirs.insert(childName)
-            let childPath = childParts.joined(separator: "/")
-            if let realDir = realDirectoriesByPath[childPath] {
-                visibleItems.append(realDir)
-            } else {
-                visibleItems.append(ArchiveItem(
-                    index: -1, path: childPath, pathParts: childParts, name: childName,
-                    size: 0, packedSize: 0, modifiedDate: entry.modifiedDate,
-                    createdDate: nil, accessedDate: nil, crc: 0, isDirectory: true,
-                    isEncrypted: false, isAnti: false, method: "", attributes: 0, position: 0, block: 0,
-                    comment: "",
-                ))
             }
         }
 
@@ -523,6 +552,9 @@ final class FileManagerArchiveSession {
                                                      displayPathPrefix: displayPathPrefix,
                                                      quarantineSourceArchivePath: quarantineSourceArchivePath,
                                                      mutationTarget: mutationTarget,
+                                                     backingArchiveURL: URL(fileURLWithPath: level.archivePath),
+                                                     topLevelArchiveURL: level.topLevelArchiveURL,
+                                                     parentNestedIdentity: level.nestedIdentity,
                                                      archiveOperationLease: lease)
     }
 

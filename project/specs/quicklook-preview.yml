@@ -16,6 +16,8 @@ targets:
           - "Resources/**"
       - &archive_preview_archive_item_source
         path: ../../ShichiZip/Model/ArchiveItem.swift
+      - &archive_preview_archive_hierarchy_source
+        path: ../../ShichiZip/Model/ArchiveHierarchy.swift
       - &archive_preview_bridge_sources
         path: ../../ShichiZip/Bridge
         excludes:
@@ -166,6 +168,7 @@ targets:
     sources:
       - *archive_preview_sources
       - *archive_preview_archive_item_source
+      - *archive_preview_archive_hierarchy_source
       - *archive_preview_bridge_sources
       - *archive_preview_log_source
       - *archive_preview_shared_defaults_source

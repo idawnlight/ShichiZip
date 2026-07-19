@@ -674,6 +674,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                           subdir: subdir)
     }
 
+    func containsOpenArchive(at archiveURL: URL) -> Bool {
+        archiveSession.containsArchive(at: archiveURL)
+    }
+
     private func transferArchiveTarget(for archive: SZArchive,
                                        subdir: String) -> FileManagerPaneArchiveTransferTarget?
     {
@@ -1610,10 +1614,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func transferDidMutateArchive(targetSubdir: String?,
-                                  selectingPaths paths: [String])
+                                  selectingPaths paths: [String],
+                                  reopenBeforeListing: Bool)
     {
         refreshArchiveAfterMutation(targetSubdir: targetSubdir,
-                                    selectingPaths: paths)
+                                    selectingPaths: paths,
+                                    reopenBeforeListing: reopenBeforeListing)
         publishArchiveMutationIfNeeded(targetSubdir: targetSubdir,
                                        selectingPaths: paths)
     }
@@ -1811,10 +1817,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func refreshArchiveAfterMutation(targetSubdir: String? = nil,
-                                     selectingPaths paths: [String] = [])
+                                     selectingPaths paths: [String] = [],
+                                     reopenBeforeListing: Bool = false)
     {
         archiveCoordinator.refreshAfterMutation(targetSubdir: targetSubdir,
-                                                selectingPaths: paths)
+                                                selectingPaths: paths,
+                                                reopenBeforeListing: reopenBeforeListing)
     }
 
     private func refreshArchiveAfterMutation(selectingPath path: String? = nil) {

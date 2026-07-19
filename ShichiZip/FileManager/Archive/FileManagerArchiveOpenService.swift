@@ -30,6 +30,45 @@ struct FileManagerArchiveMutationTarget {
     let topLevelArchiveURL: URL?
 }
 
+enum FileManagerArchiveMutationOutcome {
+    case completed
+    case archiveCommittedAfterCancellation
+    case archiveCommittedAfterError(Error, requiresReopen: Bool)
+
+    var requiresReopenBeforeRefresh: Bool {
+        if case let .archiveCommittedAfterError(_, requiresReopen) = self {
+            return requiresReopen
+        }
+        return false
+    }
+
+    var committedError: Error? {
+        if case let .archiveCommittedAfterError(error, _) = self {
+            return error
+        }
+        return nil
+    }
+
+    @discardableResult
+    static func perform(_ operation: () throws -> Void) throws -> Self {
+        do {
+            try operation()
+            return .completed
+        } catch {
+            guard szArchiveMutationWasCommitted(error) else {
+                throw error
+            }
+            if szIsUserCancellation(error) {
+                return .archiveCommittedAfterCancellation
+            }
+            return .archiveCommittedAfterError(
+                error,
+                requiresReopen: szArchiveMutationRequiresReopen(error),
+            )
+        }
+    }
+}
+
 /// A mutation target paired with an operation-gate lease held for the lifetime of an in-place
 /// archive write, so a concurrent `closeLevel` drains before `archive.close()` tears down the
 /// shared `SZArchive`. Mirrors the lease carried by `FileManagerArchiveItemWorkflowContext` for
@@ -51,6 +90,7 @@ struct FileManagerLeasedArchive {
 struct FileManagerArchiveFileFingerprint: Equatable {
     let fileSize: UInt64
     let modificationDate: Date
+    let fileNumber: UInt64?
 
     static func captureIfPossible(for url: URL,
                                   fileManager: FileManager = .default) -> FileManagerArchiveFileFingerprint?
@@ -63,16 +103,31 @@ struct FileManagerArchiveFileFingerprint: Equatable {
         }
 
         let fileSize = (attributes[.size] as? NSNumber)?.uint64Value ?? 0
+        let fileNumber = (attributes[.systemFileNumber] as? NSNumber)?.uint64Value
         return FileManagerArchiveFileFingerprint(fileSize: fileSize,
-                                                 modificationDate: modificationDate)
+                                                 modificationDate: modificationDate,
+                                                 fileNumber: fileNumber)
+    }
+
+    func matchesCurrentFile(at url: URL,
+                            fileManager: FileManager = .default) -> Bool
+    {
+        Self.captureIfPossible(for: url,
+                               fileManager: fileManager) == self
     }
 }
 
 struct FileManagerNestedArchiveWriteBackInfo {
     let identity: FileManagerNestedArchiveIdentity
     let parentTarget: FileManagerArchiveMutationTarget
-    let parentItemPath: String
+    let parentItemReference: SZArchiveItemReference
+    let parentArchiveURL: URL
+    let parentArchiveFingerprint: FileManagerArchiveFileFingerprint
     let initialFingerprint: FileManagerArchiveFileFingerprint
+
+    var parentItemPath: String {
+        parentItemReference.path
+    }
 }
 
 struct FileManagerPreparedArchiveOpen {
@@ -82,7 +137,27 @@ struct FileManagerPreparedArchiveOpen {
     let archive: SZArchive
     let entries: [ArchiveItem]
     let temporaryDirectory: URL?
+    let nestedIdentity: FileManagerNestedArchiveIdentity?
     let nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo?
+
+    init(hostDirectory: URL,
+         archivePath: String,
+         displayPathPrefix: String,
+         archive: SZArchive,
+         entries: [ArchiveItem],
+         temporaryDirectory: URL?,
+         nestedIdentity: FileManagerNestedArchiveIdentity? = nil,
+         nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo?)
+    {
+        self.hostDirectory = hostDirectory
+        self.archivePath = archivePath
+        self.displayPathPrefix = displayPathPrefix
+        self.archive = archive
+        self.entries = entries
+        self.temporaryDirectory = temporaryDirectory
+        self.nestedIdentity = nestedIdentity ?? nestedWriteBackInfo?.identity
+        self.nestedWriteBackInfo = nestedWriteBackInfo
+    }
 }
 
 enum FileManagerPreparedArchiveOpenResult {
@@ -99,6 +174,7 @@ enum FileManagerArchiveOpenService {
                      temporaryDirectory: URL?,
                      displayPathPrefix: String,
                      parentWindow: NSWindow? = nil,
+                     nestedIdentity: FileManagerNestedArchiveIdentity? = nil,
                      nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo? = nil,
                      openMode: FileManagerArchiveOpenMode = .defaultBehavior) async -> FileManagerPreparedArchiveOpenResult
     {
@@ -112,6 +188,7 @@ enum FileManagerArchiveOpenService {
                                    hostDirectory: hostDirectory,
                                    temporaryDirectory: temporaryDirectory,
                                    displayPathPrefix: displayPathPrefix,
+                                   nestedIdentity: nestedIdentity,
                                    nestedWriteBackInfo: nestedWriteBackInfo,
                                    openMode: openMode,
                                    session: session)
@@ -125,6 +202,7 @@ enum FileManagerArchiveOpenService {
                                    hostDirectory: URL,
                                    temporaryDirectory: URL?,
                                    displayPathPrefix: String,
+                                   nestedIdentity: FileManagerNestedArchiveIdentity? = nil,
                                    nestedWriteBackInfo: FileManagerNestedArchiveWriteBackInfo?,
                                    openMode: FileManagerArchiveOpenMode,
                                    session: SZOperationSession) -> FileManagerPreparedArchiveOpenResult
@@ -144,6 +222,7 @@ enum FileManagerArchiveOpenService {
                                                           archive: archive,
                                                           entries: entries,
                                                           temporaryDirectory: temporaryDirectory,
+                                                          nestedIdentity: nestedIdentity,
                                                           nestedWriteBackInfo: nestedWriteBackInfo))
         } catch {
             archive.close()

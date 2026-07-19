@@ -62,6 +62,12 @@ final class EncryptedArchiveMutationTests: XCTestCase {
         Set(archive.entries().map(\.path))
     }
 
+    private func reference(forPath path: String,
+                           in archive: SZArchive) throws -> SZArchiveItemReference
+    {
+        try XCTUnwrap(archive.entries().first { $0.path == path }?.reference)
+    }
+
     // MARK: - AddPaths on encrypted archive
 
     /// Updating an encrypted 7z should not require a second password prompt.
@@ -124,7 +130,8 @@ final class EncryptedArchiveMutationTests: XCTestCase {
         let archive = try openEncrypted(archiveURL)
         defer { archive.close() }
 
-        try archive.renameItem(atPath: "old.txt",
+        try archive.renameItem(at: reference(forPath: "old.txt",
+                                             in: archive),
                                inArchiveSubdir: "",
                                newName: "new.txt",
                                session: nil)
@@ -145,7 +152,9 @@ final class EncryptedArchiveMutationTests: XCTestCase {
         let archive = try openEncrypted(archiveURL)
         defer { archive.close() }
 
-        try archive.deleteItems(atPaths: ["a.txt"],
+        try archive.deleteItems(at: [
+                                    reference(forPath: "a.txt", in: archive),
+                                ],
                                 inArchiveSubdir: "",
                                 session: nil)
 
@@ -166,7 +175,8 @@ final class EncryptedArchiveMutationTests: XCTestCase {
         let archive = try openEncrypted(archiveURL)
         defer { archive.close() }
 
-        try archive.replaceItem(atPath: "entry.txt",
+        try archive.replaceItem(at: reference(forPath: "entry.txt",
+                                              in: archive),
                                 inArchiveSubdir: "",
                                 withFileAtPath: substitute.path,
                                 session: nil)

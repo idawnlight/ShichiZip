@@ -147,6 +147,69 @@ final class ArchivePreviewPresentationTests: XCTestCase {
                        [".hidden", "Folder", "root.txt"])
     }
 
+    func testArchivePreviewSnapshotPreservesDuplicateFileRecords() {
+        let snapshot = ArchivePreviewSnapshot(
+            archiveURL: URL(fileURLWithPath: "/tmp/duplicates.zip"),
+            items: [
+                makeItem(index: 4, path: "duplicate.txt", size: 2),
+                makeItem(index: 9, path: "duplicate.txt", size: 3),
+            ],
+            entryProperties: [],
+            formatName: "Zip",
+        )
+
+        let roots = snapshot.treeNodes(showHiddenItems: true)
+
+        XCTAssertEqual(roots.map(\.row.itemIndex), [0, 1])
+        XCTAssertEqual(roots.map { $0.text(for: .name) },
+                       ["duplicate.txt", "duplicate.txt"])
+        XCTAssertEqual(ArchivePreviewPresentation.summary(for: roots),
+                       ArchivePreviewSummary(fileCount: 2,
+                                             folderCount: 0,
+                                             fileSize: 5))
+    }
+
+    func testArchivePreviewSnapshotSeparatesFileAndDirectoryWithSamePath() {
+        let snapshot = ArchivePreviewSnapshot(
+            archiveURL: URL(fileURLWithPath: "/tmp/file-directory-collision.zip"),
+            items: [
+                makeItem(index: 2, path: "collision", isDirectory: true),
+                makeItem(index: 7, path: "collision"),
+                makeItem(index: 11, path: "collision/nested.txt"),
+            ],
+            entryProperties: [],
+            formatName: "Zip",
+        )
+
+        let roots = snapshot.treeNodes(showHiddenItems: true)
+
+        XCTAssertEqual(roots.map(\.row.itemIndex), [0, 1])
+        XCTAssertEqual(roots.map(\.row.isDirectory), [true, false])
+        XCTAssertEqual(roots.map { $0.text(for: .name) },
+                       ["collision", "collision"])
+        XCTAssertEqual(roots[0].children.map(\.row.itemIndex), [2])
+        XCTAssertTrue(roots[1].children.isEmpty)
+    }
+
+    func testArchivePreviewSnapshotUsesFirstExplicitDuplicateDirectory() {
+        let snapshot = ArchivePreviewSnapshot(
+            archiveURL: URL(fileURLWithPath: "/tmp/duplicate-directories.zip"),
+            items: [
+                makeItem(index: 3, path: "Folder", isDirectory: true),
+                makeItem(index: 8, path: "Folder", isDirectory: true),
+                makeItem(index: 12, path: "Folder/file.txt"),
+            ],
+            entryProperties: [],
+            formatName: "Zip",
+        )
+
+        let roots = snapshot.treeNodes(showHiddenItems: true)
+
+        XCTAssertEqual(roots.count, 1)
+        XCTAssertEqual(roots[0].row.itemIndex, 0)
+        XCTAssertEqual(roots[0].children.map(\.row.itemIndex), [2])
+    }
+
     func testArchivePreviewLoaderListsAndFiltersHiddenEntries() throws {
         let tempRoot = try makeTemporaryDirectory(named: "archive-preview-loader")
         try "visible".write(to: tempRoot.appendingPathComponent("visible.txt"),
@@ -169,13 +232,14 @@ final class ArchivePreviewPresentationTests: XCTestCase {
                        ["visible.txt", ".hidden"])
     }
 
-    private func makeItem(path: String,
+    private func makeItem(index: Int = 0,
+                          path: String,
                           size: UInt64 = 1,
                           packedSize: UInt64 = 1,
                           isDirectory: Bool = false,
                           attributes: UInt32 = 0) -> ArchiveItem
     {
-        ArchiveItem(index: 0,
+        ArchiveItem(index: index,
                     path: path,
                     name: path.split(separator: "/").last.map(String.init) ?? path,
                     size: size,

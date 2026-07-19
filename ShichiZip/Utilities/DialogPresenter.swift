@@ -14,6 +14,18 @@ func szIsUserCancellation(_ error: Error) -> Bool {
     szIsArchiveError(error, code: .userCancelled)
 }
 
+func szArchiveMutationWasCommitted(_ error: Error) -> Bool {
+    let nsError = error as NSError
+    return nsError.domain == SZArchiveErrorDomain
+        && nsError.userInfo[SZArchiveMutationCommittedErrorKey] as? Bool == true
+}
+
+func szArchiveMutationRequiresReopen(_ error: Error) -> Bool {
+    let nsError = error as NSError
+    return nsError.domain == SZArchiveErrorDomain
+        && nsError.userInfo[SZArchiveMutationReopenFailedErrorKey] as? Bool == true
+}
+
 func szIsUnsupportedArchive(_ error: Error) -> Bool {
     szIsArchiveError(error, code: .unsupportedArchive)
 }

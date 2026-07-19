@@ -2,6 +2,7 @@
 
 @class SZArchiveEntry;
 @class SZArchiveEntryProperty;
+@class SZArchiveItemReference;
 @class SZBenchDisplayRow;
 @class SZBenchSnapshot;
 @class SZOperationSession;
@@ -11,6 +12,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 FOUNDATION_EXPORT NSErrorDomain const SZArchiveErrorDomain;
+FOUNDATION_EXPORT NSString* const SZArchiveMutationCommittedErrorKey;
+FOUNDATION_EXPORT NSString* const SZArchiveMutationReopenFailedErrorKey;
 
 typedef NS_ERROR_ENUM(SZArchiveErrorDomain, SZArchiveErrorCode) {
     SZArchiveErrorCodeFailedToInitCodecs = -1,
@@ -173,6 +176,25 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 @end
 
 /// Represents a single entry in an archive
+@interface SZArchiveItemReference : NSObject
+@property (nonatomic, readonly) NSUInteger archiveIndex;
+@property (nonatomic, readonly, getter=hasArchiveIndex) BOOL archiveIndexAvailable;
+@property (nonatomic, copy, readonly) NSString* path;
+@property (nonatomic, readonly, getter=isDirectory) BOOL directory;
+@property (nonatomic, copy, readonly) NSUUID* snapshotIdentifier;
+
+- (instancetype)initWithArchiveIndex:(NSUInteger)archiveIndex
+                                path:(NSString*)path
+                         isDirectory:(BOOL)isDirectory
+                  snapshotIdentifier:(NSUUID*)snapshotIdentifier
+    NS_DESIGNATED_INITIALIZER;
+
+- (instancetype)initWithLogicalDirectoryPath:(NSString*)path
+                          snapshotIdentifier:(NSUUID*)snapshotIdentifier;
+
+- (instancetype)init NS_UNAVAILABLE;
+@end
+
 @interface SZArchiveEntry : NSObject
 @property (nonatomic, copy) NSString* path;
 @property (nonatomic, copy) NSArray<NSString*>* pathParts;
@@ -192,6 +214,7 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 @property (nonatomic) uint64_t block;
 @property (nonatomic, copy, nullable) NSString* comment;
 @property (nonatomic) NSUInteger index; // internal archive index
+@property (nonatomic, strong, readonly) SZArchiveItemReference* reference;
 @end
 
 /// Describes one item property exposed by the archive handler.
@@ -306,6 +329,9 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 /// Get the number of entries
 @property (nonatomic, readonly) NSUInteger entryCount;
 
+/// Identifies the currently open entry listing generation.
+@property (nonatomic, copy, readonly, nullable) NSUUID* entrySnapshotIdentifier;
+
 /// Get all entries
 - (NSArray<SZArchiveEntry*>*)entries;
 
@@ -353,18 +379,18 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
                   session:(nullable SZOperationSession*)session
                     error:(NSError**)error;
 
-/// Rename one item in the currently open archive.
-- (BOOL)renameItemAtPath:(NSString*)itemPath
-         inArchiveSubdir:(NSString*)archiveSubdir
-                 newName:(NSString*)newName
-                 session:(nullable SZOperationSession*)session
-                   error:(NSError**)error;
+/// Rename one exact item in the currently open archive.
+- (BOOL)renameItemAtReference:(SZArchiveItemReference*)itemReference
+              inArchiveSubdir:(NSString*)archiveSubdir
+                      newName:(NSString*)newName
+                      session:(nullable SZOperationSession*)session
+                        error:(NSError**)error;
 
-/// Delete one or more items from the currently open archive.
-- (BOOL)deleteItemsAtPaths:(NSArray<NSString*>*)itemPaths
-           inArchiveSubdir:(NSString*)archiveSubdir
-                   session:(nullable SZOperationSession*)session
-                     error:(NSError**)error;
+/// Delete one or more exact items from the currently open archive.
+- (BOOL)deleteItemsAtReferences:(NSArray<SZArchiveItemReference*>*)itemReferences
+                inArchiveSubdir:(NSString*)archiveSubdir
+                        session:(nullable SZOperationSession*)session
+                          error:(NSError**)error;
 
 /// Add files or folders from disk into the currently open archive.
 - (BOOL)addPaths:(NSArray<NSString*>*)sourcePaths
@@ -373,13 +399,13 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
             session:(nullable SZOperationSession*)session
               error:(NSError**)error;
 
-/// Replace one existing item in the currently open archive with a file from
-/// disk.
-- (BOOL)replaceItemAtPath:(NSString*)itemPath
-          inArchiveSubdir:(NSString*)archiveSubdir
-           withFileAtPath:(NSString*)sourceFilePath
-                  session:(nullable SZOperationSession*)session
-                    error:(NSError**)error;
+/// Replace one exact existing item in the currently open archive with a file
+/// from disk.
+- (BOOL)replaceItemAtReference:(SZArchiveItemReference*)itemReference
+               inArchiveSubdir:(NSString*)archiveSubdir
+                withFileAtPath:(NSString*)sourceFilePath
+                       session:(nullable SZOperationSession*)session
+                         error:(NSError**)error;
 
 /// Create a new archive from files
 + (BOOL)createAtPath:(NSString*)archivePath
@@ -421,6 +447,10 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 /// file system for non-absolute extraction modes.
 + (NSString*)correctedFileSystemRelativePathForArchivePath:(NSString*)path
                                                isDirectory:(BOOL)isDirectory;
+
+/// Return a hashable key with the same filename-equivalence semantics used by
+/// the bundled 7-Zip Agent hierarchy.
++ (NSData*)fileNameComparisonKeyForArchivePathComponent:(NSString*)component;
 
 @end
 

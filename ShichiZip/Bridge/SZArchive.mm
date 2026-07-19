@@ -3,6 +3,7 @@
 #include "SZBridgeCommon.h"
 #include "SZCallbacks.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -39,6 +40,8 @@
 #include "CPP/Common/Wildcard.h"
 #include "CPP/Windows/ErrorMsg.h"
 #include "CPP/Windows/System.h"
+
+extern bool g_CaseSensitive;
 
 // ============================================================
 // ObjC model implementations
@@ -127,6 +130,39 @@ static NSData* SZQuarantineDataForArchivePath(NSString* archivePath) {
     }
     return nil;
 }
+
+@implementation SZArchiveItemReference
+
+- (instancetype)initWithArchiveIndex:(NSUInteger)archiveIndex
+                                path:(NSString*)path
+                         isDirectory:(BOOL)isDirectory
+                  snapshotIdentifier:(NSUUID*)snapshotIdentifier {
+    if ((self = [super init])) {
+        _archiveIndex = archiveIndex;
+        _path = [path copy];
+        _directory = isDirectory;
+        _snapshotIdentifier = [snapshotIdentifier copy];
+    }
+    return self;
+}
+
+- (instancetype)initWithLogicalDirectoryPath:(NSString*)path
+                          snapshotIdentifier:(NSUUID*)snapshotIdentifier {
+    return [self initWithArchiveIndex:NSNotFound
+                                path:path
+                         isDirectory:YES
+                  snapshotIdentifier:snapshotIdentifier];
+}
+
+- (BOOL)hasArchiveIndex {
+    return _archiveIndex != NSNotFound;
+}
+
+@end
+
+@interface SZArchiveEntry ()
+@property (nonatomic, strong, readwrite) SZArchiveItemReference* reference;
+@end
 
 @implementation SZArchiveEntry
 - (instancetype)init {
@@ -1073,6 +1109,7 @@ static UInt32 SZCompressionEstimateAutoThreads(SZCompressionSettings* settings,
     NSString* _openType;
     NSString* _cachedPassword;
     BOOL _cachedPasswordIsDefined;
+    NSUUID* _entrySnapshotIdentifier;
 }
 @end
 
@@ -1510,6 +1547,46 @@ static NSString* SZFolderItemName(IFolderFolder* folder, UInt32 index) {
     return nil;
 }
 
+static bool SZFolderItemIsDirectory(IFolderFolder* folder, UInt32 index,
+    bool& isDirectory) {
+    NWindows::NCOM::CPropVariant value;
+    if (folder->GetProperty(index, kpidIsDir, &value) != S_OK
+        || value.vt != VT_BOOL) {
+        return false;
+    }
+    isDirectory = value.boolVal != VARIANT_FALSE;
+    return true;
+}
+
+static bool SZArchivePathsEqual(NSString* lhs, NSString* rhs) {
+    const UString lhsValue = ToU(lhs);
+    const UString rhsValue = ToU(rhs);
+    return CompareFileNames(lhsValue, rhsValue) == 0;
+}
+
+static bool SZItemReferencesMatchSnapshot(
+    NSArray<SZArchiveItemReference*>* itemReferences,
+    NSUUID* snapshotIdentifier) {
+    if (itemReferences.count == 0 || !snapshotIdentifier) {
+        return false;
+    }
+
+    for (SZArchiveItemReference* itemReference in itemReferences) {
+        if (![itemReference.snapshotIdentifier
+                isEqual:snapshotIdentifier]) {
+            return false;
+        }
+        if (!itemReference.hasArchiveIndex && !itemReference.isDirectory) {
+            return false;
+        }
+        if (itemReference.hasArchiveIndex
+            && itemReference.archiveIndex > (NSUInteger)INT_MAX) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static HRESULT SZBindFolderToArchiveSubdir(IFolderFolder* rootFolder,
     NSString* archiveSubdir,
     IFolderFolder** resultFolder) {
@@ -1527,8 +1604,8 @@ static HRESULT SZBindFolderToArchiveSubdir(IFolderFolder* rootFolder,
     return S_OK;
 }
 
-static HRESULT SZResolveFolderItemIndices(IFolderFolder* folder,
-    NSArray<NSString*>* itemPaths,
+static HRESULT SZResolveFolderItemReferences(IFolderFolder* folder,
+    NSArray<SZArchiveItemReference*>* itemReferences,
     NSString* archiveSubdir,
     std::vector<UInt32>& indices) {
     indices.clear();
@@ -1537,10 +1614,25 @@ static HRESULT SZResolveFolderItemIndices(IFolderFolder* folder,
     UInt32 numItems = 0;
     RINOK(folder->GetNumberOfItems(&numItems))
 
-    for (NSString* itemPath in itemPaths) {
-        NSString* normalizedPath = SZNormalizeArchiveRelativePath(itemPath);
-        if (![SZArchiveParentPath(normalizedPath)
-                isEqualToString:normalizedSubdir]) {
+    CMyComPtr<IFolderFolder> owningFolder(folder);
+    CMyComPtr<IArchiveFolderInternal> internalFolder;
+    RINOK(owningFolder.QueryInterface(
+        IID_IArchiveFolderInternal, &internalFolder))
+    if (!internalFolder) {
+        return E_NOINTERFACE;
+    }
+
+    CAgentFolder* agentFolder = NULL;
+    RINOK(internalFolder->GetAgentFolder(&agentFolder))
+    if (!agentFolder) {
+        return E_FAIL;
+    }
+
+    for (SZArchiveItemReference* itemReference in itemReferences) {
+        NSString* normalizedPath =
+            SZNormalizeArchiveRelativePath(itemReference.path);
+        if (!SZArchivePathsEqual(
+                SZArchiveParentPath(normalizedPath), normalizedSubdir)) {
             return E_INVALIDARG;
         }
 
@@ -1549,20 +1641,39 @@ static HRESULT SZResolveFolderItemIndices(IFolderFolder* folder,
             return E_INVALIDARG;
         }
 
-        BOOL found = NO;
+        UInt32 resolvedIndex = 0;
+        unsigned matchCount = 0;
         for (UInt32 index = 0; index < numItems; index++) {
+            if (itemReference.hasArchiveIndex) {
+                const int realIndex = agentFolder->GetRealIndex(index);
+                if (realIndex < 0
+                    || (NSUInteger)(unsigned)realIndex
+                        != itemReference.archiveIndex) {
+                    continue;
+                }
+            }
+
             NSString* itemName = SZFolderItemName(folder, index);
-            if (![itemName isEqualToString:expectedName]) {
+            if (!itemName || !SZArchivePathsEqual(itemName, expectedName)) {
                 continue;
             }
-            indices.push_back(index);
-            found = YES;
-            break;
+
+            bool isDirectory = false;
+            if (!SZFolderItemIsDirectory(folder, index, isDirectory)
+                || isDirectory != (bool)itemReference.isDirectory) {
+                continue;
+            }
+
+            resolvedIndex = index;
+            matchCount++;
         }
 
-        if (!found) {
+        if (matchCount != 1
+            || std::find(indices.begin(), indices.end(), resolvedIndex)
+                != indices.end()) {
             return E_INVALIDARG;
         }
+        indices.push_back(resolvedIndex);
     }
 
     return S_OK;
@@ -1593,35 +1704,80 @@ static HRESULT SZOpenAgentFolder(NSString* archivePath, NSString* openType,
     return SZBindFolderToArchiveSubdir(rootFolder, archiveSubdir, &folderOut);
 }
 
+static NSError* SZArchiveMutationError(
+    NSError* error, bool archiveWasReplaced) {
+    if (!archiveWasReplaced) {
+        return error;
+    }
+
+    NSMutableDictionary* userInfo = [error.userInfo mutableCopy]
+        ?: [NSMutableDictionary dictionary];
+    userInfo[SZArchiveMutationCommittedErrorKey] = @YES;
+    return [NSError errorWithDomain:error.domain
+                               code:error.code
+                           userInfo:userInfo];
+}
+
+static NSError* SZArchiveMutationReopenError(
+    NSError* error, bool archiveWasReplaced) {
+    NSError* mutationError = SZArchiveMutationError(error, archiveWasReplaced);
+    if (!archiveWasReplaced) {
+        return mutationError;
+    }
+
+    NSMutableDictionary* userInfo = [mutationError.userInfo mutableCopy]
+        ?: [NSMutableDictionary dictionary];
+    userInfo[SZArchiveMutationReopenFailedErrorKey] = @YES;
+    return [NSError errorWithDomain:mutationError.domain
+                               code:mutationError.code
+                           userInfo:userInfo];
+}
+
 static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     NSString* fallbackDescription,
-    const UString& errorMessage) {
+    const UString& errorMessage,
+    bool archiveWasReplaced = false) {
     if (result == E_ABORT) {
-        return SZMakeError(SZArchiveErrorCodeUserCancelled,
-            SZLocalizedString(@"app.archive.error.operationCancelled"));
+        return SZArchiveMutationError(
+            SZMakeError(SZArchiveErrorCodeUserCancelled,
+                SZLocalizedString(@"app.archive.error.operationCancelled")),
+            archiveWasReplaced);
     }
 
     if (result == E_NOTIMPL) {
-        return SZMakeError(
-            SZArchiveErrorCodeUnsupportedFormat,
-            SZLocalizedString(@"archive.updateUnsupported"));
+        return SZArchiveMutationError(
+            SZMakeError(
+                SZArchiveErrorCodeUnsupportedFormat,
+                SZLocalizedString(@"archive.updateUnsupported")),
+            archiveWasReplaced);
     }
 
     if (result == E_INVALIDARG) {
-        return SZMakeError(result, SZLocalizedString(@"app.archive.error.invalidItemSelection"));
+        return SZArchiveMutationError(
+            SZMakeError(result,
+                SZLocalizedString(@"app.archive.error.invalidItemSelection")),
+            archiveWasReplaced);
     }
 
     if (result == (HRESULT)ERROR_ALREADY_EXISTS || result == HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)) {
-        return SZMakeError(
-            result, SZLocalizedString(@"app.archive.error.itemAlreadyExists"));
+        return SZArchiveMutationError(
+            SZMakeError(
+                result, SZLocalizedString(@"app.archive.error.itemAlreadyExists")),
+            archiveWasReplaced);
     }
 
     NSString* details = ToNS(errorMessage);
     if (details.length > 0) {
-        return SZMakeDetailedError(result, fallbackDescription, details);
+        return SZArchiveMutationError(
+            SZMakeDetailedError(result, fallbackDescription, details),
+            archiveWasReplaced);
     }
 
-    return SZMakeError(result, [NSString stringWithFormat:@"%@ (0x%08X)", fallbackDescription, (unsigned)result]);
+    return SZArchiveMutationError(
+        SZMakeError(result,
+            [NSString stringWithFormat:@"%@ (0x%08X)",
+                fallbackDescription, (unsigned)result]),
+        archiveWasReplaced);
 }
 
 @implementation SZArchive
@@ -1769,11 +1925,38 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
                       error:error];
 }
 
+- (BOOL)reopenAfterMutationResult:(HRESULT)result
+               archiveWasReplaced:(BOOL)archiveWasReplaced
+                            error:(NSError**)error {
+    if (result != S_OK && !archiveWasReplaced) {
+        return YES;
+    }
+
+    NSString* archivePath = [_archivePath copy];
+    NSError* reopenError = nil;
+    if ([self reopenAfterExternalMutationWithSession:nil
+                                              error:&reopenError]) {
+        return YES;
+    }
+
+    if (error) {
+        NSError* resolvedError = reopenError
+            ?: SZMakeError(
+                -1,
+                SZLocalizedStringWithFirstPlaceholder(
+                    @"archive.cannotOpenFileAsArchive", archivePath));
+        *error = SZArchiveMutationReopenError(
+            resolvedError, archiveWasReplaced);
+    }
+    return NO;
+}
+
 - (instancetype)init {
     if ((self = [super init])) {
         _arcLink = std::make_unique<CArchiveLink>();
         _isOpen = NO;
         _cachedPasswordIsDefined = NO;
+        _entrySnapshotIdentifier = nil;
     }
     return self;
 }
@@ -1804,6 +1987,17 @@ static NSError* SZArchiveUpdateErrorFromResult(HRESULT result,
     SplitPathToParts(ToU(path), pathParts);
     Correct_FsPath(false, false, pathParts, isDirectory);
     return ToNS(MakePathFromParts(pathParts));
+}
+
++ (NSData*)fileNameComparisonKeyForArchivePathComponent:(NSString*)component {
+    const UString value = ToU(component);
+    NSMutableData* key = [NSMutableData dataWithLength:(NSUInteger)value.Len() * sizeof(wchar_t)];
+    wchar_t* output = (wchar_t*)key.mutableBytes;
+    for (unsigned index = 0; index < value.Len(); index++) {
+        const wchar_t character = value[index];
+        output[index] = g_CaseSensitive ? character : MyCharUpper(character);
+    }
+    return key;
 }
 
 static bool SZIsCorrectArchiveMutationName(NSString* name) {
@@ -1946,6 +2140,7 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     }
     _openType = [openType copy];
     _isOpen = YES;
+    _entrySnapshotIdentifier = [NSUUID UUID];
     return YES;
 }
 
@@ -1956,6 +2151,7 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
         _arcLink->Close();
     _isOpen = NO;
     _openType = nil;
+    _entrySnapshotIdentifier = nil;
     [self clearCachedPassword];
 }
 
@@ -2064,6 +2260,11 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     return n;
 }
 
+- (NSUUID*)entrySnapshotIdentifier {
+    SZArchiveOperationGuard operationGuard(self);
+    return [_entrySnapshotIdentifier copy];
+}
+
 - (NSArray<SZArchiveEntry*>*)entries {
     return [self entriesWithSession:nil error:nil] ?: @[];
 }
@@ -2131,6 +2332,11 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
                 propertyValues[property.key] = value;
         }
         e.propertyValues = propertyValues;
+        e.reference = [[SZArchiveItemReference alloc]
+            initWithArchiveIndex:i
+                           path:e.path
+                    isDirectory:e.isDirectory
+             snapshotIdentifier:_entrySnapshotIdentifier];
         [arr addObject:e];
     }
     return arr;
@@ -2489,7 +2695,6 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
                 SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
-
     SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession(nil);
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
@@ -2529,8 +2734,9 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
 
     [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
-    if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
-                                                                                                      error:error]) {
+    if (![self reopenAfterMutationResult:result
+                      archiveWasReplaced:updateSpec->ArchiveWasReplaced
+                                   error:error]) {
         return NO;
     }
 
@@ -2538,7 +2744,8 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
                 result, SZLocalizedString(@"create.errorFolder"),
-                updateSpec->LastErrorMessage);
+                updateSpec->LastErrorMessage,
+                updateSpec->ArchiveWasReplaced);
         }
         return NO;
     }
@@ -2546,14 +2753,24 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     return YES;
 }
 
-- (BOOL)renameItemAtPath:(NSString*)itemPath
-         inArchiveSubdir:(NSString*)archiveSubdir
-                 newName:(NSString*)newName
-                 session:(SZOperationSession*)session
-                   error:(NSError**)error {
+- (BOOL)renameItemAtReference:(SZArchiveItemReference*)itemReference
+              inArchiveSubdir:(NSString*)archiveSubdir
+                      newName:(NSString*)newName
+                      session:(SZOperationSession*)session
+                        error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
     if (!SZValidateArchiveMutationName(newName, error)) {
+        return NO;
+    }
+
+    if (!SZItemReferencesMatchSnapshot(
+            @[ itemReference ], _entrySnapshotIdentifier)) {
+        if (error) {
+            *error = SZArchiveUpdateErrorFromResult(
+                E_INVALIDARG, SZLocalizedString(@"fileop.errorRenaming"),
+                UString());
+        }
         return NO;
     }
 
@@ -2563,7 +2780,6 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
                 SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
-
     SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession(nil);
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
@@ -2590,7 +2806,8 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     }
 
     std::vector<UInt32> indices;
-    result = SZResolveFolderItemIndices(folder, @[ itemPath ], archiveSubdir, indices);
+    result = SZResolveFolderItemReferences(
+        folder, @[ itemReference ], archiveSubdir, indices);
     if (result != S_OK || indices.size() != 1) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
@@ -2613,8 +2830,9 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
 
     [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
-    if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
-                                                                                                      error:error]) {
+    if (![self reopenAfterMutationResult:result
+                      archiveWasReplaced:updateSpec->ArchiveWasReplaced
+                                   error:error]) {
         return NO;
     }
 
@@ -2622,7 +2840,8 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(result,
                 SZLocalizedString(@"fileop.errorRenaming"),
-                updateSpec->LastErrorMessage);
+                updateSpec->LastErrorMessage,
+                updateSpec->ArchiveWasReplaced);
         }
         return NO;
     }
@@ -2630,10 +2849,11 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     return YES;
 }
 
-- (BOOL)deleteItemsAtPaths:(NSArray<NSString*>*)itemPaths
-           inArchiveSubdir:(NSString*)archiveSubdir
-                   session:(SZOperationSession*)session
-                     error:(NSError**)error {
+- (BOOL)deleteItemsAtReferences:
+            (NSArray<SZArchiveItemReference*>*)itemReferences
+                inArchiveSubdir:(NSString*)archiveSubdir
+                        session:(SZOperationSession*)session
+                          error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
     if (!_isOpen) {
@@ -2643,6 +2863,15 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         return NO;
     }
 
+    if (!SZItemReferencesMatchSnapshot(
+            itemReferences, _entrySnapshotIdentifier)) {
+        if (error) {
+            *error = SZArchiveUpdateErrorFromResult(
+                E_INVALIDARG, SZLocalizedString(@"delete.errorDeleting"),
+                UString());
+        }
+        return NO;
+    }
     SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession(nil);
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
@@ -2669,7 +2898,8 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     }
 
     std::vector<UInt32> indices;
-    result = SZResolveFolderItemIndices(folder, itemPaths, archiveSubdir, indices);
+    result = SZResolveFolderItemReferences(
+        folder, itemReferences, archiveSubdir, indices);
     if (result != S_OK || indices.empty()) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
@@ -2700,8 +2930,9 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
 
     [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
-    if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
-                                                                                                      error:error]) {
+    if (![self reopenAfterMutationResult:result
+                      archiveWasReplaced:updateSpec->ArchiveWasReplaced
+                                   error:error]) {
         return NO;
     }
 
@@ -2709,7 +2940,8 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
                 result, SZLocalizedString(@"delete.errorDeleting"),
-                updateSpec->LastErrorMessage);
+                updateSpec->LastErrorMessage,
+                updateSpec->ArchiveWasReplaced);
         }
         return NO;
     }
@@ -2730,7 +2962,6 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
                 SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return NO;
     }
-
     if (sourcePaths.count == 0) {
         return YES;
     }
@@ -2822,8 +3053,9 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
 
     [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
-    if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
-                                                                                                      error:error]) {
+    if (![self reopenAfterMutationResult:result
+                      archiveWasReplaced:updateSpec->ArchiveWasReplaced
+                                   error:error]) {
         return NO;
     }
 
@@ -2831,7 +3063,8 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(result,
                 SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", _archivePath),
-                updateSpec->LastErrorMessage);
+                updateSpec->LastErrorMessage,
+                updateSpec->ArchiveWasReplaced);
         }
         return NO;
     }
@@ -2839,11 +3072,11 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     return YES;
 }
 
-- (BOOL)replaceItemAtPath:(NSString*)itemPath
-          inArchiveSubdir:(NSString*)archiveSubdir
-           withFileAtPath:(NSString*)sourceFilePath
-                  session:(SZOperationSession*)session
-                    error:(NSError**)error {
+- (BOOL)replaceItemAtReference:(SZArchiveItemReference*)itemReference
+               inArchiveSubdir:(NSString*)archiveSubdir
+                withFileAtPath:(NSString*)sourceFilePath
+                       session:(SZOperationSession*)session
+                         error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
     if (!_isOpen) {
@@ -2853,6 +3086,17 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         return NO;
     }
 
+    if (!SZItemReferencesMatchSnapshot(
+            @[ itemReference ], _entrySnapshotIdentifier)) {
+        if (error) {
+            *error = SZArchiveUpdateErrorFromResult(
+                E_INVALIDARG,
+                SZLocalizedStringWithFirstPlaceholder(
+                    @"archive.cannotUpdateFile", itemReference.path),
+                UString());
+        }
+        return NO;
+    }
     NSString* standardizedSourcePath =
         [NSURL fileURLWithPath:sourceFilePath].standardizedURL.path;
     if (![[NSFileManager defaultManager]
@@ -2863,7 +3107,6 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         }
         return NO;
     }
-
     SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession(nil);
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
@@ -2890,11 +3133,12 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     }
 
     std::vector<UInt32> indices;
-    result = SZResolveFolderItemIndices(folder, @[ itemPath ], archiveSubdir, indices);
+    result = SZResolveFolderItemReferences(
+        folder, @[ itemReference ], archiveSubdir, indices);
     if (result != S_OK || indices.size() != 1) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
-                E_INVALIDARG, SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemPath),
+                E_INVALIDARG, SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemReference.path),
                 UString());
         }
         return NO;
@@ -2915,16 +3159,18 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
 
     [self syncCachedPasswordFromUpdateCallback:updateSpec result:result];
 
-    if ((result == S_OK || updateSpec->ArchiveWasReplaced) && ![self reopenAfterExternalMutationWithSession:resolvedSession
-                                                                                                      error:error]) {
+    if (![self reopenAfterMutationResult:result
+                      archiveWasReplaced:updateSpec->ArchiveWasReplaced
+                                   error:error]) {
         return NO;
     }
 
     if (result != S_OK) {
         if (error) {
             *error = SZArchiveUpdateErrorFromResult(
-                result, SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemPath),
-                updateSpec->LastErrorMessage);
+                result, SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemReference.path),
+                updateSpec->LastErrorMessage,
+                updateSpec->ArchiveWasReplaced);
         }
         return NO;
     }

@@ -78,12 +78,15 @@ struct ArchivePreviewRow {
 final class ArchivePreviewTreeNode: @unchecked Sendable {
     let row: ArchivePreviewRow
     let children: [ArchivePreviewTreeNode]
+    let directoryID: ArchiveDirectoryID?
 
     init(row: ArchivePreviewRow,
-         children: [ArchivePreviewTreeNode])
+         children: [ArchivePreviewTreeNode],
+         directoryID: ArchiveDirectoryID? = nil)
     {
         self.row = row
         self.children = children
+        self.directoryID = directoryID
     }
 
     func text(for columnID: ArchivePreviewColumnID) -> String {
@@ -864,134 +867,121 @@ enum ArchivePreviewTreeBuilder {
     static func treeNodes(for rows: [ArchivePreviewRow],
                           columns: [ArchivePreviewColumn]) -> [ArchivePreviewTreeNode]
     {
-        let root = MutableNode(name: "",
-                               pathParts: [],
-                               columns: columns)
-        for row in rows {
-            guard !row.pathParts.isEmpty else { continue }
+        let rowsByItemIndex = Dictionary(uniqueKeysWithValues: rows.map { ($0.itemIndex, $0) })
+        let hierarchy = ArchiveHierarchy(records: rows.map {
+            ArchiveHierarchyRecord(itemIndex: $0.itemIndex,
+                                   pathParts: $0.pathParts,
+                                   isDirectory: $0.isDirectory)
+        })
 
-            var currentNode = root
-            for depth in row.pathParts.indices {
-                let childPathParts = Array(row.pathParts.prefix(through: depth))
-                currentNode = currentNode.child(named: row.pathParts[depth],
-                                                pathParts: childPathParts,
-                                                columns: columns)
-            }
-            currentNode.row = row
+        var directoryOrder: [ArchiveHierarchy.Directory] = []
+        var stack = hierarchy.root.childDirectories
+        while let directory = stack.popLast() {
+            directoryOrder.append(directory)
+            stack.append(contentsOf: directory.childDirectories)
         }
 
-        return root.finalizedChildren()
+        var finalizedDirectories: [ObjectIdentifier: ArchivePreviewTreeNode] = [:]
+        for directory in directoryOrder.reversed() {
+            let row = directory.representativeItemIndex
+                .flatMap { rowsByItemIndex[$0] }
+                ?? syntheticDirectoryRow(for: directory,
+                                         columns: columns)
+            finalizedDirectories[ObjectIdentifier(directory)] = ArchivePreviewTreeNode(
+                row: row,
+                children: finalizedChildren(
+                    of: directory,
+                    rowsByItemIndex: rowsByItemIndex,
+                    finalizedDirectories: finalizedDirectories,
+                ),
+                directoryID: directory.id,
+            )
+        }
+
+        return finalizedChildren(
+            of: hierarchy.root,
+            rowsByItemIndex: rowsByItemIndex,
+            finalizedDirectories: finalizedDirectories,
+        )
     }
 
-    private final class MutableNode {
-        let name: String
-        let pathParts: [String]
-        let columns: [ArchivePreviewColumn]
-        var row: ArchivePreviewRow?
-        private var childrenByName: [String: MutableNode] = [:]
-        private var finalized: ArchivePreviewTreeNode?
-
-        init(name: String,
-             pathParts: [String],
-             columns: [ArchivePreviewColumn])
-        {
-            self.name = name
-            self.pathParts = pathParts
-            self.columns = columns
+    private static func finalizedChildren(
+        of directory: ArchiveHierarchy.Directory,
+        rowsByItemIndex: [Int: ArchivePreviewRow],
+        finalizedDirectories: [ObjectIdentifier: ArchivePreviewTreeNode]
+    ) -> [ArchivePreviewTreeNode] {
+        let directories = directory.childDirectories.compactMap {
+            finalizedDirectories[ObjectIdentifier($0)]
         }
-
-        func child(named name: String,
-                   pathParts: [String],
-                   columns: [ArchivePreviewColumn]) -> MutableNode
-        {
-            if let child = childrenByName[name] {
-                return child
+        let entries = directory.terminalItemIndices.compactMap { itemIndex in
+            rowsByItemIndex[itemIndex].map {
+                ArchivePreviewTreeNode(row: $0,
+                                       children: [])
             }
+        }
+        return (directories + entries).sorted(by: sortTreeNodes)
+    }
 
-            let child = MutableNode(name: name,
-                                    pathParts: pathParts,
-                                    columns: columns)
-            childrenByName[name] = child
-            return child
+    private static func syntheticDirectoryRow(
+        for directory: ArchiveHierarchy.Directory,
+        columns: [ArchivePreviewColumn]
+    ) -> ArchivePreviewRow {
+        let path = directory.pathParts.joined(separator: "/")
+        let item = ArchiveItem(index: -1,
+                               path: path,
+                               pathParts: directory.pathParts,
+                               name: directory.name,
+                               size: 0,
+                               packedSize: 0,
+                               modifiedDate: nil,
+                               createdDate: nil,
+                               accessedDate: nil,
+                               crc: 0,
+                               isDirectory: true,
+                               isEncrypted: false,
+                               isAnti: false,
+                               method: "",
+                               attributes: 0,
+                               position: 0,
+                               block: 0,
+                               comment: "")
+        let dateFormatter = ArchivePreviewPreferences.makeListDateFormatter()
+        let columnTexts = Dictionary(uniqueKeysWithValues: columns.map { column in
+            (column.id.rawValue,
+             ArchivePreviewPresentation.listCellText(for: item,
+                                                    columnID: column.id,
+                                                    dateFormatter: dateFormatter))
+        })
+
+        return ArchivePreviewRow(itemIndex: -1,
+                                 path: path,
+                                 pathParts: directory.pathParts,
+                                 isHidden: ArchivePreviewPresentation.isHidden(pathParts: directory.pathParts),
+                                 isDirectory: true,
+                                 uncompressedSize: 0,
+                                 nameText: directory.name,
+                                 iconKey: .folder,
+                                 columnTexts: columnTexts)
+    }
+
+    private static func sortTreeNodes(_ lhs: ArchivePreviewTreeNode,
+                                      _ rhs: ArchivePreviewTreeNode) -> Bool
+    {
+        if lhs.row.isDirectory != rhs.row.isDirectory {
+            return lhs.row.isDirectory && !rhs.row.isDirectory
         }
 
-        /// Finalize bottom-up via an explicit stack so deeply nested archive
-        /// paths can't overflow the call stack.
-        func finalizedChildren() -> [ArchivePreviewTreeNode] {
-            var order: [MutableNode] = []
-            var stack = Array(childrenByName.values)
-            while let node = stack.popLast() {
-                order.append(node)
-                stack.append(contentsOf: node.childrenByName.values)
-            }
-
-            for node in order.reversed() {
-                node.finalized = ArchivePreviewTreeNode(row: node.row ?? node.syntheticDirectoryRow(),
-                                                        children: node.sortedFinalizedChildren())
-            }
-
-            return sortedFinalizedChildren()
+        let nameResult = lhs.row.nameText.localizedStandardCompare(rhs.row.nameText)
+        if nameResult != .orderedSame {
+            return nameResult == .orderedAscending
         }
 
-        private func sortedFinalizedChildren() -> [ArchivePreviewTreeNode] {
-            childrenByName.values
-                .compactMap(\.finalized)
-                .sorted(by: Self.sortTreeNodes)
+        let pathResult = lhs.row.path.localizedStandardCompare(rhs.row.path)
+        if pathResult != .orderedSame {
+            return pathResult == .orderedAscending
         }
 
-        private func syntheticDirectoryRow() -> ArchivePreviewRow {
-            let path = pathParts.joined(separator: "/")
-            let item = ArchiveItem(index: -1,
-                                   path: path,
-                                   pathParts: pathParts,
-                                   name: name,
-                                   size: 0,
-                                   packedSize: 0,
-                                   modifiedDate: nil,
-                                   createdDate: nil,
-                                   accessedDate: nil,
-                                   crc: 0,
-                                   isDirectory: true,
-                                   isEncrypted: false,
-                                   isAnti: false,
-                                   method: "",
-                                   attributes: 0,
-                                   position: 0,
-                                   block: 0,
-                                   comment: "")
-            let dateFormatter = ArchivePreviewPreferences.makeListDateFormatter()
-            let columnTexts = Dictionary(uniqueKeysWithValues: columns.map { column in
-                (column.id.rawValue,
-                 ArchivePreviewPresentation.listCellText(for: item,
-                                                         columnID: column.id,
-                                                         dateFormatter: dateFormatter))
-            })
-
-            return ArchivePreviewRow(itemIndex: -1,
-                                     path: path,
-                                     pathParts: pathParts,
-                                     isHidden: ArchivePreviewPresentation.isHidden(pathParts: pathParts),
-                                     isDirectory: true,
-                                     uncompressedSize: 0,
-                                     nameText: name,
-                                     iconKey: .folder,
-                                     columnTexts: columnTexts)
-        }
-
-        private static func sortTreeNodes(_ lhs: ArchivePreviewTreeNode,
-                                          _ rhs: ArchivePreviewTreeNode) -> Bool
-        {
-            if lhs.row.isDirectory != rhs.row.isDirectory {
-                return lhs.row.isDirectory && !rhs.row.isDirectory
-            }
-
-            let result = lhs.row.nameText.localizedStandardCompare(rhs.row.nameText)
-            if result != .orderedSame {
-                return result == .orderedAscending
-            }
-
-            return lhs.row.path.localizedStandardCompare(rhs.row.path) == .orderedAscending
-        }
+        return lhs.row.itemIndex < rhs.row.itemIndex
     }
 }
 

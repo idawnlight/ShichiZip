@@ -6,6 +6,8 @@
 #include "SZBridgeCommon.h"
 
 NSString* const SZArchiveErrorDomain = @"SZArchiveErrorDomain";
+NSString* const SZArchiveMutationCommittedErrorKey = @"SZArchiveMutationCommitted";
+NSString* const SZArchiveMutationReopenFailedErrorKey = @"SZArchiveMutationReopenFailed";
 
 // ============================================================
 // Codec manager singleton

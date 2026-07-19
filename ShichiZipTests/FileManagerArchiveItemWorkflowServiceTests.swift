@@ -20,6 +20,82 @@ final class FileManagerArchiveItemWorkflowServiceTests: XCTestCase {
         XCTAssertEqual(context.displayPath(for: item), "/tmp/source.7z/folder/payload.txt")
     }
 
+    func testWorkflowContextDistinguishesDuplicateNestedArchiveEntries() throws {
+        let snapshotIdentifier = UUID()
+        let topLevelArchiveURL = URL(fileURLWithPath: "/tmp/source.7z")
+        let context = FileManagerArchiveItemWorkflowContext(
+            archive: SZArchive(),
+            hostDirectory: URL(fileURLWithPath: "/tmp"),
+            displayPathPrefix: topLevelArchiveURL.path,
+            quarantineSourceArchivePath: nil,
+            mutationTarget: nil,
+            topLevelArchiveURL: topLevelArchiveURL,
+        )
+        let first = makeArchiveItem(
+            index: 4,
+            path: "nested.7z",
+            reference: SZArchiveItemReference(
+                archiveIndex: 4,
+                path: "nested.7z",
+                isDirectory: false,
+                snapshotIdentifier: snapshotIdentifier,
+            ),
+        )
+        let second = makeArchiveItem(
+            index: 9,
+            path: "nested.7z",
+            reference: SZArchiveItemReference(
+                archiveIndex: 9,
+                path: "nested.7z",
+                isDirectory: false,
+                snapshotIdentifier: snapshotIdentifier,
+            ),
+        )
+
+        let firstIdentity = try XCTUnwrap(context.nestedIdentity(for: first))
+        let secondIdentity = try XCTUnwrap(context.nestedIdentity(for: second))
+
+        XCTAssertNotEqual(firstIdentity, secondIdentity)
+        XCTAssertEqual(firstIdentity.entryLineage.map(\.archiveIndex), [4])
+        XCTAssertEqual(secondIdentity.entryLineage.map(\.archiveIndex), [9])
+    }
+
+    func testWorkflowContextAppendsNestedArchiveLineage() throws {
+        let topLevelArchiveURL = URL(fileURLWithPath: "/tmp/source.7z")
+        let parentIdentity = FileManagerNestedArchiveIdentity(
+            topLevelArchiveURL: topLevelArchiveURL,
+            entryLineage: [
+                FileManagerNestedArchiveIdentity.Entry(archiveIndex: 4,
+                                                       path: "outer.7z",
+                                                       isDirectory: false),
+            ],
+            displayPath: "/tmp/source.7z/outer.7z",
+        )
+        let context = FileManagerArchiveItemWorkflowContext(
+            archive: SZArchive(),
+            hostDirectory: URL(fileURLWithPath: "/tmp"),
+            displayPathPrefix: parentIdentity.displayPath,
+            quarantineSourceArchivePath: nil,
+            mutationTarget: nil,
+            parentNestedIdentity: parentIdentity,
+        )
+        let child = makeArchiveItem(
+            index: 2,
+            path: "inner.7z",
+            reference: SZArchiveItemReference(
+                archiveIndex: 2,
+                path: "inner.7z",
+                isDirectory: false,
+                snapshotIdentifier: UUID(),
+            ),
+        )
+
+        let childIdentity = try XCTUnwrap(context.nestedIdentity(for: child))
+
+        XCTAssertEqual(childIdentity.topLevelArchiveURL, topLevelArchiveURL)
+        XCTAssertEqual(childIdentity.entryLineage.map(\.archiveIndex), [4, 2])
+    }
+
     func testPrepareExternalArchiveItemOpenStagesSelectedFile() throws {
         let tempRoot = try makeTemporaryDirectory(named: "external-open")
         let payloadURL = tempRoot.appendingPathComponent("payload.txt")
@@ -72,6 +148,123 @@ final class FileManagerArchiveItemWorkflowServiceTests: XCTestCase {
                                                                         context: context,
                                                                         strategy: .forceInternal(.defaultBehavior),
                                                                         session: SZOperationSession()))
+    }
+
+    func testStageQuickLookItemsSeparatesDuplicateArchivePaths() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "quick-look-duplicates")
+        let archiveURL = tempRoot.appendingPathComponent("duplicates.tar")
+        try createTarFixture(
+            at: archiveURL,
+            entries: [
+                (path: "duplicate.txt", contents: "first"),
+                (path: "duplicate.txt", contents: "second"),
+            ],
+        )
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        let items = archive.entries()
+            .map(ArchiveItem.init(from:))
+            .filter { $0.path == "duplicate.txt" }
+            .sorted { $0.index < $1.index }
+        XCTAssertEqual(items.count, 2)
+
+        let service = FileManagerArchiveItemWorkflowService(quarantineInheritanceEnabled: { false })
+        let context = FileManagerArchiveItemWorkflowContext(
+            archive: archive,
+            hostDirectory: tempRoot,
+            displayPathPrefix: archiveURL.path,
+            quarantineSourceArchivePath: nil,
+            mutationTarget: nil,
+        )
+        let preview = try service.stageQuickLookItems(items,
+                                                      context: context,
+                                                      session: nil)
+        defer { service.cleanup(preview.temporaryDirectory) }
+
+        XCTAssertEqual(Set(preview.fileURLs.map(\.standardizedFileURL.path)).count, 2)
+        XCTAssertEqual(try preview.fileURLs.map {
+            try String(contentsOf: $0, encoding: .utf8)
+        }, ["first", "second"])
+    }
+
+    func testStageQuickLookItemsSeparatesCaseEquivalentArchivePaths() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "quick-look-case-collisions")
+        let archiveURL = tempRoot.appendingPathComponent("case-collisions.tar")
+        try createTarFixture(
+            at: archiveURL,
+            entries: [
+                (path: "Case.txt", contents: "uppercase"),
+                (path: "case.txt", contents: "lowercase"),
+            ],
+        )
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+        let items = archive.entries()
+            .map(ArchiveItem.init(from:))
+            .filter { $0.path == "Case.txt" || $0.path == "case.txt" }
+            .sorted { $0.index < $1.index }
+        XCTAssertEqual(items.count, 2)
+
+        let service = FileManagerArchiveItemWorkflowService(quarantineInheritanceEnabled: { false })
+        let context = FileManagerArchiveItemWorkflowContext(
+            archive: archive,
+            hostDirectory: tempRoot,
+            displayPathPrefix: archiveURL.path,
+            quarantineSourceArchivePath: nil,
+            mutationTarget: nil,
+        )
+        let preview = try service.stageQuickLookItems(items,
+                                                      context: context,
+                                                      session: nil)
+        defer { service.cleanup(preview.temporaryDirectory) }
+
+        XCTAssertEqual(try preview.fileURLs.map {
+            try String(contentsOf: $0, encoding: .utf8)
+        }, ["uppercase", "lowercase"])
+    }
+
+    func testStageQuickLookItemsKeepsInternalDirectoriesSeparateFromArchivePaths() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "quick-look-internal-paths")
+        let archiveURL = tempRoot.appendingPathComponent("internal-paths.tar")
+        try createTarFixture(
+            at: archiveURL,
+            entries: [
+                (path: "duplicate.txt", contents: "first"),
+                (path: "duplicate.txt", contents: "second"),
+                (path: "occurrence-0", contents: "ordinary"),
+            ],
+        )
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+        let items = archive.entries()
+            .map(ArchiveItem.init(from:))
+            .filter { $0.path == "duplicate.txt" || $0.path == "occurrence-0" }
+            .sorted { $0.index < $1.index }
+        XCTAssertEqual(items.count, 3)
+
+        let service = FileManagerArchiveItemWorkflowService(quarantineInheritanceEnabled: { false })
+        let context = FileManagerArchiveItemWorkflowContext(
+            archive: archive,
+            hostDirectory: tempRoot,
+            displayPathPrefix: archiveURL.path,
+            quarantineSourceArchivePath: nil,
+            mutationTarget: nil,
+        )
+        let preview = try service.stageQuickLookItems(items,
+                                                      context: context,
+                                                      session: nil)
+        defer { service.cleanup(preview.temporaryDirectory) }
+
+        XCTAssertEqual(try preview.fileURLs.map {
+            try String(contentsOf: $0, encoding: .utf8)
+        }, ["first", "second", "ordinary"])
     }
 
     func testWritePromiseForDirectoryPublishesPromisedDestinationName() throws {
@@ -256,7 +449,8 @@ final class FileManagerArchiveItemWorkflowServiceTests: XCTestCase {
 
     private func makeArchiveItem(index: Int,
                                  path: String,
-                                 isDirectory: Bool = false) -> ArchiveItem
+                                 isDirectory: Bool = false,
+                                 reference: SZArchiveItemReference? = nil) -> ArchiveItem
     {
         ArchiveItem(index: index,
                     path: path,
@@ -274,7 +468,8 @@ final class FileManagerArchiveItemWorkflowServiceTests: XCTestCase {
                     attributes: 0,
                     position: 0,
                     block: 0,
-                    comment: "")
+                    comment: "",
+                    reference: reference)
     }
 
     private func makeBundleArchive(named bundleName: String,

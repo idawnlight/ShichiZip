@@ -21,16 +21,28 @@ enum FileManagerPaneMutationCommandSupport {
                 let createdPath = currentTarget.subdir.isEmpty ? name : currentTarget.subdir + "/" + name
 
                 do {
-                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("create.folder"),
-                                                         parentWindow: pane.view.window,
-                                                         deferredDisplay: true)
-                    { session in
-                        try currentTarget.archive.createFolderNamed(name,
-                                                                    inArchiveSubdir: currentTarget.subdir,
-                                                                    session: session)
+                    let outcome = try await ArchiveOperationRunner.run(
+                        operationTitle: SZL10n.string("create.folder"),
+                        parentWindow: pane.view.window,
+                        deferredDisplay: true
+                    ) { session in
+                        try FileManagerArchiveMutationOutcome.perform {
+                            try currentTarget.archive.createFolderNamed(
+                                name,
+                                inArchiveSubdir: currentTarget.subdir,
+                                session: session,
+                            )
+                        }
                     }
-                    pane.refreshArchiveAfterMutation(selectingPaths: [createdPath])
+                    pane.refreshArchiveAfterMutation(
+                        selectingPaths: [createdPath],
+                        reopenBeforeListing: outcome.requiresReopenBeforeRefresh,
+                    )
                     pane.publishArchiveMutationIfNeeded(selectingPaths: [createdPath])
+                    if let committedError = outcome.committedError {
+                        showError(committedError,
+                                  in: pane)
+                    }
                 } catch {
                     showError(error,
                               in: pane)
@@ -221,6 +233,10 @@ enum FileManagerPaneMutationCommandSupport {
         let selectedItems = pane.selectedArchiveItems()
         guard selectedItems.count == 1 else { return }
         let item = selectedItems[0]
+        guard let itemReference = item.reference else {
+            pane.showReadOnlyArchiveMutationAlert(action: SZL10n.string("app.fileManager.action.renamingArchiveItems"))
+            return
+        }
 
         guard let window = pane.view.window else { return }
         szBeginTextInput(on: window,
@@ -242,17 +258,29 @@ enum FileManagerPaneMutationCommandSupport {
                 }
 
                 do {
-                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("fileop.renaming"),
-                                                         parentWindow: pane.view.window,
-                                                         deferredDisplay: true)
-                    { session in
-                        try currentTarget.archive.renameItem(atPath: item.path,
-                                                             inArchiveSubdir: currentTarget.subdir,
-                                                             newName: newName,
-                                                             session: session)
+                    let outcome = try await ArchiveOperationRunner.run(
+                        operationTitle: SZL10n.string("fileop.renaming"),
+                        parentWindow: pane.view.window,
+                        deferredDisplay: true
+                    ) { session in
+                        try FileManagerArchiveMutationOutcome.perform {
+                            try currentTarget.archive.renameItem(
+                                at: itemReference,
+                                inArchiveSubdir: currentTarget.subdir,
+                                newName: newName,
+                                session: session,
+                            )
+                        }
                     }
-                    pane.refreshArchiveAfterMutation(selectingPaths: [renamedPath])
+                    pane.refreshArchiveAfterMutation(
+                        selectingPaths: [renamedPath],
+                        reopenBeforeListing: outcome.requiresReopenBeforeRefresh,
+                    )
                     pane.publishArchiveMutationIfNeeded(selectingPaths: [renamedPath])
+                    if let committedError = outcome.committedError {
+                        showError(committedError,
+                                  in: pane)
+                    }
                 } catch {
                     showError(error,
                               in: pane)
@@ -270,6 +298,11 @@ enum FileManagerPaneMutationCommandSupport {
         let selectedItems = pane.selectedArchiveItems()
         guard !selectedItems.isEmpty else { return }
 
+        let itemReferences = selectedItems.compactMap(\.reference)
+        guard itemReferences.count == selectedItems.count else {
+            pane.showReadOnlyArchiveMutationAlert(action: SZL10n.string("app.fileManager.action.deletingArchiveItems"))
+            return
+        }
         let itemPaths = selectedItems.map(\.path)
         guard let window = pane.view.window else { return }
         szBeginConfirmation(on: window,
@@ -287,16 +320,27 @@ enum FileManagerPaneMutationCommandSupport {
                 }
 
                 do {
-                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.deleting"),
-                                                         parentWindow: pane.view.window,
-                                                         deferredDisplay: true)
-                    { session in
-                        try currentTarget.archive.deleteItems(atPaths: itemPaths,
-                                                              inArchiveSubdir: currentTarget.subdir,
-                                                              session: session)
+                    let outcome = try await ArchiveOperationRunner.run(
+                        operationTitle: SZL10n.string("progress.deleting"),
+                        parentWindow: pane.view.window,
+                        deferredDisplay: true
+                    ) { session in
+                        try FileManagerArchiveMutationOutcome.perform {
+                            try currentTarget.archive.deleteItems(
+                                at: itemReferences,
+                                inArchiveSubdir: currentTarget.subdir,
+                                session: session,
+                            )
+                        }
                     }
-                    pane.refreshArchiveAfterMutation()
+                    pane.refreshArchiveAfterMutation(
+                        reopenBeforeListing: outcome.requiresReopenBeforeRefresh
+                    )
                     pane.publishArchiveMutationIfNeeded(targetSubdir: currentTarget.subdir)
+                    if let committedError = outcome.committedError {
+                        showError(committedError,
+                                  in: pane)
+                    }
                 } catch {
                     showError(error,
                               in: pane)

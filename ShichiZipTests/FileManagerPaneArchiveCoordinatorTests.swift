@@ -8,6 +8,29 @@ import XCTest
 
 @MainActor
 final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
+    func testArchiveFingerprintDetectsFileReplacementWithPreservedMetadata() throws {
+        let directory = try makeTemporaryDirectory(named: "archive-fingerprint",
+                                                   prefix: "ShichiZipArchiveCoordinatorTests")
+        let archiveURL = directory.appendingPathComponent("archive.7z")
+        let replacementURL = directory.appendingPathComponent("replacement.7z")
+        let contents = Data("same-size".utf8)
+        try contents.write(to: archiveURL)
+        let fingerprint = try XCTUnwrap(
+            FileManagerArchiveFileFingerprint.captureIfPossible(for: archiveURL),
+        )
+        try contents.write(to: replacementURL)
+        try FileManager.default.setAttributes(
+            [.modificationDate: fingerprint.modificationDate],
+            ofItemAtPath: replacementURL.path,
+        )
+
+        try FileManager.default.removeItem(at: archiveURL)
+        try FileManager.default.moveItem(at: replacementURL,
+                                         to: archiveURL)
+
+        XCTAssertFalse(fingerprint.matchesCurrentFile(at: archiveURL))
+    }
+
     func testPublishMutationUsesCurrentTopLevelArchiveAndNormalizesPaths() throws {
         let archiveURL = try makeArchiveURL(named: "publish-normalized-mutation")
         let session = makeArchiveSession(archiveURL: archiveURL)
@@ -364,13 +387,30 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                session: SZOperationSession())
         let nestedEntries = try FileManagerArchiveListing.items(from: nestedArchive,
                                                                 session: SZOperationSession())
-        let parentItemPath = try XCTUnwrap(parentEntries.first(where: { !$0.isDirectory })?.path)
+        let parentItem = try XCTUnwrap(parentEntries.first(where: { !$0.isDirectory }))
+        let parentItemPath = parentItem.path
+        let parentItemReference = try XCTUnwrap(parentItem.reference)
+        let parentArchiveFingerprint = try XCTUnwrap(
+            FileManagerArchiveFileFingerprint.captureIfPossible(for: parentURL),
+        )
         let writeBackInfo = FileManagerNestedArchiveWriteBackInfo(
-            identity: FileManagerNestedArchiveIdentity(displayPath: "\(parentURL.path)/\(parentItemPath)"),
+            identity: FileManagerNestedArchiveIdentity(
+                topLevelArchiveURL: parentURL,
+                entryLineage: [
+                    FileManagerNestedArchiveIdentity.Entry(
+                        archiveIndex: parentItem.index,
+                        path: parentItem.path,
+                        isDirectory: parentItem.isDirectory,
+                    ),
+                ],
+                displayPath: "\(parentURL.path)/\(parentItemPath)",
+            ),
             parentTarget: FileManagerArchiveMutationTarget(archive: parentArchive,
                                                            subdir: "",
                                                            topLevelArchiveURL: parentURL),
-            parentItemPath: parentItemPath,
+            parentItemReference: parentItemReference,
+            parentArchiveURL: parentURL,
+            parentArchiveFingerprint: parentArchiveFingerprint,
             initialFingerprint: initialFingerprint,
         )
         session.appendPreparedArchive(FileManagerPreparedArchiveOpen(

@@ -35,6 +35,23 @@ final class FileManagerArchiveStackTests: XCTestCase {
         XCTAssertEqual(target?.topLevelArchiveURL, archiveURL.standardizedFileURL)
     }
 
+    func testTopLevelArchiveMutationIsBlockedByOpenNestedDescendant() throws {
+        let archiveURL = try makeArchive(named: "root-conflict")
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path,
+                         session: SZOperationSession())
+        defer { archive.close() }
+        let level = makeLevel(archivePath: archiveURL.path,
+                              archive: archive)
+
+        let target = level.mutationTarget { identity in
+            identity.isRoot
+                && identity.topLevelArchiveURL == archiveURL.standardizedFileURL
+        }
+
+        XCTAssertNil(target)
+    }
+
     func testArchiveStackProvidesArrayLikeAccessForCurrentControllerBoundary() {
         var stack = FileManagerArchiveStack()
         let first = makeLevel(archivePath: "/tmp/first.7z")
@@ -69,9 +86,30 @@ final class FileManagerArchiveStackTests: XCTestCase {
         XCTAssertEqual(stack.archiveURL(for: level.archive), URL(fileURLWithPath: "/tmp/source.7z").standardizedFileURL)
     }
 
+    func testArchiveStackFindsOpenArchiveBelowCurrentLevel() {
+        var stack = FileManagerArchiveStack()
+        let parentURL = URL(fileURLWithPath: "/tmp/parent.7z")
+        let nestedURL = URL(fileURLWithPath: "/tmp/staged/nested.7z")
+        stack.append(makeLevel(archivePath: parentURL.path))
+        stack.append(makeLevel(archivePath: nestedURL.path,
+                               temporaryDirectory: nestedURL.deletingLastPathComponent()))
+
+        XCTAssertTrue(stack.containsArchive(at: parentURL))
+        XCTAssertTrue(stack.containsArchive(at: nestedURL))
+        XCTAssertFalse(stack.containsArchive(at: URL(fileURLWithPath: "/tmp/other.7z")))
+    }
+
     func testArchiveStackBuildsCoordinationSnapshots() {
         var stack = FileManagerArchiveStack()
-        let identity = FileManagerNestedArchiveIdentity(displayPath: "/tmp/source.7z/nested.7z")
+        let identity = FileManagerNestedArchiveIdentity(
+            topLevelArchiveURL: URL(fileURLWithPath: "/tmp/source.7z"),
+            entryLineage: [
+                FileManagerNestedArchiveIdentity.Entry(archiveIndex: 1,
+                                                       path: "nested.7z",
+                                                       isDirectory: false),
+            ],
+            displayPath: "/tmp/source.7z/nested.7z",
+        )
         let first = makeLevel(archivePath: "/tmp/first.7z",
                               nestedIdentity: identity)
         let second = makeLevel(archivePath: "/tmp/second.7z")
@@ -118,6 +156,67 @@ final class FileManagerArchiveStackTests: XCTestCase {
         session.navigateSubdir("implicit")
 
         XCTAssertEqual(session.displayItems.map(\.path), ["implicit/nested.txt"])
+    }
+
+    @MainActor
+    func testArchiveSessionUsesFirstExplicitDuplicateDirectoryAsRepresentative() {
+        let session = FileManagerArchiveSession()
+        let prepared = FileManagerPreparedArchiveOpen(
+            hostDirectory: URL(fileURLWithPath: "/tmp"),
+            archivePath: "/tmp/source.7z",
+            displayPathPrefix: "/tmp/source.7z",
+            archive: SZArchive(),
+            entries: [
+                makeArchiveItem(index: 9,
+                                path: "Folder/file.txt"),
+                makeArchiveItem(index: 2,
+                                path: "Folder/",
+                                isDirectory: true),
+                makeArchiveItem(index: 7,
+                                path: "Folder/",
+                                isDirectory: true),
+            ],
+            temporaryDirectory: nil,
+            nestedWriteBackInfo: nil,
+        )
+
+        session.appendPreparedArchive(prepared)
+
+        XCTAssertEqual(session.displayItems.count, 1)
+        XCTAssertEqual(session.displayItems[0].index, 2)
+    }
+
+    @MainActor
+    func testArchiveSessionTracksNestedIdentityWithoutWriteBack() {
+        let session = FileManagerArchiveSession()
+        let identity = FileManagerNestedArchiveIdentity(
+            topLevelArchiveURL: URL(fileURLWithPath: "/tmp/source.7z"),
+            entryLineage: [
+                FileManagerNestedArchiveIdentity.Entry(
+                    archiveIndex: 4,
+                    path: "nested.7z",
+                    isDirectory: false,
+                ),
+            ],
+            displayPath: "/tmp/source.7z/nested.7z",
+        )
+        let prepared = FileManagerPreparedArchiveOpen(
+            hostDirectory: URL(fileURLWithPath: "/tmp"),
+            archivePath: "/tmp/staged/nested.7z",
+            displayPathPrefix: identity.displayPath,
+            archive: SZArchive(),
+            entries: [],
+            temporaryDirectory: URL(fileURLWithPath: "/tmp/staged"),
+            nestedIdentity: identity,
+            nestedWriteBackInfo: nil,
+        )
+
+        session.appendPreparedArchive(prepared)
+
+        XCTAssertEqual(session.currentLevel?.nestedIdentity, identity)
+        XCTAssertNil(session.currentLevel?.nestedWriteBackInfo)
+        XCTAssertEqual(session.coordinationSnapshots(isDirty: { _ in false }).first?.identity,
+                       identity)
     }
 
     @MainActor
