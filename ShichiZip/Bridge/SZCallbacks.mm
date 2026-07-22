@@ -5,6 +5,136 @@
 #import "../Dialogs/SZDialogPresenter.h"
 #import "../Utilities/SZObjCLog.h"
 
+static HRESULT SZHRESULTFromSystemError(DWORD systemError) {
+    return systemError == 0 ? E_FAIL : HRESULT_FROM_WIN32(systemError);
+}
+
+void SZUpdateDiagnostics::Add(SZArchiveUpdateIssueStage stage,
+    const UString& path,
+    HRESULT errorCode,
+    const UString& message,
+    SZOperationSession* session) {
+    bool added = false;
+    {
+        std::lock_guard<std::mutex> lock(Mutex);
+        FOR_VECTOR(i, Issues) {
+            const SZUpdateIssueRecord& issue = Issues[i];
+            if (issue.Stage == stage
+                && issue.ErrorCode == errorCode
+                && issue.Path == path
+                && issue.Message == message) {
+                return;
+            }
+        }
+
+        TotalCount++;
+        added = true;
+        if (Issues.Size() < kIssueDetailLimit) {
+            SZUpdateIssueRecord issue;
+            issue.Stage = stage;
+            issue.Path = path;
+            issue.ErrorCode = errorCode;
+            issue.Message = message;
+            Issues.Add(issue);
+        } else {
+            Truncated = true;
+        }
+    }
+
+    if (added && session) {
+        SZArchiveUpdateIssue* issue = [[SZArchiveUpdateIssue alloc]
+            initWithStage:stage
+                     path:(path.IsEmpty() ? @"" : ToNS(path))
+                errorCode:(int32_t)errorCode
+                  message:(message.IsEmpty() ? nil : ToNS(message))];
+        [session reportUpdateIssue:issue];
+    }
+}
+
+void SZUpdateDiagnostics::AddFileError(SZArchiveUpdateIssueStage stage,
+    const FString& path,
+    DWORD systemError,
+    SZOperationSession* session) {
+    const HRESULT errorCode = SZHRESULTFromSystemError(systemError);
+    Add(stage, fs2us(path), errorCode,
+        NWindows::NError::MyFormatMessage(errorCode), session);
+}
+
+void SZUpdateDiagnostics::AddFileError(SZArchiveUpdateIssueStage stage,
+    const wchar_t* path,
+    HRESULT errorCode,
+    SZOperationSession* session) {
+    const HRESULT resolvedError = errorCode == S_OK ? E_FAIL : errorCode;
+    Add(stage,
+        path ? UString(path) : UString(),
+        resolvedError,
+        NWindows::NError::MyFormatMessage(resolvedError),
+        session);
+}
+
+void SZUpdateDiagnostics::AddMessage(const UString& message,
+    SZOperationSession* session) {
+    if (!message.IsEmpty()) {
+        Add(SZArchiveUpdateIssueStageUpdate, UString(), E_FAIL, message, session);
+    }
+}
+
+bool SZUpdateDiagnostics::HasIssues() const {
+    std::lock_guard<std::mutex> lock(Mutex);
+    return TotalCount != 0;
+}
+
+UInt64 SZUpdateDiagnostics::TotalIssueCount() const {
+    std::lock_guard<std::mutex> lock(Mutex);
+    return TotalCount;
+}
+
+bool SZUpdateDiagnostics::IsTruncated() const {
+    std::lock_guard<std::mutex> lock(Mutex);
+    return Truncated;
+}
+
+NSArray<SZArchiveUpdateIssue*>* SZUpdateDiagnostics::MakeIssues() const {
+    std::lock_guard<std::mutex> lock(Mutex);
+    NSMutableArray<SZArchiveUpdateIssue*>* result =
+        [NSMutableArray arrayWithCapacity:Issues.Size()];
+    FOR_VECTOR(i, Issues) {
+        const SZUpdateIssueRecord& record = Issues[i];
+        SZArchiveUpdateIssue* issue = [[SZArchiveUpdateIssue alloc]
+            initWithStage:record.Stage
+                     path:(record.Path.IsEmpty() ? @"" : ToNS(record.Path))
+                errorCode:(int32_t)record.ErrorCode
+                  message:(record.Message.IsEmpty() ? nil : ToNS(record.Message))];
+        [result addObject:issue];
+    }
+    return result;
+}
+
+UString SZUpdateDiagnostics::MakeSummary() const {
+    std::lock_guard<std::mutex> lock(Mutex);
+    UString summary;
+    FOR_VECTOR(i, Issues) {
+        const SZUpdateIssueRecord& issue = Issues[i];
+        if (!summary.IsEmpty()) {
+            summary += L"\n\n";
+        }
+        if (!issue.Path.IsEmpty()) {
+            summary += issue.Path;
+        }
+        UString detail = issue.Message;
+        if (detail.IsEmpty() && issue.ErrorCode != S_OK) {
+            detail = NWindows::NError::MyFormatMessage(issue.ErrorCode);
+        }
+        if (!detail.IsEmpty()) {
+            if (!issue.Path.IsEmpty()) {
+                summary += L"\n";
+            }
+            summary += detail;
+        }
+    }
+    return summary;
+}
+
 static inline void SZDispatchSyncOnMainThread(dispatch_block_t block) {
     if ([NSThread isMainThread]) {
         block();
@@ -138,27 +268,16 @@ static inline HRESULT SZAgentCheckBreak(SZOperationSession* session) {
 }
 
 static void SZReportAgentCurrentPath(SZOperationSession* session,
-    NSString* prefix,
+    SZOperationPhase phase,
     const wchar_t* path) {
     if (!session) {
         return;
     }
 
-    NSString* pathText = (path && path[0] != 0) ? ToNS(UString(path)) : @"";
-    if (prefix.length > 0 && pathText.length > 0) {
-        [session reportCurrentFileName:[NSString stringWithFormat:@"%@: %@", prefix, pathText]];
-        return;
-    }
-
-    [session reportCurrentFileName:(pathText.length > 0 ? pathText : (prefix ?: @""))];
-}
-
-static void SZAppendHRESULTMessage(UString& storage, const wchar_t* path, HRESULT errorCode) {
-    NSString* pathText = (path && path[0] != 0) ? ToNS(UString(path)) : nil;
-    NSString* message = pathText.length > 0
-        ? [NSString stringWithFormat:@"%@: 0x%08X", pathText, (unsigned)errorCode]
-        : [NSString stringWithFormat:SZLocalizedString(@"app.archive.error.operationFailedFormat"), (unsigned)errorCode];
-    SZAppendErrorMessage(storage, message);
+    [session reportPhase:phase];
+    [session reportCurrentFileName:(path && path[0] != 0)
+            ? ToNS(UString(path))
+            : @""];
 }
 
 // ============================================================
@@ -176,6 +295,9 @@ SZOpenCallbackUI::SZOpenCallbackUI()
 
 HRESULT SZOpenCallbackUI::Open_CheckBreak() {
     SZOperationSession* session = Session;
+    if (session && session.phase == SZOperationPhaseWaiting) {
+        [session reportPhase:SZOperationPhaseOpening];
+    }
     if (session && [session shouldCancel]) {
         return E_ABORT;
     }
@@ -198,6 +320,7 @@ HRESULT SZOpenCallbackUI::Open_SetTotal(const UInt64* numFiles, const UInt64* nu
 
     SZOperationSession* session = Session;
     if (session && HasTotalValue) {
+        [session reportPhase:SZOperationPhaseOpening];
         const UInt64 total = TotalValue;
         const bool useBytesProgress = UsesBytesProgress;
         [session reportProgressFraction:0.0];
@@ -358,27 +481,19 @@ Z7_COM7F_IMF(SZFolderExtractCallback::PrepareOperation(const wchar_t* name, Int3
         CurrentFilePath = name;
         SZOperationSession* session = Session;
         if (session) {
-            NSString* prefix;
             switch (askExtractMode) {
-            case NArchive::NExtract::NAskMode::kTest:
-                prefix = SZLocalizedString(@"progress.testing");
-                break;
-            case NArchive::NExtract::NAskMode::kSkip:
-                prefix = SZLocalizedString(@"progress.skipping");
-                break;
             case NArchive::NExtract::NAskMode::kReadExternal:
-                prefix = SZLocalizedString(@"progress.opening");
+                [session reportPhase:SZOperationPhaseOpening];
+                break;
+            case NArchive::NExtract::NAskMode::kTest:
+            case NArchive::NExtract::NAskMode::kSkip:
+                [session reportPhase:SZOperationPhaseReading];
                 break;
             default:
-                prefix = nil;
+                [session reportPhase:SZOperationPhaseExtracting];
                 break;
             }
-            NSString* n = ToNS(UString(name));
-            if (prefix) {
-                [session reportCurrentFileName:[NSString stringWithFormat:@"%@: %@", prefix, n]];
-            } else {
-                [session reportCurrentFileName:n];
-            }
+            [session reportCurrentFileName:ToNS(UString(name))];
         }
     }
     return S_OK;
@@ -597,17 +712,34 @@ HRESULT SZUpdateCallbackUI::CheckBreak() {
     return S_OK;
 }
 
+HRESULT SZUpdateCallbackUI::SetNumItems(const CArcToDoStat& stat) {
+    SZOperationSession* session = Session;
+    if (session) {
+        [session reportFilesTotal:stat.Get_NumDataItems_Total()];
+    }
+    return CheckBreak();
+}
+
 HRESULT SZUpdateCallbackUI::StartScanning() {
     SZOperationSession* session = Session;
     if (session) {
+        [session reportPhase:SZOperationPhaseScanning];
         [session reportProgressFraction:0.0];
-        [session reportCurrentFileName:SZLocalizedString(@"progress.scanning")];
+        [session reportCurrentFileName:@""];
     }
     return CheckBreak();
 }
 
 HRESULT SZUpdateCallbackUI::FinishScanning(const CDirItemsStat&) {
     return CheckBreak();
+}
+
+HRESULT SZUpdateCallbackUI::ScanError(const FString& path, DWORD systemError) {
+    const HRESULT errorCode = SZHRESULTFromSystemError(systemError);
+    Diagnostics.AddFileError(SZArchiveUpdateIssueStageScan, path, systemError, Session);
+    return InputErrorPolicy == SZUpdateInputErrorPolicy::StopOnInputError
+        ? errorCode
+        : S_OK;
 }
 
 HRESULT SZUpdateCallbackUI::ScanProgress(const CDirItemsStat&, const FString& path, bool) {
@@ -619,14 +751,77 @@ HRESULT SZUpdateCallbackUI::ScanProgress(const CDirItemsStat&, const FString& pa
 }
 
 HRESULT SZUpdateCallbackUI::GetStream(const wchar_t* name, bool, bool, UInt32) {
-    if (name) {
-        SZOperationSession* session = Session;
-        if (session) {
-            NSString* n = ToNS(UString(name));
-            [session reportCurrentFileName:n];
+    SZOperationSession* session = Session;
+    if (session) {
+        [session reportPhase:SZOperationPhaseCompressing];
+        [session reportCurrentFileName:name ? ToNS(UString(name)) : @""];
+    }
+    return CheckBreak();
+}
+
+HRESULT SZUpdateCallbackUI::OpenFileError(const FString& path, DWORD systemError) {
+    const HRESULT errorCode = SZHRESULTFromSystemError(systemError);
+    Diagnostics.AddFileError(SZArchiveUpdateIssueStageOpen, path, systemError, Session);
+    return InputErrorPolicy == SZUpdateInputErrorPolicy::StopOnInputError
+        ? errorCode
+        : S_FALSE;
+}
+
+HRESULT SZUpdateCallbackUI::ReadingFileError(const FString& path, DWORD systemError) {
+    Diagnostics.AddFileError(SZArchiveUpdateIssueStageRead, path, systemError, Session);
+    // CArchiveUpdateCallback::InFileStream_On_Error propagates the real read
+    // HRESULT after this notification, matching upstream GUI behavior.
+    return S_OK;
+}
+
+HRESULT SZUpdateCallbackUI::StartOpenArchive(const wchar_t* name) {
+    SZOperationSession* session = Session;
+    if (session) {
+        [session reportPhase:SZOperationPhaseOpening];
+        [session reportCurrentFileName:name ? ToNS(UString(name)) : @""];
+    }
+    return CheckBreak();
+}
+
+HRESULT SZUpdateCallbackUI::StartArchive(const wchar_t* name, bool) {
+    SZOperationSession* session = Session;
+    if (session) {
+        [session reportPhase:SZOperationPhaseCompressing];
+        [session reportCurrentFileName:name ? ToNS(UString(name)) : @""];
+    }
+    return CheckBreak();
+}
+
+HRESULT SZUpdateCallbackUI::MoveArc_Start(const wchar_t*, const wchar_t* destFinalPath,
+    UInt64 size, Int32) {
+    ArchiveWasReplaced = false;
+    TotalSize = size;
+    SZOperationSession* session = Session;
+    if (session) {
+        [session reportPhase:SZOperationPhaseMovingArchive];
+        [session reportCurrentFileName:destFinalPath ? ToNS(UString(destFinalPath)) : @""];
+        if (size > 0) {
+            [session reportBytesCompleted:0 total:size];
         }
     }
-    return S_OK;
+    return CheckBreak();
+}
+
+HRESULT SZUpdateCallbackUI::MoveArc_Progress(UInt64 total, UInt64 current) {
+    SZOperationSession* session = Session;
+    if (session && total > 0) {
+        [session reportBytesCompleted:MIN(current, total) total:total];
+    }
+    return CheckBreak();
+}
+
+HRESULT SZUpdateCallbackUI::MoveArc_Finish() {
+    ArchiveWasReplaced = true;
+    SZOperationSession* session = Session;
+    if (session && TotalSize > 0) {
+        [session reportBytesCompleted:TotalSize total:TotalSize];
+    }
+    return CheckBreak();
 }
 
 HRESULT SZUpdateCallbackUI::CryptoGetTextPassword2(Int32* passwordIsDefined, BSTR* password) {
@@ -656,8 +851,12 @@ HRESULT SZUpdateCallbackUI::CryptoGetTextPassword(BSTR* password) {
 // SZAgentUpdateCallback implementation
 // ============================================================
 
-Z7_COM7F_IMF(SZAgentUpdateCallback::SetNumFiles(UInt64 /* numFiles */)) {
-    return S_OK;
+Z7_COM7F_IMF(SZAgentUpdateCallback::SetNumFiles(UInt64 numFiles)) {
+    SZOperationSession* session = Session;
+    if (session) {
+        [session reportFilesTotal:numFiles];
+    }
+    return SZAgentCheckBreak(session);
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::SetTotal(UInt64 total)) {
@@ -688,12 +887,12 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::SetRatioInfo(const UInt64* /* inSize */, con
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::CompressOperation(const wchar_t* name)) {
-    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.updating"), name);
+    SZReportAgentCurrentPath(Session, SZOperationPhaseUpdating, name);
     return S_OK;
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::DeleteOperation(const wchar_t* name)) {
-    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.deleting"), name);
+    SZReportAgentCurrentPath(Session, SZOperationPhaseDeleting, name);
     return S_OK;
 }
 
@@ -706,17 +905,20 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::OperationResult(Int32 /* opRes */)) {
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::UpdateErrorMessage(const wchar_t* message)) {
-    SZAppendErrorMessage(LastErrorMessage, UString(message ? message : L""));
+    const UString resolvedMessage(message ? message : L"");
+    Diagnostics.AddMessage(resolvedMessage, Session);
     return S_OK;
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::OpenFileError(const wchar_t* path, HRESULT errorCode)) {
-    SZAppendHRESULTMessage(LastErrorMessage, path, errorCode);
-    return S_OK;
+    Diagnostics.AddFileError(SZArchiveUpdateIssueStageOpen, path, errorCode, Session);
+    return InputErrorPolicy == SZUpdateInputErrorPolicy::StopOnInputError
+        ? (errorCode == S_OK ? E_FAIL : errorCode)
+        : S_OK;
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::ReadingFileError(const wchar_t* path, HRESULT errorCode)) {
-    SZAppendHRESULTMessage(LastErrorMessage, path, errorCode);
+    Diagnostics.AddFileError(SZArchiveUpdateIssueStageRead, path, errorCode, Session);
     return S_OK;
 }
 
@@ -724,23 +926,26 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::ReportExtractResult(Int32 opRes, Int32 isEnc
     if (opRes != NArchive::NExtract::NOperationResult::kOK) {
         UString message;
         SetExtractErrorMessage(opRes, isEncrypted, path, message);
-        SZAppendErrorMessage(LastErrorMessage, message);
+        Diagnostics.Add(SZArchiveUpdateIssueStageUpdate,
+            path ? UString(path) : UString(), E_FAIL, message, Session);
     }
     return S_OK;
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::ReportUpdateOperation(UInt32 /* notifyOp */, const wchar_t* path, Int32 /* isDir */)) {
-    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.updating"), path);
+    SZReportAgentCurrentPath(Session, SZOperationPhaseUpdating, path);
     return S_OK;
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::ScanError(const wchar_t* path, HRESULT errorCode)) {
-    SZAppendHRESULTMessage(LastErrorMessage, path, errorCode);
-    return S_OK;
+    Diagnostics.AddFileError(SZArchiveUpdateIssueStageScan, path, errorCode, Session);
+    return InputErrorPolicy == SZUpdateInputErrorPolicy::StopOnInputError
+        ? (errorCode == S_OK ? E_FAIL : errorCode)
+        : S_OK;
 }
 
 Z7_COM7F_IMF(SZAgentUpdateCallback::ScanProgress(UInt64 /* numFolders */, UInt64 /* numFiles */, UInt64 /* totalSize */, const wchar_t* path, Int32 /* isDir */)) {
-    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.scanning"), path);
+    SZReportAgentCurrentPath(Session, SZOperationPhaseScanning, path);
     return SZAgentCheckBreak(Session);
 }
 
@@ -830,7 +1035,7 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::SetCompleted(const UInt64* files, const UInt
 Z7_COM7F_IMF(SZAgentUpdateCallback::MoveArc_Start(const wchar_t* /* srcTempPath */, const wchar_t* destFinalPath, UInt64 size, Int32 /* updateMode */)) {
     TotalSize = size;
     ArchiveWasReplaced = false;
-    SZReportAgentCurrentPath(Session, SZLocalizedString(@"progress.repacking"), destFinalPath);
+    SZReportAgentCurrentPath(Session, SZOperationPhaseMovingArchive, destFinalPath);
     SZOperationSession* session = Session;
     if (session && size > 0) {
         [session reportProgressFraction:0.0];
@@ -865,7 +1070,7 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::MoveArc_Finish()) {
 Z7_COM7F_IMF(SZAgentUpdateCallback::Before_ArcReopen()) {
     SZOperationSession* session = Session;
     if (session) {
-        [session clearCancellationRequest];
+        [session beginFinalizing];
     }
     return S_OK;
 }

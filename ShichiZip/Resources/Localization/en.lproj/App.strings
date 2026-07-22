@@ -155,6 +155,8 @@
 "app.panel.chooseArchives" = "Choose archive files to open in %@";
 "app.panel.selectFilesToCompress" = "Select files and folders to compress";
 
+"app.progress.cancelling" = "Cancelling…";
+"app.progress.completedWithWarnings" = "Completed with warnings";
 "app.progress.finalizing" = "Finalizing…";
 "app.progress.pasting" = "Pasting…";
 "app.progress.working" = "Working…";

@@ -66,8 +66,6 @@ void SZLogError(NSString* prefix, NSString* format, ...) {
     va_end(arguments);
 }
 
-SZOperationSession* SZMakeDefaultOperationSession(id<SZProgressDelegate> progressDelegate) {
-    SZOperationSession* session = [[SZOperationSession alloc] init];
-    session.progressDelegate = progressDelegate;
-    return session;
+SZOperationSession* SZMakeDefaultOperationSession(void) {
+    return [[SZOperationSession alloc] init];
 }

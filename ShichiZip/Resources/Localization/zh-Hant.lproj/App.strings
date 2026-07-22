@@ -155,6 +155,8 @@
 "app.panel.chooseArchives" = "選擇要在 %@ 中開啟的壓縮檔";
 "app.panel.selectFilesToCompress" = "選取要壓縮的檔案和資料夾";
 
+"app.progress.cancelling" = "正在取消…";
+"app.progress.completedWithWarnings" = "已完成，但有警告";
 "app.progress.finalizing" = "正在完成…";
 "app.progress.pasting" = "正在貼上…";
 "app.progress.working" = "正在處理…";

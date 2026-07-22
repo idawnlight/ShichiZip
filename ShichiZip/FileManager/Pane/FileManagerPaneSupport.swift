@@ -487,34 +487,25 @@ final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate {
                     return
                 }
 
-                let coordinator = ArchiveOperationCoordinator(operationTitle: SZL10n.string("progress.extracting"),
-                                                              initialFileName: self.item.path,
-                                                              parentWindow: self.parentWindow,
-                                                              deferredDisplay: true)
-                coordinator.start()
-                let session = coordinator.session
-
-                DispatchQueue.global(qos: .userInitiated).async { [self] in
-                    let result: Result<Void, Error> = Result {
-                        try self.workflowService.writePromise(for: self.item,
-                                                              context: self.context,
-                                                              to: url,
-                                                              session: session)
-                    }
-
-                    DispatchQueue.main.async {
-                        MainActor.assumeIsolated {
-                            coordinator.finish()
-                            withExtendedLifetime(lease) {}
-
-                            switch result {
-                            case .success:
-                                completionHandler.finish(nil)
-                            case let .failure(error):
-                                completionHandler.finish(error)
-                                szPresentError(error, for: self.parentWindow)
-                            }
+                Task { @MainActor [self] in
+                    do {
+                        try await ArchiveOperationRunner.run(
+                            operationTitle: SZL10n.string("progress.extracting"),
+                            initialFileName: item.path,
+                            parentWindow: parentWindow,
+                            deferredDisplay: true
+                        ) { session in
+                            try self.workflowService.writePromise(for: self.item,
+                                                                  context: self.context,
+                                                                  to: url,
+                                                                  session: session)
                         }
+                        withExtendedLifetime(lease) {}
+                        completionHandler.finish(nil)
+                    } catch {
+                        withExtendedLifetime(lease) {}
+                        completionHandler.finish(error)
+                        szPresentError(error, for: parentWindow)
                     }
                 }
             }

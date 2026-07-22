@@ -263,7 +263,7 @@ enum FileManagerArchiveCommandSupport {
                               result: CompressDialogResult,
                               parentWindow: NSWindow) async throws
     {
-        try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
+        _ = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
                                              parentWindow: parentWindow)
         { session in
             try SZArchive.create(atPath: result.archiveURL.path,

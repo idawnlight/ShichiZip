@@ -31,6 +31,7 @@ enum SZL10n {
     /// called from background queues (e.g. error-message construction
     /// in FileManagerArchiveItemWorkflowService, or bridge callbacks).
     private static let bundleStorage = OSAllocatedUnfairLock(initialState: makeBundle())
+    private static let fullWidthLabelColons: Set<Character> = ["：", "︓", "﹕"]
 
     static var bundle: Bundle {
         bundleStorage.withLock { $0 }
@@ -68,6 +69,28 @@ enum SZL10n {
     /// Look up a localized string with format arguments.
     static func string(_ key: String, _ args: any CVarArg...) -> String {
         String(format: string(key), arguments: args)
+    }
+
+    /// Joins an upstream label and its value without adding excess space after
+    /// a full-width CJK colon. Upstream translations intentionally preserve
+    /// locale-specific punctuation: English commonly ends labels in `:`, while
+    /// Simplified Chinese and several other locales use `：`.
+    static func labelValue(_ key: String, value: String) -> String {
+        labelValue(label: string(key), value: value)
+    }
+
+    static func labelValue(label: String, value: String) -> String {
+        var resolvedLabel = label
+        while let finalCharacter = resolvedLabel.last,
+              finalCharacter.unicodeScalars.allSatisfy({
+                  CharacterSet.whitespacesAndNewlines.contains($0)
+              })
+        {
+            resolvedLabel.removeLast()
+        }
+        guard let finalCharacter = resolvedLabel.last else { return value }
+        let separator = fullWidthLabelColons.contains(finalCharacter) ? "" : " "
+        return resolvedLabel + separator + value
     }
 
     /// Search a single bundle's App then Upstream tables.

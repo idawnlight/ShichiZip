@@ -271,7 +271,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
             guard let result = await dialog.runModal(for: parentWindow) else { return }
 
             do {
-                try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
+                _ = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
                                                      parentWindow: parentWindow)
                 { session in
                     try SZArchive.create(atPath: result.archiveURL.path,

@@ -79,7 +79,7 @@ final class AppQuickActionHandler {
             guard let result = await dialog.runModal(for: nil) else { return }
 
             do {
-                try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
+                _ = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
                                                      parentWindow: nil)
                 { session in
                     try SZArchive.create(atPath: result.archiveURL.path,

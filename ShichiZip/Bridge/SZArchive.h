@@ -6,7 +6,6 @@
 @class SZBenchDisplayRow;
 @class SZBenchSnapshot;
 @class SZOperationSession;
-@protocol SZProgressDelegate;
 @protocol SZPasswordDelegate;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -14,6 +13,51 @@ NS_ASSUME_NONNULL_BEGIN
 FOUNDATION_EXPORT NSErrorDomain const SZArchiveErrorDomain;
 FOUNDATION_EXPORT NSString* const SZArchiveMutationCommittedErrorKey;
 FOUNDATION_EXPORT NSString* const SZArchiveMutationReopenFailedErrorKey;
+
+typedef NS_ENUM(NSInteger, SZArchiveUpdateIssueStage) {
+    SZArchiveUpdateIssueStageScan = 0,
+    SZArchiveUpdateIssueStageOpen,
+    SZArchiveUpdateIssueStageRead,
+    SZArchiveUpdateIssueStageUpdate,
+};
+
+typedef NS_ENUM(NSInteger, SZArchiveUpdateCompletion) {
+    SZArchiveUpdateCompletionComplete = 0,
+    SZArchiveUpdateCompletionCompletedWithWarnings,
+};
+
+@interface SZArchiveUpdateIssue : NSObject
+
+- (instancetype)initWithStage:(SZArchiveUpdateIssueStage)stage
+                         path:(NSString*)path
+                    errorCode:(int32_t)errorCode
+                      message:(nullable NSString*)message NS_DESIGNATED_INITIALIZER;
+- (instancetype)init NS_UNAVAILABLE;
+
+@property (nonatomic, readonly) SZArchiveUpdateIssueStage stage;
+@property (nonatomic, copy, readonly) NSString* path;
+@property (nonatomic, readonly) int32_t errorCode;
+@property (nonatomic, copy, readonly, nullable) NSString* message;
+
+@end
+
+@interface SZArchiveUpdateOutcome : NSObject
+
+- (instancetype)initWithCompletion:(SZArchiveUpdateCompletion)completion
+                  archiveCommitted:(BOOL)archiveCommitted
+                            issues:(NSArray<SZArchiveUpdateIssue*>*)issues
+                   totalIssueCount:(uint64_t)totalIssueCount
+                   issuesTruncated:(BOOL)issuesTruncated NS_DESIGNATED_INITIALIZER;
+- (instancetype)init NS_UNAVAILABLE;
+
+@property (nonatomic, readonly) SZArchiveUpdateCompletion completion;
+@property (nonatomic, readonly, getter=wasArchiveCommitted) BOOL archiveCommitted;
+@property (nonatomic, copy, readonly) NSArray<SZArchiveUpdateIssue*>* issues;
+@property (nonatomic, readonly) uint64_t totalIssueCount;
+@property (nonatomic, readonly, getter=areIssuesTruncated) BOOL issuesTruncated;
+@property (nonatomic, readonly) BOOL hasWarnings;
+
+@end
 
 typedef NS_ERROR_ENUM(SZArchiveErrorDomain, SZArchiveErrorCode) {
     SZArchiveErrorCodeFailedToInitCodecs = -1,
@@ -156,20 +200,6 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 @property (nonatomic, copy, nullable) NSString* sourceArchivePathForQuarantine;
 @end
 
-/// Progress callback delegate
-NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
-- (void)progressDidUpdate:(double)fraction;
-- (void)progressDidUpdateFileName:(NSString*)fileName;
-- (void)progressDidUpdateBytesCompleted:(uint64_t)completed
-                                  total:(uint64_t)total;
-- (BOOL)progressShouldCancel;
-@optional
-- (void)progressPrepareForUserInteraction;
-- (void)progressResetCancellationRequest;
-- (void)progressDidUpdateSpeed:(double)bytesPerSecond;
-- (void)progressDidUpdateCompressionRatio:(double)ratio;
-@end
-
 /// Password callback delegate
 @protocol SZPasswordDelegate <NSObject>
 - (nullable NSString*)passwordRequiredForArchive:(NSString*)archivePath;
@@ -268,11 +298,6 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 /// Open an existing archive for reading
 - (BOOL)openAtPath:(NSString*)path error:(NSError**)error;
 
-/// Open an existing archive for reading with progress reporting
-- (BOOL)openAtPath:(NSString*)path
-          progress:(nullable id<SZProgressDelegate>)progress
-             error:(NSError**)error;
-
 /// Open an existing archive for reading with an explicit operation session
 - (BOOL)openAtPath:(NSString*)path
            session:(nullable SZOperationSession*)session
@@ -287,12 +312,6 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 /// Open with password
 - (BOOL)openAtPath:(NSString*)path
           password:(nullable NSString*)password
-             error:(NSError**)error;
-
-/// Open with password and progress reporting
-- (BOOL)openAtPath:(NSString*)path
-          password:(nullable NSString*)password
-          progress:(nullable id<SZProgressDelegate>)progress
              error:(NSError**)error;
 
 /// Open with password and an explicit operation session
@@ -339,24 +358,11 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
 - (nullable NSArray<SZArchiveEntry*>*)entriesWithSession:(nullable SZOperationSession*)session
                                                    error:(NSError**)error;
 
-/// Extract all entries to a destination
-- (BOOL)extractToPath:(NSString*)destinationPath
-             settings:(SZExtractionSettings*)settings
-             progress:(nullable id<SZProgressDelegate>)progress
-                error:(NSError**)error;
-
 /// Extract all entries to a destination with an explicit operation session
 - (BOOL)extractToPath:(NSString*)destinationPath
              settings:(SZExtractionSettings*)settings
               session:(nullable SZOperationSession*)session
                 error:(NSError**)error;
-
-/// Extract specific entries by index
-- (BOOL)extractEntries:(NSArray<NSNumber*>*)indices
-                toPath:(NSString*)destinationPath
-              settings:(SZExtractionSettings*)settings
-              progress:(nullable id<SZProgressDelegate>)progress
-                 error:(NSError**)error;
 
 /// Extract specific entries by index with an explicit operation session
 - (BOOL)extractEntries:(NSArray<NSNumber*>*)indices
@@ -365,61 +371,50 @@ NS_SWIFT_MAIN_ACTOR @protocol SZProgressDelegate<NSObject>
                session:(nullable SZOperationSession*)session
                  error:(NSError**)error;
 
-/// Test archive integrity
-- (BOOL)testWithProgress:(nullable id<SZProgressDelegate>)progress
-                   error:(NSError**)error;
-
 /// Test archive integrity with an explicit operation session
 - (BOOL)testWithSession:(nullable SZOperationSession*)session
                   error:(NSError**)error;
 
 /// Create a folder inside the currently open archive.
-- (BOOL)createFolderNamed:(NSString*)folderName
-          inArchiveSubdir:(NSString*)archiveSubdir
-                  session:(nullable SZOperationSession*)session
-                    error:(NSError**)error;
+- (nullable SZArchiveUpdateOutcome*)createFolderNamed:(NSString*)folderName
+                                      inArchiveSubdir:(NSString*)archiveSubdir
+                                              session:(nullable SZOperationSession*)session
+                                                error:(NSError**)error;
 
 /// Rename one exact item in the currently open archive.
-- (BOOL)renameItemAtReference:(SZArchiveItemReference*)itemReference
-              inArchiveSubdir:(NSString*)archiveSubdir
-                      newName:(NSString*)newName
-                      session:(nullable SZOperationSession*)session
-                        error:(NSError**)error;
+- (nullable SZArchiveUpdateOutcome*)renameItemAtReference:(SZArchiveItemReference*)itemReference
+                                          inArchiveSubdir:(NSString*)archiveSubdir
+                                                  newName:(NSString*)newName
+                                                  session:(nullable SZOperationSession*)session
+                                                    error:(NSError**)error;
 
 /// Delete one or more exact items from the currently open archive.
-- (BOOL)deleteItemsAtReferences:(NSArray<SZArchiveItemReference*>*)itemReferences
-                inArchiveSubdir:(NSString*)archiveSubdir
-                        session:(nullable SZOperationSession*)session
-                          error:(NSError**)error;
+- (nullable SZArchiveUpdateOutcome*)deleteItemsAtReferences:(NSArray<SZArchiveItemReference*>*)itemReferences
+                                            inArchiveSubdir:(NSString*)archiveSubdir
+                                                    session:(nullable SZOperationSession*)session
+                                                      error:(NSError**)error;
 
 /// Add files or folders from disk into the currently open archive.
-- (BOOL)addPaths:(NSArray<NSString*>*)sourcePaths
-    toArchiveSubdir:(NSString*)archiveSubdir
-           moveMode:(BOOL)moveMode
-            session:(nullable SZOperationSession*)session
-              error:(NSError**)error;
+- (nullable SZArchiveUpdateOutcome*)addPaths:(NSArray<NSString*>*)sourcePaths
+                             toArchiveSubdir:(NSString*)archiveSubdir
+                                    moveMode:(BOOL)moveMode
+                                     session:(nullable SZOperationSession*)session
+                                       error:(NSError**)error;
 
 /// Replace one exact existing item in the currently open archive with a file
 /// from disk.
-- (BOOL)replaceItemAtReference:(SZArchiveItemReference*)itemReference
-               inArchiveSubdir:(NSString*)archiveSubdir
-                withFileAtPath:(NSString*)sourceFilePath
-                       session:(nullable SZOperationSession*)session
-                         error:(NSError**)error;
+- (nullable SZArchiveUpdateOutcome*)replaceItemAtReference:(SZArchiveItemReference*)itemReference
+                                           inArchiveSubdir:(NSString*)archiveSubdir
+                                            withFileAtPath:(NSString*)sourceFilePath
+                                                   session:(nullable SZOperationSession*)session
+                                                     error:(NSError**)error;
 
-/// Create a new archive from files
-+ (BOOL)createAtPath:(NSString*)archivePath
-           fromPaths:(NSArray<NSString*>*)sourcePaths
-            settings:(SZCompressionSettings*)settings
-            progress:(nullable id<SZProgressDelegate>)progress
-               error:(NSError**)error;
-
-/// Create a new archive from files with an explicit operation session
-+ (BOOL)createAtPath:(NSString*)archivePath
-           fromPaths:(NSArray<NSString*>*)sourcePaths
-            settings:(SZCompressionSettings*)settings
-             session:(nullable SZOperationSession*)session
-               error:(NSError**)error;
+/// Create or update an archive from files with an explicit operation session.
++ (nullable SZArchiveUpdateOutcome*)createAtPath:(NSString*)archivePath
+                                       fromPaths:(NSArray<NSString*>*)sourcePaths
+                                        settings:(SZCompressionSettings*)settings
+                                         session:(nullable SZOperationSession*)session
+                                           error:(NSError**)error;
 
 /// Get list of supported format infos
 + (NSArray<SZFormatInfo*>*)supportedFormats;

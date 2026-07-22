@@ -4,14 +4,6 @@
 
 #import "SZArchive.h"
 
-static inline void SZDispatchAsyncOnMain(dispatch_block_t block) {
-    if ([NSThread isMainThread]) {
-        block();
-    } else {
-        dispatch_async(dispatch_get_main_queue(), block);
-    }
-}
-
 static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     if ([NSThread isMainThread]) {
         block();
@@ -19,6 +11,9 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
         dispatch_sync(dispatch_get_main_queue(), block);
     }
 }
+
+static const CFTimeInterval SZOperationSnapshotMinimumInterval = 0.05;
+static const NSUInteger SZOperationIssueDetailLimit = 256;
 
 @implementation SZOperationChoiceRequest
 
@@ -51,99 +46,80 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 
 @end
 
-@interface SZOperationSession () {
-    double _progressFraction;
-    NSString* _currentFileName;
-    uint64_t _bytesCompleted;
-    uint64_t _bytesTotal;
-    uint64_t _filesCompleted;
-    BOOL _hasReportedProgress;
-    BOOL _waitingForUserInteraction;
-    BOOL _cancellationRequested;
-    // Last time progress/file-name/byte updates were forwarded to the delegate.
-    CFAbsoluteTime _lastProgressDispatchTime;
-    CFAbsoluteTime _lastFileNameDispatchTime;
-    CFAbsoluteTime _lastBytesDispatchTime;
-    BOOL _fileNameDispatchScheduled;
-}
-
-@end
-
 @interface SZOperationSnapshot ()
 
-- (instancetype)initWithProgressFraction:(double)progressFraction
-                         currentFileName:(NSString*)currentFileName
-                          bytesCompleted:(uint64_t)bytesCompleted
-                              bytesTotal:(uint64_t)bytesTotal
-                          filesCompleted:(uint64_t)filesCompleted
-                     hasReportedProgress:(BOOL)hasReportedProgress
-               waitingForUserInteraction:(BOOL)waitingForUserInteraction
-                   cancellationRequested:(BOOL)cancellationRequested;
+- (instancetype)initWithPhase:(SZOperationPhase)phase
+             progressFraction:(double)progressFraction
+              currentFileName:(NSString*)currentFileName
+               bytesCompleted:(uint64_t)bytesCompleted
+                   bytesTotal:(uint64_t)bytesTotal
+               filesCompleted:(uint64_t)filesCompleted
+                   filesTotal:(uint64_t)filesTotal
+          hasReportedProgress:(BOOL)hasReportedProgress
+    waitingForUserInteraction:(BOOL)waitingForUserInteraction
+        cancellationRequested:(BOOL)cancellationRequested
+          cancellationAllowed:(BOOL)cancellationAllowed
+                       issues:(NSArray<SZArchiveUpdateIssue*>*)issues
+              totalIssueCount:(uint64_t)totalIssueCount
+              issuesTruncated:(BOOL)issuesTruncated;
 
 @end
 
-@implementation SZOperationSnapshot {
-    double _progressFraction;
-    NSString* _currentFileName;
-    uint64_t _bytesCompleted;
-    uint64_t _bytesTotal;
-    uint64_t _filesCompleted;
-    BOOL _hasReportedProgress;
-    BOOL _waitingForUserInteraction;
-    BOOL _cancellationRequested;
-}
+@implementation SZOperationSnapshot
 
-- (instancetype)initWithProgressFraction:(double)progressFraction
-                         currentFileName:(NSString*)currentFileName
-                          bytesCompleted:(uint64_t)bytesCompleted
-                              bytesTotal:(uint64_t)bytesTotal
-                          filesCompleted:(uint64_t)filesCompleted
-                     hasReportedProgress:(BOOL)hasReportedProgress
-               waitingForUserInteraction:(BOOL)waitingForUserInteraction
-                   cancellationRequested:(BOOL)cancellationRequested {
+- (instancetype)initWithPhase:(SZOperationPhase)phase
+             progressFraction:(double)progressFraction
+              currentFileName:(NSString*)currentFileName
+               bytesCompleted:(uint64_t)bytesCompleted
+                   bytesTotal:(uint64_t)bytesTotal
+               filesCompleted:(uint64_t)filesCompleted
+                   filesTotal:(uint64_t)filesTotal
+          hasReportedProgress:(BOOL)hasReportedProgress
+    waitingForUserInteraction:(BOOL)waitingForUserInteraction
+        cancellationRequested:(BOOL)cancellationRequested
+          cancellationAllowed:(BOOL)cancellationAllowed
+                       issues:(NSArray<SZArchiveUpdateIssue*>*)issues
+              totalIssueCount:(uint64_t)totalIssueCount
+              issuesTruncated:(BOOL)issuesTruncated {
     if ((self = [super init])) {
+        _phase = phase;
         _progressFraction = progressFraction;
         _currentFileName = [currentFileName copy] ?: @"";
         _bytesCompleted = bytesCompleted;
         _bytesTotal = bytesTotal;
         _filesCompleted = filesCompleted;
+        _filesTotal = filesTotal;
         _hasReportedProgress = hasReportedProgress;
         _waitingForUserInteraction = waitingForUserInteraction;
         _cancellationRequested = cancellationRequested;
+        _cancellationAllowed = cancellationAllowed;
+        _issues = [issues copy] ?: @[];
+        _totalIssueCount = totalIssueCount;
+        _issuesTruncated = issuesTruncated;
     }
     return self;
 }
 
-- (double)progressFraction {
-    return _progressFraction;
-}
+@end
 
-- (NSString*)currentFileName {
-    return [_currentFileName copy];
-}
-
-- (uint64_t)bytesCompleted {
-    return _bytesCompleted;
-}
-
-- (uint64_t)bytesTotal {
-    return _bytesTotal;
-}
-
-- (uint64_t)filesCompleted {
-    return _filesCompleted;
-}
-
-- (BOOL)hasReportedProgress {
-    return _hasReportedProgress;
-}
-
-- (BOOL)isWaitingForUserInteraction {
-    return _waitingForUserInteraction;
-}
-
-- (BOOL)isCancellationRequested {
-    return _cancellationRequested;
+@interface SZOperationSession () {
+    SZOperationPhase _phase;
+    double _progressFraction;
+    NSString* _currentFileName;
+    uint64_t _bytesCompleted;
+    uint64_t _bytesTotal;
+    uint64_t _filesCompleted;
+    uint64_t _filesTotal;
+    BOOL _hasReportedProgress;
+    BOOL _waitingForUserInteraction;
+    BOOL _cancellationRequested;
+    BOOL _cancellationAllowed;
+    NSMutableArray<SZArchiveUpdateIssue*>* _issues;
+    uint64_t _totalIssueCount;
+    BOOL _issuesTruncated;
+    CFTimeInterval _lastSnapshotDispatchTime;
+    BOOL _snapshotDispatchScheduled;
+    SZOperationSnapshotHandler _snapshotHandler;
 }
 
 @end
@@ -152,9 +128,31 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 
 - (instancetype)init {
     if ((self = [super init])) {
+        _phase = SZOperationPhaseWaiting;
         _currentFileName = @"";
+        _cancellationAllowed = YES;
+        _issues = [NSMutableArray array];
     }
     return self;
+}
+
+- (SZOperationSnapshotHandler)snapshotHandler {
+    @synchronized(self) {
+        return [_snapshotHandler copy];
+    }
+}
+
+- (void)setSnapshotHandler:(SZOperationSnapshotHandler)snapshotHandler {
+    @synchronized(self) {
+        _snapshotHandler = [snapshotHandler copy];
+    }
+    [self scheduleSnapshotDelivery];
+}
+
+- (SZOperationPhase)phase {
+    @synchronized(self) {
+        return _phase;
+    }
 }
 
 - (double)progressFraction {
@@ -187,6 +185,12 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     }
 }
 
+- (uint64_t)filesTotal {
+    @synchronized(self) {
+        return _filesTotal;
+    }
+}
+
 - (BOOL)hasReportedProgress {
     @synchronized(self) {
         return _hasReportedProgress;
@@ -205,177 +209,134 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     }
 }
 
+- (BOOL)isCancellationAllowed {
+    @synchronized(self) {
+        return _cancellationAllowed;
+    }
+}
+
+- (uint64_t)totalIssueCount {
+    @synchronized(self) {
+        return _totalIssueCount;
+    }
+}
+
+- (void)reportPhase:(SZOperationPhase)phase {
+    @synchronized(self) {
+        _phase = phase;
+    }
+    [self scheduleSnapshotDelivery];
+}
+
 - (void)reportProgressFraction:(double)fraction {
     const double clamped = MIN(MAX(fraction, 0.0), 1.0);
-    BOOL shouldDispatch;
     @synchronized(self) {
         _progressFraction = clamped;
         _hasReportedProgress = YES;
-        // Coalesce frequent updates to ~50 ms, but always send the first and terminal values.
-        // Use a monotonic clock so wall-clock changes do not break throttling.
-        const CFTimeInterval now = CACurrentMediaTime();
-        const CFTimeInterval kMinInterval = 0.05;
-        shouldDispatch = (clamped >= 1.0)
-            || (_lastProgressDispatchTime == 0)
-            || (now - _lastProgressDispatchTime >= kMinInterval);
-        if (shouldDispatch) {
-            _lastProgressDispatchTime = now;
-        }
     }
-
-    id<SZProgressDelegate> delegate = self.progressDelegate;
-    if (!delegate || !shouldDispatch) {
-        return;
-    }
-
-    SZDispatchAsyncOnMain(^{
-        [delegate progressDidUpdate:clamped];
-    });
+    [self scheduleSnapshotDelivery];
 }
 
 - (void)reportCurrentFileName:(NSString*)fileName {
-    NSString* resolvedFileName = [fileName copy] ?: @"";
-    BOOL shouldDispatchNow = NO;
-    BOOL shouldScheduleDispatch = NO;
-    CFTimeInterval dispatchDelay = 0;
     @synchronized(self) {
-        _currentFileName = resolvedFileName;
-        const CFTimeInterval now = CACurrentMediaTime();
-        const CFTimeInterval kMinInterval = 0.05;
-        const BOOL canDispatchNow = (_lastFileNameDispatchTime == 0)
-            || (now - _lastFileNameDispatchTime >= kMinInterval);
-        if (canDispatchNow && !_fileNameDispatchScheduled) {
-            shouldDispatchNow = YES;
-            _lastFileNameDispatchTime = now;
-        } else if (!_fileNameDispatchScheduled) {
-            shouldScheduleDispatch = YES;
-            _fileNameDispatchScheduled = YES;
-            dispatchDelay = MAX(kMinInterval - (now - _lastFileNameDispatchTime), 0);
-        }
+        _currentFileName = [fileName copy] ?: @"";
     }
-
-    if (shouldDispatchNow) {
-        id<SZProgressDelegate> delegate = self.progressDelegate;
-        if (!delegate) {
-            return;
-        }
-
-        SZDispatchAsyncOnMain(^{
-            [delegate progressDidUpdateFileName:resolvedFileName];
-        });
-        return;
-    }
-
-    if (!shouldScheduleDispatch) {
-        return;
-    }
-
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(dispatchDelay * NSEC_PER_SEC)),
-        dispatch_get_main_queue(), ^{
-            NSString* latestFileName;
-            id<SZProgressDelegate> delegate;
-            @synchronized(self) {
-                latestFileName = [self->_currentFileName copy] ?: @"";
-                delegate = self.progressDelegate;
-                self->_fileNameDispatchScheduled = NO;
-                self->_lastFileNameDispatchTime = CACurrentMediaTime();
-            }
-
-            if (delegate) {
-                [delegate progressDidUpdateFileName:latestFileName];
-            }
-        });
+    [self scheduleSnapshotDelivery];
 }
 
 - (void)reportBytesCompleted:(uint64_t)completed total:(uint64_t)total {
-    BOOL shouldDispatch;
     @synchronized(self) {
         _bytesCompleted = completed;
         _bytesTotal = total;
-        const CFTimeInterval now = CACurrentMediaTime();
-        const CFTimeInterval kMinInterval = 0.05;
-        shouldDispatch = (total > 0 && completed >= total)
-            || (_lastBytesDispatchTime == 0)
-            || (now - _lastBytesDispatchTime >= kMinInterval);
-        if (shouldDispatch) {
-            _lastBytesDispatchTime = now;
+        if (total > 0) {
+            _progressFraction = MIN((double)completed / (double)total, 1.0);
+            _hasReportedProgress = YES;
         }
     }
-
-    id<SZProgressDelegate> delegate = self.progressDelegate;
-    if (!delegate || !shouldDispatch) {
-        return;
-    }
-
-    SZDispatchAsyncOnMain(^{
-        [delegate progressDidUpdateBytesCompleted:completed total:total];
-    });
+    [self scheduleSnapshotDelivery];
 }
 
 - (void)reportFilesCompleted:(uint64_t)count {
     @synchronized(self) {
         _filesCompleted = count;
     }
+    [self scheduleSnapshotDelivery];
+}
+
+- (void)reportFilesTotal:(uint64_t)count {
+    @synchronized(self) {
+        _filesTotal = count;
+    }
+    [self scheduleSnapshotDelivery];
+}
+
+- (void)reportUpdateIssue:(SZArchiveUpdateIssue*)issue {
+    if (!issue) {
+        return;
+    }
+
+    @synchronized(self) {
+        _totalIssueCount++;
+        if (_issues.count < SZOperationIssueDetailLimit) {
+            [_issues addObject:issue];
+        } else {
+            _issuesTruncated = YES;
+        }
+    }
+    [self scheduleSnapshotDelivery];
 }
 
 - (BOOL)shouldCancel {
-    // Worker threads poll this frequently, so avoid main-thread hops here.
     return self.cancellationRequested;
 }
 
 - (void)requestCancel {
     @synchronized(self) {
+        if (!_cancellationAllowed) {
+            return;
+        }
         _cancellationRequested = YES;
+        _phase = SZOperationPhaseCancelling;
     }
+    [self scheduleSnapshotDelivery];
 }
 
 - (void)clearCancellationRequest {
     @synchronized(self) {
         _cancellationRequested = NO;
+        if (_phase == SZOperationPhaseCancelling) {
+            _phase = SZOperationPhaseWaiting;
+        }
     }
+    [self scheduleSnapshotDelivery];
+}
 
-    id<SZProgressDelegate> delegate = self.progressDelegate;
-    if (!delegate || ![delegate respondsToSelector:@selector(progressResetCancellationRequest)]) {
-        return;
+- (void)beginFinalizing {
+    @synchronized(self) {
+        _cancellationRequested = NO;
+        _cancellationAllowed = NO;
+        _phase = SZOperationPhaseFinalizing;
     }
-
-    SZDispatchSyncOnMain(^{
-        [delegate progressResetCancellationRequest];
-    });
+    [self scheduleSnapshotDelivery];
 }
 
 - (void)prepareForUserInteraction {
     @synchronized(self) {
         _waitingForUserInteraction = YES;
     }
-
-    id<SZProgressDelegate> delegate = self.progressDelegate;
-    if (!delegate || ![delegate respondsToSelector:@selector(progressPrepareForUserInteraction)]) {
-        return;
-    }
-
-    SZDispatchSyncOnMain(^{
-        [delegate progressPrepareForUserInteraction];
-    });
+    [self scheduleSnapshotDelivery];
 }
 
 - (void)finishUserInteraction {
     @synchronized(self) {
         _waitingForUserInteraction = NO;
     }
+    [self scheduleSnapshotDelivery];
 }
 
 - (SZOperationSnapshot*)snapshot {
     @synchronized(self) {
-        return [[SZOperationSnapshot alloc]
-             initWithProgressFraction:_progressFraction
-                      currentFileName:_currentFileName
-                       bytesCompleted:_bytesCompleted
-                           bytesTotal:_bytesTotal
-                       filesCompleted:_filesCompleted
-                  hasReportedProgress:_hasReportedProgress
-            waitingForUserInteraction:_waitingForUserInteraction
-                cancellationRequested:_cancellationRequested];
+        return [self newSnapshotWhileLocked];
     }
 }
 
@@ -426,6 +387,65 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
         return request.cancelButtonIndex;
     }
     return choice;
+}
+
+- (SZOperationSnapshot*)newSnapshotWhileLocked {
+    return [[SZOperationSnapshot alloc]
+                    initWithPhase:_phase
+                 progressFraction:_progressFraction
+                  currentFileName:_currentFileName
+                   bytesCompleted:_bytesCompleted
+                       bytesTotal:_bytesTotal
+                   filesCompleted:_filesCompleted
+                       filesTotal:_filesTotal
+              hasReportedProgress:_hasReportedProgress
+        waitingForUserInteraction:_waitingForUserInteraction
+            cancellationRequested:_cancellationRequested
+              cancellationAllowed:_cancellationAllowed
+                           issues:_issues
+                  totalIssueCount:_totalIssueCount
+                  issuesTruncated:_issuesTruncated];
+}
+
+- (void)scheduleSnapshotDelivery {
+    __block BOOL shouldSchedule = NO;
+    __block CFTimeInterval delay = 0;
+
+    @synchronized(self) {
+        if (!_snapshotHandler || _snapshotDispatchScheduled) {
+            return;
+        }
+
+        const CFTimeInterval now = CACurrentMediaTime();
+        if (_lastSnapshotDispatchTime > 0) {
+            delay = MAX(SZOperationSnapshotMinimumInterval
+                    - (now - _lastSnapshotDispatchTime),
+                0);
+        }
+        _snapshotDispatchScheduled = YES;
+        shouldSchedule = YES;
+    }
+
+    if (!shouldSchedule) {
+        return;
+    }
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                       (int64_t)(delay * NSEC_PER_SEC)),
+        dispatch_get_main_queue(), ^{
+            SZOperationSnapshotHandler handler;
+            SZOperationSnapshot* snapshot;
+            @synchronized(self) {
+                self->_snapshotDispatchScheduled = NO;
+                self->_lastSnapshotDispatchTime = CACurrentMediaTime();
+                handler = [self->_snapshotHandler copy];
+                snapshot = [self newSnapshotWhileLocked];
+            }
+
+            if (handler) {
+                handler(snapshot);
+            }
+        });
 }
 
 @end

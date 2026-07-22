@@ -31,7 +31,7 @@ struct FileManagerArchiveMutationTarget {
 }
 
 enum FileManagerArchiveMutationOutcome {
-    case completed
+    case completed(SZArchiveUpdateOutcome)
     case archiveCommittedAfterCancellation
     case archiveCommittedAfterError(Error, requiresReopen: Bool)
 
@@ -50,10 +50,9 @@ enum FileManagerArchiveMutationOutcome {
     }
 
     @discardableResult
-    static func perform(_ operation: () throws -> Void) throws -> Self {
+    static func perform(_ operation: () throws -> SZArchiveUpdateOutcome) throws -> Self {
         do {
-            try operation()
-            return .completed
+            return .completed(try operation())
         } catch {
             guard szArchiveMutationWasCommitted(error) else {
                 throw error
@@ -66,6 +65,15 @@ enum FileManagerArchiveMutationOutcome {
                 requiresReopen: szArchiveMutationRequiresReopen(error),
             )
         }
+    }
+}
+
+extension FileManagerArchiveMutationOutcome: ArchiveOperationPresentationResult {
+    var archiveUpdateOutcomeForPresentation: SZArchiveUpdateOutcome? {
+        if case let .completed(outcome) = self {
+            return outcome
+        }
+        return nil
     }
 }
 

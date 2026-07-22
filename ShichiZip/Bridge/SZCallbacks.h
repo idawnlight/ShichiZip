@@ -9,7 +9,55 @@
 #include "CPP/7zip/UI/Common/EnumDirItems.h"
 #include "CPP/7zip/UI/Common/Update.h"
 #include "CPP/7zip/UI/Common/UpdateCallback.h"
+#include "CPP/Windows/ErrorMsg.h"
 // clang-format on
+
+#include <mutex>
+
+enum class SZUpdateInputErrorPolicy {
+    ContinueWithWarnings,
+    StopOnInputError,
+};
+
+struct SZUpdateIssueRecord {
+    SZArchiveUpdateIssueStage Stage;
+    UString Path;
+    HRESULT ErrorCode;
+    UString Message;
+};
+
+class SZUpdateDiagnostics {
+public:
+    static constexpr unsigned kIssueDetailLimit = 256;
+
+    void Add(SZArchiveUpdateIssueStage stage,
+        const UString& path,
+        HRESULT errorCode,
+        const UString& message,
+        SZOperationSession* session);
+    void AddFileError(SZArchiveUpdateIssueStage stage,
+        const FString& path,
+        DWORD systemError,
+        SZOperationSession* session);
+    void AddFileError(SZArchiveUpdateIssueStage stage,
+        const wchar_t* path,
+        HRESULT errorCode,
+        SZOperationSession* session);
+    void AddMessage(const UString& message,
+        SZOperationSession* session);
+
+    bool HasIssues() const;
+    UInt64 TotalIssueCount() const;
+    bool IsTruncated() const;
+    NSArray<SZArchiveUpdateIssue*>* MakeIssues() const;
+    UString MakeSummary() const;
+
+private:
+    mutable std::mutex Mutex;
+    CObjectVector<SZUpdateIssueRecord> Issues;
+    UInt64 TotalCount = 0;
+    bool Truncated = false;
+};
 
 static inline HRESULT SZRequestOperationPassword(SZOperationSession* session,
     UString& outPassword,
@@ -147,11 +195,16 @@ public:
     UString Password;
     bool PasswordIsDefined;
     UInt64 TotalSize;
+    bool ArchiveWasReplaced;
+    SZUpdateInputErrorPolicy InputErrorPolicy;
+    SZUpdateDiagnostics Diagnostics;
     __weak SZOperationSession* Session;
 
     SZUpdateCallbackUI()
         : PasswordIsDefined(false)
         , TotalSize(0)
+        , ArchiveWasReplaced(false)
+        , InputErrorPolicy(SZUpdateInputErrorPolicy::ContinueWithWarnings)
         , Session(nil) {
     }
 
@@ -165,10 +218,10 @@ public:
     HRESULT SetCompleted(const UInt64* completed) override;
     HRESULT SetRatioInfo(const UInt64*, const UInt64*) override { return S_OK; }
     HRESULT CheckBreak() override;
-    HRESULT SetNumItems(const CArcToDoStat&) override { return S_OK; }
+    HRESULT SetNumItems(const CArcToDoStat&) override;
     HRESULT GetStream(const wchar_t* name, bool, bool, UInt32) override;
-    HRESULT OpenFileError(const FString&, DWORD) override { return S_OK; }
-    HRESULT ReadingFileError(const FString&, DWORD) override { return S_OK; }
+    HRESULT OpenFileError(const FString& path, DWORD systemError) override;
+    HRESULT ReadingFileError(const FString& path, DWORD systemError) override;
     HRESULT SetOperationResult(Int32) override { return S_OK; }
     HRESULT ReportExtractResult(Int32, Int32, const wchar_t*) override { return S_OK; }
     HRESULT ReportUpdateOperation(UInt32, const wchar_t*, bool) override { return S_OK; }
@@ -180,17 +233,17 @@ public:
     HRESULT OpenResult(const CCodecs*, const CArchiveLink&, const wchar_t*, HRESULT) override { return S_OK; }
     HRESULT StartScanning() override;
     HRESULT FinishScanning(const CDirItemsStat&) override;
-    HRESULT StartOpenArchive(const wchar_t*) override { return S_OK; }
-    HRESULT StartArchive(const wchar_t*, bool) override { return S_OK; }
+    HRESULT StartOpenArchive(const wchar_t* name) override;
+    HRESULT StartArchive(const wchar_t* name, bool updating) override;
     HRESULT FinishArchive(const CFinishArchiveStat&) override { return S_OK; }
     HRESULT DeletingAfterArchiving(const FString&, bool) override { return S_OK; }
     HRESULT FinishDeletingAfterArchiving() override { return S_OK; }
-    HRESULT MoveArc_Start(const wchar_t*, const wchar_t*, UInt64, Int32) override { return S_OK; }
-    HRESULT MoveArc_Progress(UInt64, UInt64) override { return S_OK; }
-    HRESULT MoveArc_Finish() override { return S_OK; }
+    HRESULT MoveArc_Start(const wchar_t* srcTempPath, const wchar_t* destFinalPath, UInt64 size, Int32 updateMode) override;
+    HRESULT MoveArc_Progress(UInt64 total, UInt64 current) override;
+    HRESULT MoveArc_Finish() override;
 
     // IDirItemsCallback
-    HRESULT ScanError(const FString&, DWORD) override { return S_OK; }
+    HRESULT ScanError(const FString& path, DWORD systemError) override;
     HRESULT ScanProgress(const CDirItemsStat&, const FString&, bool) override;
 };
 
@@ -216,9 +269,10 @@ public:
     bool UsesBytesProgress;
     UInt64 NumFilesCompleted;
     bool ArchiveWasReplaced;
+    SZUpdateInputErrorPolicy InputErrorPolicy;
+    SZUpdateDiagnostics Diagnostics;
     __weak SZOperationSession* Session;
     UString ArchivePath;
-    UString LastErrorMessage;
 
     SZAgentUpdateCallback()
         : PasswordIsDefined(false)
@@ -229,6 +283,7 @@ public:
         , UsesBytesProgress(false)
         , NumFilesCompleted(0)
         , ArchiveWasReplaced(false)
+        , InputErrorPolicy(SZUpdateInputErrorPolicy::ContinueWithWarnings)
         , Session(nil) {
     }
 

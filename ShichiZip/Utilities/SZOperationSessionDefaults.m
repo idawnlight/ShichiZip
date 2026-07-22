@@ -2,9 +2,8 @@
 
 #import "../Dialogs/SZDialogPresenter.h"
 
-SZOperationSession* SZMakeDefaultOperationSession(id<SZProgressDelegate> progressDelegate) {
+SZOperationSession* SZMakeDefaultOperationSession(void) {
     SZOperationSession* session = [SZOperationSession new];
-    session.progressDelegate = progressDelegate;
     session.passwordRequestHandler = ^BOOL(NSString* title,
         NSString* message,
         NSString* initialValue,

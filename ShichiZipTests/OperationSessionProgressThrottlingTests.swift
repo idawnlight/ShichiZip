@@ -135,175 +135,122 @@ final class OperationSessionChoiceRequestTests: XCTestCase {
 
 @MainActor
 final class OperationSessionProgressThrottlingTests: XCTestCase {
-    private final class RecordingDelegate: NSObject, SZProgressDelegate {
-        nonisolated(unsafe) var fractionUpdates: [Double] = []
-        nonisolated(unsafe) var fileNameUpdates: [String] = []
-        nonisolated(unsafe) var bytesUpdates: [(UInt64, UInt64)] = []
-
-        func progressDidUpdate(_ fraction: Double) {
-            fractionUpdates.append(fraction)
-        }
-
-        func progressDidUpdateFileName(_ fileName: String) {
-            fileNameUpdates.append(fileName)
-        }
-
-        func progressDidUpdateBytesCompleted(_ completed: UInt64, total: UInt64) {
-            bytesUpdates.append((completed, total))
-        }
-
-        func progressShouldCancel() -> Bool {
-            false
-        }
-    }
-
-    // MARK: - File-name throttling
-
-    func testRapidFileNameReportsAreCoalescedAndLatestArrives() {
-        let delegate = RecordingDelegate()
+    func testRapidReportsAreCoalescedIntoLatestSnapshot() {
         let session = SZOperationSession()
-        session.progressDelegate = delegate
+        var snapshots: [SZOperationSnapshot] = []
+        session.snapshotHandler = { snapshots.append($0) }
 
         for index in 1 ... 100 {
             session.reportCurrentFileName("file-\(index).txt")
+            session.reportProgressFraction(Double(index) / 100)
         }
 
-        XCTAssertEqual(session.currentFileName, "file-100.txt",
-                       "session snapshots should keep the latest file name even when delegate updates are throttled")
-
+        XCTAssertEqual(session.currentFileName, "file-100.txt")
         drainMainQueue(for: 0.12)
 
-        XCTAssertGreaterThanOrEqual(delegate.fileNameUpdates.count, 2,
-                                    "first and coalesced latest file-name updates should be delivered")
-        XCTAssertLessThanOrEqual(delegate.fileNameUpdates.count, 10,
-                                 "rapid file-name updates must be coalesced, got \(delegate.fileNameUpdates.count)")
-        XCTAssertEqual(delegate.fileNameUpdates.last, "file-100.txt",
-                       "coalesced file-name update must carry the latest reported name")
+        XCTAssertFalse(snapshots.isEmpty)
+        XCTAssertLessThanOrEqual(snapshots.count, 10)
+        XCTAssertEqual(snapshots.last?.currentFileName, "file-100.txt")
+        XCTAssertEqual(snapshots.last?.progressFraction, 1)
     }
 
-    private func drainMainQueue(for seconds: TimeInterval = 0.02) {
-        // dispatch_async(main) blocks can only run when the main
-        // runloop is spun. 20 ms is long enough to pick up any
-        // already-queued blocks but short enough to stay fast.
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: seconds))
-    }
-
-    // MARK: - Fraction throttling
-
-    func testRapidProgressReportsAreCoalesced() {
-        let delegate = RecordingDelegate()
+    func testFractionIsClampedInSnapshot() {
         let session = SZOperationSession()
-        session.progressDelegate = delegate
+        session.reportProgressFraction(-1)
+        XCTAssertEqual(session.snapshot().progressFraction, 0)
 
-        // Fire 100 updates back-to-back with no wait between them.
-        // The only ones that should actually reach the delegate are
-        // the first report (special-cased "flush the first tick")
-        // and the terminal 1.0. The 98 reports in between land
-        // inside the 50 ms throttle window.
-        for i in 1 ... 98 {
-            session.reportProgressFraction(Double(i) / 100.0)
+        session.reportProgressFraction(42)
+        XCTAssertEqual(session.snapshot().progressFraction, 1)
+    }
+
+    func testRapidByteReportsDeliverTerminalState() {
+        let session = SZOperationSession()
+        var snapshots: [SZOperationSnapshot] = []
+        session.snapshotHandler = { snapshots.append($0) }
+
+        let total: UInt64 = 1_000
+        for completed in 0 ... total {
+            session.reportBytesCompleted(completed, total: total)
         }
-        // Terminal update is always delivered.
-        session.reportProgressFraction(1.0)
+        drainMainQueue(for: 0.12)
 
-        drainMainQueue(for: 0.1)
-
-        // Be generous to account for future throttling tweaks: any
-        // value from 2 (first + terminal) to 5 (first + a couple
-        // intermediate timer boundaries + terminal) is acceptable on
-        // a fast machine. The important check is that we are nowhere
-        // near 99.
-        XCTAssertGreaterThanOrEqual(delegate.fractionUpdates.count, 2,
-                                    "first and terminal updates must always be delivered")
-        XCTAssertLessThanOrEqual(delegate.fractionUpdates.count, 10,
-                                 "rapid intermediate updates must be coalesced, got \(delegate.fractionUpdates.count)")
-
-        XCTAssertEqual(delegate.fractionUpdates.last, 1.0,
-                       "last delegate call must carry the terminal fraction")
+        XCTAssertFalse(snapshots.isEmpty)
+        XCTAssertLessThanOrEqual(snapshots.count, 15)
+        XCTAssertEqual(snapshots.last?.bytesCompleted, total)
+        XCTAssertEqual(snapshots.last?.bytesTotal, total)
+        XCTAssertEqual(snapshots.last?.progressFraction, 1)
     }
 
-    func testTerminalFractionIsAlwaysDelivered() {
-        let delegate = RecordingDelegate()
+    func testSnapshotAfterThrottleWindowIsDelivered() {
         let session = SZOperationSession()
-        session.progressDelegate = delegate
+        var fractions: [Double] = []
+        session.snapshotHandler = { fractions.append($0.progressFraction) }
 
-        // First update primes the throttle; the following 1.0 must
-        // still reach the delegate despite landing immediately after.
-        session.reportProgressFraction(0.5)
-        session.reportProgressFraction(1.0)
+        session.reportProgressFraction(0.1)
         drainMainQueue()
-
-        XCTAssertTrue(delegate.fractionUpdates.contains(1.0),
-                      "terminal 1.0 must always be delivered, got \(delegate.fractionUpdates)")
-    }
-
-    func testFractionIsClampedToUnitInterval() {
-        let delegate = RecordingDelegate()
-        let session = SZOperationSession()
-        session.progressDelegate = delegate
-
-        session.reportProgressFraction(-1.0)
-        drainMainQueue()
-        session.reportProgressFraction(42.0)
-        drainMainQueue()
-
-        for value in delegate.fractionUpdates {
-            XCTAssertGreaterThanOrEqual(value, 0.0)
-            XCTAssertLessThanOrEqual(value, 1.0)
-        }
-        // The 42.0 report clamps to 1.0 and is therefore treated as
-        // terminal -> delegate must have seen both clamped edges.
-        XCTAssertTrue(delegate.fractionUpdates.contains(0.0))
-        XCTAssertTrue(delegate.fractionUpdates.contains(1.0))
-    }
-
-    // MARK: - Bytes throttling
-
-    func testRapidBytesReportsAreCoalescedAndTerminalArrives() {
-        let delegate = RecordingDelegate()
-        let session = SZOperationSession()
-        session.progressDelegate = delegate
-
-        let total: UInt64 = 1000
-        for completed in stride(from: 0, through: 999, by: 1) {
-            session.reportBytesCompleted(UInt64(completed), total: total)
-        }
-        // Completion -> always flushed.
-        session.reportBytesCompleted(total, total: total)
-
-        drainMainQueue(for: 0.1)
-
-        XCTAssertGreaterThanOrEqual(delegate.bytesUpdates.count, 2,
-                                    "first and terminal byte updates must always be delivered")
-        XCTAssertLessThanOrEqual(delegate.bytesUpdates.count, 15,
-                                 "rapid intermediate byte updates must be coalesced, got \(delegate.bytesUpdates.count)")
-        XCTAssertEqual(delegate.bytesUpdates.last?.0, total,
-                       "terminal byte update must carry completed == total")
-    }
-
-    // MARK: - 50 ms window opens up after wait
-
-    func testDelegateReceivesSecondUpdateAfter50msGap() {
-        let delegate = RecordingDelegate()
-        let session = SZOperationSession()
-        session.progressDelegate = delegate
-
-        session.reportProgressFraction(0.1) // primes the throttle timestamp
-        drainMainQueue()
-
-        // Intermediate report inside the 50 ms window -> throttled out.
-        session.reportProgressFraction(0.2)
-        drainMainQueue(for: 0.005)
-
-        // Wait past the 50 ms boundary and send a non-terminal
-        // update. This one must make it through.
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.07))
         session.reportProgressFraction(0.3)
         drainMainQueue()
 
-        XCTAssertTrue(delegate.fractionUpdates.contains(0.1),
-                      "first update should always pass")
-        XCTAssertTrue(delegate.fractionUpdates.contains(0.3),
-                      "update after the throttle window should be delivered")
+        XCTAssertTrue(fractions.contains(0.1))
+        XCTAssertTrue(fractions.contains(0.3))
+    }
+
+    func testCancellationAndFinalizationAreExplicitSnapshotStates() {
+        let session = SZOperationSession()
+        session.requestCancel()
+
+        var snapshot = session.snapshot()
+        XCTAssertTrue(snapshot.isCancellationRequested)
+        XCTAssertTrue(snapshot.isCancellationAllowed)
+        XCTAssertEqual(snapshot.phase, .cancelling)
+
+        session.beginFinalizing()
+        snapshot = session.snapshot()
+        XCTAssertFalse(snapshot.isCancellationRequested)
+        XCTAssertFalse(snapshot.isCancellationAllowed)
+        XCTAssertEqual(snapshot.phase, .finalizing)
+
+        session.requestCancel()
+        XCTAssertFalse(session.shouldCancel())
+    }
+
+    func testIssueDetailsAreBoundedButTotalIsPreserved() {
+        let session = SZOperationSession()
+        for index in 0 ..< 300 {
+            session.report(
+                SZArchiveUpdateIssue(
+                    stage: .scan,
+                    path: "/tmp/input-\(index)",
+                    errorCode: Int32(EACCES),
+                    message: "Permission denied",
+                ),
+            )
+        }
+
+        let snapshot = session.snapshot()
+        XCTAssertEqual(snapshot.totalIssueCount, 300)
+        XCTAssertEqual(snapshot.issues.count, 256)
+        XCTAssertTrue(snapshot.areIssuesTruncated)
+    }
+
+    func testClearingSnapshotHandlerStopsFurtherDelivery() {
+        let session = SZOperationSession()
+        var snapshots: [SZOperationSnapshot] = []
+        session.snapshotHandler = { snapshots.append($0) }
+        session.reportProgressFraction(0.1)
+        drainMainQueue()
+
+        session.snapshotHandler = nil
+        let deliveredBeforeClear = snapshots.count
+        session.reportProgressFraction(0.8)
+        drainMainQueue(for: 0.08)
+
+        XCTAssertEqual(snapshots.count, deliveredBeforeClear)
+        XCTAssertEqual(session.snapshot().progressFraction, 0.8)
+    }
+
+    private func drainMainQueue(for seconds: TimeInterval = 0.02) {
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: seconds))
     }
 }

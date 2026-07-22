@@ -1,12 +1,22 @@
-import Cocoa
+import AppKit
 
-/// SZOperationSession synchronizes its mutable state internally and routes UI callbacks to the main thread.
+/// SZOperationSession synchronizes its mutable state internally and delivers
+/// immutable presentation snapshots on the main queue.
 extension SZOperationSession: @unchecked Sendable {}
 
 /// SZArchive access is coordinated by callers before being handed to background archive workers.
 extension SZArchive: @unchecked Sendable {}
 
-/// Wraps archive work for dispatch queues. Callers coordinate archive/session ownership before dispatch.
+protocol ArchiveOperationPresentationResult {
+    var archiveUpdateOutcomeForPresentation: SZArchiveUpdateOutcome? { get }
+}
+
+extension SZArchiveUpdateOutcome: ArchiveOperationPresentationResult {
+    var archiveUpdateOutcomeForPresentation: SZArchiveUpdateOutcome? {
+        self
+    }
+}
+
 private struct ArchiveOperationWork<Value>: @unchecked Sendable {
     let body: (SZOperationSession) throws -> Value
 
@@ -23,32 +33,40 @@ enum ArchiveOperationRunner {
                        deferredDisplay: Bool = false,
                        work: @escaping (SZOperationSession) throws -> T) async throws -> T
     {
-        let coordinator = ArchiveOperationCoordinator(operationTitle: operationTitle,
-                                                      initialFileName: initialFileName,
-                                                      parentWindow: parentWindow,
-                                                      deferredDisplay: deferredDisplay)
-        coordinator.start()
-        defer { coordinator.finish() }
-        let session = coordinator.session
+        let presenter = ArchiveOperationPresenter(operationTitle: operationTitle,
+                                                  initialFileName: initialFileName,
+                                                  parentWindow: parentWindow,
+                                                  deferredDisplay: deferredDisplay)
+        presenter.start()
+        let session = presenter.session
 
-        return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                if Task.isCancelled {
-                    session.requestCancel()
-                }
+        do {
+            let value = try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { continuation in
+                    if Task.isCancelled {
+                        session.requestCancel()
+                    }
 
-                let operation = ArchiveOperationWork(body: work)
-                DispatchQueue.global(qos: .userInitiated).async {
-                    do {
-                        let result = try operation(session)
-                        continuation.resume(returning: result)
-                    } catch {
-                        continuation.resume(throwing: error)
+                    let operation = ArchiveOperationWork(body: work)
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        do {
+                            continuation.resume(returning: try operation(session))
+                        } catch {
+                            continuation.resume(throwing: error)
+                        }
                     }
                 }
+            } onCancel: {
+                session.requestCancel()
             }
-        } onCancel: {
-            session.requestCancel()
+
+            let updateOutcome = (value as? any ArchiveOperationPresentationResult)?
+                .archiveUpdateOutcomeForPresentation
+            await presenter.finishSuccessfully(updateOutcome: updateOutcome)
+            return value
+        } catch {
+            presenter.finishWithFailure()
+            throw error
         }
     }
 }
