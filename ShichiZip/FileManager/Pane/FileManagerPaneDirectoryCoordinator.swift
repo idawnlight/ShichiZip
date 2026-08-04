@@ -232,7 +232,7 @@ final class FileManagerPaneDirectoryCoordinator {
 
         snapshotQueue.async {
             box.store(Result { try make(url) })
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async { [weak self = self] in
                 MainActor.assumeIsolated {
                     self?.finishDirectorySnapshot(box.take(),
                                                   generation: generation,
@@ -394,7 +394,7 @@ final class FileManagerPaneDirectoryCoordinator {
                 try make(url)
             }
 
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async { [weak self = self] in
                 MainActor.assumeIsolated {
                     self?.finishDirectorySnapshot(result,
                                                   generation: generation,

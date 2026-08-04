@@ -277,7 +277,7 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
                 result = .failure(error)
             }
 
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async { [weak self = self] in
                 guard let self, generation == loadGeneration else { return }
                 isLoading = false
 
@@ -568,7 +568,7 @@ final class DeleteTemporaryFilesWindowController: NSWindowController, NSWindowDe
                 result = .failure(error)
             }
 
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async { [weak self = self] in
                 guard let self else { return }
                 isDeleting = false
                 switch result {
