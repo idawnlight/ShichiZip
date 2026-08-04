@@ -1,0 +1,93 @@
+name: Xcode Preview Builds
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Xcode 26.6
+            runner: macos-26
+            developer_dir: /Applications/Xcode_26.6.app/Contents/Developer
+            cache_key: xcode-26.6
+          - name: Xcode 27 Beta
+            runner: xcode-27
+            developer_dir: /Applications/Xcode.app/Contents/Developer
+            cache_key: xcode-27
+    env:
+      DEVELOPER_DIR: ${{ matrix.developer_dir }}
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      XCODE_PROJECT: ShichiZip.xcodeproj
+      XCODE_CONFIGURATION: Debug
+
+    steps:
+      - name: Check out repository with submodules
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Apply vendor patches
+        run: |
+          sh vendor/apply_7zip_patches.sh vendor/7zip
+          sh vendor/apply_7zip_patches.sh vendor/7zip-zstd
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Set up Zig
+        uses: mlugg/setup-zig@v2
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+        with:
+          version: 0.16.0
+          cache-key: zs-aarch64-native-${{ matrix.cache_key }}
+
+      - name: Report Xcode version
+        run: xcodebuild -version
+
+      - name: Build archive core artifacts
+        run: |
+          zig build lib \
+            -Dvariant=zs \
+            -Dtarget=aarch64-native \
+            -Doptimize=ReleaseFast \
+            -p build \
+            --summary all \
+            --verbose
+
+          zig build sfx \
+            -Dvariant=zs \
+            -Doptimize=ReleaseSmall \
+            -p build \
+            --summary all \
+            --verbose
+
+      - name: Build app bundle
+        run: |
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme ShichiZipZS \
+            -configuration "$XCODE_CONFIGURATION" \
+            -derivedDataPath "build/DerivedData/ShichiZipZS-${{ matrix.cache_key }}" \
+            -arch arm64 \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= \
+            build
