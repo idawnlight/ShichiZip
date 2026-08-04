@@ -86,7 +86,6 @@ targets:
           NSExtensionAttributes:
             <<: &quick_action_extension_attributes_common
               NSExtensionServiceAllowsFinderPreviewItem: true
-              NSExtensionServiceFinderPreviewIconName: NSActionTemplate
               NSExtensionServiceRoleType: NSExtensionServiceRoleTypeViewer
             NSExtensionActivationRule: >-
               SUBQUERY(extensionItems, $extensionItem, $extensionItem.attachments.@count >= 1 &&
