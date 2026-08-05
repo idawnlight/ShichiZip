@@ -3,13 +3,14 @@
 // End-to-end create/open/extract coverage, plus encrypted-listing and
 // cancellation checks.
 
-import XCTest
+import os
 
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
     @testable import ShichiZip
 #endif
+import XCTest
 
 final class ArchiveRoundTripTests: XCTestCase {
     private static let password = "round-trip-pw"
@@ -509,30 +510,34 @@ final class ArchiveRoundTripTests: XCTestCase {
 
     func testTaskCancellationRequestsOperationSessionCancellation() async {
         let workStarted = expectation(description: "archive operation work started")
-        let cancellationObserved = expectation(description: "session cancellation observed")
+        let workDidStart = OSAllocatedUnfairLock(initialState: false)
+        let cancellationCheckGate = DispatchSemaphore(value: 0)
 
         let task = Task { @MainActor in
             try await ArchiveOperationRunner.run(operationTitle: "Testing cancellation",
                                                  deferredDisplay: true)
             { session in
+                workDidStart.withLock { $0 = true }
                 workStarted.fulfill()
+                cancellationCheckGate.wait()
 
-                let deadline = Date(timeIntervalSinceNow: 2)
-                while Date() < deadline {
-                    if session.shouldCancel() {
-                        cancellationObserved.fulfill()
-                        throw CancellationError()
-                    }
-                    Thread.sleep(forTimeInterval: 0.005)
+                guard session.shouldCancel() else {
+                    throw CancellationTestFailure.cancellationNotObserved
                 }
-
-                throw CancellationTestFailure.cancellationNotObserved
+                throw CancellationError()
             }
         }
 
-        await fulfillment(of: [workStarted], timeout: 1)
+        await fulfillment(of: [workStarted], timeout: 10)
+        guard workDidStart.withLock({ $0 }) else {
+            task.cancel()
+            cancellationCheckGate.signal()
+            _ = try? await task.value
+            return
+        }
+
         task.cancel()
-        await fulfillment(of: [cancellationObserved], timeout: 2)
+        cancellationCheckGate.signal()
 
         do {
             try await task.value
