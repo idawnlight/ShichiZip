@@ -1,7 +1,7 @@
 import XCTest
 
 final class SettingsWindowUITests: ShichiZipUITestCase {
-    func testSwiftUISettingsNavigationAndFileTypeSearch() {
+    func testSwiftUISettingsNavigationAndRPMFileTypeSearch() {
         openSettings()
 
         let fileTypesNavigation = settingsNavigation("fileTypes")
@@ -13,9 +13,10 @@ final class SettingsWindowUITests: ShichiZipUITestCase {
         ).firstMatch
         XCTAssertTrue(searchField.waitForExistence(timeout: 5))
         searchField.click()
-        searchField.typeText("iso")
+        searchField.typeText("rpm")
 
-        XCTAssertTrue(app.staticTexts[".iso"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Linux RPM Archive"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts[".rpm"].waitForExistence(timeout: 10))
 
         settingsNavigation("extensions").click()
         XCTAssertTrue(

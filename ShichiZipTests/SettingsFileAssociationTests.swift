@@ -94,7 +94,7 @@ final class SettingsFileAssociationTests: XCTestCase {
         )
         let displayedExtensions = Set(associations.flatMap(\.fileExtensions))
 
-        XCTAssertTrue(displayedExtensions.isSuperset(of: ["iso", "udif", "deb", "chm"]))
+        XCTAssertTrue(displayedExtensions.isSuperset(of: ["iso", "udif", "deb", "rpm", "chm"]))
     }
 
     @MainActor
