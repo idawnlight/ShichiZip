@@ -139,9 +139,14 @@ enum SmartExtractRunner {
         let baseDestinationURL = archiveURL.deletingLastPathComponent().standardizedFileURL
         let suggestedFolderName = archiveURL.deletingPathExtension().lastPathComponent
         let topLevelNames = Set(archiveItems.compactMap(\.pathParts.first).filter { !$0.isEmpty })
+        let singleTopLevelName = topLevelNames.count == 1 ? topLevelNames.first : nil
+        let singleTopLevelSurvivesPathCorrection = singleTopLevelName.map {
+            SZArchive.correctedFileSystemRelativePath(forArchivePath: $0,
+                                                      isDirectory: true) == $0
+        } ?? false
 
-        if topLevelNames.count == 1,
-           let topLevelName = topLevelNames.first
+        if let topLevelName = singleTopLevelName,
+           singleTopLevelSurvivesPathCorrection
         {
             let topLevelItems = archiveItems.filter { $0.pathParts.first == topLevelName }
             let topLevelIsDirectory = topLevelItems.contains { $0.isDirectory || $0.pathParts.count > 1 }
@@ -157,7 +162,6 @@ enum SmartExtractRunner {
                             pathPrefixToStrip: topLevelName,
                             extractionMode: .fullArchive)
             }
-
             let topLevelFiles = topLevelItems.filter { !$0.isDirectory && $0.pathParts.count == 1 && $0.index >= 0 }
             if topLevelFiles.count == 1,
                let fileItem = topLevelFiles.first
@@ -176,10 +180,12 @@ enum SmartExtractRunner {
             }
         }
 
-        let desiredDestinationURL = topLevelNames.count > 1
+        let usesArchiveNamedDestination = topLevelNames.count > 1
+            || (singleTopLevelName != nil && !singleTopLevelSurvivesPathCorrection)
+        let desiredDestinationURL = usesArchiveNamedDestination
             ? baseDestinationURL.appendingPathComponent(suggestedFolderName, isDirectory: true).standardizedFileURL
             : baseDestinationURL
-        let destinationURL = topLevelNames.count > 1
+        let destinationURL = usesArchiveNamedDestination
             ? try FileManager.default.szUniqueDestinationURL(
                 for: desiredDestinationURL,
                 isDirectory: true,

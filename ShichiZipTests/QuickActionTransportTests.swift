@@ -277,6 +277,72 @@ final class QuickActionTransportTests: XCTestCase {
     }
 
     @MainActor
+    func testSmartQuickExtractContainsLeadingDotRootInsideArchiveDirectory() throws {
+        let tempRoot = try makeTemporaryDirectory(named: #function,
+                                                  prefix: "ShichiZipQuickActionTests")
+        let archiveDirectory = tempRoot.appendingPathComponent("input", isDirectory: true)
+        let sourceDirectory = tempRoot.appendingPathComponent("source", isDirectory: true)
+        let payloadURL = sourceDirectory.appendingPathComponent("usr/bin/payload.txt")
+        let archiveURL = archiveDirectory.appendingPathComponent("leading-dot.cpio")
+
+        try FileManager.default.createDirectory(at: archiveDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: payloadURL.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try "leading dot payload".write(to: payloadURL, atomically: true, encoding: .utf8)
+        try createCpioFixture(at: archiveURL,
+                              currentDirectory: sourceDirectory,
+                              entryPaths: ["./usr/bin/payload.txt"])
+        try FileManager.default.removeItem(at: sourceDirectory)
+
+        let request = ShichiZipQuickActionRequest(action: .smartQuickExtract,
+                                                  fileURLs: [archiveURL])
+        let launchURL = try ShichiZipQuickActionTransport.launchURL(for: request)
+        let appDelegate = try XCTUnwrap(NSApp.delegate as? AppDelegate)
+
+        appDelegate.application(NSApp, open: [launchURL])
+
+        let extractedURL = archiveDirectory.appendingPathComponent("leading-dot/usr/bin/payload.txt")
+        waitForFile(at: extractedURL)
+
+        XCTAssertEqual(try String(contentsOf: extractedURL, encoding: .utf8),
+                       "leading dot payload")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempRoot.appendingPathComponent("input 1").path),
+                       "A leading-dot root must not rename the archive's containing directory")
+    }
+
+    @MainActor
+    func testSmartQuickExtractContainsParentTraversalRootInsideArchiveDirectory() throws {
+        let tempRoot = try makeTemporaryDirectory(named: #function,
+                                                  prefix: "ShichiZipQuickActionTests")
+        let outerDirectory = tempRoot.appendingPathComponent("outer", isDirectory: true)
+        let archiveDirectory = outerDirectory.appendingPathComponent("input", isDirectory: true)
+        let payloadURL = outerDirectory.appendingPathComponent("payload.txt")
+        let archiveURL = archiveDirectory.appendingPathComponent("parent-root.zip")
+
+        try FileManager.default.createDirectory(at: archiveDirectory, withIntermediateDirectories: true)
+        try "parent root payload".write(to: payloadURL, atomically: true, encoding: .utf8)
+        try createZipFixture(at: archiveURL,
+                             currentDirectory: archiveDirectory,
+                             entryPaths: ["../payload.txt"])
+        try FileManager.default.removeItem(at: payloadURL)
+
+        let request = ShichiZipQuickActionRequest(action: .smartQuickExtract,
+                                                  fileURLs: [archiveURL])
+        let launchURL = try ShichiZipQuickActionTransport.launchURL(for: request)
+        let appDelegate = try XCTUnwrap(NSApp.delegate as? AppDelegate)
+
+        appDelegate.application(NSApp, open: [launchURL])
+
+        let extractedURL = archiveDirectory.appendingPathComponent("parent-root/payload.txt")
+        waitForFile(at: extractedURL)
+
+        XCTAssertEqual(try String(contentsOf: extractedURL, encoding: .utf8),
+                       "parent root payload")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempRoot.appendingPathComponent("outer 1").path),
+                       "A parent traversal root must not select a destination above the archive directory")
+    }
+
+    @MainActor
     func testSmartQuickExtractViaURLSchemeRenamesConflictingSingleFile() throws {
         let tempRoot = try makeTemporaryDirectory(named: #function,
                                                   prefix: "ShichiZipQuickActionTests")
@@ -407,6 +473,38 @@ final class QuickActionTransportTests: XCTestCase {
         }
 
         XCTFail("Timed out waiting for file at \(url.path)")
+    }
+
+    private func createCpioFixture(at archiveURL: URL,
+                                   currentDirectory: URL,
+                                   entryPaths: [String]) throws
+    {
+        FileManager.default.createFile(atPath: archiveURL.path, contents: nil)
+        let outputHandle = try FileHandle(forWritingTo: archiveURL)
+        defer { try? outputHandle.close() }
+
+        let inputPipe = Pipe()
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/cpio")
+        process.arguments = ["-o", "-H", "newc"]
+        process.currentDirectoryURL = currentDirectory
+        process.standardInput = inputPipe
+        process.standardOutput = outputHandle
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+
+        let input = Data((entryPaths.joined(separator: "\n") + "\n").utf8)
+        try inputPipe.fileHandleForWriting.write(contentsOf: input)
+        try inputPipe.fileHandleForWriting.close()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            throw NSError(domain: NSCocoaErrorDomain,
+                          code: CocoaError.fileWriteUnknown.rawValue,
+                          userInfo: [
+                              NSLocalizedDescriptionKey: "/usr/bin/cpio failed to create fixture at \(archiveURL.path)",
+                          ])
+        }
     }
 
     private func stagedPayloadURLs() -> [URL] {
