@@ -34,11 +34,13 @@ extension XCTestCase {
 
     func createArchive(at archiveURL: URL,
                        from sourceURLs: [URL],
+                       format: SZArchiveFormat = .format7z,
                        pathMode: SZCompressionPathMode = .relativePaths,
                        password: String? = nil,
                        encryptFileNames: Bool = false) throws
     {
         let settings = SZCompressionSettings()
+        settings.format = format
         settings.pathMode = pathMode
         settings.password = password
         settings.encryptFileNames = encryptFileNames
@@ -47,6 +49,74 @@ extension XCTestCase {
                              fromPaths: sourceURLs.map(\.path),
                              settings: settings,
                              session: nil)
+    }
+
+    func createCpioFixture(at archiveURL: URL,
+                           currentDirectory: URL,
+                           entryPaths: [String]) throws
+    {
+        FileManager.default.createFile(atPath: archiveURL.path, contents: nil)
+        let outputHandle = try FileHandle(forWritingTo: archiveURL)
+        defer { try? outputHandle.close() }
+
+        let inputPipe = Pipe()
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/cpio")
+        process.arguments = ["-o", "-H", "newc"]
+        process.currentDirectoryURL = currentDirectory
+        process.standardInput = inputPipe
+        process.standardOutput = outputHandle
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+
+        let input = Data((entryPaths.joined(separator: "\n") + "\n").utf8)
+        try inputPipe.fileHandleForWriting.write(contentsOf: input)
+        try inputPipe.fileHandleForWriting.close()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            throw NSError(
+                domain: NSCocoaErrorDomain,
+                code: CocoaError.fileWriteUnknown.rawValue,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "/usr/bin/cpio failed to create fixture at \(archiveURL.path)",
+                ],
+            )
+        }
+    }
+
+    func createArFixture(at archiveURL: URL,
+                         currentDirectory: URL,
+                         entryPaths: [String]) throws
+    {
+        // Write the short-name System V layout directly so entry order and
+        // Debian main-subfile detection don't depend on the host ar variant.
+        func field(_ value: String, width: Int) throws -> Data {
+            let bytes = Data(value.utf8)
+            guard bytes.count <= width else {
+                throw CocoaError(.fileWriteInvalidFileName)
+            }
+            return bytes + Data(repeating: 0x20, count: width - bytes.count)
+        }
+
+        var archiveData = Data("!<arch>\n".utf8)
+        for entryPath in entryPaths {
+            let entryURL = currentDirectory.appendingPathComponent(entryPath)
+            let contents = try Data(contentsOf: entryURL)
+            archiveData += try field(entryURL.lastPathComponent, width: 16)
+            archiveData += try field("0", width: 12)
+            archiveData += try field("0", width: 6)
+            archiveData += try field("0", width: 6)
+            archiveData += try field("100644", width: 8)
+            archiveData += try field(String(contents.count), width: 10)
+            archiveData += Data("`\n".utf8)
+            archiveData += contents
+            if contents.count.isMultiple(of: 2) == false {
+                archiveData.append(0x0A)
+            }
+        }
+        try archiveData.write(to: archiveURL)
     }
 
     /// Creates ZIP fixtures whose stored entry names must be controlled exactly.

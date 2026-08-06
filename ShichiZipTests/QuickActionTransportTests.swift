@@ -475,38 +475,6 @@ final class QuickActionTransportTests: XCTestCase {
         XCTFail("Timed out waiting for file at \(url.path)")
     }
 
-    private func createCpioFixture(at archiveURL: URL,
-                                   currentDirectory: URL,
-                                   entryPaths: [String]) throws
-    {
-        FileManager.default.createFile(atPath: archiveURL.path, contents: nil)
-        let outputHandle = try FileHandle(forWritingTo: archiveURL)
-        defer { try? outputHandle.close() }
-
-        let inputPipe = Pipe()
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/cpio")
-        process.arguments = ["-o", "-H", "newc"]
-        process.currentDirectoryURL = currentDirectory
-        process.standardInput = inputPipe
-        process.standardOutput = outputHandle
-        process.standardError = FileHandle.nullDevice
-        try process.run()
-
-        let input = Data((entryPaths.joined(separator: "\n") + "\n").utf8)
-        try inputPipe.fileHandleForWriting.write(contentsOf: input)
-        try inputPipe.fileHandleForWriting.close()
-        process.waitUntilExit()
-
-        guard process.terminationStatus == 0 else {
-            throw NSError(domain: NSCocoaErrorDomain,
-                          code: CocoaError.fileWriteUnknown.rawValue,
-                          userInfo: [
-                              NSLocalizedDescriptionKey: "/usr/bin/cpio failed to create fixture at \(archiveURL.path)",
-                          ])
-        }
-    }
-
     private func stagedPayloadURLs() -> [URL] {
         (try? FileManager.default.contentsOfDirectory(at: requestDirectoryURL,
                                                       includingPropertiesForKeys: nil,

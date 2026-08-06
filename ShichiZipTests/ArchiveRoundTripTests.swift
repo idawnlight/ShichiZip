@@ -549,6 +549,82 @@ final class ArchiveRoundTripTests: XCTestCase {
         }
     }
 
+    #if SHICHIZIP_ZS_VARIANT
+    func testNestedZstdPayloadCanBeExtractedRepeatedly() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "nested-zstd-repeat-extract")
+        let sourceRoot = tempRoot.appendingPathComponent("source", isDirectory: true)
+        let payloadURL = sourceRoot.appendingPathComponent("payload.txt")
+        let cpioURL = tempRoot.appendingPathComponent("payload.cpio")
+        let zstdURL = tempRoot.appendingPathComponent("data.tar.zst")
+        let debianBinaryURL = tempRoot.appendingPathComponent("debian-binary")
+        let debURL = tempRoot.appendingPathComponent("payload.deb")
+        try FileManager.default.createDirectory(at: sourceRoot,
+                                                withIntermediateDirectories: true)
+        try "payload".write(to: payloadURL,
+                            atomically: true,
+                            encoding: .utf8)
+        try createCpioFixture(at: cpioURL,
+                              currentDirectory: sourceRoot,
+                              entryPaths: ["payload.txt"])
+        // The test bridging header doesn't inherit the Swift-only ZS condition.
+        let zstdFormat = try XCTUnwrap(
+            SZArchiveFormat(rawValue: SZArchiveFormat.formatWim.rawValue + 1),
+        )
+        try createArchive(at: zstdURL,
+                          from: [cpioURL],
+                          format: zstdFormat)
+        try "2.0\n".write(to: debianBinaryURL,
+                          atomically: true,
+                          encoding: .utf8)
+        try createArFixture(at: debURL,
+                            currentDirectory: tempRoot,
+                            entryPaths: [
+                                debianBinaryURL.lastPathComponent,
+                                zstdURL.lastPathComponent,
+                            ])
+
+        let parentArchive = SZArchive()
+        try parentArchive.open(atPath: debURL.path,
+                               session: SZOperationSession())
+        defer { parentArchive.close() }
+        let entry = try XCTUnwrap(parentArchive.entries().first)
+        XCTAssertEqual(parentArchive.formatName?.lowercased(), "zstd")
+        XCTAssertEqual(parentArchive.entryCount, 1)
+
+        for iteration in 1 ... 2 {
+            let extractionRoot = tempRoot.appendingPathComponent(
+                "extract-\(iteration)",
+                isDirectory: true,
+            )
+            let settings = SZExtractionSettings()
+            settings.pathMode = .fullPaths
+            try parentArchive.extractEntries(
+                [NSNumber(value: entry.index)],
+                toPath: extractionRoot.path,
+                settings: settings,
+                session: SZOperationSession(),
+            )
+
+            let extractedURL = extractionRoot.appendingPathComponent(entry.path)
+            let extractedSize = try Data(contentsOf: extractedURL).count
+            let nestedArchive = SZArchive()
+            do {
+                try nestedArchive.open(atPath: extractedURL.path,
+                                       session: SZOperationSession())
+            } catch {
+                XCTFail(
+                    "Extraction \(iteration) produced \(extractedSize) bytes that could not be opened: \(error)",
+                )
+                return
+            }
+            let nestedPaths = Set(nestedArchive.entries().map(\.path))
+            nestedArchive.close()
+            XCTAssertTrue(nestedPaths.contains("payload.txt"))
+        }
+    }
+
+    #endif
+
     func testEntryMaterializationHonorsCancelledSession() throws {
         let tempRoot = try makeTemporaryDirectory(named: "entry-materialization-cancel")
         let payloadURL = tempRoot.appendingPathComponent("payload.txt")

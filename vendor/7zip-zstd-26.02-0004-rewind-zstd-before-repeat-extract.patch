@@ -1,0 +1,36 @@
+diff --git a/CPP/7zip/Archive/ZstdHandler.cpp b/CPP/7zip/Archive/ZstdHandler.cpp
+index 92e454bf..f8e607ca 100644
+--- a/CPP/7zip/Archive/ZstdHandler.cpp
++++ b/CPP/7zip/Archive/ZstdHandler.cpp
+@@ -31,6 +31,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_3(
+   CMyComPtr<ISequentialInStream> _seqStream;
+ 
+   bool _isArc;
++  bool _needSeekToStart;
+   bool _dataAfterEnd;
+   bool _needMoreInput;
+ 
+@@ -145,6 +146,7 @@ Z7_COM7F_IMF(CHandler::OpenSeq(ISequentialInStream *stream))
+ Z7_COM7F_IMF(CHandler::Close())
+ {
+   _isArc = false;
++  _needSeekToStart = false;
+   _dataAfterEnd = false;
+   _needMoreInput = false;
+ 
+@@ -180,6 +182,15 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems,
+ 
+   extractCallback->PrepareOperation(askMode);
+ 
++  if (_needSeekToStart)
++  {
++    if (!_stream)
++      return E_FAIL;
++    RINOK(InStream_SeekToBegin(_stream));
++  }
++  else
++    _needSeekToStart = true;
++
+   Int32 opRes;
+ 
+   {
