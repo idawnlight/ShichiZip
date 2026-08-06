@@ -1149,6 +1149,20 @@
 				<string>com.rileytestut.delta.skin</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Any File</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.data</string>
+			</array>
+		</dict>
 	</array>
 
 	<key>UTImportedTypeDeclarations</key>

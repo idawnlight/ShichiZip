@@ -97,6 +97,17 @@ final class SettingsFileAssociationTests: XCTestCase {
         XCTAssertTrue(displayedExtensions.isSuperset(of: ["iso", "udif", "deb", "rpm", "chm"]))
     }
 
+    func testSourceCatchAllDoesNotAppearInFileAssociationSettings() throws {
+        let infoDictionary = try loadSourceInfoPlist()
+        let associations = FileAssociation.registeredAssociations(
+            infoDictionary: infoDictionary,
+        )
+
+        XCTAssertFalse(associations.contains {
+            $0.contentTypeIdentifiers.contains("public.data")
+        })
+    }
+
     @MainActor
     func testViewModelSetsEveryTypeInAnAssociation() async {
         let association = FileAssociation(

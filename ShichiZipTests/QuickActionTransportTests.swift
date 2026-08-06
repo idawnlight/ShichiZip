@@ -58,6 +58,7 @@ final class QuickActionTransportTests: XCTestCase {
             "org.gnu.gnu-zip-archive",
             "public.bzip2-archive",
             "public.cpio-archive",
+            "public.data",
             "public.iso-image",
             "public.tar-archive",
             "public.zip-archive",
