@@ -265,6 +265,111 @@ final class ArchiveRoundTripTests: XCTestCase {
                        "second")
     }
 
+    func testFATZipBackslashesCreatePathComponentsAndDirectories() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "roundtrip-fat-zip-backslashes")
+        let entryPath = "root/nested/payload.txt"
+        let sourceURL = tempRoot.appendingPathComponent(entryPath)
+        try FileManager.default.createDirectory(at: sourceURL.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try "payload".write(to: sourceURL, atomically: true, encoding: .utf8)
+
+        let archiveURL = tempRoot.appendingPathComponent("fat-backslashes.zip")
+        try createZipFixtureWithBackslashPath(at: archiveURL,
+                                              currentDirectory: tempRoot,
+                                              entryPath: entryPath,
+                                              hostOS: .fat)
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        let entries = archive.entries()
+        XCTAssertEqual(entries.count, 1)
+        let entry = try XCTUnwrap(entries.first)
+        XCTAssertEqual(entry.path, entryPath)
+        XCTAssertEqual(entry.pathParts, ["root", "nested", "payload.txt"])
+
+        let item = ArchiveItem(from: entry)
+        XCTAssertEqual(item.name, "payload.txt")
+        let hierarchy = ArchiveHierarchy(records: [
+            ArchiveHierarchyRecord(itemIndex: 0,
+                                   pathParts: item.pathParts,
+                                   isDirectory: item.isDirectory),
+        ])
+        XCTAssertNotNil(hierarchy.directory(at: ["root", "nested"]))
+
+        let extractDir = tempRoot.appendingPathComponent("extract-fat", isDirectory: true)
+        try FileManager.default.createDirectory(at: extractDir,
+                                                withIntermediateDirectories: true)
+        let settings = SZExtractionSettings()
+        settings.pathMode = .fullPaths
+        try archive.extract(toPath: extractDir.path,
+                            settings: settings,
+                            session: nil)
+
+        XCTAssertEqual(
+            try String(contentsOf: extractDir.appendingPathComponent(entryPath),
+                       encoding: .utf8),
+            "payload",
+        )
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: extractDir.appendingPathComponent("root\\nested\\payload.txt").path,
+        ))
+    }
+
+    func testUnixZipBackslashesRemainLiteralFilenameCharacters() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "roundtrip-unix-zip-backslashes")
+        let sourceEntryPath = "root/nested/payload.txt"
+        let storedEntryPath = "root\\nested\\payload.txt"
+        let sourceURL = tempRoot.appendingPathComponent(sourceEntryPath)
+        try FileManager.default.createDirectory(at: sourceURL.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try "payload".write(to: sourceURL, atomically: true, encoding: .utf8)
+
+        let archiveURL = tempRoot.appendingPathComponent("unix-backslashes.zip")
+        try createZipFixtureWithBackslashPath(at: archiveURL,
+                                              currentDirectory: tempRoot,
+                                              entryPath: sourceEntryPath,
+                                              hostOS: .unix)
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+
+        let entries = archive.entries()
+        XCTAssertEqual(entries.count, 1)
+        let entry = try XCTUnwrap(entries.first)
+        XCTAssertEqual(entry.path, storedEntryPath)
+        XCTAssertEqual(entry.pathParts, [storedEntryPath])
+
+        let item = ArchiveItem(from: entry)
+        XCTAssertEqual(item.name, storedEntryPath)
+        let hierarchy = ArchiveHierarchy(records: [
+            ArchiveHierarchyRecord(itemIndex: 0,
+                                   pathParts: item.pathParts,
+                                   isDirectory: item.isDirectory),
+        ])
+        XCTAssertNil(hierarchy.directory(at: ["root"]))
+
+        let extractDir = tempRoot.appendingPathComponent("extract-unix", isDirectory: true)
+        try FileManager.default.createDirectory(at: extractDir,
+                                                withIntermediateDirectories: true)
+        let settings = SZExtractionSettings()
+        settings.pathMode = .fullPaths
+        try archive.extract(toPath: extractDir.path,
+                            settings: settings,
+                            session: nil)
+
+        XCTAssertEqual(
+            try String(contentsOf: extractDir.appendingPathComponent(storedEntryPath),
+                       encoding: .utf8),
+            "payload",
+        )
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: extractDir.appendingPathComponent(sourceEntryPath).path,
+        ))
+    }
+
     func testExtractingZipPreservesVersionedFrameworkSymlinks() throws {
         let tempRoot = try makeTemporaryDirectory(named: "roundtrip-zip-framework-symlinks")
         let archiveURL = tempRoot.appendingPathComponent("framework.zip")

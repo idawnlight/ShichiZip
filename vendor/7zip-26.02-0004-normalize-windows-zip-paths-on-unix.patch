@@ -1,0 +1,69 @@
+diff --git a/CPP/7zip/Archive/Zip/ZipHandler.cpp b/CPP/7zip/Archive/Zip/ZipHandler.cpp
+index c6b6e39..cbcab18 100644
+--- a/CPP/7zip/Archive/Zip/ZipHandler.cpp
++++ b/CPP/7zip/Archive/Zip/ZipHandler.cpp
+@@ -387,6 +387,11 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
+     {
+       UString res;
+       item.GetUnicodeString(res, item.Name, false, _forceCodePage, _specifiedCodePage);
++      #if WCHAR_PATH_SEPARATOR == L'/'
++      // Some Windows archivers store backslash separators despite the ZIP specification.
++      if (item.UsesBackslashPathSeparator())
++        res.Replace(L'\\', L'/');
++      #endif
+       NItemName::ReplaceToOsSlashes_Remove_TailSlash(res,
+           item.Is_MadeBy_Unix() // useBackslashReplacement
+           );
+diff --git a/CPP/7zip/Archive/Zip/ZipItem.cpp b/CPP/7zip/Archive/Zip/ZipItem.cpp
+index 5684cac..daca882 100644
+--- a/CPP/7zip/Archive/Zip/ZipItem.cpp
++++ b/CPP/7zip/Archive/Zip/ZipItem.cpp
+@@ -279,20 +279,13 @@ bool CItem::IsDir() const
+   
+   Byte hostOS = GetHostOS();
+ 
+-  if (Size == 0 && PackSize == 0 && !Name.IsEmpty() && Name.Back() == '\\')
++  if (Size == 0 && PackSize == 0 && !Name.IsEmpty() && Name.Back() == '\\'
++      && UsesBackslashPathSeparator())
+   {
+     // do we need to use CharPrevExA?
+     // .NET Framework 4.5 : System.IO.Compression::CreateFromDirectory() probably writes backslashes to headers?
+     // so we support that case
+-    switch (hostOS)
+-    {
+-      case NHostOS::kFAT:
+-      case NHostOS::kNTFS:
+-      case NHostOS::kHPFS:
+-      case NHostOS::kVFAT:
+-        return true;
+-      default: break;
+-    }
++    return true;
+   }
+ 
+   if (!FromCentral)
+diff --git a/CPP/7zip/Archive/Zip/ZipItem.h b/CPP/7zip/Archive/Zip/ZipItem.h
+index 4a25de3..50bec99 100644
+--- a/CPP/7zip/Archive/Zip/ZipItem.h
++++ b/CPP/7zip/Archive/Zip/ZipItem.h
+@@ -315,6 +315,20 @@ public:
+   // 18.06: 0 instead of ExtractVersion.HostOS for local item
+   Byte GetHostOS() const { return FromCentral ? MadeByVersion.HostOS : (Byte)0; }
+ 
++  bool UsesBackslashPathSeparator() const
++  {
++    switch (GetHostOS())
++    {
++      case NFileHeader::NHostOS::kFAT:
++      case NFileHeader::NHostOS::kNTFS:
++      case NFileHeader::NHostOS::kHPFS:
++      case NFileHeader::NHostOS::kVFAT:
++        return true;
++      default:
++        return false;
++    }
++  }
++
+   void GetUnicodeString(UString &res, const AString &s, bool isComment, bool useSpecifiedCodePage, UINT codePage) const;
+ 
+   bool IsThereCrc() const

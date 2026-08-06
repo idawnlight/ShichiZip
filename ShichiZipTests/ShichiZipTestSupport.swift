@@ -8,6 +8,12 @@ final class UncheckedSendableBox<T>: @unchecked Sendable {
     var value: T?
 }
 
+/// Values from the ZIP central-directory "version made by" host OS byte.
+enum ZipFixtureHostOS: UInt8 {
+    case fat = 0
+    case unix = 3
+}
+
 extension XCTestCase {
     func skipIfAffectedByIsolatedDeinitTaskLocalRuntimeBug() throws {
         // https://github.com/swiftlang/swift/issues/85663
@@ -150,6 +156,96 @@ extension XCTestCase {
                           code: CocoaError.fileWriteUnknown.rawValue,
                           userInfo: [NSLocalizedDescriptionKey: "/usr/bin/zip failed to create fixture at \(archiveURL.path)"])
         }
+    }
+
+    /// Rewrites a single-entry ZIP so its local and central names use backslashes.
+    func createZipFixtureWithBackslashPath(at archiveURL: URL,
+                                           currentDirectory: URL,
+                                           entryPath: String,
+                                           hostOS: ZipFixtureHostOS) throws
+    {
+        guard entryPath.contains("/"), !entryPath.contains("\\") else {
+            throw CocoaError(.fileWriteInvalidFileName)
+        }
+
+        try createZipFixture(at: archiveURL,
+                             currentDirectory: currentDirectory,
+                             entryPaths: [entryPath])
+
+        var data = try Data(contentsOf: archiveURL)
+
+        func hasSignature(_ signature: [UInt8], at offset: Int) -> Bool {
+            guard offset >= 0, offset + signature.count <= data.count else {
+                return false
+            }
+            return signature.indices.allSatisfy { data[offset + $0] == signature[$0] }
+        }
+
+        func readUInt16(at offset: Int) throws -> Int {
+            guard offset >= 0, offset + 2 <= data.count else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            return Int(data[offset]) | Int(data[offset + 1]) << 8
+        }
+
+        func readUInt32(at offset: Int) throws -> Int {
+            guard offset >= 0, offset + 4 <= data.count else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            return Int(data[offset])
+                | Int(data[offset + 1]) << 8
+                | Int(data[offset + 2]) << 16
+                | Int(data[offset + 3]) << 24
+        }
+
+        guard data.count >= 22 else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+
+        let endSignature: [UInt8] = [0x50, 0x4B, 0x05, 0x06]
+        var endOffset: Int?
+        for offset in stride(from: data.count - 22, through: 0, by: -1) {
+            if hasSignature(endSignature, at: offset) {
+                endOffset = offset
+                break
+            }
+        }
+        guard let endOffset else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+
+        let centralOffset = try readUInt32(at: endOffset + 16)
+        guard hasSignature([0x50, 0x4B, 0x01, 0x02], at: centralOffset) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+
+        let localOffset = try readUInt32(at: centralOffset + 42)
+        guard hasSignature([0x50, 0x4B, 0x03, 0x04], at: localOffset) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+
+        let centralNameLength = try readUInt16(at: centralOffset + 28)
+        let localNameLength = try readUInt16(at: localOffset + 26)
+        let centralNameRange = (centralOffset + 46) ..< (centralOffset + 46 + centralNameLength)
+        let localNameRange = (localOffset + 30) ..< (localOffset + 30 + localNameLength)
+        let expectedName = Data(entryPath.utf8)
+
+        guard centralNameRange.upperBound <= data.count,
+              localNameRange.upperBound <= data.count,
+              Data(data[centralNameRange]) == expectedName,
+              Data(data[localNameRange]) == expectedName
+        else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+
+        for index in centralNameRange where data[index] == 0x2F {
+            data[index] = 0x5C
+        }
+        for index in localNameRange where data[index] == 0x2F {
+            data[index] = 0x5C
+        }
+        data[centralOffset + 5] = hostOS.rawValue
+        try data.write(to: archiveURL, options: .atomic)
     }
 
     /// Creates a TAR fixture while preserving entry order and allowing the
