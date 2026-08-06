@@ -6,8 +6,8 @@ struct ArchiveItem: @unchecked Sendable {
     let path: String
     let pathParts: [String]
     let name: String
-    let size: UInt64
-    let packedSize: UInt64
+    let size: UInt64?
+    let packedSize: UInt64?
     let modifiedDate: Date?
     let createdDate: Date?
     let accessedDate: Date?
@@ -58,7 +58,13 @@ struct ArchiveItem: @unchecked Sendable {
 
     /// Human-readable size string
     var formattedSize: String {
-        ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
+        guard let size else { return "" }
+        return ByteCountFormatter.string(fromByteCount: Int64(clamping: size), countStyle: .file)
+    }
+
+    var formattedPackedSize: String {
+        guard let packedSize else { return "" }
+        return ByteCountFormatter.string(fromByteCount: Int64(clamping: packedSize), countStyle: .file)
     }
 
     static func duplicateRootPrefixToStrip(for items: [ArchiveItem],
@@ -218,8 +224,8 @@ struct ArchiveItem: @unchecked Sendable {
             : entry.path
         pathParts = normalizedEntryPathParts.isEmpty ? Self.derivePathParts(from: path) : normalizedEntryPathParts
         name = pathParts.last ?? Self.deriveName(from: path)
-        size = entry.size
-        packedSize = entry.packedSize
+        size = entry.size?.uint64Value
+        packedSize = entry.packedSize?.uint64Value
         modifiedDate = entry.modifiedDate
         createdDate = entry.createdDate
         accessedDate = entry.accessedDate
@@ -236,7 +242,7 @@ struct ArchiveItem: @unchecked Sendable {
         reference = entry.reference
     }
 
-    init(index: Int, path: String, pathParts: [String] = [], name: String, size: UInt64, packedSize: UInt64,
+    init(index: Int, path: String, pathParts: [String] = [], name: String, size: UInt64?, packedSize: UInt64?,
          modifiedDate: Date?, createdDate: Date?, accessedDate: Date?, crc: UInt32, isDirectory: Bool,
          isEncrypted: Bool, isAnti: Bool, method: String, attributes: UInt32, position: UInt64, block: UInt64,
          comment: String, propertyValues: [String: String] = [:],

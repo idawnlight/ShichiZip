@@ -139,16 +139,19 @@ enum FileManagerQuickLookPreparation {
             throw error(SZL10n.string("app.fileManager.quickLook.noFolderPreview"))
         }
 
-        if let oversizedItem = archiveItems.first(where: { $0.size > maxArchiveItemSize }) {
-            throw error(SZL10n.string("app.fileManager.quickLook.fileSizeLimit",
-                                      formattedByteCount(maxArchiveItemSize),
-                                      oversizedItem.name,
-                                      formattedByteCount(oversizedItem.size)))
-        }
-
-        let combinedSize = archiveItems.reduce(into: UInt64.zero) { currentTotal, item in
-            let (sum, overflow) = currentTotal.addingReportingOverflow(item.size)
-            currentTotal = overflow ? .max : sum
+        var combinedSize: UInt64 = 0
+        for item in archiveItems {
+            guard let size = item.size else {
+                throw error(SZL10n.string("app.fileManager.quickLook.cannotPreviewArchive"))
+            }
+            if size > maxArchiveItemSize {
+                throw error(SZL10n.string("app.fileManager.quickLook.fileSizeLimit",
+                                          formattedByteCount(maxArchiveItemSize),
+                                          item.name,
+                                          formattedByteCount(size)))
+            }
+            let (sum, overflow) = combinedSize.addingReportingOverflow(size)
+            combinedSize = overflow ? .max : sum
         }
         if combinedSize > maxArchiveCombinedSize {
             throw error(SZL10n.string("app.fileManager.quickLook.combinedSizeLimit",

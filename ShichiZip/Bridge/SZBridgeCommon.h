@@ -323,15 +323,19 @@ static inline NSString* _Nullable ItemStr(IInArchive* _Nonnull ar, UInt32 i, PRO
     return nil;
 }
 
-static inline uint64_t ItemU64(IInArchive* _Nonnull ar, UInt32 i, PROPID p) {
+static inline NSNumber* _Nullable ItemU64Number(IInArchive* _Nonnull ar, UInt32 i, PROPID p) {
     NWindows::NCOM::CPropVariant v;
     if (ar->GetProperty(i, p, &v) != S_OK)
-        return 0;
+        return nil;
     if (v.vt == VT_UI8)
-        return v.uhVal.QuadPart;
+        return @(v.uhVal.QuadPart);
     if (v.vt == VT_UI4)
-        return v.ulVal;
-    return 0;
+        return @(v.ulVal);
+    return nil;
+}
+
+static inline uint64_t ItemU64(IInArchive* _Nonnull ar, UInt32 i, PROPID p) {
+    return ItemU64Number(ar, i, p).unsignedLongLongValue;
 }
 
 static inline int ItemBool(IInArchive* _Nonnull ar, UInt32 i, PROPID p) {

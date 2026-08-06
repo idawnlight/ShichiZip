@@ -56,7 +56,7 @@ struct ArchivePreviewSnapshot {
 struct ArchivePreviewSummary: Equatable {
     let fileCount: Int
     let folderCount: Int
-    let fileSize: UInt64
+    let fileSize: UInt64?
 }
 
 struct ArchivePreviewRow {
@@ -65,7 +65,7 @@ struct ArchivePreviewRow {
     let pathParts: [String]
     let isHidden: Bool
     let isDirectory: Bool
-    let uncompressedSize: UInt64
+    let uncompressedSize: UInt64?
     let nameText: String
     let iconKey: ArchivePreviewIconKey
     let columnTexts: [String: String]
@@ -655,7 +655,9 @@ enum ArchivePreviewPresentation {
         let folderWord = summary.folderCount == 1
             ? ArchivePreviewLocalization.string("app.fileManager.statusFolder")
             : ArchivePreviewLocalization.string("app.fileManager.statusFolders")
-        return "\(summary.fileCount) \(fileWord), \(summary.folderCount) \(folderWord) — \(fileSizeString(summary.fileSize))"
+        let counts = "\(summary.fileCount) \(fileWord), \(summary.folderCount) \(folderWord)"
+        guard let fileSize = summary.fileSize else { return counts }
+        return "\(counts) — \(fileSizeString(fileSize))"
     }
 
     private static func adding(_ row: ArchivePreviewRow,
@@ -672,9 +674,10 @@ enum ArchivePreviewPresentation {
                                      fileSize: addingFileSize(summary.fileSize, row.uncompressedSize))
     }
 
-    private static func addingFileSize(_ lhs: UInt64,
-                                       _ rhs: UInt64) -> UInt64
+    private static func addingFileSize(_ lhs: UInt64?,
+                                       _ rhs: UInt64?) -> UInt64?
     {
+        guard let lhs, let rhs else { return nil }
         let (sum, overflow) = lhs.addingReportingOverflow(rhs)
         return overflow ? UInt64.max : sum
     }
@@ -709,9 +712,9 @@ enum ArchivePreviewPresentation {
         case ArchivePreviewColumnID.name.rawValue:
             nameText(for: item)
         case ArchivePreviewColumnID.size.rawValue:
-            item.isDirectory ? "--" : fileSizeString(item.size)
+            item.isDirectory ? "--" : item.formattedSize
         case ArchivePreviewColumnID.packedSize.rawValue:
-            item.isDirectory ? "" : fileSizeString(item.packedSize)
+            item.isDirectory ? "" : item.formattedPackedSize
         case ArchivePreviewColumnID.modified.rawValue:
             item.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
         case ArchivePreviewColumnID.created.rawValue:
@@ -958,7 +961,7 @@ enum ArchivePreviewTreeBuilder {
                                  pathParts: directory.pathParts,
                                  isHidden: ArchivePreviewPresentation.isHidden(pathParts: directory.pathParts),
                                  isDirectory: true,
-                                 uncompressedSize: 0,
+                                 uncompressedSize: nil,
                                  nameText: directory.name,
                                  iconKey: .folder,
                                  columnTexts: columnTexts)

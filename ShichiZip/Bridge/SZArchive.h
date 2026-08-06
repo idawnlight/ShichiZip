@@ -229,8 +229,8 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 @property (nonatomic, copy) NSString* path;
 @property (nonatomic, copy) NSArray<NSString*>* pathParts;
 @property (nonatomic, copy) NSDictionary<NSString*, NSString*>* propertyValues;
-@property (nonatomic) uint64_t size;
-@property (nonatomic) uint64_t packedSize;
+@property (nonatomic, strong, nullable) NSNumber* size;
+@property (nonatomic, strong, nullable) NSNumber* packedSize;
 @property (nonatomic, strong, nullable) NSDate* modifiedDate;
 @property (nonatomic, strong, nullable) NSDate* createdDate;
 @property (nonatomic, strong, nullable) NSDate* accessedDate;

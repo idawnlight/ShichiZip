@@ -35,14 +35,20 @@ enum FileManagerArchiveListing {
 }
 
 struct FileManagerArchiveStatistics: Equatable {
-    let uncompressedSize: UInt64
+    let uncompressedSize: UInt64?
 
     init(entries: [ArchiveItem]) {
-        uncompressedSize = entries.reduce(into: UInt64.zero) { total, entry in
-            guard !entry.isDirectory, !entry.isAnti else { return }
-            let (sum, overflow) = total.addingReportingOverflow(entry.size)
+        var total: UInt64 = 0
+        for entry in entries {
+            guard !entry.isDirectory, !entry.isAnti else { continue }
+            guard let size = entry.size else {
+                uncompressedSize = nil
+                return
+            }
+            let (sum, overflow) = total.addingReportingOverflow(size)
             total = overflow ? .max : sum
         }
+        uncompressedSize = total
     }
 }
 

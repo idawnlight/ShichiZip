@@ -3,14 +3,15 @@ import Foundation
 struct FileManagerItemStatusSummary: Equatable {
     let fileCount: Int
     let folderCount: Int
-    let fileSize: UInt64
-    let folderSize: UInt64
+    let fileSize: UInt64?
+    let folderSize: UInt64?
 
     var itemCount: Int {
         fileCount + folderCount
     }
 
-    var copyDialogTotalSize: UInt64 {
+    var copyDialogTotalSize: UInt64? {
+        guard let fileSize, let folderSize else { return nil }
         let (total, overflow) = fileSize.addingReportingOverflow(folderSize)
         return overflow ? .max : total
     }
@@ -22,7 +23,7 @@ struct FileManagerItemStatusSummary: Equatable {
 
 enum FileManagerStatusBarLocation: Equatable {
     case fileSystem
-    case archive(uncompressedSize: UInt64)
+    case archive(uncompressedSize: UInt64?)
 }
 
 struct FileManagerStatusBarContent: Equatable {
@@ -53,14 +54,20 @@ enum FileManagerItemPresentation {
                                  location: FileManagerStatusBarLocation) -> FileManagerStatusBarContent
     {
         guard let selected, !selected.isEmpty else {
-            let detail = switch location {
+            let detail: String?
+            switch location {
             case .fileSystem:
-                displayed.fileCount > 0
-                    ? SZL10n.string("app.fileManager.statusShownFilesSize", fileSizeString(displayed.fileSize))
-                    : nil
+                if displayed.fileCount > 0, let fileSize = displayed.fileSize {
+                    detail = SZL10n.string("app.fileManager.statusShownFilesSize",
+                                          fileSizeString(fileSize))
+                } else {
+                    detail = nil
+                }
             case let .archive(uncompressedSize):
-                SZL10n.string("app.fileManager.statusArchiveUncompressedSize",
-                              fileSizeString(uncompressedSize))
+                detail = uncompressedSize.map {
+                    SZL10n.string("app.fileManager.statusArchiveUncompressedSize",
+                                  fileSizeString($0))
+                }
             }
             return FileManagerStatusBarContent(summary: countSummaryText(displayed),
                                                detail: detail)
@@ -86,8 +93,13 @@ enum FileManagerItemPresentation {
                                                  count: summary.fileCount,
                                                  size: summary.fileSize))
         }
-        if summary.folderSize > 0, summary.fileSize > 0 {
-            lines.append("\(SZL10n.string("column.size")): \(fileSizeString(summary.copyDialogTotalSize))")
+        if let folderSize = summary.folderSize,
+           let fileSize = summary.fileSize,
+           let totalSize = summary.copyDialogTotalSize,
+           folderSize > 0,
+           fileSize > 0
+        {
+            lines.append("\(SZL10n.string("column.size")): \(fileSizeString(totalSize))")
         }
         return lines
     }
@@ -214,9 +226,9 @@ enum FileManagerItemPresentation {
         case FileManagerColumnID.name.rawValue:
             item.name
         case FileManagerColumnID.size.rawValue:
-            item.isDirectory ? "--" : fileSizeString(item.size)
+            item.isDirectory ? "--" : item.formattedSize
         case FileManagerColumnID.packedSize.rawValue:
-            item.isDirectory ? "" : fileSizeString(item.packedSize)
+            item.isDirectory ? "" : item.formattedPackedSize
         case FileManagerColumnID.modified.rawValue:
             item.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
         case FileManagerColumnID.created.rawValue:
@@ -295,11 +307,11 @@ enum FileManagerItemPresentation {
         return result
     }
 
-    private static func summary(for items: [(isDirectory: Bool, size: UInt64)]) -> FileManagerItemStatusSummary {
+    private static func summary(for items: [(isDirectory: Bool, size: UInt64?)]) -> FileManagerItemStatusSummary {
         var fileCount = 0
         var folderCount = 0
-        var fileSize: UInt64 = 0
-        var folderSize: UInt64 = 0
+        var fileSize: UInt64? = 0
+        var folderSize: UInt64? = 0
 
         for item in items {
             if item.isDirectory {
@@ -361,13 +373,15 @@ enum FileManagerItemPresentation {
         return SZL10n.string("app.fileManager.statusItemCount", count, itemWord)
     }
 
-    private static func addingClamped(_ lhs: UInt64, _ rhs: UInt64) -> UInt64 {
+    private static func addingClamped(_ lhs: UInt64?, _ rhs: UInt64?) -> UInt64? {
+        guard let lhs, let rhs else { return nil }
         let (sum, overflow) = lhs.addingReportingOverflow(rhs)
         return overflow ? .max : sum
     }
 
-    private static func copyDialogValuePairLine(title: String, count: Int, size: UInt64) -> String {
-        "\(title): \(count)    ( \(fileSizeString(size)) )"
+    private static func copyDialogValuePairLine(title: String, count: Int, size: UInt64?) -> String {
+        guard let size else { return "\(title): \(count)" }
+        return "\(title): \(count)    ( \(fileSizeString(size)) )"
     }
 
     private static func fileSizeString(_ size: UInt64) -> String {

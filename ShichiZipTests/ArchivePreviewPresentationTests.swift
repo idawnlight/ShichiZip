@@ -43,6 +43,26 @@ final class ArchivePreviewPresentationTests: XCTestCase {
                        "2 \(ArchivePreviewLocalization.string("app.fileManager.statusFiles")), 1 \(ArchivePreviewLocalization.string("app.fileManager.statusFolder")) — \(ByteCountFormatter.string(fromByteCount: 7, countStyle: .file))")
     }
 
+    func testSummaryAndCellsOmitUnknownSizeWithoutHidingKnownZero() {
+        let unknown = makeItem(path: "unknown.bin", size: nil)
+        let zero = makeItem(path: "empty.bin", size: 0)
+        let zeroText = ByteCountFormatter.string(fromByteCount: 0, countStyle: .file)
+        let dateFormatter = DateFormatter()
+
+        XCTAssertEqual(ArchivePreviewPresentation.listCellText(for: unknown,
+                                                               columnID: .size,
+                                                               dateFormatter: dateFormatter),
+                       "")
+        XCTAssertEqual(ArchivePreviewPresentation.listCellText(for: zero,
+                                                               columnID: .size,
+                                                               dateFormatter: dateFormatter),
+                       zeroText)
+        XCTAssertNil(ArchivePreviewPresentation.summary(for: [unknown]).fileSize)
+        XCTAssertFalse(ArchivePreviewPresentation.summaryText(for: [unknown]).contains(zeroText))
+        XCTAssertEqual(ArchivePreviewPresentation.summary(for: [zero]).fileSize, 0)
+        XCTAssertTrue(ArchivePreviewPresentation.summaryText(for: [zero]).contains(zeroText))
+    }
+
     func testArchiveColumnsUseMainAppArchiveDefaults() {
         let columns = ArchivePreviewColumn.archiveColumns(entryProperties: [
             ArchivePreviewEntryProperty(id: .size,
@@ -234,8 +254,8 @@ final class ArchivePreviewPresentationTests: XCTestCase {
 
     private func makeItem(index: Int = 0,
                           path: String,
-                          size: UInt64 = 1,
-                          packedSize: UInt64 = 1,
+                          size: UInt64? = 1,
+                          packedSize: UInt64? = 1,
                           isDirectory: Bool = false,
                           attributes: UInt32 = 0) -> ArchiveItem
     {

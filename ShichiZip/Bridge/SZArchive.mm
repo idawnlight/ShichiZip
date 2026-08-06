@@ -2353,8 +2353,8 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
                 e.path = ItemStr(archive, i, kpidPath) ?: @"";
             e.pathParts = @[];
         }
-        e.size = ItemU64(archive, i, kpidSize);
-        e.packedSize = ItemU64(archive, i, kpidPackSize);
+        e.size = ItemU64Number(archive, i, kpidSize);
+        e.packedSize = ItemU64Number(archive, i, kpidPackSize);
         e.crc = (uint32_t)ItemU64(archive, i, kpidCRC);
         e.isDirectory = hasReadItem ? item.IsDir : ItemBool(archive, i, kpidIsDir);
         e.isEncrypted = ItemBool(archive, i, kpidEncrypted);

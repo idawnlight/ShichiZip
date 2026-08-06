@@ -619,6 +619,19 @@ enum FileManagerItemSorting {
         firstValue == secondValue ? .orderedSame : (firstValue < secondValue ? .orderedAscending : .orderedDescending)
     }
 
+    private static func compare<T: Comparable>(_ firstValue: T?, _ secondValue: T?) -> ComparisonResult {
+        switch (firstValue, secondValue) {
+        case (nil, nil):
+            .orderedSame
+        case (nil, _):
+            .orderedAscending
+        case (_, nil):
+            .orderedDescending
+        case let (firstValue?, secondValue?):
+            compare(firstValue, secondValue)
+        }
+    }
+
     private static func compare(_ firstValue: Bool, _ secondValue: Bool) -> ComparisonResult {
         firstValue == secondValue ? .orderedSame : (!firstValue && secondValue ? .orderedAscending : .orderedDescending)
     }

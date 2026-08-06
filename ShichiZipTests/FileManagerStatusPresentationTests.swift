@@ -101,6 +101,36 @@ final class FileManagerStatusPresentationTests: XCTestCase {
         XCTAssertEqual(summary.fileSize, 4)
     }
 
+    func testArchiveSummaryOmitsUnknownSizeWithoutHidingKnownZero() {
+        let unknown = makeArchiveItem(path: "unknown.bin", size: nil)
+        let zero = makeArchiveItem(path: "empty.bin", size: 0)
+        let unknownSummary = FileManagerItemPresentation.summary(for: [unknown])
+        let zeroSummary = FileManagerItemPresentation.summary(for: [zero])
+        let zeroText = sizeString(0)
+        let dateFormatter = DateFormatter()
+
+        XCTAssertNil(unknownSummary.fileSize)
+        XCTAssertEqual(zeroSummary.fileSize, 0)
+        XCTAssertEqual(FileManagerItemPresentation.listCellText(for: unknown,
+                                                                columnID: .size,
+                                                                dateFormatter: dateFormatter),
+                       "")
+        XCTAssertEqual(FileManagerItemPresentation.listCellText(for: zero,
+                                                                columnID: .size,
+                                                                dateFormatter: dateFormatter),
+                       zeroText)
+        XCTAssertNil(FileManagerItemPresentation.statusBarContent(
+            displayed: unknownSummary,
+            selected: nil,
+            location: .archive(uncompressedSize: nil),
+        ).detail)
+        XCTAssertNotNil(FileManagerItemPresentation.statusBarContent(
+            displayed: zeroSummary,
+            selected: nil,
+            location: .archive(uncompressedSize: 0),
+        ).detail)
+    }
+
     func testArchiveStatisticsIncludeHiddenFilesAndIgnoreDirectoriesAndAntiItems() {
         let statistics = FileManagerArchiveStatistics(entries: [
             makeArchiveItem(path: ".hidden", size: 4),
@@ -118,6 +148,15 @@ final class FileManagerStatusPresentationTests: XCTestCase {
         ])
 
         XCTAssertEqual(statistics.uncompressedSize, .max)
+    }
+
+    func testArchiveStatisticsRemainUnknownWhenAnyFileSizeIsUnknown() {
+        let statistics = FileManagerArchiveStatistics(entries: [
+            makeArchiveItem(path: "known.bin", size: 1),
+            makeArchiveItem(path: "unknown.bin", size: nil),
+        ])
+
+        XCTAssertNil(statistics.uncompressedSize)
     }
 
     @MainActor
@@ -141,8 +180,8 @@ final class FileManagerStatusPresentationTests: XCTestCase {
 
     private func makeSummary(fileCount: Int = 0,
                              folderCount: Int = 0,
-                             fileSize: UInt64 = 0,
-                             folderSize: UInt64 = 0) -> FileManagerItemStatusSummary
+                             fileSize: UInt64? = 0,
+                             folderSize: UInt64? = 0) -> FileManagerItemStatusSummary
     {
         FileManagerItemStatusSummary(fileCount: fileCount,
                                      folderCount: folderCount,
@@ -175,7 +214,7 @@ final class FileManagerStatusPresentationTests: XCTestCase {
     }
 
     private func makeArchiveItem(path: String,
-                                 size: UInt64,
+                                 size: UInt64?,
                                  isDirectory: Bool = false,
                                  isAnti: Bool = false) -> ArchiveItem
     {
