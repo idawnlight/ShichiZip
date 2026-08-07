@@ -19,10 +19,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Xcode 26.6
-            runner: macos-26
-            developer_dir: /Applications/Xcode_26.6.app/Contents/Developer
-            cache_key: xcode-26.6
           - name: Xcode 27 Beta
             runner: xcode-27
             developer_dir: /Applications/Xcode.app/Contents/Developer
