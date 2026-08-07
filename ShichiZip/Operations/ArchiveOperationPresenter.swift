@@ -140,8 +140,9 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
 
     private func receive(_ snapshot: SZOperationSnapshot) {
         guard !isFinished else { return }
-        model.apply(snapshot)
-        updateWindowSizeForContent()
+        if model.receive(snapshot) {
+            updateWindowSizeForContent()
+        }
         if snapshot.isWaitingForUserInteraction
             || snapshot.isCancellationRequested
             || snapshot.totalIssueCount > 0

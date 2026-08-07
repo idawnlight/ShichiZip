@@ -61,6 +61,68 @@ final class OperationProgressModelTests: XCTestCase {
         XCTAssertNotNil(model.elapsedDuration())
     }
 
+    func testModelCoalescesRoutineProgressIntoLatestScheduledSnapshot() throws {
+        var scheduledUpdate: (() -> Void)?
+        let session = SZOperationSession()
+        let model = OperationProgressModel(
+            operationTitle: "Compressing",
+            initialFileName: nil,
+            session: session,
+            snapshotUpdateScheduler: { action in
+                var isCancelled = false
+                scheduledUpdate = {
+                    guard !isCancelled else { return }
+                    action()
+                }
+                return {
+                    isCancelled = true
+                }
+            },
+        )
+
+        session.reportBytesCompleted(10, total: 100)
+        XCTAssertFalse(model.receive(session.snapshot()))
+        session.reportBytesCompleted(75, total: 100)
+        XCTAssertFalse(model.receive(session.snapshot()))
+
+        XCTAssertNil(model.progressValue)
+        try XCTUnwrap(scheduledUpdate)()
+        XCTAssertEqual(model.progressValue, 0.75)
+        XCTAssertEqual(model.snapshot.bytesCompleted, 75)
+    }
+
+    func testModelAppliesCancellationWithoutWaitingForScheduledProgress() throws {
+        var scheduledUpdate: (() -> Void)?
+        let session = SZOperationSession()
+        let model = OperationProgressModel(
+            operationTitle: "Extracting",
+            initialFileName: nil,
+            session: session,
+            snapshotUpdateScheduler: { action in
+                var isCancelled = false
+                scheduledUpdate = {
+                    guard !isCancelled else { return }
+                    action()
+                }
+                return {
+                    isCancelled = true
+                }
+            },
+        )
+
+        session.reportProgressFraction(0.5)
+        XCTAssertFalse(model.receive(session.snapshot()))
+        let staleScheduledUpdate = try XCTUnwrap(scheduledUpdate)
+
+        session.requestCancel()
+        XCTAssertTrue(model.receive(session.snapshot()))
+        XCTAssertEqual(model.snapshot.phase, .cancelling)
+        XCTAssertTrue(model.snapshot.isCancellationRequested)
+
+        staleScheduledUpdate()
+        XCTAssertEqual(model.snapshot.phase, .cancelling)
+    }
+
     func testModelEntersTerminalWarningState() {
         let session = SZOperationSession()
         let model = OperationProgressModel(operationTitle: "Compressing",

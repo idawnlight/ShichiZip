@@ -3,10 +3,16 @@ import Foundation
 
 @MainActor
 final class OperationProgressModel: ObservableObject {
+    typealias SnapshotUpdateScheduler = (
+        _ action: @escaping @MainActor () -> Void
+    ) -> () -> Void
+
     enum CompletionState: Equatable {
         case running
         case completedWithWarnings
     }
+
+    nonisolated private static let snapshotUpdateInterval: Duration = .milliseconds(200)
 
     let operationTitle: String
 
@@ -19,17 +25,23 @@ final class OperationProgressModel: ObservableObject {
 
     private let session: SZOperationSession
     private let now: () -> TimeInterval
+    private let snapshotUpdateScheduler: SnapshotUpdateScheduler
     private var metricsStartTime: TimeInterval?
     private var metricsStartBytes: UInt64 = 0
+    private var pendingSnapshot: SZOperationSnapshot?
+    private var cancelScheduledSnapshotUpdate: (() -> Void)?
 
     init(operationTitle: String,
          initialFileName: String?,
          session: SZOperationSession,
-         now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime })
+         now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+         snapshotUpdateScheduler: @escaping SnapshotUpdateScheduler = OperationProgressModel
+             .scheduleSnapshotUpdate)
     {
         self.operationTitle = operationTitle
         self.session = session
         self.now = now
+        self.snapshotUpdateScheduler = snapshotUpdateScheduler
 
         if let initialFileName, !initialFileName.isEmpty {
             session.reportCurrentFileName(initialFileName)
@@ -37,7 +49,34 @@ final class OperationProgressModel: ObservableObject {
         snapshot = session.snapshot()
     }
 
+    @discardableResult
+    func receive(_ snapshot: SZOperationSnapshot) -> Bool {
+        if requiresImmediateUpdate(snapshot) {
+            apply(snapshot)
+            return true
+        }
+
+        pendingSnapshot = snapshot
+        guard cancelScheduledSnapshotUpdate == nil else {
+            return false
+        }
+
+        cancelScheduledSnapshotUpdate = snapshotUpdateScheduler { [weak self] in
+            guard let self else { return }
+            cancelScheduledSnapshotUpdate = nil
+            guard let pendingSnapshot else { return }
+            self.pendingSnapshot = nil
+            applyNow(pendingSnapshot)
+        }
+        return false
+    }
+
     func apply(_ snapshot: SZOperationSnapshot) {
+        discardPendingSnapshot()
+        applyNow(snapshot)
+    }
+
+    private func applyNow(_ snapshot: SZOperationSnapshot) {
         updateMetrics(using: snapshot)
         self.snapshot = snapshot
     }
@@ -231,6 +270,36 @@ final class OperationProgressModel: ObservableObject {
             return
         }
         speedBytesPerSecond = Double(snapshot.bytesCompleted - metricsStartBytes) / elapsed
+    }
+
+    private func requiresImmediateUpdate(_ candidate: SZOperationSnapshot) -> Bool {
+        candidate.phase != snapshot.phase
+            || candidate.isWaitingForUserInteraction != snapshot.isWaitingForUserInteraction
+            || candidate.isCancellationRequested != snapshot.isCancellationRequested
+            || candidate.isCancellationAllowed != snapshot.isCancellationAllowed
+            || candidate.totalIssueCount != snapshot.totalIssueCount
+    }
+
+    private func discardPendingSnapshot() {
+        cancelScheduledSnapshotUpdate?()
+        cancelScheduledSnapshotUpdate = nil
+        pendingSnapshot = nil
+    }
+
+    nonisolated private static func scheduleSnapshotUpdate(
+        _ action: @escaping @MainActor () -> Void,
+    ) -> () -> Void {
+        let task = Task { @MainActor in
+            do {
+                try await Task.sleep(for: snapshotUpdateInterval)
+            } catch {
+                return
+            }
+            action()
+        }
+        return {
+            task.cancel()
+        }
     }
 
     private static func byteString(_ value: UInt64) -> String {
