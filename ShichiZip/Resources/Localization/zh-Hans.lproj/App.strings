@@ -223,7 +223,7 @@
 "app.settings.resetFileListLayoutNote" = "清除文件管理器列表已保存的排序、列顺序和列宽。";
 "app.settings.resetFileManagerWindowFrame" = "重置已保存的窗口大小和位置";
 "app.settings.searchFileTypes" = "搜索文件类型";
-"app.settings.setAllAsDefault" = "全部设为默认";
+"app.settings.setRecommendedAsDefault" = "将推荐类型设为默认";
 "app.settings.shortcuts" = "快捷键";
 "app.settings.shortcutsCustomNote" = "修改单个快捷键后方案将切换为「自定义」。重复使用的快捷键会从原命令中清除。点击快捷键区域后按下任意组合键。按 Esc 取消录制。";
 "app.settings.showHiddenFiles" = "在文件管理器中显示隐藏文件";

@@ -23,11 +23,11 @@ struct FileAssociationSettingsView: View {
                     .frame(height: 28)
                     .frame(maxWidth: .infinity)
 
-                    Button(SZL10n.string("app.settings.setAllAsDefault")) {
-                        model.setAllAsDefault()
+                    Button(SZL10n.string("app.settings.setRecommendedAsDefault")) {
+                        model.setRecommendedAsDefault()
                     }
-                    .disabled(!model.canSetAllAsDefault)
-                    .accessibilityIdentifier("settings.setAllAsDefault")
+                    .disabled(!model.canSetRecommendedAsDefault)
+                    .accessibilityIdentifier("settings.setRecommendedAsDefault")
                 }
 
                 associationList

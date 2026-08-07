@@ -223,7 +223,7 @@
 "app.settings.resetFileListLayoutNote" = "清除檔案管理器列表已儲存的排序方式、欄位順序與欄寬。";
 "app.settings.resetFileManagerWindowFrame" = "重設已儲存的視窗大小與位置";
 "app.settings.searchFileTypes" = "搜尋檔案類型";
-"app.settings.setAllAsDefault" = "全部設為預設";
+"app.settings.setRecommendedAsDefault" = "將建議類型設為預設";
 "app.settings.shortcuts" = "快速鍵";
 "app.settings.shortcutsCustomNote" = "變更個別綁定會將預設組合切換為自訂。重複使用快速鍵會將它從先前的指令清除。按一下快速鍵欄位並按下任意按鍵組合。按 Escape 可取消錄製。";
 "app.settings.showHiddenFiles" = "在檔案管理器中顯示隱藏檔";

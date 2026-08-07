@@ -72,9 +72,15 @@ final class FileAssociationSettingsModel: ObservableObject {
         updateTask?.cancel()
     }
 
-    var canSetAllAsDefault: Bool {
+    private var recommendedAssociations: [FileAssociation] {
+        associations.filter(\.isDefaultRanked)
+    }
+
+    var canSetRecommendedAsDefault: Bool {
         updateTask == nil
-            && associations.contains { states[$0.id]?.isCurrentDefault != true }
+            && recommendedAssociations.contains {
+                states[$0.id]?.isCurrentDefault != true
+            }
     }
 
     func state(for association: FileAssociation) -> FileAssociationState {
@@ -139,8 +145,8 @@ final class FileAssociationSettingsModel: ObservableObject {
     }
 
     @discardableResult
-    func setAllAsDefault() -> Task<Void, Never>? {
-        let pendingAssociations = associations.filter {
+    func setRecommendedAsDefault() -> Task<Void, Never>? {
+        let pendingAssociations = recommendedAssociations.filter {
             states[$0.id]?.isCurrentDefault != true
         }
         return startUpdate(for: pendingAssociations)

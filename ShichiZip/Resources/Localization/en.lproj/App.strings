@@ -223,7 +223,7 @@
 "app.settings.resetFileListLayoutNote" = "Clears saved sort order, column order, and column widths for File Manager lists.";
 "app.settings.resetFileManagerWindowFrame" = "Reset Saved Window Size and Position";
 "app.settings.searchFileTypes" = "Search file types";
-"app.settings.setAllAsDefault" = "Set All as Default";
+"app.settings.setRecommendedAsDefault" = "Set Recommended as Default";
 "app.settings.shortcuts" = "Shortcuts";
 "app.settings.shortcutsCustomNote" = "Changing an individual binding switches the preset to Custom. Reusing a shortcut clears it from the previous command. Click a shortcut field and press any key combination. Press Escape to cancel recording.";
 "app.settings.showHiddenFiles" = "Show hidden files in File Manager";

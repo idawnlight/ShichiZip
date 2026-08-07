@@ -137,6 +137,52 @@ final class SettingsFileAssociationTests: XCTestCase {
     }
 
     @MainActor
+    func testRecommendedBulkUpdateSkipsDMGButAllowsIndividualUpdate() async throws {
+        let associations = FileAssociation.registeredAssociations(
+            infoDictionary: try loadSourceInfoPlist(),
+        )
+        let zip = try XCTUnwrap(
+            associations.first { $0.fileExtensions.contains("zip") },
+        )
+        let dmg = try XCTUnwrap(
+            associations.first { $0.fileExtensions.contains("dmg") },
+        )
+        XCTAssertTrue(zip.isDefaultRanked)
+        XCTAssertFalse(dmg.isDefaultRanked)
+
+        let workspace = TestFileAssociationWorkspace()
+        let model = FileAssociationSettingsModel(
+            associations: associations,
+            workspace: workspace,
+        )
+
+        model.refresh()
+        XCTAssertTrue(model.canSetRecommendedAsDefault)
+
+        let bulkUpdate = model.setRecommendedAsDefault()
+        XCTAssertNotNil(bulkUpdate)
+        await bulkUpdate?.value
+
+        let bulkUpdatedTypes = Set(workspace.updatedTypeIdentifiers)
+        XCTAssertTrue(Set(zip.contentTypeIdentifiers).isSubset(of: bulkUpdatedTypes))
+        XCTAssertTrue(Set(dmg.contentTypeIdentifiers).isDisjoint(with: bulkUpdatedTypes))
+        XCTAssertTrue(model.state(for: zip).isCurrentDefault)
+        XCTAssertFalse(model.state(for: dmg).isCurrentDefault)
+        XCTAssertFalse(model.canSetRecommendedAsDefault)
+
+        let bulkUpdateCount = workspace.updatedTypeIdentifiers.count
+        let dmgUpdate = model.setDefaultApplication(for: dmg)
+        XCTAssertNotNil(dmgUpdate)
+        await dmgUpdate?.value
+
+        XCTAssertEqual(
+            Array(workspace.updatedTypeIdentifiers.dropFirst(bulkUpdateCount)),
+            dmg.contentTypeIdentifiers,
+        )
+        XCTAssertTrue(model.state(for: dmg).isCurrentDefault)
+    }
+
+    @MainActor
     func testCancellingUpdateClearsPendingStateAndStopsRemainingTypes() async {
         let association = FileAssociation(
             displayName: "Test Archive",
