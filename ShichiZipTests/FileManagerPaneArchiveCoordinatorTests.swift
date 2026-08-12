@@ -100,7 +100,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
 
     func testConcurrentCloseAllRequestsShareOneCloseOperation() async throws {
         let session = FileManagerArchiveSession()
-        session.appendPreparedArchive(try makePreparedArchive(named: "coalesced-close-all"))
+        try session.appendPreparedArchive(makePreparedArchive(named: "coalesced-close-all"))
         let level = try XCTUnwrap(session.currentLevel)
         var lease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(level.operationGate.acquireLease())
         XCTAssertNotNil(lease)
@@ -131,11 +131,11 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                                    makeArchiveItem(path: "folder/", isDirectory: true),
                                                    makeArchiveItem(path: "folder/payload.txt"),
                                                ])
-                                               var currentDirectory = FileManager.default.homeDirectoryForCurrentUser
-                                               var preparedDirectory: URL?
-                                               var didUpdateTableColumns = false
-                                               var didReloadTableData = false
-                                               let coordinator = makeCoordinator(session: session,
+        var currentDirectory = FileManager.default.homeDirectoryForCurrentUser
+        var preparedDirectory: URL?
+        var didUpdateTableColumns = false
+        var didReloadTableData = false
+        let coordinator = makeCoordinator(session: session,
                                           currentDirectory: { currentDirectory },
                                           prepareDirectoryForArchivePresentation: { hostDirectory in
                                               preparedDirectory = hostDirectory
@@ -211,7 +211,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
 
     func testAsyncArchiveOpenReplacesExistingArchive() async throws {
         let session = FileManagerArchiveSession()
-        session.appendPreparedArchive(try makePreparedArchive(named: "async-open-original"))
+        try session.appendPreparedArchive(makePreparedArchive(named: "async-open-original"))
         let replacementURL = try makeArchive(named: "async-open-replacement",
                                              prefix: "ShichiZipArchiveCoordinatorTests",
                                              payloadFileName: "replacement.txt")
@@ -234,7 +234,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
 
     func testAsyncArchiveReplacementDoesNotCommitAfterOpenInvalidation() async throws {
         let session = FileManagerArchiveSession()
-        session.appendPreparedArchive(try makePreparedArchive(named: "invalidated-open-original"))
+        try session.appendPreparedArchive(makePreparedArchive(named: "invalidated-open-original"))
         let originalLevel = try XCTUnwrap(session.currentLevel)
         var lease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(originalLevel.operationGate.acquireLease())
         XCTAssertNotNil(lease)
@@ -293,7 +293,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
 
     func testPendingNestedOpenIsDiscardedWhenParentCloseBegins() async throws {
         let session = FileManagerArchiveSession()
-        session.appendPreparedArchive(try makePreparedArchive(named: "pending-nested-parent"))
+        try session.appendPreparedArchive(makePreparedArchive(named: "pending-nested-parent"))
         let parentLevel = try XCTUnwrap(session.currentLevel)
         var parentLease: FileManagerArchiveOperationGate.Lease? = try XCTUnwrap(
             parentLevel.operationGate.acquireLease(),
@@ -471,7 +471,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         let roundTrippedNestedArchive = SZArchive()
         try roundTrippedNestedArchive.open(atPath: roundTrippedNestedURL.path,
                                            session: SZOperationSession())
-        let roundTrippedPaths = Set(try FileManagerArchiveListing.items(from: roundTrippedNestedArchive,
+        let roundTrippedPaths = try Set(FileManagerArchiveListing.items(from: roundTrippedNestedArchive,
                                                                         session: SZOperationSession()).map(\.path))
         roundTrippedNestedArchive.close()
         XCTAssertTrue(roundTrippedPaths.contains("changed"))

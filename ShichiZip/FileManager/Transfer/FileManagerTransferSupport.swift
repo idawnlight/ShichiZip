@@ -1097,7 +1097,7 @@ final class FileManagerPaneTransferCoordinator {
                 let outcome = try await ArchiveOperationRunner.run(
                     operationTitle: resolvedOperationTitle,
                     parentWindow: host.transferLocation.presentationWindow,
-                    deferredDisplay: true
+                    deferredDisplay: true,
                 ) { session in
                     try FileManagerArchiveMutationOutcome.perform {
                         try currentTarget.archive.addPaths(
@@ -1349,7 +1349,7 @@ enum FileOperationArchiveDestinationTransfer {
         let action = SZL10n.string(
             move
                 ? "app.fileManager.action.movingFilesIntoArchive"
-                : "app.fileManager.action.addingFilesToArchive"
+                : "app.fileManager.action.addingFilesToArchive",
         )
 
         if hasConflictingOpenNestedArchive {
@@ -1392,7 +1392,7 @@ enum FileOperationArchiveDestinationTransfer {
             do {
                 let outcome = try await ArchiveOperationRunner.run(
                     operationTitle: operationTitle,
-                    parentWindow: parentWindow
+                    parentWindow: parentWindow,
                 ) { session in
                     let archive = SZArchive()
                     try archive.open(atPath: archiveURL.path, session: session)

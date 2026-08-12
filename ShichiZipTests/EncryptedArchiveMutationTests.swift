@@ -153,10 +153,10 @@ final class EncryptedArchiveMutationTests: XCTestCase {
         defer { archive.close() }
 
         try archive.deleteItems(at: [
-                                    reference(forPath: "a.txt", in: archive),
-                                ],
-                                inArchiveSubdir: "",
-                                session: nil)
+            reference(forPath: "a.txt", in: archive),
+        ],
+        inArchiveSubdir: "",
+        session: nil)
 
         XCTAssertEqual(entryPaths(in: archive), ["b.txt"])
     }

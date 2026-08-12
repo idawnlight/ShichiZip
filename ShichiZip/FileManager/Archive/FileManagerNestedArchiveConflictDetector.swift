@@ -55,7 +55,7 @@ enum FileManagerNestedArchiveConflictDetector {
         let conflictingInstanceCount = identity.isRoot ? 1 : 2
 
         for snapshot in snapshots where matches(snapshot.identity,
-                                                 target: identity)
+                                                target: identity)
         {
             matchingArchiveIdentifiers.insert(snapshot.archiveIdentifier)
             if matchingArchiveIdentifiers.count >= conflictingInstanceCount {
@@ -70,7 +70,7 @@ enum FileManagerNestedArchiveConflictDetector {
                                      in snapshots: [FileManagerNestedArchiveOpenSnapshot]) -> Bool
     {
         for snapshot in snapshots where matches(snapshot.identity,
-                                                 target: identity)
+                                                target: identity)
         {
             if snapshot.isDirty {
                 return true

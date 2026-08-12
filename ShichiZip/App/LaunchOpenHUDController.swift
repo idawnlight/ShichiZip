@@ -392,7 +392,9 @@ final class LaunchOpenHUDController: NSObject {
                 let now = event.modifierFlags
                 let pressed = now.contains(modifierFlag) && !lastGlobalFlags.contains(modifierFlag)
                 lastGlobalFlags = now
-                if pressed { browseTapped() }
+                if pressed {
+                    browseTapped()
+                }
             }
 
             // Catch modifiers held before the HUD installs monitors.
@@ -611,7 +613,9 @@ final class LaunchOpenHUDActionButton: NSView {
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
-        if let trackingArea { removeTrackingArea(trackingArea) }
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
         let area = NSTrackingArea(rect: bounds,
                                   options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
                                   owner: self,

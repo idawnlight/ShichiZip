@@ -44,7 +44,9 @@ enum FileManagerPaneNavigationCommands {
                            in pane: FileManagerPaneController)
     {
         let path = enteredPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        if path.isEmpty { return }
+        if path.isEmpty {
+            return
+        }
         guard let navigationGeneration = pane.navigationCommandBeginNavigation() else { return }
 
         switch FileManagerFileSystemNavigation.addressBarTarget(for: path) {
@@ -146,7 +148,7 @@ enum FileManagerPaneNavigationCommands {
             guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
 
             if pane.navigationCommandIsInsideArchive,
-               !(await pane.navigationCommandCloseAllArchives(showError: true))
+               await !(pane.navigationCommandCloseAllArchives(showError: true))
             {
                 guard pane.navigationCommandIsCurrentNavigation(navigationGeneration) else { return }
                 pane.navigationCommandRestorePathField()

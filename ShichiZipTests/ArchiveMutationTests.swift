@@ -329,11 +329,11 @@ final class ArchiveMutationTests: XCTestCase {
         defer { archive.close() }
 
         try archive.deleteItems(at: [
-                                    reference(forPath: "a.txt", in: archive),
-                                    reference(forPath: "c.txt", in: archive),
-                                ],
-                                inArchiveSubdir: "",
-                                session: nil)
+            reference(forPath: "a.txt", in: archive),
+            reference(forPath: "c.txt", in: archive),
+        ],
+        inArchiveSubdir: "",
+        session: nil)
 
         let paths = entryPaths(in: archive)
         XCTAssertEqual(paths, ["b.txt"],
@@ -550,7 +550,7 @@ final class ArchiveMutationTests: XCTestCase {
                 NSLocalizedDescriptionKey: "reopen failed",
                 SZArchiveMutationCommittedErrorKey: true,
                 SZArchiveMutationReopenFailedErrorKey: true,
-            ]
+            ],
         )
 
         let outcome = try FileManagerArchiveMutationOutcome.perform {
@@ -582,7 +582,7 @@ final class ArchiveMutationTests: XCTestCase {
             try archive.addPaths([sourceURL.path],
                                  toArchiveSubdir: "",
                                  moveMode: true,
-                                 session: session)
+                                 session: session),
         ) { error in
             XCTAssertTrue(szIsUserCancellation(error))
             XCTAssertTrue(szArchiveMutationWasCommitted(error))
@@ -607,7 +607,7 @@ final class ArchiveMutationTests: XCTestCase {
         XCTAssertThrowsError(
             try archive.createFolderNamed("cancelled",
                                           inArchiveSubdir: "",
-                                          session: session)
+                                          session: session),
         ) { error in
             XCTAssertTrue(szIsUserCancellation(error))
             XCTAssertFalse(szArchiveMutationWasCommitted(error))
@@ -692,10 +692,10 @@ final class ArchiveMutationTests: XCTestCase {
                                newName: "seed-renamed.txt",
                                session: nil)
         try archive.deleteItems(at: [
-                                    reference(forPath: "loose.txt", in: archive),
-                                ],
-                                inArchiveSubdir: "",
-                                session: nil)
+            reference(forPath: "loose.txt", in: archive),
+        ],
+        inArchiveSubdir: "",
+        session: nil)
 
         let paths = entryPaths(in: archive)
         XCTAssertTrue(paths.contains("dir1"))

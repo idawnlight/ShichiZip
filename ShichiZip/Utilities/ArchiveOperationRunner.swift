@@ -50,7 +50,7 @@ enum ArchiveOperationRunner {
                     let operation = ArchiveOperationWork(body: work)
                     DispatchQueue.global(qos: .userInitiated).async {
                         do {
-                            continuation.resume(returning: try operation(session))
+                            try continuation.resume(returning: operation(session))
                         } catch {
                             continuation.resume(throwing: error)
                         }

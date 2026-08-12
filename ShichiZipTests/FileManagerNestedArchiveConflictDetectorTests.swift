@@ -161,7 +161,7 @@ final class FileManagerNestedArchiveConflictDetectorTests: XCTestCase {
     private func makeIdentity(
         archiveIndex: Int = 1,
         entryPath: String = "folder/inner.7z",
-        displayPath: String = "/tmp/root.7z/folder/inner.7z"
+        displayPath: String = "/tmp/root.7z/folder/inner.7z",
     ) -> FileManagerNestedArchiveIdentity {
         FileManagerNestedArchiveIdentity(
             topLevelArchiveURL: URL(fileURLWithPath: "/tmp/root.7z"),

@@ -112,12 +112,12 @@ final class FileManagerPaneArchiveCoordinator {
         }
 
         let preparedResult = await FileManagerArchiveOpenService.open(url: url,
-                                                                     hostDirectory: paneHostDirectory,
-                                                                     temporaryDirectory: temporaryDirectory,
-                                                                     displayPathPrefix: resolvedDisplayPathPrefix,
-                                                                     parentWindow: progressParentWindow,
-                                                                     nestedWriteBackInfo: nestedWriteBackInfo,
-                                                                     openMode: openMode)
+                                                                      hostDirectory: paneHostDirectory,
+                                                                      temporaryDirectory: temporaryDirectory,
+                                                                      displayPathPrefix: resolvedDisplayPathPrefix,
+                                                                      parentWindow: progressParentWindow,
+                                                                      nestedWriteBackInfo: nestedWriteBackInfo,
+                                                                      openMode: openMode)
 
         guard !Task.isCancelled, openGeneration == archiveOpenGeneration else {
             discardPreparedArchiveOpen(preparedResult,
@@ -257,7 +257,7 @@ final class FileManagerPaneArchiveCoordinator {
                 }
             }
 
-            if !(await closeAllPreservingPendingArchiveOpen(showError: true)) {
+            if await !closeAllPreservingPendingArchiveOpen(showError: true) {
                 prepared.archive.close()
                 archiveSession.cleanupTemporaryDirectory(prepared.temporaryDirectory)
                 return false
@@ -799,7 +799,7 @@ final class FileManagerPaneArchiveCoordinator {
     // MARK: - Close Implementation
 
     private func writeBackNestedArchiveChangesIfNeeded(
-        for level: FileManagerArchiveLevel
+        for level: FileManagerArchiveLevel,
     ) async throws -> NestedWriteBackResult {
         guard let writeBackInfo = level.nestedWriteBackInfo else {
             return NestedWriteBackResult(refreshedParent: nil,
@@ -820,7 +820,7 @@ final class FileManagerPaneArchiveCoordinator {
                                          committedError: nil)
         }
         guard writeBackInfo.parentArchiveFingerprint.matchesCurrentFile(
-            at: writeBackInfo.parentArchiveURL
+            at: writeBackInfo.parentArchiveURL,
         ) else {
             throw operationError(SZL10n.string("app.fileManager.error.nestedArchiveSyncFailed"))
         }
@@ -837,7 +837,7 @@ final class FileManagerPaneArchiveCoordinator {
                                                  deferredDisplay: true)
             { session -> NestedParentMutationResult in
                 guard writeBackInfo.parentArchiveFingerprint.matchesCurrentFile(
-                    at: writeBackInfo.parentArchiveURL
+                    at: writeBackInfo.parentArchiveURL,
                 ) else {
                     throw parentArchiveChangedError
                 }
@@ -856,16 +856,16 @@ final class FileManagerPaneArchiveCoordinator {
                     }
                     let entries = try FileManagerArchiveListing.items(
                         from: writeBackInfo.parentTarget.archive,
-                        session: nil
+                        session: nil,
                     )
                     return NestedParentMutationResult(
                         entries: entries,
-                        committedError: outcome.committedError
+                        committedError: outcome.committedError,
                     )
                 } catch {
                     return NestedParentMutationResult(
                         entries: nil,
-                        committedError: outcome.committedError ?? error
+                        committedError: outcome.committedError ?? error,
                     )
                 }
             }
@@ -892,7 +892,7 @@ final class FileManagerPaneArchiveCoordinator {
             refreshedParent: refreshedParent,
             parentReload: parentReload,
             publishedChange: publishedChange,
-            committedError: parentMutationResult.committedError
+            committedError: parentMutationResult.committedError,
         )
     }
 

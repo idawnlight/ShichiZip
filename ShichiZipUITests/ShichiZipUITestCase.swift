@@ -208,7 +208,9 @@ class ShichiZipUITestCase: XCTestCase {
     func waitForFile(at url: URL, timeout: TimeInterval = 15) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if FileManager.default.fileExists(atPath: url.path) { return true }
+            if FileManager.default.fileExists(atPath: url.path) {
+                return true
+            }
             usleep(500_000)
         }
         return false

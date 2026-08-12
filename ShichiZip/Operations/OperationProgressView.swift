@@ -180,9 +180,9 @@ struct OperationProgressView: View {
                         "progress.processed",
                         value: "\(model.displayedIssues.count) / \(model.totalIssueCount)",
                     ))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 4)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
                 }
             }
             .padding(.horizontal, 20)

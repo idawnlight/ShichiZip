@@ -48,10 +48,10 @@ final class OperationProgressModelTests: XCTestCase {
                                            session: session,
                                            now: { currentTime })
 
-        session.reportBytesCompleted(0, total: 1_000)
+        session.reportBytesCompleted(0, total: 1000)
         model.apply(session.snapshot())
         currentTime = 12
-        session.reportBytesCompleted(500, total: 1_000)
+        session.reportBytesCompleted(500, total: 1000)
         model.apply(session.snapshot())
 
         XCTAssertEqual(try XCTUnwrap(model.speedBytesPerSecond),

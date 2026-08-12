@@ -7,7 +7,7 @@ import Foundation
 import XCTest
 
 final class FileManagerArchiveListingTests: XCTestCase {
-    // Zstandard frame containing "payload" with no frame content-size field.
+    /// Zstandard frame containing "payload" with no frame content-size field.
     private static let unknownContentSizeZstd = Data([
         0x28, 0xB5, 0x2F, 0xFD, 0x04, 0x58, 0x39, 0x00, 0x00, 0x70,
         0x61, 0x79, 0x6C, 0x6F, 0x61, 0x64, 0x5C, 0x2C, 0x22, 0x73,

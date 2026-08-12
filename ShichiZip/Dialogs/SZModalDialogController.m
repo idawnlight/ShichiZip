@@ -46,8 +46,8 @@ static const CGFloat SZModalDialogMaximumTextColumnWidth = 520.0;
 @end
 
 static NSInteger SZModalDialogUniqueActionIndex(NSArray<SZDialogAction*>* actions,
-                                                SZDialogActionRole role,
-                                                NSString* roleName) {
+    SZDialogActionRole role,
+    NSString* roleName) {
     NSInteger matchingIndex = NSNotFound;
     for (NSInteger index = 0; index < (NSInteger)actions.count; index++) {
         SZDialogAction* action = actions[(NSUInteger)index];
@@ -361,11 +361,11 @@ static NSString* SZModalDialogAppDisplayName(void) {
                     format:@"SZModalDialogController requires at least one action"];
     }
     const NSInteger defaultButtonIndex = SZModalDialogUniqueActionIndex(actions,
-                                                                        SZDialogActionRoleDefault,
-                                                                        @"default");
+        SZDialogActionRoleDefault,
+        @"default");
     const NSInteger cancelButtonIndex = SZModalDialogUniqueActionIndex(actions,
-                                                                       SZDialogActionRoleCancel,
-                                                                       @"cancel");
+        SZDialogActionRoleCancel,
+        @"cancel");
 
     SZModalDialogWindow* window = [[SZModalDialogWindow alloc] initWithContentRect:NSMakeRect(0, 0, 440, 200)
                                                                          styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskFullSizeContentView)

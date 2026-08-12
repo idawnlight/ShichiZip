@@ -96,9 +96,13 @@ enum SZL10n {
     /// Search a single bundle's App then Upstream tables.
     private static func lookup(_ key: String, in b: Bundle) -> String? {
         let appValue = b.localizedString(forKey: key, value: nil, table: "App")
-        if appValue != key { return appValue }
+        if appValue != key {
+            return appValue
+        }
         let upstreamValue = b.localizedString(forKey: key, value: nil, table: "Upstream")
-        if upstreamValue != key { return upstreamValue }
+        if upstreamValue != key {
+            return upstreamValue
+        }
         return nil
     }
 
@@ -117,7 +121,9 @@ enum SZL10n {
         let localeCodes = availableLocaleCodes(in: baseBundle)
 
         for code in localeCodes {
-            if code == "en" || code == "Base" { continue }
+            if code == "en" || code == "Base" {
+                continue
+            }
 
             let nativeLocale = Locale(identifier: code)
             let nativeName = nativeLocale.localizedString(forIdentifier: code) ?? code

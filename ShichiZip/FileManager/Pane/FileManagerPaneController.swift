@@ -510,10 +510,10 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return false
         }
         return directoryCoordinator.navigateToDirectory(url,
-                                                       showError: showError,
-                                                       selectionState: selectionState,
-                                                       focusAfterLoad: focusAfterLoad,
-                                                       budget: budget)
+                                                        showError: showError,
+                                                        selectionState: selectionState,
+                                                        focusAfterLoad: focusAfterLoad,
+                                                        budget: budget)
     }
 
     private func beginNavigation() -> Int? {
@@ -873,7 +873,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func navigationCommandNavigateArchiveSubdir(_ subdir: String,
-                                               expectedNavigationGeneration: Int)
+                                                expectedNavigationGeneration: Int)
     {
         guard isCurrentNavigation(expectedNavigationGeneration) else { return }
         archiveCoordinator.navigateSubdir(subdir)
@@ -1236,8 +1236,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                        expectedNavigationGeneration: navigationGeneration)
         case let .file(fileURL, hostDirectory):
             return await openInitialFileSystemArchiveURL(fileURL,
-                                                        hostDirectory: hostDirectory,
-                                                        navigationGeneration: navigationGeneration)
+                                                         hostDirectory: hostDirectory,
+                                                         navigationGeneration: navigationGeneration)
         case nil:
             return false
         }
@@ -1263,8 +1263,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                 return false
             }
             let selectionState = FileManagerFileSystemSelectionState(selectedPaths: target.selectedPaths,
-                                                                    focusedPath: target.focusedPath,
-                                                                    scrollPlacement: .centered)
+                                                                     focusedPath: target.focusedPath,
+                                                                     scrollPlacement: .centered)
             return navigateToDirectory(target.parentDirectory,
                                        showError: true,
                                        selectionState: selectionState,

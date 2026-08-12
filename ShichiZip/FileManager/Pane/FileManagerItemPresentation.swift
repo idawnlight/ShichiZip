@@ -54,17 +54,16 @@ enum FileManagerItemPresentation {
                                  location: FileManagerStatusBarLocation) -> FileManagerStatusBarContent
     {
         guard let selected, !selected.isEmpty else {
-            let detail: String?
-            switch location {
+            let detail: String? = switch location {
             case .fileSystem:
                 if displayed.fileCount > 0, let fileSize = displayed.fileSize {
-                    detail = SZL10n.string("app.fileManager.statusShownFilesSize",
-                                          fileSizeString(fileSize))
+                    SZL10n.string("app.fileManager.statusShownFilesSize",
+                                  fileSizeString(fileSize))
                 } else {
-                    detail = nil
+                    nil
                 }
             case let .archive(uncompressedSize):
-                detail = uncompressedSize.map {
+                uncompressedSize.map {
                     SZL10n.string("app.fileManager.statusArchiveUncompressedSize",
                                   fileSizeString($0))
                 }

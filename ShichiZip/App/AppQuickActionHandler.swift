@@ -80,7 +80,7 @@ final class AppQuickActionHandler {
 
             do {
                 _ = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
-                                                     parentWindow: nil)
+                                                         parentWindow: nil)
                 { session in
                     try SZArchive.create(atPath: result.archiveURL.path,
                                          fromPaths: fileURLs.map(\.path),

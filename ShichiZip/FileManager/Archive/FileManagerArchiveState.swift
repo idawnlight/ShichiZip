@@ -174,8 +174,8 @@ struct FileManagerArchiveLevel {
     private static func makeHierarchy(entries: [ArchiveItem]) -> ArchiveHierarchy {
         ArchiveHierarchy(records: entries.enumerated().map { itemIndex, entry in
             ArchiveHierarchyRecord(itemIndex: itemIndex,
-                                  pathParts: entry.pathParts,
-                                  isDirectory: entry.isDirectory)
+                                   pathParts: entry.pathParts,
+                                   isDirectory: entry.isDirectory)
         })
     }
 

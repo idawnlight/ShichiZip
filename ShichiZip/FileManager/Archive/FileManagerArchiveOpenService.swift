@@ -52,7 +52,7 @@ enum FileManagerArchiveMutationOutcome {
     @discardableResult
     static func perform(_ operation: () throws -> SZArchiveUpdateOutcome) throws -> Self {
         do {
-            return .completed(try operation())
+            return try .completed(operation())
         } catch {
             guard szArchiveMutationWasCommitted(error) else {
                 throw error
@@ -252,7 +252,11 @@ enum FileManagerArchiveOpenService {
                                         accessor: (URL) throws -> Void) throws
     {
         let needsScopeRelease = url.startAccessingSecurityScopedResource()
-        defer { if needsScopeRelease { url.stopAccessingSecurityScopedResource() } }
+        defer {
+            if needsScopeRelease {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
 
         var coordinatorError: NSError?
         var accessorError: Error?
@@ -263,7 +267,11 @@ enum FileManagerArchiveOpenService {
                 accessorError = error
             }
         }
-        if let accessorError { throw accessorError }
-        if let coordinatorError { throw coordinatorError }
+        if let accessorError {
+            throw accessorError
+        }
+        if let coordinatorError {
+            throw coordinatorError
+        }
     }
 }

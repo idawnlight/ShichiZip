@@ -24,7 +24,7 @@ enum FileManagerPaneMutationCommandSupport {
                     let outcome = try await ArchiveOperationRunner.run(
                         operationTitle: SZL10n.string("create.folder"),
                         parentWindow: pane.view.window,
-                        deferredDisplay: true
+                        deferredDisplay: true,
                     ) { session in
                         try FileManagerArchiveMutationOutcome.perform {
                             try currentTarget.archive.createFolderNamed(
@@ -261,7 +261,7 @@ enum FileManagerPaneMutationCommandSupport {
                     let outcome = try await ArchiveOperationRunner.run(
                         operationTitle: SZL10n.string("fileop.renaming"),
                         parentWindow: pane.view.window,
-                        deferredDisplay: true
+                        deferredDisplay: true,
                     ) { session in
                         try FileManagerArchiveMutationOutcome.perform {
                             try currentTarget.archive.renameItem(
@@ -323,7 +323,7 @@ enum FileManagerPaneMutationCommandSupport {
                     let outcome = try await ArchiveOperationRunner.run(
                         operationTitle: SZL10n.string("progress.deleting"),
                         parentWindow: pane.view.window,
-                        deferredDisplay: true
+                        deferredDisplay: true,
                     ) { session in
                         try FileManagerArchiveMutationOutcome.perform {
                             try currentTarget.archive.deleteItems(
@@ -334,7 +334,7 @@ enum FileManagerPaneMutationCommandSupport {
                         }
                     }
                     pane.refreshArchiveAfterMutation(
-                        reopenBeforeListing: outcome.requiresReopenBeforeRefresh
+                        reopenBeforeListing: outcome.requiresReopenBeforeRefresh,
                     )
                     pane.publishArchiveMutationIfNeeded(targetSubdir: currentTarget.subdir)
                     if let committedError = outcome.committedError {

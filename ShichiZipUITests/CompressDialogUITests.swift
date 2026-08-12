@@ -275,7 +275,9 @@ final class CompressDialogUITests: ShichiZipUITestCase {
         var found = false
         while Date() < deadline {
             let contents = (try? FileManager.default.contentsOfDirectory(atPath: extractDir.path)) ?? []
-            if !contents.isEmpty { found = true; break }
+            if !contents.isEmpty {
+                found = true; break
+            }
             usleep(500_000)
         }
         XCTAssertTrue(found, "Extraction should produce files in \(extractDir.path)")

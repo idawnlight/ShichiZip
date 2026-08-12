@@ -168,7 +168,7 @@ final class OperationSessionProgressThrottlingTests: XCTestCase {
         var snapshots: [SZOperationSnapshot] = []
         session.snapshotHandler = { snapshots.append($0) }
 
-        let total: UInt64 = 1_000
+        let total: UInt64 = 1000
         for completed in 0 ... total {
             session.reportBytesCompleted(completed, total: total)
         }

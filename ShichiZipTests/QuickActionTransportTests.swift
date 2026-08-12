@@ -43,7 +43,7 @@ final class QuickActionTransportTests: XCTestCase {
             importedTypesByIdentifier[identifier] = importedType
         }
 
-        let knownSystemContentTypes: Set<String> = [
+        let knownSystemContentTypes: Set = [
             "com.android.package-archive",
             "com.apple.archive",
             "com.apple.bom-compressed-cpio",

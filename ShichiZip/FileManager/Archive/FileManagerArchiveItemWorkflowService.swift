@@ -136,8 +136,8 @@ struct FileManagerArchiveItemWorkflowContext {
               itemReference.hasArchiveIndex,
               itemReference.archiveIndex <= UInt(Int.max),
               let topLevelArchiveURL = parentNestedIdentity?.topLevelArchiveURL
-                ?? self.topLevelArchiveURL
-                ?? mutationTarget?.topLevelArchiveURL
+              ?? topLevelArchiveURL
+              ?? mutationTarget?.topLevelArchiveURL
         else {
             return nil
         }
@@ -316,8 +316,8 @@ final class FileManagerArchiveItemWorkflowService {
                                                           fileURLs: fileURLs)
             }
 
-            var fileURLs = Array<URL?>(repeating: nil,
-                                       count: items.count)
+            var fileURLs = [URL?](repeating: nil,
+                                  count: items.count)
             let noncollidingPositions = items.indices.filter {
                 pathCounts[collisionKeys[$0], default: 0] == 1
             }
@@ -363,13 +363,13 @@ final class FileManagerArchiveItemWorkflowService {
                 )
             }
 
-            return FileManagerArchiveQuickLookPreview(temporaryDirectory: temporaryDirectory,
-                                                      fileURLs: try fileURLs.map {
-                                                          guard let fileURL = $0 else {
-                                                              throw extractionPreparationError()
-                                                          }
-                                                          return fileURL
-                                                      })
+            return try FileManagerArchiveQuickLookPreview(temporaryDirectory: temporaryDirectory,
+                                                          fileURLs: fileURLs.map {
+                                                              guard let fileURL = $0 else {
+                                                                  throw extractionPreparationError()
+                                                              }
+                                                              return fileURL
+                                                          })
         } catch {
             cleanup(temporaryDirectory)
             throw error
@@ -482,9 +482,8 @@ final class FileManagerArchiveItemWorkflowService {
     private func makeNestedArchiveParentSnapshot(
         for item: ArchiveItem,
         identity: FileManagerNestedArchiveIdentity,
-        context: FileManagerArchiveItemWorkflowContext
-    ) throws -> NestedArchiveParentSnapshot?
-    {
+        context: FileManagerArchiveItemWorkflowContext,
+    ) throws -> NestedArchiveParentSnapshot? {
         guard let parentTarget = context.mutationTarget else {
             return nil
         }
@@ -492,12 +491,12 @@ final class FileManagerArchiveItemWorkflowService {
             throw extractionPreparationError()
         }
         guard let parentArchiveURL = context.backingArchiveURL
-                ?? parentTarget.topLevelArchiveURL,
-              let parentArchiveFingerprint =
-                FileManagerArchiveFileFingerprint.captureIfPossible(
-                    for: parentArchiveURL,
-                    fileManager: fileManager
-                )
+            ?? parentTarget.topLevelArchiveURL,
+            let parentArchiveFingerprint =
+            FileManagerArchiveFileFingerprint.captureIfPossible(
+                for: parentArchiveURL,
+                fileManager: fileManager,
+            )
         else {
             throw extractionPreparationError()
         }
@@ -513,18 +512,17 @@ final class FileManagerArchiveItemWorkflowService {
 
     private func makeNestedArchiveWriteBackInfo(
         parentSnapshot: NestedArchiveParentSnapshot?,
-        stagedArchiveURL: URL
-    ) throws -> FileManagerNestedArchiveWriteBackInfo?
-    {
+        stagedArchiveURL: URL,
+    ) throws -> FileManagerNestedArchiveWriteBackInfo? {
         guard let parentSnapshot else { return nil }
         guard let initialFingerprint =
             FileManagerArchiveFileFingerprint.captureIfPossible(
                 for: stagedArchiveURL,
-                fileManager: fileManager
+                fileManager: fileManager,
             ),
             parentSnapshot.parentArchiveFingerprint.matchesCurrentFile(
                 at: parentSnapshot.parentArchiveURL,
-                fileManager: fileManager
+                fileManager: fileManager,
             )
         else {
             throw extractionPreparationError()

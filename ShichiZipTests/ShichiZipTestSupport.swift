@@ -96,8 +96,8 @@ extension XCTestCase {
                          currentDirectory: URL,
                          entryPaths: [String]) throws
     {
-        // Write the short-name System V layout directly so entry order and
-        // Debian main-subfile detection don't depend on the host ar variant.
+        /// Write the short-name System V layout directly so entry order and
+        /// Debian main-subfile detection don't depend on the host ar variant.
         func field(_ value: String, width: Int) throws -> Data {
             let bytes = Data(value.utf8)
             guard bytes.count <= width else {

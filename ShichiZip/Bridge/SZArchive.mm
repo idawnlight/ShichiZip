@@ -149,9 +149,9 @@ static NSData* SZQuarantineDataForArchivePath(NSString* archivePath) {
 - (instancetype)initWithLogicalDirectoryPath:(NSString*)path
                           snapshotIdentifier:(NSUUID*)snapshotIdentifier {
     return [self initWithArchiveIndex:NSNotFound
-                                path:path
-                         isDirectory:YES
-                  snapshotIdentifier:snapshotIdentifier];
+                                 path:path
+                          isDirectory:YES
+                   snapshotIdentifier:snapshotIdentifier];
 }
 
 - (BOOL)hasArchiveIndex {
@@ -1629,8 +1629,7 @@ static HRESULT SZResolveFolderItemReferences(IFolderFolder* folder,
     }
 
     for (SZArchiveItemReference* itemReference in itemReferences) {
-        NSString* normalizedPath =
-            SZNormalizeArchiveRelativePath(itemReference.path);
+        NSString* normalizedPath = SZNormalizeArchiveRelativePath(itemReference.path);
         if (!SZArchivePathsEqual(
                 SZArchiveParentPath(normalizedPath), normalizedSubdir)) {
             return E_INVALIDARG;
@@ -1739,12 +1738,12 @@ static SZArchiveUpdateOutcome* SZArchiveUpdateOutcomeFromDiagnostics(
     const bool hasWarnings = diagnostics.HasIssues();
     return [[SZArchiveUpdateOutcome alloc]
         initWithCompletion:(hasWarnings
-                ? SZArchiveUpdateCompletionCompletedWithWarnings
-                : SZArchiveUpdateCompletionComplete)
-        archiveCommitted:archiveCommitted
-        issues:diagnostics.MakeIssues()
-        totalIssueCount:diagnostics.TotalIssueCount()
-        issuesTruncated:diagnostics.IsTruncated()];
+                                   ? SZArchiveUpdateCompletionCompletedWithWarnings
+                                   : SZArchiveUpdateCompletionComplete)
+          archiveCommitted:archiveCommitted
+                    issues:diagnostics.MakeIssues()
+           totalIssueCount:diagnostics.TotalIssueCount()
+           issuesTruncated:diagnostics.IsTruncated()];
 }
 
 static UString SZUpdateErrorInfoSummary(const CUpdateErrorInfo& errorInfo) {
@@ -1759,8 +1758,7 @@ static UString SZUpdateErrorInfoSummary(const CUpdateErrorInfo& errorInfo) {
         summary += fs2us(errorInfo.FileNames[i]);
     }
     if (errorInfo.SystemError != 0) {
-        const UString systemMessage =
-            NWindows::NError::MyFormatMessage(errorInfo.Get_HRESULT_Error());
+        const UString systemMessage = NWindows::NError::MyFormatMessage(errorInfo.Get_HRESULT_Error());
         if (!systemMessage.IsEmpty()) {
             if (!summary.IsEmpty()) {
                 summary += L"\n";
@@ -1993,16 +1991,16 @@ static SZArchiveUpdateOutcome* SZFinalizeAgentUpdateResult(
     NSString* archivePath = [_archivePath copy];
     NSError* reopenError = nil;
     if ([self reopenAfterExternalMutationWithSession:nil
-                                              error:&reopenError]) {
+                                               error:&reopenError]) {
         return YES;
     }
 
     if (error) {
         NSError* resolvedError = reopenError
             ?: SZMakeError(
-                -1,
-                SZLocalizedStringWithFirstPlaceholder(
-                    @"archive.cannotOpenFileAsArchive", archivePath));
+                   -1,
+                   SZLocalizedStringWithFirstPlaceholder(
+                       @"archive.cannotOpenFileAsArchive", archivePath));
         *error = SZArchiveMutationReopenError(
             resolvedError, archiveWasReplaced);
     }
@@ -2376,9 +2374,9 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
         e.propertyValues = propertyValues;
         e.reference = [[SZArchiveItemReference alloc]
             initWithArchiveIndex:i
-                           path:e.path
-                    isDirectory:e.isDirectory
-             snapshotIdentifier:_entrySnapshotIdentifier];
+                            path:e.path
+                     isDirectory:e.isDirectory
+              snapshotIdentifier:_entrySnapshotIdentifier];
         [arr addObject:e];
     }
     return arr;
@@ -2761,10 +2759,10 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
 }
 
 - (SZArchiveUpdateOutcome*)renameItemAtReference:(SZArchiveItemReference*)itemReference
-              inArchiveSubdir:(NSString*)archiveSubdir
-                      newName:(NSString*)newName
-                      session:(SZOperationSession*)session
-                        error:(NSError**)error {
+                                 inArchiveSubdir:(NSString*)archiveSubdir
+                                         newName:(NSString*)newName
+                                         session:(SZOperationSession*)session
+                                           error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
     if (!SZValidateArchiveMutationName(newName, error)) {
@@ -2848,10 +2846,10 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
 }
 
 - (SZArchiveUpdateOutcome*)deleteItemsAtReferences:
-            (NSArray<SZArchiveItemReference*>*)itemReferences
-                inArchiveSubdir:(NSString*)archiveSubdir
-                        session:(SZOperationSession*)session
-                          error:(NSError**)error {
+                               (NSArray<SZArchiveItemReference*>*)itemReferences
+                                   inArchiveSubdir:(NSString*)archiveSubdir
+                                           session:(SZOperationSession*)session
+                                             error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
     if (!_isOpen) {
@@ -2939,10 +2937,10 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
 }
 
 - (SZArchiveUpdateOutcome*)addPaths:(NSArray<NSString*>*)sourcePaths
-    toArchiveSubdir:(NSString*)archiveSubdir
-           moveMode:(BOOL)moveMode
-            session:(SZOperationSession*)session
-              error:(NSError**)error {
+                    toArchiveSubdir:(NSString*)archiveSubdir
+                           moveMode:(BOOL)moveMode
+                            session:(SZOperationSession*)session
+                              error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
     if (!_isOpen) {
@@ -3062,10 +3060,10 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
 }
 
 - (SZArchiveUpdateOutcome*)replaceItemAtReference:(SZArchiveItemReference*)itemReference
-               inArchiveSubdir:(NSString*)archiveSubdir
-                withFileAtPath:(NSString*)sourceFilePath
-                       session:(SZOperationSession*)session
-                         error:(NSError**)error {
+                                  inArchiveSubdir:(NSString*)archiveSubdir
+                                   withFileAtPath:(NSString*)sourceFilePath
+                                          session:(SZOperationSession*)session
+                                            error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
     if (!_isOpen) {
@@ -3253,8 +3251,8 @@ static NSString* SZStandardizedSourcePath(NSString* path) {
 
 static BOOL SZBuildRelativeCompressionSourceMap(
     NSArray<NSString*>* sourcePaths,
-    NSString* __autoreleasing *commonDirectoryOut,
-    NSArray<NSString*>* __autoreleasing *relativePathsOut) {
+    NSString* __autoreleasing* commonDirectoryOut,
+    NSArray<NSString*>* __autoreleasing* relativePathsOut) {
     if (sourcePaths.count == 0) {
         return NO;
     }
@@ -3280,14 +3278,13 @@ static BOOL SZBuildRelativeCompressionSourceMap(
         }
 
         NSUInteger commonCount = 0;
-        NSUInteger upperBound =
-            MIN(commonParentComponents.count, parentComponents.count);
+        NSUInteger upperBound = MIN(commonParentComponents.count, parentComponents.count);
         while (commonCount < upperBound
             && [commonParentComponents[commonCount] isEqualToString:parentComponents[commonCount]]) {
             commonCount++;
         }
         [commonParentComponents removeObjectsInRange:
-            NSMakeRange(commonCount, commonParentComponents.count - commonCount)];
+                NSMakeRange(commonCount, commonParentComponents.count - commonCount)];
     }
 
     if (!commonParentComponents) {
@@ -3298,7 +3295,7 @@ static BOOL SZBuildRelativeCompressionSourceMap(
     for (NSArray<NSString*>* components in sourceComponents) {
         NSArray<NSString*>* relativeComponents =
             [components subarrayWithRange:NSMakeRange(commonParentComponents.count,
-                                                      components.count - commonParentComponents.count)];
+                                              components.count - commonParentComponents.count)];
         if (relativeComponents.count == 0) {
             return NO;
         }
@@ -3542,10 +3539,10 @@ static bool SZParseVolumeSizes(const UString& text,
 // MARK: - Create
 
 + (SZArchiveUpdateOutcome*)createAtPath:(NSString*)archivePath
-           fromPaths:(NSArray<NSString*>*)src
-            settings:(SZCompressionSettings*)s
-             session:(SZOperationSession*)session
-               error:(NSError**)error {
+                              fromPaths:(NSArray<NSString*>*)src
+                               settings:(SZCompressionSettings*)s
+                                session:(SZOperationSession*)session
+                                  error:(NSError**)error {
     CCodecs* codecs = SZGetCodecs();
     if (!codecs) {
         if (error)
@@ -3770,7 +3767,7 @@ static bool SZParseVolumeSizes(const UString& text,
 
     NSString* compressionFailedDescription = [NSString
         stringWithFormat:SZLocalizedString(@"app.archive.error.compressionFailedFormat"),
-                         (unsigned)E_FAIL];
+        (unsigned)E_FAIL];
     HRESULT r;
     try {
         r = UpdateArchive(codecs, types, ToU(archivePath), censor, options,

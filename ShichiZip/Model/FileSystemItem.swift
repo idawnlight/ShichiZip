@@ -82,7 +82,9 @@ final class FileSystemItem: Sendable {
     }
 
     var formattedSize: String {
-        if isDirectory { return "--" }
+        if isDirectory {
+            return "--"
+        }
         return ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
     }
 

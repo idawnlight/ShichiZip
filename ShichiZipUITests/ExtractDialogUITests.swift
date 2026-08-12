@@ -169,7 +169,9 @@ final class ExtractDialogUITests: ShichiZipUITestCase {
             extractedFiles = (try? FileManager.default.contentsOfDirectory(atPath: extractDir.path)) ?? []
             // Filter out the archive itself if it's in the same directory
             extractedFiles = extractedFiles.filter { $0 != archiveURL.lastPathComponent }
-            if !extractedFiles.isEmpty { break }
+            if !extractedFiles.isEmpty {
+                break
+            }
             usleep(500_000)
         }
 

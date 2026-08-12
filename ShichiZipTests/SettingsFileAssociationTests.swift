@@ -138,8 +138,8 @@ final class SettingsFileAssociationTests: XCTestCase {
 
     @MainActor
     func testRecommendedBulkUpdateSkipsDMGButAllowsIndividualUpdate() async throws {
-        let associations = FileAssociation.registeredAssociations(
-            infoDictionary: try loadSourceInfoPlist(),
+        let associations = try FileAssociation.registeredAssociations(
+            infoDictionary: loadSourceInfoPlist(),
         )
         let zip = try XCTUnwrap(
             associations.first { $0.fileExtensions.contains("zip") },

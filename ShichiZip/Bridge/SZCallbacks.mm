@@ -45,7 +45,7 @@ void SZUpdateDiagnostics::Add(SZArchiveUpdateIssueStage stage,
         SZArchiveUpdateIssue* issue = [[SZArchiveUpdateIssue alloc]
             initWithStage:stage
                      path:(path.IsEmpty() ? @"" : ToNS(path))
-                errorCode:(int32_t)errorCode
+            errorCode:(int32_t)errorCode
                   message:(message.IsEmpty() ? nil : ToNS(message))];
         [session reportUpdateIssue:issue];
     }
@@ -103,7 +103,7 @@ NSArray<SZArchiveUpdateIssue*>* SZUpdateDiagnostics::MakeIssues() const {
         SZArchiveUpdateIssue* issue = [[SZArchiveUpdateIssue alloc]
             initWithStage:record.Stage
                      path:(record.Path.IsEmpty() ? @"" : ToNS(record.Path))
-                errorCode:(int32_t)record.ErrorCode
+            errorCode:(int32_t)record.ErrorCode
                   message:(record.Message.IsEmpty() ? nil : ToNS(record.Message))];
         [result addObject:issue];
     }
@@ -443,12 +443,12 @@ Z7_COM7F_IMF(SZFolderExtractCallback::AskOverwrite(
         NSInteger choice = 5;
         if (Session) {
             SZOperationChoiceRequest* request = [[SZOperationChoiceRequest alloc]
-                initWithStyle:SZOperationPromptStyleWarning
-                          title:SZLocalizedString(@"replace.confirmTitle")
-                        message:info
-                   buttonTitles:@[ SZLocalizedString(@"common.yes"), SZLocalizedString(@"common.yesToAll"), SZLocalizedString(@"common.no"), SZLocalizedString(@"common.noToAll"), SZLocalizedString(@"replace.autoRename"), SZLocalizedString(@"common.cancel") ]
-             defaultButtonIndex:0
-              cancelButtonIndex:5];
+                     initWithStyle:SZOperationPromptStyleWarning
+                             title:SZLocalizedString(@"replace.confirmTitle")
+                           message:info
+                      buttonTitles:@[ SZLocalizedString(@"common.yes"), SZLocalizedString(@"common.yesToAll"), SZLocalizedString(@"common.no"), SZLocalizedString(@"common.noToAll"), SZLocalizedString(@"replace.autoRename"), SZLocalizedString(@"common.cancel") ]
+                defaultButtonIndex:0
+                 cancelButtonIndex:5];
             choice = [Session requestChoice:request];
         }
         if (choice == 0)

@@ -911,7 +911,7 @@ enum ArchivePreviewTreeBuilder {
     private static func finalizedChildren(
         of directory: ArchiveHierarchy.Directory,
         rowsByItemIndex: [Int: ArchivePreviewRow],
-        finalizedDirectories: [ObjectIdentifier: ArchivePreviewTreeNode]
+        finalizedDirectories: [ObjectIdentifier: ArchivePreviewTreeNode],
     ) -> [ArchivePreviewTreeNode] {
         let directories = directory.childDirectories.compactMap {
             finalizedDirectories[ObjectIdentifier($0)]
@@ -927,7 +927,7 @@ enum ArchivePreviewTreeBuilder {
 
     private static func syntheticDirectoryRow(
         for directory: ArchiveHierarchy.Directory,
-        columns: [ArchivePreviewColumn]
+        columns: [ArchivePreviewColumn],
     ) -> ArchivePreviewRow {
         let path = directory.pathParts.joined(separator: "/")
         let item = ArchiveItem(index: -1,
@@ -952,8 +952,8 @@ enum ArchivePreviewTreeBuilder {
         let columnTexts = Dictionary(uniqueKeysWithValues: columns.map { column in
             (column.id.rawValue,
              ArchivePreviewPresentation.listCellText(for: item,
-                                                    columnID: column.id,
-                                                    dateFormatter: dateFormatter))
+                                                     columnID: column.id,
+                                                     dateFormatter: dateFormatter))
         })
 
         return ArchivePreviewRow(itemIndex: -1,

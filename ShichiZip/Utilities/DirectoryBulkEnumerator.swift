@@ -60,7 +60,9 @@ enum DirectoryBulkEnumerator {
         var entries: [BulkDirectoryEntry] = []
         while true {
             let count = getattrlistbulk(descriptor, &attributes, base, bufferCapacity, 0)
-            if count == 0 { break }
+            if count == 0 {
+                break
+            }
             guard count > 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
 
             var offset = 0
@@ -129,31 +131,57 @@ enum DirectoryBulkEnumerator {
         }
 
         var objectType: UInt32 = 0
-        if hasCommon(ATTR_CMN_OBJTYPE) { objectType = take(UInt32.self) }
+        if hasCommon(ATTR_CMN_OBJTYPE) {
+            objectType = take(UInt32.self)
+        }
         var createdTime = timespec()
-        if hasCommon(ATTR_CMN_CRTIME) { createdTime = take(timespec.self) }
+        if hasCommon(ATTR_CMN_CRTIME) {
+            createdTime = take(timespec.self)
+        }
         var modifiedTime = timespec()
-        if hasCommon(ATTR_CMN_MODTIME) { modifiedTime = take(timespec.self) }
+        if hasCommon(ATTR_CMN_MODTIME) {
+            modifiedTime = take(timespec.self)
+        }
         var changedTime = timespec()
-        if hasCommon(ATTR_CMN_CHGTIME) { changedTime = take(timespec.self) }
+        if hasCommon(ATTR_CMN_CHGTIME) {
+            changedTime = take(timespec.self)
+        }
         var accessedTime = timespec()
-        if hasCommon(ATTR_CMN_ACCTIME) { accessedTime = take(timespec.self) }
+        if hasCommon(ATTR_CMN_ACCTIME) {
+            accessedTime = take(timespec.self)
+        }
         var mode: UInt32 = 0
-        if hasCommon(ATTR_CMN_ACCESSMASK) { mode = take(UInt32.self) }
+        if hasCommon(ATTR_CMN_ACCESSMASK) {
+            mode = take(UInt32.self)
+        }
         var flags: UInt32 = 0
-        if hasCommon(ATTR_CMN_FLAGS) { flags = take(UInt32.self) }
+        if hasCommon(ATTR_CMN_FLAGS) {
+            flags = take(UInt32.self)
+        }
         var inode: UInt64 = 0
-        if hasCommon(ATTR_CMN_FILEID) { inode = take(UInt64.self) }
+        if hasCommon(ATTR_CMN_FILEID) {
+            inode = take(UInt64.self)
+        }
         var entryError: Int32 = 0
-        if hasCommon(ATTR_CMN_ERROR) { entryError = take(Int32.self) }
+        if hasCommon(ATTR_CMN_ERROR) {
+            entryError = take(Int32.self)
+        }
 
         var linkCount: UInt32 = 1
-        if hasDirectory(ATTR_DIR_LINKCOUNT) { linkCount = take(UInt32.self) }
-        if hasFile(ATTR_FILE_LINKCOUNT) { linkCount = take(UInt32.self) }
+        if hasDirectory(ATTR_DIR_LINKCOUNT) {
+            linkCount = take(UInt32.self)
+        }
+        if hasFile(ATTR_FILE_LINKCOUNT) {
+            linkCount = take(UInt32.self)
+        }
         var allocatedSize: Int64 = 0
-        if hasFile(ATTR_FILE_ALLOCSIZE) { allocatedSize = take(Int64.self) }
+        if hasFile(ATTR_FILE_ALLOCSIZE) {
+            allocatedSize = take(Int64.self)
+        }
         var dataLength: Int64 = 0
-        if hasFile(ATTR_FILE_DATALENGTH) { dataLength = take(Int64.self) }
+        if hasFile(ATTR_FILE_DATALENGTH) {
+            dataLength = take(Int64.self)
+        }
 
         guard entryError == 0 else { return (nil, length) }
 

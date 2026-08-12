@@ -254,7 +254,9 @@ enum SZSettings {
             return fallbackCurrentDir
         case 2:
             let path = string(.workDirPath)
-            if !path.isEmpty { return URL(fileURLWithPath: path) }
+            if !path.isEmpty {
+                return URL(fileURLWithPath: path)
+            }
             return FileManager.default.temporaryDirectory
         default:
             return FileManager.default.temporaryDirectory

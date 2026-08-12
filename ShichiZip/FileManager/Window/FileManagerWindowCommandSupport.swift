@@ -264,7 +264,7 @@ enum FileManagerArchiveCommandSupport {
                               parentWindow: NSWindow) async throws
     {
         _ = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.compressing"),
-                                             parentWindow: parentWindow)
+                                                 parentWindow: parentWindow)
         { session in
             try SZArchive.create(atPath: result.archiveURL.path,
                                  fromPaths: sourceURLs.map(\.path),

@@ -169,7 +169,7 @@ final class FileManagerPaneSuspensionCoordinatorTests: XCTestCase {
         _ = state.beginClosePreparation()
 
         XCTAssertNotNil(navigationGeneration)
-        XCTAssertFalse(state.isCurrentNavigation(try XCTUnwrap(navigationGeneration)))
+        XCTAssertFalse(try state.isCurrentNavigation(XCTUnwrap(navigationGeneration)))
         XCTAssertNil(state.beginNavigation())
     }
 

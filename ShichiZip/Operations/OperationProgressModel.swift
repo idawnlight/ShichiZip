@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 final class OperationProgressModel: ObservableObject {
     typealias SnapshotUpdateScheduler = (
-        _ action: @escaping @MainActor () -> Void
+        _ action: @escaping @MainActor () -> Void,
     ) -> () -> Void
 
     enum CompletionState: Equatable {
@@ -12,7 +12,7 @@ final class OperationProgressModel: ObservableObject {
         case completedWithWarnings
     }
 
-    nonisolated private static let snapshotUpdateInterval: Duration = .milliseconds(200)
+    private nonisolated static let snapshotUpdateInterval: Duration = .milliseconds(200)
 
     let operationTitle: String
 
@@ -286,7 +286,7 @@ final class OperationProgressModel: ObservableObject {
         pendingSnapshot = nil
     }
 
-    nonisolated private static func scheduleSnapshotUpdate(
+    private nonisolated static func scheduleSnapshotUpdate(
         _ action: @escaping @MainActor () -> Void,
     ) -> () -> Void {
         let task = Task { @MainActor in

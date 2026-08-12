@@ -493,7 +493,7 @@ final class ArchiveDragPromise: NSObject, NSFilePromiseProviderDelegate {
                             operationTitle: SZL10n.string("progress.extracting"),
                             initialFileName: item.path,
                             parentWindow: parentWindow,
-                            deferredDisplay: true
+                            deferredDisplay: true,
                         ) { session in
                             try self.workflowService.writePromise(for: self.item,
                                                                   context: self.context,
