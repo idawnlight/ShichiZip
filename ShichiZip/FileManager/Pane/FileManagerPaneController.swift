@@ -204,6 +204,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             isViewLoaded: { [weak self] in
                 self?.isViewLoaded == true
             },
+            didOpenTopLevelArchive: { url in
+                RecentArchiveHistory.recordOpenedArchive(url)
+            },
             updateTableColumns: { [weak self] in
                 self?.updateTableColumnsForCurrentLocation()
             },

@@ -16,6 +16,7 @@ enum SZSettingsKey: String {
     case showGridLines = "ShowGrid"
     case singleClickOpen = "SingleClick"
     case quitAfterLastWindowClosed = "QuitAfterLastWindowClosed"
+    case rememberRecentArchives = "RememberRecentArchives"
     case excludeMacResourceFilesByDefault = "ExcludeMacResourceFilesByDefault"
     case moveArchiveToTrashAfterExtraction = "MoveArchiveToTrashAfterExtraction"
     case inheritDownloadedFileQuarantine = "InheritDownloadedFileQuarantine"
@@ -82,7 +83,7 @@ enum SZSettings {
 
     private static func defaultBool(for key: SZSettingsKey) -> Bool {
         switch key {
-        case .showRealFileIcons, .workDirRemovableOnly, .inheritDownloadedFileQuarantine,
+        case .showRealFileIcons, .rememberRecentArchives, .workDirRemovableOnly, .inheritDownloadedFileQuarantine,
              .launchOpenRevealAfterExtract:
             true
         default:

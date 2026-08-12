@@ -138,12 +138,14 @@
 
 "app.menu.about" = "关于 %@";
 "app.menu.bringAllToFront" = "前置全部窗口";
+"app.menu.clearRecentArchives" = "清除菜单";
 "app.menu.closeDirectory" = "关闭文件夹";
 "app.menu.copy" = "拷贝";
 "app.menu.cut" = "剪切";
 "app.menu.hide" = "隐藏 %@";
 "app.menu.hideOthers" = "隐藏其他";
 "app.menu.minimize" = "最小化";
+"app.menu.openRecent" = "打开最近使用的项目";
 "app.menu.paste" = "粘贴";
 "app.menu.preferences" = "偏好设置…";
 "app.menu.quit" = "退出 %@";
@@ -217,6 +219,7 @@
 "app.settings.quitOnLastClose" = "关闭最后一个窗口时退出应用";
 "app.settings.recordShortcut" = "录制快捷键";
 "app.settings.rememberFileManagerWindowFrame" = "记住文件管理器窗口大小和位置";
+"app.settings.rememberRecentArchives" = "记住最近打开的压缩包";
 "app.settings.reset" = "重置";
 "app.settings.resetFileListLayout" = "重置文件列表布局";
 "app.settings.resetFileListLayoutConfirmDetail" = "已保存的排序、列顺序和列宽将恢复为默认值。";

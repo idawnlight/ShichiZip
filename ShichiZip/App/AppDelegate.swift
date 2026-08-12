@@ -24,6 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
     private var benchmarkWindowController: BenchmarkWindowController?
     private var deleteTemporaryFilesWindowController: DeleteTemporaryFilesWindowController?
     private var settingsWindowController: SettingsWindowController?
+    private var recentArchiveDocumentController: ShichiZipDocumentController?
     private var applicationTerminationTask: Task<Void, Never>?
     private let launchOpenCoordinator = LaunchOpenCoordinator()
     private lazy var lastWindowCloseTerminationDeferrer = LastWindowCloseTerminationDeferrer(
@@ -50,6 +51,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
 
     func applicationWillFinishLaunching(_: Notification) {
         SZSharedUserDefaults.migrateStandardDefaultsIfNeeded()
+        let documentController = ShichiZipDocumentController()
+        precondition(NSDocumentController.shared === documentController,
+                     "ShichiZipDocumentController must be the shared document controller")
+        recentArchiveDocumentController = documentController
+        if !SZSettings.bool(.rememberRecentArchives) {
+            documentController.clearRecentDocuments(nil)
+        }
         NSWindow.allowsAutomaticWindowTabbing = false
     }
 
@@ -211,6 +219,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
                                       preferReusableWindow: true)
             }
         }
+    }
+
+    @IBAction func openRecentArchive(_ sender: Any?) {
+        guard let menuItem = sender as? NSMenuItem,
+              let url = menuItem.representedObject as? URL,
+              url.isFileURL
+        else {
+            SZLog.error("AppDelegate", "Open Recent received an invalid menu item")
+            NSSound.beep()
+            return
+        }
+
+        Task { @MainActor [weak self] in
+            await self?.openArchiveURLs([url],
+                                        preferReusableWindow: true)
+        }
+    }
+
+    @IBAction func clearRecentArchives(_ sender: Any?) {
+        RecentArchiveHistory.clear(sender)
     }
 
     /// Open an archive file in the file manager (navigate into it inline)

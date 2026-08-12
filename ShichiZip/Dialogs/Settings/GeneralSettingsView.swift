@@ -50,6 +50,15 @@ struct GeneralSettingsView: View {
                 SZL10n.string("app.settings.quitOnLastClose"),
                 isOn: store.boolBinding(.quitAfterLastWindowClosed),
             )
+
+            Toggle(
+                SZL10n.string("app.settings.rememberRecentArchives"),
+                isOn: Binding(
+                    get: { store.remembersRecentArchives },
+                    set: { store.setRemembersRecentArchives($0) },
+                ),
+            )
+            .accessibilityIdentifier("settings.rememberRecentArchives")
         }
     }
 

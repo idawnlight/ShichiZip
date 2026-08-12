@@ -138,12 +138,14 @@
 
 "app.menu.about" = "關於 %@";
 "app.menu.bringAllToFront" = "將所有視窗移至最前";
+"app.menu.clearRecentArchives" = "清除選單";
 "app.menu.closeDirectory" = "關閉目錄";
 "app.menu.copy" = "複製";
 "app.menu.cut" = "剪下";
 "app.menu.hide" = "隱藏 %@";
 "app.menu.hideOthers" = "隱藏其他";
 "app.menu.minimize" = "最小化";
+"app.menu.openRecent" = "開啟最近使用的項目";
 "app.menu.paste" = "貼上";
 "app.menu.preferences" = "設定…";
 "app.menu.quit" = "結束 %@";
@@ -217,6 +219,7 @@
 "app.settings.quitOnLastClose" = "關閉最後一個視窗時結束 App";
 "app.settings.recordShortcut" = "錄製快速鍵";
 "app.settings.rememberFileManagerWindowFrame" = "記住檔案管理器視窗大小與位置";
+"app.settings.rememberRecentArchives" = "記住最近開啟的壓縮檔";
 "app.settings.reset" = "重設";
 "app.settings.resetFileListLayout" = "重設檔案列表版面配置";
 "app.settings.resetFileListLayoutConfirmDetail" = "已儲存的排序方式、欄位順序與欄寬將會還原為預設值。";

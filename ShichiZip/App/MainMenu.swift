@@ -2,6 +2,7 @@ import Cocoa
 
 private enum MainMenuIdentifiers {
     static let favoritesMenu = NSUserInterfaceItemIdentifier("FavoritesMenu")
+    static let recentArchivesMenu = NSUserInterfaceItemIdentifier("RecentArchivesMenu")
     static let viewMenu = NSUserInterfaceItemIdentifier("ViewMenu")
     static let timeMenu = NSUserInterfaceItemIdentifier("TimeMenu")
 }
@@ -464,15 +465,19 @@ enum FileManagerMenuFactory {
                   shortcut: Shortcut? = nil,
                   target: TargetKind = .windowController)
         case submenu(title: String, children: [Node])
+        case recentArchives
         case separator
     }
 
-    static func makeFileMenu(appTarget: AnyObject?) -> NSMenu {
+    static func makeFileMenu(appTarget: AnyObject?,
+                             recentArchivesMenuDelegate: (any NSMenuDelegate)?) -> NSMenu
+    {
         let menu = NSMenu(title: SZL10n.string("menu.file"))
         populate(menu,
                  with: fileMenuNodes,
                  windowTarget: nil,
-                 appTarget: appTarget)
+                 appTarget: appTarget,
+                 recentArchivesMenuDelegate: recentArchivesMenuDelegate)
         return menu
     }
 
@@ -481,7 +486,8 @@ enum FileManagerMenuFactory {
         populate(menu,
                  with: contextMenuNodes,
                  windowTarget: windowTarget,
-                 appTarget: nil)
+                 appTarget: nil,
+                 recentArchivesMenuDelegate: nil)
         return menu
     }
 
@@ -541,6 +547,7 @@ enum FileManagerMenuFactory {
                   action: #selector(AppDelegate.openArchives(_:)),
                   shortcut: Shortcut("o"),
                   target: .appDelegate),
+            .recentArchives,
             .separator,
             .item(title: SZL10n.string("toolbar.add"),
                   action: #selector(FileManagerWindowController.addToArchive(_:))),
@@ -627,7 +634,8 @@ enum FileManagerMenuFactory {
     private static func populate(_ menu: NSMenu,
                                  with nodes: [Node],
                                  windowTarget: AnyObject?,
-                                 appTarget: AnyObject?)
+                                 appTarget: AnyObject?,
+                                 recentArchivesMenuDelegate: (any NSMenuDelegate)?)
     {
         for node in nodes {
             switch node {
@@ -651,7 +659,18 @@ enum FileManagerMenuFactory {
                 populate(submenu,
                          with: children,
                          windowTarget: windowTarget,
-                         appTarget: appTarget)
+                         appTarget: appTarget,
+                         recentArchivesMenuDelegate: recentArchivesMenuDelegate)
+                let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+                item.submenu = submenu
+                menu.addItem(item)
+
+            case .recentArchives:
+                let title = SZL10n.string("app.menu.openRecent")
+                let submenu = NSMenu(title: title)
+                submenu.identifier = MainMenuIdentifiers.recentArchivesMenu
+                submenu.autoenablesItems = false
+                submenu.delegate = recentArchivesMenuDelegate
                 let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
                 item.submenu = submenu
                 menu.addItem(item)
@@ -675,6 +694,11 @@ private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
 
         if menu.identifier == MainMenuIdentifiers.timeMenu {
             rebuildTimeMenu(menu)
+            return
+        }
+
+        if menu.identifier == MainMenuIdentifiers.recentArchivesMenu {
+            rebuildRecentArchivesMenu(menu)
             return
         }
 
@@ -704,6 +728,31 @@ private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
                                 action: #selector(FileManagerWindowController.toggleTimestampUTC(_:)),
                                 keyEquivalent: ""))
         refreshTimeMenuTitle()
+    }
+
+    private func rebuildRecentArchivesMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let archiveURLs = RecentArchiveHistory.recentArchiveURLs
+
+        if !archiveURLs.isEmpty {
+            for url in archiveURLs {
+                let item = NSMenuItem(title: url.lastPathComponent,
+                                      action: #selector(AppDelegate.openRecentArchive(_:)),
+                                      keyEquivalent: "")
+                item.target = NSApp.delegate
+                item.representedObject = url
+                item.toolTip = url.path
+                menu.addItem(item)
+            }
+            menu.addItem(.separator())
+        }
+
+        let clearItem = NSMenuItem(title: SZL10n.string("app.menu.clearRecentArchives"),
+                                   action: #selector(AppDelegate.clearRecentArchives(_:)),
+                                   keyEquivalent: "")
+        clearItem.target = NSApp.delegate
+        clearItem.isEnabled = !archiveURLs.isEmpty
+        menu.addItem(clearItem)
     }
 
     private func rebuildFavoritesMenu(_ menu: NSMenu) {
@@ -803,7 +852,10 @@ enum MainMenu {
                 keyEquivalent: "q",
                 target: NSApp)
 
-        let fileMenu = FileManagerMenuFactory.makeFileMenu(appTarget: NSApp.delegate as AnyObject?)
+        let fileMenu = FileManagerMenuFactory.makeFileMenu(
+            appTarget: NSApp.delegate as AnyObject?,
+            recentArchivesMenuDelegate: coordinator,
+        )
         addTopLevelMenu(fileMenu, to: mainMenu)
 
         let editMenu = NSMenu(title: SZL10n.string("menu.edit"))

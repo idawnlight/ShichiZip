@@ -138,12 +138,14 @@
 
 "app.menu.about" = "About %@";
 "app.menu.bringAllToFront" = "Bring All to Front";
+"app.menu.clearRecentArchives" = "Clear Menu";
 "app.menu.closeDirectory" = "Close Directory";
 "app.menu.copy" = "Copy";
 "app.menu.cut" = "Cut";
 "app.menu.hide" = "Hide %@";
 "app.menu.hideOthers" = "Hide Others";
 "app.menu.minimize" = "Minimize";
+"app.menu.openRecent" = "Open Recent";
 "app.menu.paste" = "Paste";
 "app.menu.preferences" = "Preferences…";
 "app.menu.quit" = "Quit %@";
@@ -217,6 +219,7 @@
 "app.settings.quitOnLastClose" = "Quit the app when the last window closes";
 "app.settings.recordShortcut" = "Record Shortcut";
 "app.settings.rememberFileManagerWindowFrame" = "Remember File Manager window size and position";
+"app.settings.rememberRecentArchives" = "Remember recently opened archives";
 "app.settings.reset" = "Reset";
 "app.settings.resetFileListLayout" = "Reset File List Layouts";
 "app.settings.resetFileListLayoutConfirmDetail" = "Saved sort order, column order, and column widths will return to defaults.";

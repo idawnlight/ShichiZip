@@ -28,6 +28,7 @@ final class FileManagerPaneArchiveCoordinator {
     private let observerIdentifier: ObjectIdentifier
     private let parentWindow: () -> NSWindow?
     private let isViewLoaded: () -> Bool
+    private let didOpenTopLevelArchive: (URL) -> Void
     private let currentDirectory: () -> URL
     private let prepareDirectoryForArchivePresentation: (URL) -> Void
     private let updateTableColumns: () -> Void
@@ -53,6 +54,7 @@ final class FileManagerPaneArchiveCoordinator {
          observerIdentifier: ObjectIdentifier,
          parentWindow: @escaping () -> NSWindow?,
          isViewLoaded: @escaping () -> Bool,
+         didOpenTopLevelArchive: @escaping (URL) -> Void = { _ in },
          updateTableColumns: @escaping () -> Void,
          currentDirectory: @escaping () -> URL = { FileManager.default.homeDirectoryForCurrentUser },
          prepareDirectoryForArchivePresentation: @escaping (URL) -> Void = { _ in },
@@ -72,6 +74,7 @@ final class FileManagerPaneArchiveCoordinator {
         self.observerIdentifier = observerIdentifier
         self.parentWindow = parentWindow
         self.isViewLoaded = isViewLoaded
+        self.didOpenTopLevelArchive = didOpenTopLevelArchive
         self.currentDirectory = currentDirectory
         self.prepareDirectoryForArchivePresentation = prepareDirectoryForArchivePresentation
         self.updateTableColumns = updateTableColumns
@@ -122,13 +125,19 @@ final class FileManagerPaneArchiveCoordinator {
             return .cancelled
         }
 
-        return await finishArchiveOpen(preparedResult,
-                                       temporaryDirectory: temporaryDirectory,
-                                       preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
-                                       replaceCurrentState: replaceCurrentState,
-                                       showError: showError,
-                                       invalidatePendingOpen: false,
-                                       expectedOpenGeneration: openGeneration)
+        let result = await finishArchiveOpen(preparedResult,
+                                             temporaryDirectory: temporaryDirectory,
+                                             preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
+                                             replaceCurrentState: replaceCurrentState,
+                                             showError: showError,
+                                             invalidatePendingOpen: false,
+                                             expectedOpenGeneration: openGeneration)
+        if case .opened = result,
+           let topLevelArchiveURL = archiveSession.currentLevel?.topLevelArchiveURL
+        {
+            didOpenTopLevelArchive(topLevelArchiveURL)
+        }
+        return result
     }
 
     func beginArchiveOpen() -> Int {

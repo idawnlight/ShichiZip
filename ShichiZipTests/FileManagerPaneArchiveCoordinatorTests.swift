@@ -131,11 +131,11 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                                    makeArchiveItem(path: "folder/", isDirectory: true),
                                                    makeArchiveItem(path: "folder/payload.txt"),
                                                ])
-        var currentDirectory = FileManager.default.homeDirectoryForCurrentUser
-        var preparedDirectory: URL?
-        var didUpdateTableColumns = false
-        var didReloadTableData = false
-        let coordinator = makeCoordinator(session: session,
+                                               var currentDirectory = FileManager.default.homeDirectoryForCurrentUser
+                                               var preparedDirectory: URL?
+                                               var didUpdateTableColumns = false
+                                               var didReloadTableData = false
+                                               let coordinator = makeCoordinator(session: session,
                                           currentDirectory: { currentDirectory },
                                           prepareDirectoryForArchivePresentation: { hostDirectory in
                                               preparedDirectory = hostDirectory
@@ -168,7 +168,9 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         let archiveURL = try makeArchive(named: "async-open",
                                          prefix: "ShichiZipArchiveCoordinatorTests")
         let session = FileManagerArchiveSession()
-        let coordinator = makeCoordinator(session: session)
+        var recordedRecentArchiveURL: URL?
+        let coordinator = makeCoordinator(session: session,
+                                          didOpenTopLevelArchive: { recordedRecentArchiveURL = $0 })
 
         let result = await coordinator.openArchiveInline(archiveURL,
                                                          hostDirectory: archiveURL.deletingLastPathComponent())
@@ -179,6 +181,30 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         }
         XCTAssertEqual(session.currentLevel?.archivePath, archiveURL.path)
         XCTAssertEqual(session.displayItems.map(\.name), ["payload.txt"])
+        XCTAssertEqual(recordedRecentArchiveURL, archiveURL.standardizedFileURL)
+        let didClose = await coordinator.closeAll(showError: false)
+        XCTAssertTrue(didClose)
+    }
+
+    func testOpenArchiveInlineDoesNotRecordTemporaryArchive() async throws {
+        let archiveURL = try makeArchive(named: "temporary-open",
+                                         prefix: "ShichiZipArchiveCoordinatorTests")
+        let session = FileManagerArchiveSession()
+        var recordedRecentArchiveURL: URL?
+        let coordinator = makeCoordinator(session: session,
+                                          didOpenTopLevelArchive: { recordedRecentArchiveURL = $0 })
+
+        let result = await coordinator.openArchiveInline(
+            archiveURL,
+            hostDirectory: archiveURL.deletingLastPathComponent(),
+            temporaryDirectory: archiveURL.deletingLastPathComponent(),
+        )
+
+        guard case .opened = result else {
+            XCTFail("Expected temporary archive to open")
+            return
+        }
+        XCTAssertNil(recordedRecentArchiveURL)
         let didClose = await coordinator.closeAll(showError: false)
         XCTAssertTrue(didClose)
     }
@@ -667,6 +693,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
     private func makeCoordinator(session: FileManagerArchiveSession,
                                  observerIdentifier: ObjectIdentifier = ObjectIdentifier(NSObject()),
                                  isViewLoaded: @escaping () -> Bool = { false },
+                                 didOpenTopLevelArchive: @escaping (URL) -> Void = { _ in },
                                  currentDirectory: @escaping () -> URL = { FileManager.default.homeDirectoryForCurrentUser },
                                  prepareDirectoryForArchivePresentation: @escaping (URL) -> Void = { _ in },
                                  updateTableColumns: @escaping () -> Void = {},
@@ -681,6 +708,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                           observerIdentifier: observerIdentifier,
                                           parentWindow: { nil },
                                           isViewLoaded: isViewLoaded,
+                                          didOpenTopLevelArchive: didOpenTopLevelArchive,
                                           updateTableColumns: updateTableColumns,
                                           currentDirectory: currentDirectory,
                                           prepareDirectoryForArchivePresentation: prepareDirectoryForArchivePresentation,

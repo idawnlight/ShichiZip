@@ -101,6 +101,18 @@ final class SettingsStore: @MainActor ObservableObject {
         )
     }
 
+    var remembersRecentArchives: Bool {
+        SZSettings.bool(.rememberRecentArchives)
+    }
+
+    func setRemembersRecentArchives(_ value: Bool) {
+        guard value != remembersRecentArchives else { return }
+        SZSettings.set(value, for: .rememberRecentArchives)
+        if !value {
+            RecentArchiveHistory.clear()
+        }
+    }
+
     var remembersFileManagerWindowFrame: Bool {
         FileManagerWindowPreferences.remembersWindowFrame
     }
