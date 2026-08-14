@@ -1,8 +1,19 @@
 import SwiftUI
 
+private struct TableWidthPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct FileAssociationSettingsView: View {
     @ObservedObject var model: FileAssociationSettingsModel
     @State private var searchText = ""
+    @State private var tableWidth: CGFloat = 0
+
+    private static let statusColumnWidthFraction: CGFloat = 0.4
 
     var body: some View {
         SettingsPageView(scrolls: false) {
@@ -61,10 +72,11 @@ struct FileAssociationSettingsView: View {
             HStack(spacing: 12) {
                 Text(SZL10n.string("app.settings.fileType"))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text(SZL10n.string("app.settings.defaultApplication"))
-                    .frame(width: 118, alignment: .leading)
-                Color.clear
-                    .frame(width: 104, height: 1)
+                statusColumnGhost
+                    .overlay(alignment: .leading) {
+                        Text(SZL10n.string("app.settings.defaultApplication"))
+                    }
+                actionColumnGhost
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
@@ -98,6 +110,17 @@ struct FileAssociationSettingsView: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor)),
         )
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: TableWidthPreferenceKey.self,
+                    value: proxy.size.width,
+                )
+            }
+        }
+        .onPreferenceChange(TableWidthPreferenceKey.self) { width in
+            tableWidth = width
+        }
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -121,33 +144,85 @@ struct FileAssociationSettingsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            statusText(state.displayStatus)
-                .frame(width: 118, alignment: .leading)
-
-            if state.isPendingUpdate {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(width: 104)
-            } else {
-                Button(
-                    state.isCurrentDefault
-                        ? SZL10n.string("app.settings.currentDefault")
-                        : SZL10n.string("app.settings.makeDefault"),
-                ) {
-                    model.setDefaultApplication(for: association)
+            statusColumnGhost
+                .overlay(alignment: .leading) {
+                    statusText(state.displayStatus)
                 }
-                .disabled(state.isCurrentDefault)
-                .frame(width: 104)
-                .accessibilityLabel(
-                    "\(state.isCurrentDefault ? SZL10n.string("app.settings.currentDefault") : SZL10n.string("app.settings.makeDefault")): \(association.displayTitle)",
-                )
-                .accessibilityIdentifier(
-                    "settings.makeDefault.\(association.primaryTypeIdentifier)",
-                )
-            }
+
+            actionColumnGhost
+                .overlay {
+                    if state.isPendingUpdate {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Button(
+                            state.isCurrentDefault
+                                ? SZL10n.string("app.settings.currentDefault")
+                                : SZL10n.string("app.settings.makeDefault"),
+                        ) {
+                            model.setDefaultApplication(for: association)
+                        }
+                        .disabled(state.isCurrentDefault)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel(
+                            "\(state.isCurrentDefault ? SZL10n.string("app.settings.currentDefault") : SZL10n.string("app.settings.makeDefault")): \(association.displayTitle)",
+                        )
+                        .accessibilityIdentifier(
+                            "settings.makeDefault.\(association.primaryTypeIdentifier)",
+                        )
+                    }
+                }
         }
         .padding(.horizontal, 12)
         .frame(minHeight: 42)
+    }
+
+    private var statusColumnGhost: some View {
+        ZStack(alignment: .leading) {
+            ForEach(statusColumnCandidates, id: \.self) { candidate in
+                statusLabel(candidate)
+            }
+        }
+        .frame(maxWidth: statusColumnMaxWidth)
+        .hidden()
+        .accessibilityHidden(true)
+    }
+
+    private var statusColumnMaxWidth: CGFloat? {
+        guard tableWidth > 0 else {
+            return nil
+        }
+
+        return tableWidth * Self.statusColumnWidthFraction
+    }
+
+    private var actionColumnGhost: some View {
+        ZStack {
+            actionButton(SZL10n.string("app.settings.currentDefault"))
+            actionButton(SZL10n.string("app.settings.makeDefault"))
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .hidden()
+        .accessibilityHidden(true)
+    }
+
+    private func actionButton(_ title: String) -> some View {
+        Button(title) {}
+    }
+
+    private var statusColumnCandidates: [String] {
+        var candidates: Set<String> = [
+            SZL10n.string("app.settings.noDefaultApp"),
+            SZL10n.string("app.settings.multipleDefaultApps"),
+        ]
+
+        for association in model.associations {
+            if case let .defaultApp(displayName) = model.state(for: association).displayStatus {
+                candidates.insert(displayName)
+            }
+        }
+
+        return candidates.sorted()
     }
 
     private func statusText(_ status: FileAssociationDisplayStatus) -> some View {
@@ -160,7 +235,11 @@ struct FileAssociationSettingsView: View {
             SZL10n.string("app.settings.multipleDefaultApps")
         }
 
-        return Text(text)
+        return statusLabel(text)
+    }
+
+    private func statusLabel(_ text: String) -> some View {
+        Text(text)
             .font(.callout)
             .foregroundStyle(.secondary)
             .lineLimit(1)
