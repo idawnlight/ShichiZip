@@ -255,7 +255,9 @@ enum FileManagerPaneTableCellRenderer {
         cell.textField?.font = column.font
         cell.textField?.lineBreakMode = columnID == .name ? .byTruncatingMiddle : .byTruncatingTail
         cell.textField?.stringValue = column.normalizedDisplayString(configuration.text)
-        cell.textField?.textColor = configuration.isHidden ? .secondaryLabelColor : .labelColor
+        cell.textField?.textColor = columnID == .name && !configuration.isHidden
+            ? .labelColor
+            : .secondaryLabelColor
         cell.textField?.alphaValue = configuration.isHidden ? 0.7 : 1.0
 
         if columnID == .name {

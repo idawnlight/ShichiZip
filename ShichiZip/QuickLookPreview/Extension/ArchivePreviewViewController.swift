@@ -298,7 +298,7 @@ private final class ArchivePreviewTextCellView: NSTableCellView {
         label.stringValue = text
         label.alignment = alignment
         label.font = font
-        label.textColor = isHidden ? .secondaryLabelColor : .labelColor
+        label.textColor = .secondaryLabelColor
         label.alphaValue = isHidden ? 0.7 : 1.0
     }
 
