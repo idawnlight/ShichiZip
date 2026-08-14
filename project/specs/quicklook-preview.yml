@@ -152,6 +152,7 @@ targets:
               - public.archive.apk
               - com.android.package-archive
               - com.microsoft.appx-archive
+              - org.mozilla.xpi-archive
               - com.winace.ace-archive
               - com.apple.xar-archive
               - com.apple.archive

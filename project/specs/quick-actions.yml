@@ -245,6 +245,7 @@ targets:
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.archive.apk" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.android.package-archive" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.microsoft.appx-archive" ||
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.mozilla.xpi-archive" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.winace.ace-archive" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.xar-archive" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.archive" ||

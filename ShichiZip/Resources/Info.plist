@@ -988,6 +988,26 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
+			<string>Firefox Extension Package</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>zip</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>xpi</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.mozilla.xpi-archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
 			<string>ACE Archive</string>
 			<key>CFBundleTypeIconFile</key>
 			<string>archive</string>
@@ -1721,6 +1741,28 @@
 				<key>public.mime-type</key>
 				<array>
 					<string>application/vns.ms-appx</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.mozilla.xpi-archive</string>
+			<key>UTTypeDescription</key>
+			<string>Firefox Extension Package</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>xpi</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-xpinstall</string>
 				</array>
 			</dict>
 		</dict>
