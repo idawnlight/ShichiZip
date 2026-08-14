@@ -240,6 +240,7 @@
 "app.shortcut.toggleDualPane" = "Toggle dual pane";
 "app.shortcut.toggleHiddenFiles" = "Toggle hidden files";
 
+"app.view.systemTimeFormat" = "System Format";
 "app.view.unifiedToolbarStyle" = "Unified Style";
 
 "compress.browse" = "Browse…";

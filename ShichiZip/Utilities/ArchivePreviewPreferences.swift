@@ -26,10 +26,33 @@ enum ArchivePreviewPreferences {
                 "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
             }
         }
+
+        var systemTimeStyle: DateFormatter.Style {
+            switch self {
+            case .day:
+                .none
+            case .minute:
+                .short
+            case .second, .ntfs, .nanoseconds:
+                .medium
+            }
+        }
+
+        var systemFractionalDigits: Int {
+            switch self {
+            case .ntfs:
+                7
+            case .nanoseconds:
+                9
+            default:
+                0
+            }
+        }
     }
 
     private static let timestampUTCKey = "FileManager.TimestampUTC"
     private static let timestampLevelKey = "FileManager.TimestampLevel"
+    private static let timestampSystemFormatKey = "FileManager.TimestampSystemFormat"
     static let expansionDepthKey = "QuickLookPreviewExpansionDepth"
     static let defaultExpansionDepth = 3
     static let maximumExpansionDepth = 10
@@ -51,14 +74,30 @@ enum ArchivePreviewPreferences {
             ? TimestampDisplayLevel.minute.rawValue
             : defaults.integer(forKey: timestampLevelKey)
         let level = TimestampDisplayLevel(rawValue: rawLevel) ?? .minute
+        let usesUTC = defaults.object(forKey: timestampUTCKey) != nil
+            && defaults.bool(forKey: timestampUTCKey)
+        let usesSystemFormat = defaults.object(forKey: timestampSystemFormatKey) == nil
+            || defaults.bool(forKey: timestampSystemFormatKey)
 
         let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = level.dateFormat
-        formatter.timeZone = defaults.object(forKey: timestampUTCKey) != nil && defaults.bool(forKey: timestampUTCKey)
-            ? TimeZone(secondsFromGMT: 0)
-            : .current
+        if usesSystemFormat {
+            formatter.locale = .current
+            formatter.dateStyle = .medium
+            formatter.timeStyle = level.systemTimeStyle
+            if level.systemFractionalDigits > 0 {
+                formatter.dateFormat = formatter.dateFormat.replacingOccurrences(
+                    of: "ss",
+                    with: "ss." + String(repeating: "S", count: level.systemFractionalDigits),
+                )
+            } else {
+                formatter.doesRelativeDateFormatting = true
+            }
+        } else {
+            formatter.calendar = Calendar(identifier: .gregorian)
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateFormat = level.dateFormat
+        }
+        formatter.timeZone = usesUTC ? TimeZone(secondsFromGMT: 0) : .current
         return formatter
     }
 }

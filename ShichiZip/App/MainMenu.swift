@@ -724,6 +724,9 @@ private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: SZL10n.string("app.view.systemTimeFormat"),
+                                action: #selector(FileManagerWindowController.toggleTimestampSystemFormat(_:)),
+                                keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "UTC",
                                 action: #selector(FileManagerWindowController.toggleTimestampUTC(_:)),
                                 keyEquivalent: ""))

@@ -249,14 +249,44 @@ enum FileManagerViewPreferences {
                 "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
             }
         }
+
+        /// Styles used when the list follows the system region. Finder renders its
+        /// date columns with a medium date and relative days, so the system option
+        /// matches that rather than a numeric skeleton.
+        fileprivate var systemTimeStyle: DateFormatter.Style {
+            switch self {
+            case .day:
+                .none
+            case .minute:
+                .short
+            case .second, .ntfs, .nanoseconds:
+                .medium
+            }
+        }
+
+        fileprivate var systemFractionalDigits: Int {
+            switch self {
+            case .ntfs:
+                7
+            case .nanoseconds:
+                9
+            default:
+                0
+            }
+        }
     }
 
     private static let timestampUTCKey = "FileManager.TimestampUTC"
     private static let timestampLevelKey = "FileManager.TimestampLevel"
+    private static let timestampSystemFormatKey = "FileManager.TimestampSystemFormat"
     private static let autoRefreshKey = "FileManager.AutoRefresh"
 
     static var usesUTCTimestamps: Bool {
         FileManagerPreferenceStore.bool(forKey: timestampUTCKey, defaultValue: false)
+    }
+
+    static var usesSystemTimestampFormat: Bool {
+        FileManagerPreferenceStore.bool(forKey: timestampSystemFormatKey, defaultValue: true)
     }
 
     static var timestampDisplayLevel: TimestampDisplayLevel {
@@ -272,6 +302,10 @@ enum FileManagerViewPreferences {
         set(value, forKey: timestampUTCKey)
     }
 
+    static func setUsesSystemTimestampFormat(_ value: Bool) {
+        set(value, forKey: timestampSystemFormatKey)
+    }
+
     static func setTimestampDisplayLevel(_ value: TimestampDisplayLevel) {
         set(value.rawValue, forKey: timestampLevelKey)
     }
@@ -281,11 +315,21 @@ enum FileManagerViewPreferences {
     }
 
     static func timeMenuPreviewTitle(for level: TimestampDisplayLevel, referenceDate: Date = Date()) -> String {
-        makeFixedFormatFormatter(format: level.dateFormat).string(from: referenceDate)
+        // The menu samples advertise the format itself, so relative days are
+        // suppressed there: a lone "Today" says nothing about the pattern.
+        makeFormatter(for: level, allowsRelativeDates: false).string(from: referenceDate)
     }
 
     static func makeListDateFormatter() -> DateFormatter {
-        makeFixedFormatFormatter(format: timestampDisplayLevel.dateFormat)
+        makeFormatter(for: timestampDisplayLevel, allowsRelativeDates: true)
+    }
+
+    private static func makeFormatter(for level: TimestampDisplayLevel,
+                                      allowsRelativeDates: Bool) -> DateFormatter
+    {
+        usesSystemTimestampFormat
+            ? makeLocalizedFormatter(for: level, allowsRelativeDates: allowsRelativeDates)
+            : makeFixedFormatFormatter(format: level.dateFormat)
     }
 
     static func makeDateFormatter(dateStyle: DateFormatter.Style,
@@ -325,6 +369,46 @@ enum FileManagerViewPreferences {
             formatter.timeZone = usesUTC ? TimeZone(secondsFromGMT: 0) : .current
             return formatter
         }
+    }
+
+    private static func makeLocalizedFormatter(for level: TimestampDisplayLevel,
+                                               allowsRelativeDates: Bool) -> DateFormatter
+    {
+        let locale = Locale.current
+        let usesUTC = usesUTCTimestamps
+        // The hour cycle is part of the key because the 24-Hour Time setting can
+        // change it without changing the locale identifier.
+        let cacheKey = [
+            "system",
+            String(level.rawValue),
+            locale.identifier,
+            "\(locale.calendar.identifier)",
+            "\(String(describing: locale.hourCycle))",
+            allowsRelativeDates ? "rel" : "abs",
+            usesUTC ? "1" : "0",
+        ].joined(separator: "|")
+
+        return cachedFormatter(forKey: cacheKey, in: fixedFormatFormatterCache) {
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.dateStyle = .medium
+            formatter.timeStyle = level.systemTimeStyle
+            if level.systemFractionalDigits > 0 {
+                // Assigning a pattern clears the styles, so the sub-second levels
+                // opt out of relative days by construction.
+                formatter.dateFormat = Self.fractionalPattern(from: formatter.dateFormat,
+                                                              digits: level.systemFractionalDigits)
+            } else {
+                formatter.doesRelativeDateFormatting = allowsRelativeDates
+            }
+            formatter.timeZone = usesUTC ? TimeZone(secondsFromGMT: 0) : .current
+            return formatter
+        }
+    }
+
+    static func fractionalPattern(from pattern: String, digits: Int) -> String {
+        pattern.replacingOccurrences(of: "ss",
+                                     with: "ss." + String(repeating: "S", count: digits))
     }
 
     private static func resetFormatterCaches() {

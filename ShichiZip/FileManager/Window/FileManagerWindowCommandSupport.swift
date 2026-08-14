@@ -719,6 +719,7 @@ enum FileManagerCommandValidator {
              #selector(FileManagerWindowController.showTimestampNTFS(_:)),
              #selector(FileManagerWindowController.showTimestampNanoseconds(_:)),
              #selector(FileManagerWindowController.toggleTimestampUTC(_:)),
+             #selector(FileManagerWindowController.toggleTimestampSystemFormat(_:)),
              #selector(FileManagerWindowController.toggleAutoRefresh(_:)):
             return true
         case #selector(FileManagerWindowController.openRootFolder(_:)):
@@ -776,6 +777,8 @@ enum FileManagerCommandValidator {
             menuItem.state = FileManagerViewPreferences.timestampDisplayLevel == .nanoseconds ? .on : .off
         case #selector(FileManagerWindowController.toggleTimestampUTC(_:)):
             menuItem.state = FileManagerViewPreferences.usesUTCTimestamps ? .on : .off
+        case #selector(FileManagerWindowController.toggleTimestampSystemFormat(_:)):
+            menuItem.state = FileManagerViewPreferences.usesSystemTimestampFormat ? .on : .off
         case #selector(FileManagerWindowController.toggleAutoRefresh(_:)):
             menuItem.state = FileManagerViewPreferences.autoRefreshEnabled ? .on : .off
         case #selector(FileManagerWindowController.toggleHiddenFiles(_:)):

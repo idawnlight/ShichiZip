@@ -377,6 +377,66 @@ final class FileManagerViewPreferencesTests: XCTestCase {
                        second.string(from: Date(timeIntervalSince1970: 1_713_635_445)))
     }
 
+    func testTimestampsFollowSystemRegionByDefault() throws {
+        let defaults = try makeIsolatedDefaults()
+        let reference = DateFormatter()
+        reference.locale = .current
+        reference.dateStyle = .medium
+        reference.timeStyle = .short
+
+        let formatter = ArchivePreviewPreferences.makeListDateFormatter(defaults: defaults)
+
+        XCTAssertEqual(formatter.dateFormat, reference.dateFormat)
+        XCTAssertEqual(formatter.locale, .current)
+        XCTAssertTrue(formatter.doesRelativeDateFormatting)
+    }
+
+    func testFixedTimestampFormatRemainsAvailable() throws {
+        let defaults = try makeIsolatedDefaults()
+        defaults.set(false, forKey: "FileManager.TimestampSystemFormat")
+
+        let formatter = ArchivePreviewPreferences.makeListDateFormatter(defaults: defaults)
+
+        XCTAssertEqual(formatter.dateFormat, "yyyy-MM-dd HH:mm")
+        XCTAssertEqual(formatter.locale.identifier, "en_US_POSIX")
+        XCTAssertFalse(formatter.doesRelativeDateFormatting)
+    }
+
+    func testSystemTimestampFormatKeepsSubSecondDigits() throws {
+        let date = Date(timeIntervalSince1970: 1_713_635_445.123456)
+
+        for (level, digits) in [(3, 7), (4, 9)] {
+            let defaults = try makeIsolatedDefaults()
+            defaults.set(level, forKey: "FileManager.TimestampLevel")
+
+            let formatted = ArchivePreviewPreferences
+                .makeListDateFormatter(defaults: defaults)
+                .string(from: date)
+            let fraction = try XCTUnwrap(
+                formatted.firstMatch(of: /\.(\d+)/)?.1,
+                "Level \(level) lost its fractional seconds: \(formatted)",
+            )
+
+            XCTAssertEqual(fraction.count, digits, "Level \(level) formatted as \(formatted)")
+        }
+    }
+
+    func testSystemTimestampFormatStillHonoursUTC() throws {
+        let defaults = try makeIsolatedDefaults()
+        defaults.set(true, forKey: "FileManager.TimestampUTC")
+
+        let formatter = ArchivePreviewPreferences.makeListDateFormatter(defaults: defaults)
+
+        XCTAssertEqual(formatter.timeZone, TimeZone(secondsFromGMT: 0))
+    }
+
+    func testFractionalPatternInjectsDigitsAfterSeconds() {
+        XCTAssertEqual(
+            FileManagerViewPreferences.fractionalPattern(from: "MMM d, y 'at' H:mm:ss", digits: 7),
+            "MMM d, y 'at' H:mm:ss.SSSSSSS",
+        )
+    }
+
     private func makeIsolatedDefaults() throws -> UserDefaults {
         let suiteName = "FileManagerViewPreferencesTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

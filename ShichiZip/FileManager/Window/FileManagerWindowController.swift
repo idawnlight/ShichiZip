@@ -672,6 +672,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         FileManagerViewPreferences.setUsesUTCTimestamps(!FileManagerViewPreferences.usesUTCTimestamps)
     }
 
+    @objc func toggleTimestampSystemFormat(_: Any?) {
+        FileManagerViewPreferences
+            .setUsesSystemTimestampFormat(!FileManagerViewPreferences.usesSystemTimestampFormat)
+    }
+
     @objc func toggleAutoRefresh(_: Any?) {
         FileManagerViewPreferences.setAutoRefreshEnabled(!FileManagerViewPreferences.autoRefreshEnabled)
     }

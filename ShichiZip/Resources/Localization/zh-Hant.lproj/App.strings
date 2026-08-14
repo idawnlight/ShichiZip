@@ -240,6 +240,7 @@
 "app.shortcut.toggleDualPane" = "切換雙窗格";
 "app.shortcut.toggleHiddenFiles" = "切換隱藏檔顯示";
 
+"app.view.systemTimeFormat" = "系統格式";
 "app.view.unifiedToolbarStyle" = "融合工具列樣式";
 
 "checksum.calculating" = "正在計算雜湊值...";

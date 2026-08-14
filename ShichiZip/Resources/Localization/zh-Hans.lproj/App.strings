@@ -240,6 +240,7 @@
 "app.shortcut.toggleDualPane" = "切换双栏";
 "app.shortcut.toggleHiddenFiles" = "切换隐藏文件显示";
 
+"app.view.systemTimeFormat" = "系统格式";
 "app.view.unifiedToolbarStyle" = "统一样式";
 
 "archive.cannotStartEditor" = "无法启动外部编辑器。";
