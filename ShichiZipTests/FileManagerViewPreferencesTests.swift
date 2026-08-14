@@ -103,7 +103,7 @@ final class FileManagerViewPreferencesTests: XCTestCase {
         let resolvedColumns = FileManagerViewPreferences.resolvedListViewColumns(columns, using: info)
 
         XCTAssertEqual(resolvedColumns.map(\.column.id), [.size, .name, .modified, .created])
-        XCTAssertEqual(resolvedColumns.map(\.width), [144, 333, 140, 140])
+        XCTAssertEqual(resolvedColumns.map(\.width), [144, 333, 180, 180])
     }
 
     func testResolvedListViewColumnsIgnoreUnavailableDuplicateAndHiddenColumns() {

@@ -81,7 +81,7 @@ final class ArchivePreviewPresentationTests: XCTestCase {
 
         XCTAssertEqual(columns.map(\.id), [.name, .size, .packedSize, .modified])
         XCTAssertEqual(columns.map(\.titleFallback), ["Name", "Size", "Packed Size", "Modified"])
-        XCTAssertEqual(columns.map(\.width), [250, 80, 100, 140])
+        XCTAssertEqual(columns.map(\.width), [250, 80, 100, 180])
     }
 
     func testArchiveColumnsResolveStoredMainAppVisibilityOrderAndWidths() throws {
@@ -131,7 +131,7 @@ final class ArchivePreviewPresentationTests: XCTestCase {
                                                                        defaults: defaults)
 
         XCTAssertEqual(resolved.map(\.column.id), [.packedSize, .name, .modified])
-        XCTAssertEqual(resolved.map(\.width), [123, 321, 140])
+        XCTAssertEqual(resolved.map(\.width), [123, 321, 180])
     }
 
     func testArchivePreviewSnapshotBuildsCollapsibleTreeWithImplicitFolders() {
