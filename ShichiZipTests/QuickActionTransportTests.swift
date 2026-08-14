@@ -48,7 +48,6 @@ final class QuickActionTransportTests: XCTestCase {
             "com.apple.archive",
             "com.apple.bom-compressed-cpio",
             "com.apple.disk-image",
-            "com.apple.disk-image-smi",
             "com.apple.disk-image-udif",
             "com.apple.encrypted-archive",
             "com.apple.iTunes.ipa",

@@ -228,7 +228,6 @@ targets:
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "cx.c3.pax-archive" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.pax-archive" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.disk-image" ||
-              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.disk-image-smi" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.iso-image" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.disk-image-udif" ||
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "org.debian.deb-archive" ||

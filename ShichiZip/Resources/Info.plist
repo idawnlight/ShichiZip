@@ -641,7 +641,7 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>DMG Disk Image</string>
+			<string>UDIF Disk Image</string>
 			<key>CFBundleTypeIconFile</key>
 			<string>diskimg</string>
 			<key>NSDocumentClass</key>
@@ -653,11 +653,12 @@
 			<key>CFBundleTypeExtensions</key>
 			<array>
 				<string>dmg</string>
+				<string>udif</string>
+				<string>img</string>
 			</array>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.apple.disk-image</string>
-				<string>com.apple.disk-image-smi</string>
+				<string>com.apple.disk-image-udif</string>
 			</array>
 		</dict>
 		<dict>
@@ -678,26 +679,6 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.iso-image</string>
-			</array>
-		</dict>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string>UDIF Disk Image</string>
-			<key>CFBundleTypeIconFile</key>
-			<string>diskimg</string>
-			<key>NSDocumentClass</key>
-			<string>$(PRODUCT_MODULE_NAME).ArchiveDocument</string>
-			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
-			<key>LSHandlerRank</key>
-			<string>Alternate</string>
-			<key>CFBundleTypeExtensions</key>
-			<array>
-				<string>udif</string>
-			</array>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>com.apple.disk-image-udif</string>
 			</array>
 		</dict>
 		<dict>

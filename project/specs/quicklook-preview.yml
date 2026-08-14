@@ -135,7 +135,6 @@ targets:
               - cx.c3.pax-archive
               - public.pax-archive
               - com.apple.disk-image
-              - com.apple.disk-image-smi
               - public.iso-image
               - com.apple.disk-image-udif
               - org.debian.deb-archive
