@@ -19,6 +19,7 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
     private let deferredDisplay: Bool
     private var deferredPresentationTask: Task<Void, Never>?
     private var warningContinuation: CheckedContinuation<Void, Never>?
+    private var dockProgressToken: UUID?
     private var isSheetVisible = false
     private var isDismissing = false
     private var isFinished = false
@@ -104,6 +105,7 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
         guard !isFinished else { return }
         deferredPresentationTask?.cancel()
         deferredPresentationTask = nil
+        endDockProgress()
         model.complete(updateOutcome: updateOutcome)
         updateWindowSizeForContent()
 
@@ -122,6 +124,7 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
         guard !isFinished else { return }
         deferredPresentationTask?.cancel()
         deferredPresentationTask = nil
+        endDockProgress()
         dismiss()
         finishTeardown()
     }
@@ -142,6 +145,10 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
         guard !isFinished else { return }
         if model.receive(snapshot) {
             updateWindowSizeForContent()
+        }
+        if let dockProgressToken {
+            DockProgressController.shared.update(dockProgressToken,
+                                                 fraction: model.progressValue)
         }
         if snapshot.isWaitingForUserInteraction
             || snapshot.isCancellationRequested
@@ -174,8 +181,10 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
     }
 
     private func showProgressIfNeeded() {
-        guard !isFinished,
-              !isSheetVisible,
+        guard !isFinished else { return }
+        beginDockProgress()
+
+        guard !isSheetVisible,
               let window = windowController.window,
               !window.isVisible
         else {
@@ -226,9 +235,25 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
         isDismissing = false
     }
 
+    private func beginDockProgress() {
+        guard dockProgressToken == nil else { return }
+        let token = DockProgressController.shared.begin()
+        dockProgressToken = token
+        // Seed the current fraction so the bar lands with the window instead of
+        // waiting for the next snapshot.
+        DockProgressController.shared.update(token, fraction: model.progressValue)
+    }
+
+    private func endDockProgress() {
+        guard let dockProgressToken else { return }
+        self.dockProgressToken = nil
+        DockProgressController.shared.end(dockProgressToken)
+    }
+
     private func finishTeardown() {
         guard !isFinished else { return }
         isFinished = true
+        endDockProgress()
         session.snapshotHandler = nil
         session.passwordRequestHandler = nil
         session.choiceRequestHandler = nil
