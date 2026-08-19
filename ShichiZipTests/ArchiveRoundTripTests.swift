@@ -502,6 +502,50 @@ final class ArchiveRoundTripTests: XCTestCase {
         }
     }
 
+    // MARK: - Progress reporting
+
+    /// Opening before an extraction publishes the archive size as a total, but
+    /// must never advance or complete the bar the extraction restarts from.
+    func testOpeningForExtractionLeavesProgressToTheExtraction() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "roundtrip-progress")
+        let sourceRoot = tempRoot.appendingPathComponent("src", isDirectory: true)
+        try FileManager.default.createDirectory(at: sourceRoot,
+                                                withIntermediateDirectories: true)
+        let payload = String(repeating: "progress payload\n", count: 4096)
+        _ = try writePayloads(["a.txt": payload], into: sourceRoot)
+        let archiveURL = tempRoot.appendingPathComponent("progress.7z")
+        try createArchive(at: archiveURL, from: [sourceRoot])
+
+        let archive = SZArchive()
+        let session = SZOperationSession()
+        try archive.open(atPath: archiveURL.path, session: session)
+        defer { archive.close() }
+
+        let archiveSize = try XCTUnwrap(
+            FileManager.default.attributesOfItem(atPath: archiveURL.path)[.size] as? UInt64,
+        )
+        XCTAssertEqual(session.bytesTotal, archiveSize,
+                       "opening reports the archive size, but only as a total")
+        XCTAssertEqual(session.bytesCompleted, 0)
+        XCTAssertEqual(session.progressFraction, 0,
+                       "an open that precedes extraction must not advance the bar")
+
+        let extractDir = tempRoot.appendingPathComponent("extract", isDirectory: true)
+        try FileManager.default.createDirectory(at: extractDir,
+                                                withIntermediateDirectories: true)
+        let settings = SZExtractionSettings()
+        settings.pathMode = .fullPaths
+        try archive.extract(toPath: extractDir.path,
+                            settings: settings,
+                            session: session)
+
+        XCTAssertEqual(session.bytesTotal, UInt64(payload.utf8.count),
+                       "the extraction owns the byte totals once it starts")
+        XCTAssertEqual(session.bytesCompleted, session.bytesTotal)
+        XCTAssertEqual(session.progressFraction, 1, accuracy: 0.0001,
+                       "extraction must end on a full bar")
+    }
+
     // MARK: - Positive-password open
 
     /// Covers the positive password path, not just wrong-password errors.

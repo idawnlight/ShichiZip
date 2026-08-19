@@ -96,6 +96,9 @@ public:
     UInt64 TotalValue;
     bool HasTotalValue;
     bool UsesBytesProgress;
+    /// Upstream splits this: `COpenArchiveCallback` drives its own bar, while
+    /// `CExtractCallbackImp` leaves it to the phase that follows the open.
+    bool OwnsProgress;
     __weak SZOperationSession* Session;
     UString ArchivePath;
 

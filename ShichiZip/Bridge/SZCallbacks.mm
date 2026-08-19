@@ -290,6 +290,7 @@ SZOpenCallbackUI::SZOpenCallbackUI()
     , TotalValue(0)
     , HasTotalValue(false)
     , UsesBytesProgress(false)
+    , OwnsProgress(false)
     , Session(nil) {
 }
 
@@ -322,10 +323,11 @@ HRESULT SZOpenCallbackUI::Open_SetTotal(const UInt64* numFiles, const UInt64* nu
     if (session && HasTotalValue) {
         [session reportPhase:SZOperationPhaseOpening];
         const UInt64 total = TotalValue;
-        const bool useBytesProgress = UsesBytesProgress;
-        [session reportProgressFraction:0.0];
-        if (useBytesProgress) {
+        // Upstream publishes the archive size but keeps the bar at zero.
+        if (UsesBytesProgress) {
             [session reportBytesCompleted:0 total:total];
+        } else if (OwnsProgress) {
+            [session reportProgressFraction:0.0];
         }
     }
 
@@ -333,7 +335,17 @@ HRESULT SZOpenCallbackUI::Open_SetTotal(const UInt64* numFiles, const UInt64* nu
 }
 
 HRESULT SZOpenCallbackUI::Open_SetCompleted(const UInt64* numFiles, const UInt64* numBytes) {
-    if (!HasTotalValue || TotalValue == 0) {
+    SZOperationSession* session = Session;
+    if (!session) {
+        return Open_CheckBreak();
+    }
+
+    // Upstream ticks the scanned-file counter for every open.
+    if (numFiles) {
+        [session reportFilesCompleted:*numFiles];
+    }
+
+    if (!OwnsProgress || !HasTotalValue || TotalValue == 0) {
         return Open_CheckBreak();
     }
 
@@ -349,28 +361,16 @@ HRESULT SZOpenCallbackUI::Open_SetCompleted(const UInt64* numFiles, const UInt64
     }
 
     const UInt64 total = TotalValue;
-    const double fraction = (double)completed / (double)total;
-    SZOperationSession* session = Session;
-    if (session) {
-        [session reportProgressFraction:fraction];
-        if (UsesBytesProgress) {
-            [session reportBytesCompleted:completed total:total];
-        }
+    [session reportProgressFraction:(double)completed / (double)total];
+    if (UsesBytesProgress) {
+        [session reportBytesCompleted:completed total:total];
     }
 
     return Open_CheckBreak();
 }
 
 HRESULT SZOpenCallbackUI::Open_Finished() {
-    SZOperationSession* session = Session;
-    if (session && HasTotalValue && TotalValue > 0) {
-        const UInt64 total = TotalValue;
-        [session reportProgressFraction:1.0];
-        if (UsesBytesProgress) {
-            [session reportBytesCompleted:total total:total];
-        }
-    }
-
+    // Upstream never completes the bar here.
     return Open_CheckBreak();
 }
 
@@ -380,6 +380,11 @@ HRESULT SZOpenCallbackUI::Open_Finished() {
 
 Z7_COM7F_IMF(SZFolderExtractCallback::SetTotal(UInt64 total)) {
     TotalSize = total;
+    SZOperationSession* session = Session;
+    if (session && total > 0) {
+        [session reportProgressFraction:0.0];
+        [session reportBytesCompleted:0 total:total];
+    }
     return S_OK;
 }
 
@@ -995,38 +1000,18 @@ Z7_COM7F_IMF(SZAgentUpdateCallback::SetTotal(const UInt64* files, const UInt64* 
     }
 
     SZOperationSession* session = Session;
-    if (session && HasOpenTotalValue) {
-        [session reportProgressFraction:0.0];
-        if (UsesBytesProgress) {
-            [session reportBytesCompleted:0 total:OpenTotalValue];
-        }
+    // This open precedes the update, so it leaves the bar to it.
+    if (session && HasOpenTotalValue && UsesBytesProgress) {
+        [session reportBytesCompleted:0 total:OpenTotalValue];
     }
 
     return SZAgentCheckBreak(session);
 }
 
-Z7_COM7F_IMF(SZAgentUpdateCallback::SetCompleted(const UInt64* files, const UInt64* bytes)) {
-    if (!HasOpenTotalValue || OpenTotalValue == 0) {
-        return SZAgentCheckBreak(Session);
-    }
-
-    UInt64 completed = 0;
-    if (UsesBytesProgress && bytes) {
-        completed = *bytes;
-    } else if (!UsesBytesProgress && files) {
-        completed = *files;
-    }
-
-    if (completed > OpenTotalValue) {
-        completed = OpenTotalValue;
-    }
-
+Z7_COM7F_IMF(SZAgentUpdateCallback::SetCompleted(const UInt64* files, const UInt64* /* bytes */)) {
     SZOperationSession* session = Session;
-    if (session) {
-        [session reportProgressFraction:(double)completed / (double)OpenTotalValue];
-        if (UsesBytesProgress) {
-            [session reportBytesCompleted:completed total:OpenTotalValue];
-        }
+    if (session && files) {
+        [session reportFilesCompleted:*files];
     }
 
     return SZAgentCheckBreak(session);

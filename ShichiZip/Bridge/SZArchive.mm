@@ -2096,6 +2096,20 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     return [self openAtPath:path
                    openType:openType
                    password:nil
+               progressMode:SZOpenProgressModePrelude
+                    session:session
+                      error:error];
+}
+
+- (BOOL)openAtPath:(NSString*)path
+          openType:(NSString*)openType
+      progressMode:(SZOpenProgressMode)progressMode
+           session:(SZOperationSession*)session
+             error:(NSError**)error {
+    return [self openAtPath:path
+                   openType:openType
+                   password:nil
+               progressMode:progressMode
                     session:session
                       error:error];
 }
@@ -2120,6 +2134,20 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
 - (BOOL)openAtPath:(NSString*)path
           openType:(NSString*)openType
           password:(NSString*)password
+           session:(SZOperationSession*)session
+             error:(NSError**)error {
+    return [self openAtPath:path
+                   openType:openType
+                   password:password
+               progressMode:SZOpenProgressModePrelude
+                    session:session
+                      error:error];
+}
+
+- (BOOL)openAtPath:(NSString*)path
+          openType:(NSString*)openType
+          password:(NSString*)password
+      progressMode:(SZOpenProgressMode)progressMode
            session:(SZOperationSession*)session
              error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
@@ -2161,6 +2189,7 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     SZOpenCallbackUI callbackUI;
     callbackUI.Session = resolvedSession;
     callbackUI.ArchivePath = ToU(path ?: @"");
+    callbackUI.OwnsProgress = (progressMode == SZOpenProgressModePrimary);
     if (password) {
         callbackUI.PasswordIsDefined = true;
         callbackUI.Password = ToU(password);

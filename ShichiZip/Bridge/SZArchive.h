@@ -139,6 +139,14 @@ typedef NS_ENUM(NSInteger, SZPathMode) {
     SZPathModeAbsolutePaths
 };
 
+/// Whether an archive open owns the session's progress bar or merely precedes
+/// the phase that does. Mirrors upstream's `COpenArchiveCallback` and
+/// `CExtractCallbackImp` split.
+typedef NS_ENUM(NSInteger, SZOpenProgressMode) {
+    SZOpenProgressModePrelude = 0,
+    SZOpenProgressModePrimary,
+};
+
 /// Three-state boolean used for archive metadata settings.
 typedef NS_ENUM(NSInteger, SZCompressionBoolSetting) {
     SZCompressionBoolSettingNotDefined = -1,
@@ -306,6 +314,13 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 /// Open an existing archive for reading with an explicit 7-Zip open type
 - (BOOL)openAtPath:(NSString*)path
           openType:(nullable NSString*)openType
+           session:(nullable SZOperationSession*)session
+             error:(NSError**)error;
+
+/// Open an existing archive for reading, stating who owns progress reporting
+- (BOOL)openAtPath:(NSString*)path
+          openType:(nullable NSString*)openType
+      progressMode:(SZOpenProgressMode)progressMode
            session:(nullable SZOperationSession*)session
              error:(NSError**)error;
 

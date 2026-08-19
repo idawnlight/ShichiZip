@@ -220,6 +220,7 @@ enum FileManagerArchiveOpenService {
             try coordinatedRead(at: url) { coordinatedURL in
                 try archive.open(atPath: coordinatedURL.path,
                                  openType: openMode.openType,
+                                 progressMode: .primary,
                                  session: session)
             }
             let entries = try FileManagerArchiveListing.items(from: archive,
