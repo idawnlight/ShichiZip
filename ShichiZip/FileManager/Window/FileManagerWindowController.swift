@@ -793,9 +793,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             }
 
             guard snapshot.capabilities.canCopySelection else { return }
-            guard let unresolvedDestinationTarget = await promptForFileOperationDestination(forMove: false,
-                                                                                            sourcePane: pane)
+            guard let destinationSelection = await promptForFileOperationDestination(forMove: false,
+                                                                                      sourcePane: pane)
             else { return }
+            let unresolvedDestinationTarget = destinationSelection.target
 
             let destinationTarget: FileOperationDestinationTarget
             do {
@@ -817,6 +818,17 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                         try prepared.perform(session: session)
                     }
                     refreshPaneDisplayingDirectory(destURL)
+                    if destinationSelection.shouldRevealAfterTransfer {
+                        let itemURLs = snapshot.selection.displayedNames.map {
+                            destURL.appendingPathComponent($0, isDirectory: false)
+                        }.filter { FileManager.default.fileExists(atPath: $0.path) }
+                        if itemURLs.isEmpty {
+                            NSWorkspace.shared.selectFile(destURL.path,
+                                                          inFileViewerRootedAtPath: destURL.deletingLastPathComponent().path)
+                        } else {
+                            NSWorkspace.shared.activateFileViewerSelecting(itemURLs)
+                        }
+                    }
                 } catch {
                     showErrorAlert(error)
                 }
@@ -829,9 +841,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         let sourceURLs = snapshot.selection.fileURLs
         guard !sourceURLs.isEmpty else { return }
 
-        guard let destinationTarget = await promptForFileOperationDestination(forMove: move,
-                                                                              sourcePane: pane)
+        guard let destinationSelection = await promptForFileOperationDestination(forMove: move,
+                                                                                 sourcePane: pane)
         else { return }
+        let destinationTarget = destinationSelection.target
         guard validateTransferDestination(destinationTarget,
                                           sourceURLs: sourceURLs,
                                           move: move,
@@ -984,7 +997,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     private func promptForFileOperationDestination(forMove move: Bool,
-                                                   sourcePane: FileManagerPaneController) async -> FileOperationDestinationTarget?
+                                                   sourcePane: FileManagerPaneController) async -> (target: FileOperationDestinationTarget,
+                                                                                                   shouldRevealAfterTransfer: Bool)?
     {
         let sourceSnapshot = sourcePane.snapshot
         let defaultPath = suggestedDestinationPath(for: sourcePane)
@@ -1002,7 +1016,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                presentingIn: nil)
         }
 
-        return await prompt.run(for: window)
+        guard let target = await prompt.run(for: window) else {
+            return nil
+        }
+        return (target: target,
+                shouldRevealAfterTransfer: prompt.shouldRevealAfterTransfer)
     }
 
     private func validateTransferDestination(_ destinationTarget: FileOperationDestinationTarget,

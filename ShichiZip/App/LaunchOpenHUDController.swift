@@ -107,7 +107,7 @@ final class LaunchOpenHUDController: NSObject {
     private var urls: [URL]
     private let totalSeconds: TimeInterval
     private let browseModifier: LaunchOpenBrowseModifier
-    private let revealAfterExtract: Bool
+    private let RevealAfterLaunchOpenExtract: Bool
     private var panel: NSPanel?
     private var titleLabel: NSTextField?
     private var countdownLabel: NSTextField?
@@ -124,7 +124,7 @@ final class LaunchOpenHUDController: NSObject {
         self.urls = urls
         totalSeconds = seconds
         browseModifier = SZSettings.launchOpenBrowseModifier
-        revealAfterExtract = SZSettings.launchOpenRevealAfterExtract
+        RevealAfterLaunchOpenExtract = SZSettings.launchOpenRevealAfterExtract
         super.init()
     }
 
@@ -486,7 +486,7 @@ final class LaunchOpenHUDController: NSObject {
                 }
             case .extract:
                 Self.runSmartExtract(urls: pendingURLs,
-                                     revealDestination: revealAfterExtract)
+                                     revealDestination: RevealAfterLaunchOpenExtract)
                 {
                     for r in releases {
                         r()

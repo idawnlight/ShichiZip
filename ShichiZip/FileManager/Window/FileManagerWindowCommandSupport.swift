@@ -108,12 +108,15 @@ enum FileManagerArchiveCommandSupport {
                     postProcessError = error
                 }
                 refreshPaneDisplayingDirectory(extractResult.destinationURL)
+                if extractResult.revealAfterExtractInFileManager {
+                    NSWorkspace.shared.selectFile(extractResult.destinationURL.path,
+                                                  inFileViewerRootedAtPath: extractResult.destinationURL.deletingLastPathComponent().path)
+                }
                 if postProcessResult.movedSourceArchiveToTrash,
                    let sourceArchiveURL
                 {
                     refreshPaneDisplayingDirectory(sourceArchiveURL.deletingLastPathComponent())
                 }
-                NSWorkspace.shared.open(extractResult.destinationURL)
                 if let postProcessError {
                     showError(postProcessError)
                 }
@@ -184,6 +187,10 @@ enum FileManagerArchiveCommandSupport {
                 try await copyPreparedArchiveItems(prepared,
                                                    parentWindow: parentWindow)
                 refreshPaneDisplayingDirectory(destinationURL)
+                if prompt.shouldRevealAfterTransfer {
+                    revealCopiedArchiveItems(snapshot: snapshot,
+                                             destinationURL: destinationURL)
+                }
             } catch {
                 showError(error)
             }
@@ -191,6 +198,20 @@ enum FileManagerArchiveCommandSupport {
             szPresentMessage(title: SZL10n.string("app.fileManager.operationNotAvailable"),
                              message: "Copying items from an open archive directly into another archive is not implemented yet.",
                              for: parentWindow)
+        }
+    }
+
+    private static func revealCopiedArchiveItems(snapshot: FileManagerPaneSnapshot,
+                                                 destinationURL: URL)
+    {
+        let itemURLs = snapshot.selection.displayedNames.map {
+            destinationURL.appendingPathComponent($0, isDirectory: false)
+        }.filter { FileManager.default.fileExists(atPath: $0.path) }
+        if itemURLs.isEmpty {
+            NSWorkspace.shared.selectFile(destinationURL.path,
+                                          inFileViewerRootedAtPath: destinationURL.deletingLastPathComponent().path)
+        } else {
+            NSWorkspace.shared.activateFileViewerSelecting(itemURLs)
         }
     }
 
