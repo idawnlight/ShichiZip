@@ -20,6 +20,8 @@ enum SZSettingsKey: String {
     case excludeMacResourceFilesByDefault = "ExcludeMacResourceFilesByDefault"
     case moveArchiveToTrashAfterExtraction = "MoveArchiveToTrashAfterExtraction"
     case inheritDownloadedFileQuarantine = "InheritDownloadedFileQuarantine"
+    case revealAfterExtractInFileManager = "RevealAfterExtractInFileManager"
+    case revealAfterTransfer = "RevealAfterTransfer"
     case memLimitEnabled = "MemLimitEnabled"
     case memLimitGB = "MemLimitGB"
 
@@ -77,6 +79,8 @@ enum LaunchOpenBrowseModifier: String {
 // MARK: - Settings Access
 
 enum SZSettings {
+    private static let legacyRevealAfterExtractKey = "RevealAfterExtract"
+
     private static var defaults: UserDefaults {
         SZSharedUserDefaults.defaults
     }
@@ -157,6 +161,34 @@ enum SZSettings {
                          forKey: ArchivePreviewPreferences.expansionDepthKey)
             postChange(forRawKey: ArchivePreviewPreferences.expansionDepthKey)
         }
+    }
+
+    static var revealAfterExtractInFileManager: Bool {
+        get { fileManagerRevealAfterExtract(defaults: defaults) }
+        set { set(newValue, for: .revealAfterExtractInFileManager) }
+    }
+
+    static var revealAfterTransfer: Bool {
+        get { fileManagerRevealAfterTransfer(defaults: defaults) }
+        set { set(newValue, for: .revealAfterTransfer) }
+    }
+
+    static func fileManagerRevealAfterExtract(defaults: UserDefaults) -> Bool {
+        let key = SZSettingsKey.revealAfterExtractInFileManager.rawValue
+        if defaults.object(forKey: key) == nil,
+           defaults.object(forKey: legacyRevealAfterExtractKey) != nil
+        {
+            let value = defaults.bool(forKey: legacyRevealAfterExtractKey)
+            defaults.set(value, forKey: key)
+            defaults.removeObject(forKey: legacyRevealAfterExtractKey)
+            return value
+        }
+        return defaults.object(forKey: key) == nil ? false : defaults.bool(forKey: key)
+    }
+
+    static func fileManagerRevealAfterTransfer(defaults: UserDefaults) -> Bool {
+        let key = SZSettingsKey.revealAfterTransfer.rawValue
+        return defaults.object(forKey: key) == nil ? false : defaults.bool(forKey: key)
     }
 
     // MARK: - Launch-open HUD

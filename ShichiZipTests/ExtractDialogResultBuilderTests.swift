@@ -58,6 +58,17 @@ final class ExtractDialogResultBuilderTests: XCTestCase {
         }
     }
 
+    func testRevealAfterExtractInFileManagerChoiceIsReturned() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "extract-dialog-reveal-in-finder")
+        let builder = ExtractDialogResultBuilder(baseDirectory: tempRoot)
+        var state = makeState(destinationPath: tempRoot.path)
+        state.revealAfterExtractInFileManager = true
+
+        let resolved = try builder.buildResult(from: state)
+
+        XCTAssertTrue(resolved.result.revealAfterExtractInFileManager)
+    }
+
     private func makeState(destinationPath: String,
                            splitDestination: Bool = false,
                            splitName: String = "Archive") -> ExtractDialogState
@@ -72,7 +83,8 @@ final class ExtractDialogResultBuilderTests: XCTestCase {
                            splitName: splitName,
                            showPassword: false,
                            moveArchiveToTrashAfterExtraction: false,
-                           inheritDownloadedFileQuarantine: false)
+                           inheritDownloadedFileQuarantine: false,
+                           revealAfterExtractInFileManager: false)
     }
 
     private func directoryExists(at url: URL) -> Bool {

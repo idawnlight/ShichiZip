@@ -1446,6 +1446,7 @@ final class FileOperationDestinationPrompt {
     private let defaultPath: String
     private let infoText: String
     private let validateDestination: (FileOperationDestinationTarget) -> Bool
+    private(set) var shouldRevealAfterTransfer = false
 
     init(move: Bool,
          sourcePane: FileManagerPaneController,
@@ -1495,7 +1496,13 @@ final class FileOperationDestinationPrompt {
         inputRow.spacing = 8
         inputRow.distribution = .fill
 
-        let stack = NSStackView(views: [label, inputRow])
+        let revealAfterTransferCheckbox = NSButton(checkboxWithTitle: SZL10n.string("app.fileManager.revealAfterTransfer"),
+                                                   target: nil,
+                                                   action: nil)
+        revealAfterTransferCheckbox.state = SZSettings.revealAfterTransfer ? .on : .off
+        revealAfterTransferCheckbox.setAccessibilityIdentifier("fileOperation.revealInFinder")
+
+        let stack = NSStackView(views: [label, inputRow, revealAfterTransferCheckbox])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 6
@@ -1535,6 +1542,8 @@ final class FileOperationDestinationPrompt {
                 guard validateDestination(destinationTarget) else {
                     return false
                 }
+                self.shouldRevealAfterTransfer = revealAfterTransferCheckbox.state == .on
+                SZSettings.revealAfterTransfer = self.shouldRevealAfterTransfer
                 resolvedDestinationTarget = destinationTarget
                 return true
             } catch {

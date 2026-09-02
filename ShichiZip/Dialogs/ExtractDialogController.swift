@@ -9,6 +9,7 @@ struct ExtractDialogResult {
     let eliminateDuplicates: Bool
     let moveArchiveToTrashAfterExtraction: Bool
     let inheritDownloadedFileQuarantine: Bool
+    let revealAfterExtractInFileManager: Bool
 }
 
 struct ExtractQuickActionDefaults {
@@ -168,7 +169,8 @@ final class ExtractDialogController: NSObject {
                                               splitName: suggestedSplitDestinationName ?? "",
                                               showPassword: DialogPreferences.showPassword(),
                                               moveArchiveToTrashAfterExtraction: SZSettings.bool(.moveArchiveToTrashAfterExtraction),
-                                              inheritDownloadedFileQuarantine: SZSettings.bool(.inheritDownloadedFileQuarantine))
+                                              inheritDownloadedFileQuarantine: SZSettings.bool(.inheritDownloadedFileQuarantine),
+                                              revealAfterExtractInFileManager: SZSettings.revealAfterExtractInFileManager)
         let contentController = ExtractDialogContentController(state: initialState,
                                                                pathModeOptions: pathModeOptions,
                                                                overwriteModeOptions: overwriteModeOptions,
@@ -225,6 +227,7 @@ final class ExtractDialogController: NSObject {
                                  showPassword: state.showPassword)
         SZSettings.set(state.moveArchiveToTrashAfterExtraction, for: .moveArchiveToTrashAfterExtraction)
         SZSettings.set(state.inheritDownloadedFileQuarantine, for: .inheritDownloadedFileQuarantine)
+        SZSettings.revealAfterExtractInFileManager = state.revealAfterExtractInFileManager
         return resolvedResult.result
     }
 
