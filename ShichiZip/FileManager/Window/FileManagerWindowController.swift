@@ -819,15 +819,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                     }
                     refreshPaneDisplayingDirectory(destURL)
                     if destinationSelection.shouldRevealAfterTransfer {
-                        let itemURLs = snapshot.selection.displayedNames.map {
-                            destURL.appendingPathComponent($0, isDirectory: false)
-                        }.filter { FileManager.default.fileExists(atPath: $0.path) }
-                        if itemURLs.isEmpty {
-                            NSWorkspace.shared.selectFile(destURL.path,
-                                                          inFileViewerRootedAtPath: destURL.deletingLastPathComponent().path)
-                        } else {
-                            NSWorkspace.shared.activateFileViewerSelecting(itemURLs)
-                        }
+                        FileOperationTransferReveal.reveal(itemNames: snapshot.selection.displayedNames,
+                                                           in: destURL)
                     }
                 } catch {
                     showErrorAlert(error)
@@ -879,6 +872,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                                 to: destURL,
                                                                 operation: dragOperation,
                                                                 session: session)
+                }
+                if destinationSelection.shouldRevealAfterTransfer {
+                    FileOperationTransferReveal.reveal(itemNames: sourceURLs.map(\.lastPathComponent),
+                                                       in: destURL)
                 }
             } catch {
                 showErrorAlert(error)

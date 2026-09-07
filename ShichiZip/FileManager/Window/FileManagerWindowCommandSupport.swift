@@ -188,8 +188,8 @@ enum FileManagerArchiveCommandSupport {
                                                    parentWindow: parentWindow)
                 refreshPaneDisplayingDirectory(destinationURL)
                 if prompt.shouldRevealAfterTransfer {
-                    revealCopiedArchiveItems(snapshot: snapshot,
-                                             destinationURL: destinationURL)
+                    FileOperationTransferReveal.reveal(itemNames: snapshot.selection.displayedNames,
+                                                       in: destinationURL)
                 }
             } catch {
                 showError(error)
@@ -198,20 +198,6 @@ enum FileManagerArchiveCommandSupport {
             szPresentMessage(title: SZL10n.string("app.fileManager.operationNotAvailable"),
                              message: "Copying items from an open archive directly into another archive is not implemented yet.",
                              for: parentWindow)
-        }
-    }
-
-    private static func revealCopiedArchiveItems(snapshot: FileManagerPaneSnapshot,
-                                                 destinationURL: URL)
-    {
-        let itemURLs = snapshot.selection.displayedNames.map {
-            destinationURL.appendingPathComponent($0, isDirectory: false)
-        }.filter { FileManager.default.fileExists(atPath: $0.path) }
-        if itemURLs.isEmpty {
-            NSWorkspace.shared.selectFile(destinationURL.path,
-                                          inFileViewerRootedAtPath: destinationURL.deletingLastPathComponent().path)
-        } else {
-            NSWorkspace.shared.activateFileViewerSelecting(itemURLs)
         }
     }
 

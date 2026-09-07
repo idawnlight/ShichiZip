@@ -1334,6 +1334,22 @@ enum FileOperationFileSystemTransfer {
 }
 
 @MainActor
+enum FileOperationTransferReveal {
+    static func reveal(itemNames: [String], in destinationDirectory: URL) {
+        let itemURLs = itemNames.map {
+            destinationDirectory.appendingPathComponent($0, isDirectory: false)
+        }.filter { FileManager.default.fileExists(atPath: $0.path) }
+
+        if itemURLs.isEmpty {
+            NSWorkspace.shared.selectFile(destinationDirectory.path,
+                                          inFileViewerRootedAtPath: destinationDirectory.deletingLastPathComponent().path)
+        } else {
+            NSWorkspace.shared.activateFileViewerSelecting(itemURLs)
+        }
+    }
+}
+
+@MainActor
 enum FileOperationArchiveDestinationTransfer {
     static func perform(_ sourceURLs: [URL],
                         from sourcePane: FileManagerPaneController,
