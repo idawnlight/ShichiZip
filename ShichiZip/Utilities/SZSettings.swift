@@ -79,10 +79,8 @@ enum LaunchOpenBrowseModifier: String {
 // MARK: - Settings Access
 
 enum SZSettings {
-    private static let legacyRevealAfterExtractKey = "RevealAfterExtract"
-
     private static var defaults: UserDefaults {
-        SZSharedUserDefaults.defaults
+        SZSettingsMigrations.defaults
     }
 
     private static func defaultBool(for key: SZSettingsKey) -> Bool {
@@ -164,31 +162,13 @@ enum SZSettings {
     }
 
     static var revealAfterExtractInFileManager: Bool {
-        get { fileManagerRevealAfterExtract(defaults: defaults) }
+        get { bool(.revealAfterExtractInFileManager) }
         set { set(newValue, for: .revealAfterExtractInFileManager) }
     }
 
     static var revealAfterTransfer: Bool {
-        get { fileManagerRevealAfterTransfer(defaults: defaults) }
+        get { bool(.revealAfterTransfer) }
         set { set(newValue, for: .revealAfterTransfer) }
-    }
-
-    static func fileManagerRevealAfterExtract(defaults: UserDefaults) -> Bool {
-        let key = SZSettingsKey.revealAfterExtractInFileManager.rawValue
-        if defaults.object(forKey: key) == nil,
-           defaults.object(forKey: legacyRevealAfterExtractKey) != nil
-        {
-            let value = defaults.bool(forKey: legacyRevealAfterExtractKey)
-            defaults.set(value, forKey: key)
-            defaults.removeObject(forKey: legacyRevealAfterExtractKey)
-            return value
-        }
-        return defaults.object(forKey: key) == nil ? false : defaults.bool(forKey: key)
-    }
-
-    static func fileManagerRevealAfterTransfer(defaults: UserDefaults) -> Bool {
-        let key = SZSettingsKey.revealAfterTransfer.rawValue
-        return defaults.object(forKey: key) == nil ? false : defaults.bool(forKey: key)
     }
 
     // MARK: - Launch-open HUD

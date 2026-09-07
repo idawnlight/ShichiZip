@@ -50,7 +50,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
     }
 
     func applicationWillFinishLaunching(_: Notification) {
-        SZSharedUserDefaults.migrateStandardDefaultsIfNeeded()
+        SZSettingsMigrations.preparePreferences()
         let documentController = ShichiZipDocumentController()
         precondition(NSDocumentController.shared === documentController,
                      "ShichiZipDocumentController must be the shared document controller")
