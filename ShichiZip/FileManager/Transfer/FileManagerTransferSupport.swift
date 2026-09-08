@@ -1354,7 +1354,33 @@ enum FileOperationTransferReveal {
             NSWorkspace.shared.selectFile(destinationDirectory.path,
                                           inFileViewerRootedAtPath: destinationDirectory.deletingLastPathComponent().path)
         } else {
-            NSWorkspace.shared.activateFileViewerSelecting(itemURLs)
+            reveal(outputURLs: itemURLs, in: destinationDirectory)
+        }
+    }
+
+    static func reveal(outputURLs: [URL], in destinationDirectory: URL) {
+        let urls = itemURLs(for: outputURLs, in: destinationDirectory)
+        if !urls.isEmpty {
+            NSWorkspace.shared.activateFileViewerSelecting(urls)
+        }
+    }
+
+    nonisolated static func itemURLs(for outputURLs: [URL], in destinationDirectory: URL) -> [URL] {
+        let directory = destinationDirectory.standardizedFileURL
+        let rootComponents = directory.pathComponents
+        var seenPaths: Set<String> = []
+        return outputURLs.compactMap { outputURL in
+            let url = outputURL.standardizedFileURL
+            let components = url.pathComponents
+            let itemURL: URL
+            if components.starts(with: rootComponents),
+               components.count > rootComponents.count
+            {
+                itemURL = directory.appendingPathComponent(components[rootComponents.count])
+            } else {
+                itemURL = url
+            }
+            return seenPaths.insert(itemURL.path).inserted ? itemURL : nil
         }
     }
 }

@@ -1111,6 +1111,13 @@ static UInt32 SZCompressionEstimateAutoThreads(SZCompressionSettings* settings,
     BOOL _cachedPasswordIsDefined;
     NSUUID* _entrySnapshotIdentifier;
 }
+
+- (BOOL)extractEntries:(NSArray<NSNumber*>*)indices
+                toPath:(NSString*)destinationPath
+              settings:(SZExtractionSettings*)settings
+               session:(SZOperationSession*)session
+           outputPaths:(FStringVector*)outputPaths
+                 error:(NSError**)error;
 @end
 
 struct SZEntryPropertyMetadata {
@@ -2631,6 +2638,42 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
               settings:(SZExtractionSettings*)s
                session:(SZOperationSession*)session
                  error:(NSError**)error {
+    return [self extractEntries:indices
+                         toPath:dest
+                       settings:s
+                        session:session
+                    outputPaths:NULL
+                          error:error];
+}
+
+- (NSArray<NSURL*>*)extractEntriesWithOutputURLs:(NSArray<NSNumber*>*)indices
+                                          toPath:(NSString*)dest
+                                        settings:(SZExtractionSettings*)s
+                                         session:(SZOperationSession*)session
+                                           error:(NSError**)error {
+    FStringVector outputPaths;
+    if (![self extractEntries:indices
+                       toPath:dest
+                     settings:s
+                      session:session
+                  outputPaths:&outputPaths
+                        error:error]) {
+        return nil;
+    }
+
+    NSMutableArray<NSURL*>* urls = [NSMutableArray arrayWithCapacity:outputPaths.Size()];
+    FOR_VECTOR(i, outputPaths) {
+        [urls addObject:[NSURL fileURLWithPath:ToNS(fs2us(outputPaths[i]))]];
+    }
+    return [urls copy];
+}
+
+- (BOOL)extractEntries:(NSArray<NSNumber*>*)indices
+                toPath:(NSString*)dest
+              settings:(SZExtractionSettings*)s
+               session:(SZOperationSession*)session
+           outputPaths:(FStringVector*)outputPaths
+                 error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
 
     if (!_isOpen) {
@@ -2669,6 +2712,7 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     }
     ecs->Init(ntOptions, NULL, &arc, faeCallback, false, false, us2fs(ToU(dest)),
         removePathParts, false, arc.GetEstmatedPhySize());
+    ecs->ExtractedPaths = outputPaths;
 
     std::vector<UInt32> ia;
     ia.reserve(indices.count);

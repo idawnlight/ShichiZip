@@ -812,14 +812,15 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 do {
                     let prepared = try pane.prepareSelectedItemExtraction(to: destURL,
                                                                           overwriteMode: .ask)
-                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("fileop.copying"),
-                                                         parentWindow: parentWindow)
+                    let outputURLs = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("fileop.copying"),
+                                                                          parentWindow: parentWindow)
                     { session in
-                        try prepared.perform(session: session)
+                        try prepared.perform(session: session,
+                                             collectOutputURLs: destinationSelection.shouldRevealAfterTransfer)
                     }
                     refreshPaneDisplayingDirectory(destURL)
                     if destinationSelection.shouldRevealAfterTransfer {
-                        FileOperationTransferReveal.reveal(itemNames: snapshot.selection.displayedNames,
+                        FileOperationTransferReveal.reveal(outputURLs: outputURLs,
                                                            in: destURL)
                     }
                 } catch {
