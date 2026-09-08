@@ -2072,7 +2072,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                               cleanupDirectory: URL? = nil,
                               parentWindow: NSWindow? = nil,
                               requiresConfirmation: Bool = false,
-                              operationTitle: String? = nil)
+                              operationTitle: String? = nil,
+                              onSuccess: (@MainActor () -> Void)? = nil)
     {
         transferCoordinator.beginArchiveTransfer(urls,
                                                  to: target,
@@ -2082,7 +2083,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                  cleanupDirectory: cleanupDirectory,
                                                  parentWindow: parentWindow,
                                                  requiresConfirmation: requiresConfirmation,
-                                                 operationTitle: operationTitle)
+                                                 operationTitle: operationTitle,
+                                                 onSuccess: onSuccess)
     }
 
     func beginConfirmedArchiveTransfer(_ urls: [URL],

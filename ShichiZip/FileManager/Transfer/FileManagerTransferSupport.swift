@@ -826,7 +826,8 @@ final class FileManagerPaneTransferCoordinator {
                               cleanupDirectory: URL? = nil,
                               parentWindow: NSWindow? = nil,
                               requiresConfirmation: Bool = false,
-                              operationTitle: String? = nil) -> Bool
+                              operationTitle: String? = nil,
+                              onSuccess: (@MainActor () -> Void)? = nil) -> Bool
     {
         guard !urls.isEmpty else {
             Self.removeCleanupDirectory(cleanupDirectory)
@@ -850,7 +851,8 @@ final class FileManagerPaneTransferCoordinator {
                                     cleanupDirectory: cleanupDirectory,
                                     parentWindow: parentWindow,
                                     requiresConfirmation: requiresConfirmation,
-                                    operationTitle: operationTitle)
+                                    operationTitle: operationTitle,
+                                    onSuccess: onSuccess)
     }
 
     @discardableResult
@@ -862,7 +864,8 @@ final class FileManagerPaneTransferCoordinator {
                               cleanupDirectory: URL? = nil,
                               parentWindow: NSWindow? = nil,
                               requiresConfirmation: Bool = false,
-                              operationTitle: String? = nil) -> Bool
+                              operationTitle: String? = nil,
+                              onSuccess: (@MainActor () -> Void)? = nil) -> Bool
     {
         guard !urls.isEmpty else {
             Self.removeCleanupDirectory(cleanupDirectory)
@@ -885,7 +888,8 @@ final class FileManagerPaneTransferCoordinator {
                                         sourceHost: sourceHost,
                                         host: host,
                                         cleanupDirectory: cleanupDirectory,
-                                        operationTitle: operationTitle)
+                                        operationTitle: operationTitle,
+                                        onSuccess: onSuccess)
             return true
         }
 
@@ -896,7 +900,8 @@ final class FileManagerPaneTransferCoordinator {
                                         sourceHost: sourceHost,
                                         host: host,
                                         cleanupDirectory: cleanupDirectory,
-                                        operationTitle: operationTitle)
+                                        operationTitle: operationTitle,
+                                        onSuccess: onSuccess)
             return true
         }
 
@@ -928,7 +933,8 @@ final class FileManagerPaneTransferCoordinator {
                                         sourceHost: sourceHost,
                                         host: host,
                                         cleanupDirectory: cleanupDirectory,
-                                        operationTitle: operationTitle)
+                                        operationTitle: operationTitle,
+                                        onSuccess: onSuccess)
         }
 
         return true
@@ -1072,7 +1078,8 @@ final class FileManagerPaneTransferCoordinator {
                                              sourceHost: (any FileManagerPaneTransferSourceHost)?,
                                              host: any FileManagerPaneTransferHost,
                                              cleanupDirectory: URL? = nil,
-                                             operationTitle: String? = nil)
+                                             operationTitle: String? = nil,
+                                             onSuccess: (@MainActor () -> Void)? = nil)
     {
         let defaultOperationTitle = operation == .move ? SZL10n.string("fileop.moving") : SZL10n.string("fileop.copying")
         let resolvedOperationTitle = operationTitle ?? defaultOperationTitle
@@ -1120,6 +1127,9 @@ final class FileManagerPaneTransferCoordinator {
                 }
                 if let committedError = outcome.committedError {
                     host.transferShowError(committedError)
+                }
+                if case .completed = outcome {
+                    onSuccess?()
                 }
             } catch {
                 host.transferShowError(error)
@@ -1359,6 +1369,7 @@ enum FileOperationArchiveDestinationTransfer {
                         candidatePanes: [FileManagerPaneController],
                         hasConflictingOpenNestedArchive: Bool,
                         parentWindow: NSWindow?,
+                        onSuccess: (@MainActor () -> Void)? = nil,
                         showError: @escaping @MainActor (Error) -> Void)
     {
         let operation: NSDragOperation = move ? .move : .copy
@@ -1386,7 +1397,8 @@ enum FileOperationArchiveDestinationTransfer {
                                       operation: operation,
                                       sourcePane: sourcePane,
                                       parentWindow: parentWindow,
-                                      requiresConfirmation: false)
+                                      requiresConfirmation: false,
+                                      onSuccess: onSuccess)
             return
         }
 
@@ -1433,6 +1445,9 @@ enum FileOperationArchiveDestinationTransfer {
                 }
                 if let committedError = outcome.committedError {
                     showError(committedError)
+                }
+                if case .completed = outcome {
+                    onSuccess?()
                 }
             } catch {
                 showError(error)

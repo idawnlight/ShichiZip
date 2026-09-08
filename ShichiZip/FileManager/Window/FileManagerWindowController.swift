@@ -885,7 +885,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                               from: pane,
                                               toArchiveURL: archiveURL,
                                               subdir: subdir,
-                                              move: move)
+                                              move: move,
+                                              shouldRevealAfterTransfer: destinationSelection.shouldRevealAfterTransfer)
         }
     }
 
@@ -1041,7 +1042,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                    from sourcePane: FileManagerPaneController,
                                                    toArchiveURL archiveURL: URL,
                                                    subdir: String,
-                                                   move: Bool)
+                                                   move: Bool,
+                                                   shouldRevealAfterTransfer: Bool)
     {
         let hasConflictingOpenNestedArchive =
             FileManagerNestedArchiveConflictDetector.hasConflictingOpenInstance(
@@ -1055,7 +1057,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                         move: move,
                                                         candidatePanes: archiveCoordinationPaneControllers,
                                                         hasConflictingOpenNestedArchive: hasConflictingOpenNestedArchive,
-                                                        parentWindow: window)
+                                                        parentWindow: window,
+                                                        onSuccess: {
+                                                            if shouldRevealAfterTransfer {
+                                                                NSWorkspace.shared.activateFileViewerSelecting([archiveURL])
+                                                            }
+                                                        })
         { [weak self] error in
             self?.showErrorAlert(error)
         }
