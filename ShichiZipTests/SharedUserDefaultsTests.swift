@@ -7,6 +7,12 @@ import Foundation
 import XCTest
 
 final class SharedUserDefaultsTests: XCTestCase {
+    private let revealPreferenceKeys: [SZSettingsKey] = [
+        .revealAfterExtractInFileManager,
+        .revealAfterTransfer,
+        .launchOpenRevealAfterExtract,
+    ]
+
     func testSharedDefaultsUsesConfiguredAppGroupWhenAvailable() throws {
         guard SZSharedUserDefaults.appGroupIdentifier != nil else {
             throw XCTSkip("App group identifier is not configured for this test host.")
@@ -49,22 +55,31 @@ final class SharedUserDefaultsTests: XCTestCase {
 
             SZSettingsMigrations.run(defaults: defaults)
 
-            XCTAssertEqual(defaults.object(forKey: SZSettingsKey.revealAfterExtractInFileManager.rawValue) as? Bool,
-                           value)
+            for key in revealPreferenceKeys {
+                XCTAssertEqual(defaults.object(forKey: key.rawValue) as? Bool,
+                               value,
+                               key.rawValue)
+            }
             XCTAssertNil(defaults.object(forKey: "RevealAfterExtract"))
         }
     }
 
     func testSettingsMigrationPreservesNewValueAndRemovesObsoleteKey() throws {
-        let defaults = try makeIsolatedDefaults().defaults
-        defaults.set(true, forKey: "RevealAfterExtract")
-        defaults.set(false, forKey: SZSettingsKey.revealAfterExtractInFileManager.rawValue)
+        for preservedKey in revealPreferenceKeys {
+            let defaults = try makeIsolatedDefaults().defaults
+            defaults.set(true, forKey: "RevealAfterExtract")
+            defaults.set(false, forKey: preservedKey.rawValue)
 
-        SZSettingsMigrations.run(defaults: defaults)
-        SZSettingsMigrations.run(defaults: defaults)
+            SZSettingsMigrations.run(defaults: defaults)
+            SZSettingsMigrations.run(defaults: defaults)
 
-        XCTAssertFalse(defaults.bool(forKey: SZSettingsKey.revealAfterExtractInFileManager.rawValue))
-        XCTAssertNil(defaults.object(forKey: "RevealAfterExtract"))
+            for key in revealPreferenceKeys {
+                XCTAssertEqual(defaults.object(forKey: key.rawValue) as? Bool,
+                               key != preservedKey,
+                               key.rawValue)
+            }
+            XCTAssertNil(defaults.object(forKey: "RevealAfterExtract"))
+        }
     }
 
     func testSettingsMigrationDoesNotCreateValuesOnFreshInstall() throws {
@@ -72,7 +87,9 @@ final class SharedUserDefaultsTests: XCTestCase {
 
         SZSettingsMigrations.run(defaults: defaults)
 
-        XCTAssertNil(defaults.object(forKey: SZSettingsKey.revealAfterExtractInFileManager.rawValue))
+        for key in revealPreferenceKeys {
+            XCTAssertNil(defaults.object(forKey: key.rawValue))
+        }
     }
 
     func testPreferenceMigrationTransformsAndChainsAcrossSkippedVersions() throws {
@@ -105,6 +122,40 @@ final class SharedUserDefaultsTests: XCTestCase {
 
         XCTAssertEqual(defaults.string(forKey: "Old"), "invalid")
         XCTAssertNil(defaults.object(forKey: "New"))
+    }
+
+    func testPreferenceMigrationFansOutBeforeRemovingSource() throws {
+        let defaults = try makeIsolatedDefaults().defaults
+        defaults.set("42", forKey: "Old")
+        defaults.set(99, forKey: "Preserved")
+
+        SZPreferenceMigrator(defaults: defaults).migrate(newKeys: ["First", "Preserved", "Second"],
+                                                         oldKey: "Old")
+        { value in
+            (value as? String).flatMap(Int.init)
+        }
+
+        XCTAssertEqual(defaults.integer(forKey: "First"), 42)
+        XCTAssertEqual(defaults.integer(forKey: "Second"), 42)
+        XCTAssertEqual(defaults.integer(forKey: "Preserved"), 99)
+        XCTAssertNil(defaults.object(forKey: "Old"))
+    }
+
+    func testPreferenceMigrationPreservesAllValuesWhenFanOutConversionFails() throws {
+        let defaults = try makeIsolatedDefaults().defaults
+        defaults.set("invalid", forKey: "Old")
+        defaults.set(99, forKey: "Preserved")
+
+        SZPreferenceMigrator(defaults: defaults).migrate(newKeys: ["First", "Preserved", "Second"],
+                                                         oldKey: "Old")
+        { value in
+            (value as? String).flatMap(Int.init)
+        }
+
+        XCTAssertNil(defaults.object(forKey: "First"))
+        XCTAssertNil(defaults.object(forKey: "Second"))
+        XCTAssertEqual(defaults.integer(forKey: "Preserved"), 99)
+        XCTAssertEqual(defaults.string(forKey: "Old"), "invalid")
     }
 
     func testBrokenMigrationChainLeavesCurrentSettingAtDefault() throws {

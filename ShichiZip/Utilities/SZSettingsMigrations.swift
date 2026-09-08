@@ -22,9 +22,11 @@ enum SZSettingsMigrations {
     /// be reached, it stays absent and SZSettings supplies its normal default.
     static func run(defaults: UserDefaults) {
         let migrator = SZPreferenceMigrator(defaults: defaults)
-        // Compatibility with the interim RevealAfterExtract key. The b60c261
-        // baseline has neither key, so its users get the new setting's default.
-        migrator.migrate(newKey: SZSettingsKey.revealAfterExtractInFileManager.rawValue,
+        migrator.migrate(newKeys: [
+            SZSettingsKey.revealAfterExtractInFileManager.rawValue,
+            SZSettingsKey.revealAfterTransfer.rawValue,
+            SZSettingsKey.launchOpenRevealAfterExtract.rawValue,
+        ],
                          oldKey: "RevealAfterExtract")
     }
 }
@@ -36,14 +38,22 @@ struct SZPreferenceMigrator {
     /// or nil to leave the old value untouched when conversion is not possible.
     /// Existing destination values win; successful migrations remove the old key.
     func migrate(newKey: String, oldKey: String, transform: (Any) -> Any? = { $0 }) {
-        guard newKey != oldKey,
+        migrate(newKeys: [newKey], oldKey: oldKey, transform: transform)
+    }
+
+    func migrate(newKeys: [String], oldKey: String, transform: (Any) -> Any? = { $0 }) {
+        guard !newKeys.isEmpty,
+              !newKeys.contains(oldKey),
               let oldValue = defaults.object(forKey: oldKey) else {
             return
         }
 
-        if defaults.object(forKey: newKey) == nil {
+        let missingKeys = newKeys.filter { defaults.object(forKey: $0) == nil }
+        if !missingKeys.isEmpty {
             guard let newValue = transform(oldValue) else { return }
-            defaults.set(newValue, forKey: newKey)
+            for key in missingKeys {
+                defaults.set(newValue, forKey: key)
+            }
         }
         defaults.removeObject(forKey: oldKey)
     }
