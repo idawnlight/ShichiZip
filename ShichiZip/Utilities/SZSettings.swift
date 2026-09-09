@@ -20,6 +20,8 @@ enum SZSettingsKey: String {
     case excludeMacResourceFilesByDefault = "ExcludeMacResourceFilesByDefault"
     case moveArchiveToTrashAfterExtraction = "MoveArchiveToTrashAfterExtraction"
     case inheritDownloadedFileQuarantine = "InheritDownloadedFileQuarantine"
+    case revealAfterExtractInFileManager = "RevealAfterExtractInFileManager"
+    case revealAfterTransfer = "RevealAfterTransfer"
     case memLimitEnabled = "MemLimitEnabled"
     case memLimitGB = "MemLimitGB"
 
@@ -78,7 +80,7 @@ enum LaunchOpenBrowseModifier: String {
 
 enum SZSettings {
     private static var defaults: UserDefaults {
-        SZSharedUserDefaults.defaults
+        SZSettingsMigrations.defaults
     }
 
     private static func defaultBool(for key: SZSettingsKey) -> Bool {
@@ -157,6 +159,16 @@ enum SZSettings {
                          forKey: ArchivePreviewPreferences.expansionDepthKey)
             postChange(forRawKey: ArchivePreviewPreferences.expansionDepthKey)
         }
+    }
+
+    static var revealAfterExtractInFileManager: Bool {
+        get { bool(.revealAfterExtractInFileManager) }
+        set { set(newValue, for: .revealAfterExtractInFileManager) }
+    }
+
+    static var revealAfterTransfer: Bool {
+        get { bool(.revealAfterTransfer) }
+        set { set(newValue, for: .revealAfterTransfer) }
     }
 
     // MARK: - Launch-open HUD

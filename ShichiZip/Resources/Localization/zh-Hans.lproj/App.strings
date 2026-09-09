@@ -104,6 +104,8 @@
 "app.fileManager.error.unableToCreate" = "无法创建「%@」。";
 "app.fileManager.fileManager" = "文件管理器";
 "app.fileManager.operationNotAvailable" = "操作不可用";
+"app.fileManager.revealAfterExtract" = "完成后在 Finder 中显示解压项目";
+"app.fileManager.revealAfterTransfer" = "完成后在 Finder 中显示传输项目";
 "app.fileManager.quickLook.cannotPreview" = "当前选择无法预览。";
 "app.fileManager.quickLook.cannotPreviewArchive" = "当前压缩包选择无法预览。";
 "app.fileManager.quickLook.combinedSizeLimit" = "当前选择的快速查看预览限制为 %@，已选文件合计 %@。";

@@ -826,7 +826,8 @@ final class FileManagerPaneTransferCoordinator {
                               cleanupDirectory: URL? = nil,
                               parentWindow: NSWindow? = nil,
                               requiresConfirmation: Bool = false,
-                              operationTitle: String? = nil) -> Bool
+                              operationTitle: String? = nil,
+                              onSuccess: (@MainActor () -> Void)? = nil) -> Bool
     {
         guard !urls.isEmpty else {
             Self.removeCleanupDirectory(cleanupDirectory)
@@ -850,7 +851,8 @@ final class FileManagerPaneTransferCoordinator {
                                     cleanupDirectory: cleanupDirectory,
                                     parentWindow: parentWindow,
                                     requiresConfirmation: requiresConfirmation,
-                                    operationTitle: operationTitle)
+                                    operationTitle: operationTitle,
+                                    onSuccess: onSuccess)
     }
 
     @discardableResult
@@ -862,7 +864,8 @@ final class FileManagerPaneTransferCoordinator {
                               cleanupDirectory: URL? = nil,
                               parentWindow: NSWindow? = nil,
                               requiresConfirmation: Bool = false,
-                              operationTitle: String? = nil) -> Bool
+                              operationTitle: String? = nil,
+                              onSuccess: (@MainActor () -> Void)? = nil) -> Bool
     {
         guard !urls.isEmpty else {
             Self.removeCleanupDirectory(cleanupDirectory)
@@ -885,7 +888,8 @@ final class FileManagerPaneTransferCoordinator {
                                         sourceHost: sourceHost,
                                         host: host,
                                         cleanupDirectory: cleanupDirectory,
-                                        operationTitle: operationTitle)
+                                        operationTitle: operationTitle,
+                                        onSuccess: onSuccess)
             return true
         }
 
@@ -896,7 +900,8 @@ final class FileManagerPaneTransferCoordinator {
                                         sourceHost: sourceHost,
                                         host: host,
                                         cleanupDirectory: cleanupDirectory,
-                                        operationTitle: operationTitle)
+                                        operationTitle: operationTitle,
+                                        onSuccess: onSuccess)
             return true
         }
 
@@ -928,7 +933,8 @@ final class FileManagerPaneTransferCoordinator {
                                         sourceHost: sourceHost,
                                         host: host,
                                         cleanupDirectory: cleanupDirectory,
-                                        operationTitle: operationTitle)
+                                        operationTitle: operationTitle,
+                                        onSuccess: onSuccess)
         }
 
         return true
@@ -1072,7 +1078,8 @@ final class FileManagerPaneTransferCoordinator {
                                              sourceHost: (any FileManagerPaneTransferSourceHost)?,
                                              host: any FileManagerPaneTransferHost,
                                              cleanupDirectory: URL? = nil,
-                                             operationTitle: String? = nil)
+                                             operationTitle: String? = nil,
+                                             onSuccess: (@MainActor () -> Void)? = nil)
     {
         let defaultOperationTitle = operation == .move ? SZL10n.string("fileop.moving") : SZL10n.string("fileop.copying")
         let resolvedOperationTitle = operationTitle ?? defaultOperationTitle
@@ -1120,6 +1127,9 @@ final class FileManagerPaneTransferCoordinator {
                 }
                 if let committedError = outcome.committedError {
                     host.transferShowError(committedError)
+                }
+                if case .completed = outcome {
+                    onSuccess?()
                 }
             } catch {
                 host.transferShowError(error)
@@ -1334,6 +1344,48 @@ enum FileOperationFileSystemTransfer {
 }
 
 @MainActor
+enum FileOperationTransferReveal {
+    static func reveal(itemNames: [String], in destinationDirectory: URL) {
+        let itemURLs = itemNames.map {
+            destinationDirectory.appendingPathComponent($0, isDirectory: false)
+        }.filter { FileManager.default.fileExists(atPath: $0.path) }
+
+        if itemURLs.isEmpty {
+            NSWorkspace.shared.selectFile(destinationDirectory.path,
+                                          inFileViewerRootedAtPath: destinationDirectory.deletingLastPathComponent().path)
+        } else {
+            reveal(outputURLs: itemURLs, in: destinationDirectory)
+        }
+    }
+
+    static func reveal(outputURLs: [URL], in destinationDirectory: URL) {
+        let urls = itemURLs(for: outputURLs, in: destinationDirectory)
+        if !urls.isEmpty {
+            NSWorkspace.shared.activateFileViewerSelecting(urls)
+        }
+    }
+
+    nonisolated static func itemURLs(for outputURLs: [URL], in destinationDirectory: URL) -> [URL] {
+        let directory = destinationDirectory.standardizedFileURL
+        let rootComponents = directory.pathComponents
+        var seenPaths: Set<String> = []
+        return outputURLs.compactMap { outputURL in
+            let url = outputURL.standardizedFileURL
+            let components = url.pathComponents
+            let itemURL: URL
+            if components.starts(with: rootComponents),
+               components.count > rootComponents.count
+            {
+                itemURL = directory.appendingPathComponent(components[rootComponents.count])
+            } else {
+                itemURL = url
+            }
+            return seenPaths.insert(itemURL.path).inserted ? itemURL : nil
+        }
+    }
+}
+
+@MainActor
 enum FileOperationArchiveDestinationTransfer {
     static func perform(_ sourceURLs: [URL],
                         from sourcePane: FileManagerPaneController,
@@ -1343,6 +1395,7 @@ enum FileOperationArchiveDestinationTransfer {
                         candidatePanes: [FileManagerPaneController],
                         hasConflictingOpenNestedArchive: Bool,
                         parentWindow: NSWindow?,
+                        onSuccess: (@MainActor () -> Void)? = nil,
                         showError: @escaping @MainActor (Error) -> Void)
     {
         let operation: NSDragOperation = move ? .move : .copy
@@ -1370,7 +1423,8 @@ enum FileOperationArchiveDestinationTransfer {
                                       operation: operation,
                                       sourcePane: sourcePane,
                                       parentWindow: parentWindow,
-                                      requiresConfirmation: false)
+                                      requiresConfirmation: false,
+                                      onSuccess: onSuccess)
             return
         }
 
@@ -1418,6 +1472,9 @@ enum FileOperationArchiveDestinationTransfer {
                 if let committedError = outcome.committedError {
                     showError(committedError)
                 }
+                if case .completed = outcome {
+                    onSuccess?()
+                }
             } catch {
                 showError(error)
             }
@@ -1446,6 +1503,7 @@ final class FileOperationDestinationPrompt {
     private let defaultPath: String
     private let infoText: String
     private let validateDestination: (FileOperationDestinationTarget) -> Bool
+    private(set) var shouldRevealAfterTransfer = false
 
     init(move: Bool,
          sourcePane: FileManagerPaneController,
@@ -1495,7 +1553,13 @@ final class FileOperationDestinationPrompt {
         inputRow.spacing = 8
         inputRow.distribution = .fill
 
-        let stack = NSStackView(views: [label, inputRow])
+        let revealAfterTransferCheckbox = NSButton(checkboxWithTitle: SZL10n.string("app.fileManager.revealAfterTransfer"),
+                                                   target: nil,
+                                                   action: nil)
+        revealAfterTransferCheckbox.state = SZSettings.revealAfterTransfer ? .on : .off
+        revealAfterTransferCheckbox.setAccessibilityIdentifier("fileOperation.revealInFinder")
+
+        let stack = NSStackView(views: [label, inputRow, revealAfterTransferCheckbox])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 6
@@ -1535,6 +1599,8 @@ final class FileOperationDestinationPrompt {
                 guard validateDestination(destinationTarget) else {
                     return false
                 }
+                self.shouldRevealAfterTransfer = revealAfterTransferCheckbox.state == .on
+                SZSettings.revealAfterTransfer = self.shouldRevealAfterTransfer
                 resolvedDestinationTarget = destinationTarget
                 return true
             } catch {

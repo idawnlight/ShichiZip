@@ -386,6 +386,14 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
                session:(nullable SZOperationSession*)session
                  error:(NSError**)error;
 
+/// Extract entries and return their filesystem URLs after overwrite and rename handling.
+- (nullable NSArray<NSURL*>*)extractEntriesWithOutputURLs:(NSArray<NSNumber*>*)indices
+                                                   toPath:(NSString*)destinationPath
+                                                 settings:(SZExtractionSettings*)settings
+                                                  session:(nullable SZOperationSession*)session
+                                                    error:(NSError**)error
+    NS_SWIFT_NAME(extractEntriesWithOutputURLs(_:toPath:settings:session:));
+
 /// Test archive integrity with an explicit operation session
 - (BOOL)testWithSession:(nullable SZOperationSession*)session
                   error:(NSError**)error;

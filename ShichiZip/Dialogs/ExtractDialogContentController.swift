@@ -17,6 +17,7 @@ struct ExtractDialogState: Equatable {
     var showPassword: Bool
     var moveArchiveToTrashAfterExtraction: Bool
     var inheritDownloadedFileQuarantine: Bool
+    var revealAfterExtractInFileManager: Bool
 }
 
 struct ExtractDialogResolvedResult {
@@ -43,7 +44,8 @@ struct ExtractDialogResultBuilder {
                                          preserveNtSecurityInfo: state.preserveNtSecurityInfo,
                                          eliminateDuplicates: state.eliminateDuplicates,
                                          moveArchiveToTrashAfterExtraction: state.moveArchiveToTrashAfterExtraction,
-                                         inheritDownloadedFileQuarantine: state.inheritDownloadedFileQuarantine)
+                                         inheritDownloadedFileQuarantine: state.inheritDownloadedFileQuarantine,
+                                         revealAfterExtractInFileManager: state.revealAfterExtractInFileManager)
         return ExtractDialogResolvedResult(baseDestinationURL: baseDestinationURL,
                                            result: result)
     }
@@ -168,6 +170,7 @@ final class ExtractDialogContentController: NSObject {
     private let eliminateDuplicatesCheckbox = NSButton(checkboxWithTitle: SZL10n.string("extract.eliminateDuplication"), target: nil, action: nil)
     private let moveArchiveToTrashCheckbox = NSButton(checkboxWithTitle: SZL10n.string("app.extract.moveToTrash"), target: nil, action: nil)
     private let inheritDownloadedFileQuarantineCheckbox = NSButton(checkboxWithTitle: SZL10n.string("app.extract.inheritQuarantine"), target: nil, action: nil)
+    private let revealAfterExtractInFileManagerCheckbox = NSButton(checkboxWithTitle: SZL10n.string("app.fileManager.revealAfterExtract"), target: nil, action: nil)
     private var destinationPicker: DestinationPicker?
 
     private(set) var view = NSView()
@@ -225,6 +228,7 @@ final class ExtractDialogContentController: NSObject {
         state.eliminateDuplicates = eliminateDuplicatesCheckbox.state == .on
         state.moveArchiveToTrashAfterExtraction = moveArchiveToTrashCheckbox.state == .on
         state.inheritDownloadedFileQuarantine = inheritDownloadedFileQuarantineCheckbox.state == .on
+        state.revealAfterExtractInFileManager = revealAfterExtractInFileManagerCheckbox.state == .on
     }
 
     private func configureControls(destinationHistoryEntries: [String]) {
@@ -295,6 +299,9 @@ final class ExtractDialogContentController: NSObject {
         inheritDownloadedFileQuarantineCheckbox.isEnabled = sourceArchiveAvailableForQuarantineInheritance
         inheritDownloadedFileQuarantineCheckbox.alphaValue = sourceArchiveAvailableForQuarantineInheritance ? 1.0 : 0.55
         inheritDownloadedFileQuarantineCheckbox.setAccessibilityIdentifier("extract.inheritQuarantine")
+
+        revealAfterExtractInFileManagerCheckbox.state = state.revealAfterExtractInFileManager ? .on : .off
+        revealAfterExtractInFileManagerCheckbox.setAccessibilityIdentifier("extract.revealInFinder")
     }
 
     private func makeAccessoryView() -> NSView {
@@ -334,6 +341,7 @@ final class ExtractDialogContentController: NSObject {
         optionsLabel.font = .systemFont(ofSize: 12, weight: .semibold)
 
         let optionsStack = NSStackView(views: [
+            revealAfterExtractInFileManagerCheckbox,
             moveArchiveToTrashCheckbox,
             inheritDownloadedFileQuarantineCheckbox,
             ntSecurityCheckbox,

@@ -104,6 +104,8 @@
 "app.fileManager.error.unableToCreate" = "Unable to create \"%@\".";
 "app.fileManager.fileManager" = "File Manager";
 "app.fileManager.operationNotAvailable" = "Operation Not Available";
+"app.fileManager.revealAfterExtract" = "Reveal extracted items in Finder when done";
+"app.fileManager.revealAfterTransfer" = "Reveal transferred items in Finder when done";
 "app.fileManager.quickLook.cannotPreview" = "The current selection cannot be previewed.";
 "app.fileManager.quickLook.cannotPreviewArchive" = "The current archive selection cannot be previewed.";
 "app.fileManager.quickLook.combinedSizeLimit" = "Quick Look previews from archives are limited to %@ for the current selection. The selected files total %@.";

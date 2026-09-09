@@ -793,9 +793,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             }
 
             guard snapshot.capabilities.canCopySelection else { return }
-            guard let unresolvedDestinationTarget = await promptForFileOperationDestination(forMove: false,
-                                                                                            sourcePane: pane)
+            guard let destinationSelection = await promptForFileOperationDestination(forMove: false,
+                                                                                      sourcePane: pane)
             else { return }
+            let unresolvedDestinationTarget = destinationSelection.target
 
             let destinationTarget: FileOperationDestinationTarget
             do {
@@ -811,12 +812,17 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 do {
                     let prepared = try pane.prepareSelectedItemExtraction(to: destURL,
                                                                           overwriteMode: .ask)
-                    try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("fileop.copying"),
-                                                         parentWindow: parentWindow)
+                    let outputURLs = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("fileop.copying"),
+                                                                          parentWindow: parentWindow)
                     { session in
-                        try prepared.perform(session: session)
+                        try prepared.perform(session: session,
+                                             collectOutputURLs: destinationSelection.shouldRevealAfterTransfer)
                     }
                     refreshPaneDisplayingDirectory(destURL)
+                    if destinationSelection.shouldRevealAfterTransfer {
+                        FileOperationTransferReveal.reveal(outputURLs: outputURLs,
+                                                           in: destURL)
+                    }
                 } catch {
                     showErrorAlert(error)
                 }
@@ -829,9 +835,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         let sourceURLs = snapshot.selection.fileURLs
         guard !sourceURLs.isEmpty else { return }
 
-        guard let destinationTarget = await promptForFileOperationDestination(forMove: move,
-                                                                              sourcePane: pane)
+        guard let destinationSelection = await promptForFileOperationDestination(forMove: move,
+                                                                                 sourcePane: pane)
         else { return }
+        let destinationTarget = destinationSelection.target
         guard validateTransferDestination(destinationTarget,
                                           sourceURLs: sourceURLs,
                                           move: move,
@@ -867,6 +874,10 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                                 operation: dragOperation,
                                                                 session: session)
                 }
+                if destinationSelection.shouldRevealAfterTransfer {
+                    FileOperationTransferReveal.reveal(itemNames: sourceURLs.map(\.lastPathComponent),
+                                                       in: destURL)
+                }
             } catch {
                 showErrorAlert(error)
             }
@@ -875,7 +886,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                               from: pane,
                                               toArchiveURL: archiveURL,
                                               subdir: subdir,
-                                              move: move)
+                                              move: move,
+                                              shouldRevealAfterTransfer: destinationSelection.shouldRevealAfterTransfer)
         }
     }
 
@@ -984,7 +996,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     private func promptForFileOperationDestination(forMove move: Bool,
-                                                   sourcePane: FileManagerPaneController) async -> FileOperationDestinationTarget?
+                                                   sourcePane: FileManagerPaneController) async -> (target: FileOperationDestinationTarget,
+                                                                                                   shouldRevealAfterTransfer: Bool)?
     {
         let sourceSnapshot = sourcePane.snapshot
         let defaultPath = suggestedDestinationPath(for: sourcePane)
@@ -1002,7 +1015,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                presentingIn: nil)
         }
 
-        return await prompt.run(for: window)
+        guard let target = await prompt.run(for: window) else {
+            return nil
+        }
+        return (target: target,
+                shouldRevealAfterTransfer: prompt.shouldRevealAfterTransfer)
     }
 
     private func validateTransferDestination(_ destinationTarget: FileOperationDestinationTarget,
@@ -1026,7 +1043,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                    from sourcePane: FileManagerPaneController,
                                                    toArchiveURL archiveURL: URL,
                                                    subdir: String,
-                                                   move: Bool)
+                                                   move: Bool,
+                                                   shouldRevealAfterTransfer: Bool)
     {
         let hasConflictingOpenNestedArchive =
             FileManagerNestedArchiveConflictDetector.hasConflictingOpenInstance(
@@ -1040,7 +1058,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                         move: move,
                                                         candidatePanes: archiveCoordinationPaneControllers,
                                                         hasConflictingOpenNestedArchive: hasConflictingOpenNestedArchive,
-                                                        parentWindow: window)
+                                                        parentWindow: window,
+                                                        onSuccess: {
+                                                            if shouldRevealAfterTransfer {
+                                                                NSWorkspace.shared.activateFileViewerSelecting([archiveURL])
+                                                            }
+                                                        })
         { [weak self] error in
             self?.showErrorAlert(error)
         }

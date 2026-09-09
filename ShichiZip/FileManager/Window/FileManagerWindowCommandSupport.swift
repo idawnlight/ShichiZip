@@ -108,12 +108,15 @@ enum FileManagerArchiveCommandSupport {
                     postProcessError = error
                 }
                 refreshPaneDisplayingDirectory(extractResult.destinationURL)
+                if extractResult.revealAfterExtractInFileManager {
+                    NSWorkspace.shared.selectFile(extractResult.destinationURL.path,
+                                                  inFileViewerRootedAtPath: extractResult.destinationURL.deletingLastPathComponent().path)
+                }
                 if postProcessResult.movedSourceArchiveToTrash,
                    let sourceArchiveURL
                 {
                     refreshPaneDisplayingDirectory(sourceArchiveURL.deletingLastPathComponent())
                 }
-                NSWorkspace.shared.open(extractResult.destinationURL)
                 if let postProcessError {
                     showError(postProcessError)
                 }
@@ -181,9 +184,14 @@ enum FileManagerArchiveCommandSupport {
             do {
                 let prepared = try activePane.prepareExtraction(to: destinationURL,
                                                                 overwriteMode: .ask)
-                try await copyPreparedArchiveItems(prepared,
-                                                   parentWindow: parentWindow)
+                let outputURLs = try await copyPreparedArchiveItems(prepared,
+                                                                    parentWindow: parentWindow,
+                                                                    collectOutputURLs: prompt.shouldRevealAfterTransfer)
                 refreshPaneDisplayingDirectory(destinationURL)
+                if prompt.shouldRevealAfterTransfer {
+                    FileOperationTransferReveal.reveal(outputURLs: outputURLs,
+                                                       in: destinationURL)
+                }
             } catch {
                 showError(error)
             }
@@ -284,12 +292,13 @@ enum FileManagerArchiveCommandSupport {
     }
 
     private static func copyPreparedArchiveItems(_ prepared: FileManagerPreparedExtraction,
-                                                 parentWindow: NSWindow) async throws
+                                                 parentWindow: NSWindow,
+                                                 collectOutputURLs: Bool) async throws -> [URL]
     {
         try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("fileop.copying"),
                                              parentWindow: parentWindow)
         { session in
-            try prepared.perform(session: session)
+            try prepared.perform(session: session, collectOutputURLs: collectOutputURLs)
         }
     }
 

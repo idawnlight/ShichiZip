@@ -56,6 +56,20 @@ struct FileManagerExtractionMaterialization: @unchecked Sendable {
                                         withIntermediateDirectories: false)
     }
 
+    func publishedURL(for stagedURL: URL) throws -> URL {
+        let rootComponents = publishRootURL.standardizedFileURL.pathComponents
+        let outputComponents = stagedURL.standardizedFileURL.pathComponents
+        guard outputComponents.starts(with: rootComponents) else {
+            throw CocoaError(.fileReadCorruptFile, userInfo: [
+                NSFilePathErrorKey: stagedURL.path,
+                NSLocalizedDescriptionKey: "The extraction reported an output outside its staging directory.",
+            ])
+        }
+        return outputComponents.dropFirst(rootComponents.count).reduce(finalURL) {
+            $0.appendingPathComponent($1)
+        }
+    }
+
     @discardableResult
     func moveSidecarItemToPublishRoot(named itemName: String) throws -> Bool {
         let sourceURL = sidecarURL.appendingPathComponent(itemName, isDirectory: false)
@@ -271,6 +285,12 @@ struct FileManagerPreparedExtraction: @unchecked Sendable {
     var archiveOperationLease: FileManagerArchiveOperationGate.Lease?
 
     nonisolated func perform(session: SZOperationSession?) throws {
+        _ = try perform(session: session, collectOutputURLs: false)
+    }
+
+    nonisolated func perform(session: SZOperationSession?,
+                            collectOutputURLs: Bool) throws -> [URL]
+    {
         if materializeNewDestination,
            settings.pathMode != .absolutePaths,
            let materialization = try FileManagerExtractionMaterialization.prepareNewDestination(
@@ -280,24 +300,41 @@ struct FileManagerPreparedExtraction: @unchecked Sendable {
         {
             try materialization.createPublishRootDirectoryIfNeeded()
             var extractionError: Error?
+            var outputURLs: [URL] = []
             do {
-                try archive.extractEntries(entryIndices,
-                                           toPath: materialization.publishRootURL.path,
-                                           settings: settings,
-                                           session: session)
+                outputURLs = try extractEntries(to: materialization.publishRootURL,
+                                                session: session,
+                                                collectOutputURLs: collectOutputURLs)
+                    .map { try materialization.publishedURL(for: $0) }
             } catch {
                 extractionError = error
             }
             try materialization.finish(operationError: extractionError)
-            return
+            return outputURLs
         }
 
         // Absolute-path extraction and existing destinations cannot be represented as a single
         // publish root, so they keep the original direct extraction behavior.
+        return try extractEntries(to: destinationURL,
+                                  session: session,
+                                  collectOutputURLs: collectOutputURLs)
+    }
+
+    private nonisolated func extractEntries(to outputDirectory: URL,
+                                            session: SZOperationSession?,
+                                            collectOutputURLs: Bool) throws -> [URL]
+    {
+        if collectOutputURLs {
+            return try archive.extractEntriesWithOutputURLs(entryIndices,
+                                                            toPath: outputDirectory.path,
+                                                            settings: settings,
+                                                            session: session)
+        }
         try archive.extractEntries(entryIndices,
-                                   toPath: destinationURL.path,
+                                   toPath: outputDirectory.path,
                                    settings: settings,
                                    session: session)
+        return []
     }
 }
 
