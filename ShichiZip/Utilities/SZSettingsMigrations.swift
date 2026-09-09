@@ -27,7 +27,7 @@ enum SZSettingsMigrations {
             SZSettingsKey.revealAfterTransfer.rawValue,
             SZSettingsKey.launchOpenRevealAfterExtract.rawValue,
         ],
-                         oldKey: "RevealAfterExtract")
+        oldKey: "RevealAfterExtract")
     }
 }
 
@@ -44,7 +44,8 @@ struct SZPreferenceMigrator {
     func migrate(newKeys: [String], oldKey: String, transform: (Any) -> Any? = { $0 }) {
         guard !newKeys.isEmpty,
               !newKeys.contains(oldKey),
-              let oldValue = defaults.object(forKey: oldKey) else {
+              let oldValue = defaults.object(forKey: oldKey)
+        else {
             return
         }
 

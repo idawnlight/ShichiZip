@@ -1372,13 +1372,12 @@ enum FileOperationTransferReveal {
         return outputURLs.compactMap { outputURL in
             let url = outputURL.standardizedFileURL
             let components = url.pathComponents
-            let itemURL: URL
-            if components.starts(with: rootComponents),
-               components.count > rootComponents.count
+            let itemURL: URL = if components.starts(with: rootComponents),
+                                  components.count > rootComponents.count
             {
-                itemURL = directory.appendingPathComponent(components[rootComponents.count])
+                directory.appendingPathComponent(components[rootComponents.count])
             } else {
-                itemURL = url
+                url
             }
             return seenPaths.insert(itemURL.path).inserted ? itemURL : nil
         }

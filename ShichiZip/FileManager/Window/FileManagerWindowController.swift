@@ -794,7 +794,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
             guard snapshot.capabilities.canCopySelection else { return }
             guard let destinationSelection = await promptForFileOperationDestination(forMove: false,
-                                                                                      sourcePane: pane)
+                                                                                     sourcePane: pane)
             else { return }
             let unresolvedDestinationTarget = destinationSelection.target
 
@@ -997,7 +997,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     private func promptForFileOperationDestination(forMove move: Bool,
                                                    sourcePane: FileManagerPaneController) async -> (target: FileOperationDestinationTarget,
-                                                                                                   shouldRevealAfterTransfer: Bool)?
+                                                                                                    shouldRevealAfterTransfer: Bool)?
     {
         let sourceSnapshot = sourcePane.snapshot
         let defaultPath = suggestedDestinationPath(for: sourcePane)
@@ -1063,8 +1063,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                             if shouldRevealAfterTransfer {
                                                                 NSWorkspace.shared.activateFileViewerSelecting([archiveURL])
                                                             }
-                                                        })
-        { [weak self] error in
+                                                        }) { [weak self] error in
             self?.showErrorAlert(error)
         }
     }

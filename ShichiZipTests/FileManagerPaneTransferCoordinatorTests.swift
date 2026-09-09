@@ -107,11 +107,11 @@ final class FileManagerPaneTransferCoordinatorTests: XCTestCase {
         let coordinator = FileManagerPaneTransferCoordinator()
 
         XCTAssertTrue(coordinator.beginArchiveTransfer([sourceURL],
-                                                        to: (archive: archive, subdir: ""),
-                                                        operation: .copy,
-                                                        sourceHost: nil,
-                                                        host: host,
-                                                        onSuccess: { XCTFail("A failed transfer must not report success.") }))
+                                                       to: (archive: archive, subdir: ""),
+                                                       operation: .copy,
+                                                       sourceHost: nil,
+                                                       host: host,
+                                                       onSuccess: { XCTFail("A failed transfer must not report success.") }))
 
         await fulfillment(of: [failed], timeout: 5)
         XCTAssertEqual(host.errors.count, 1)

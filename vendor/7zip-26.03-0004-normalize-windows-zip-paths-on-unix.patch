@@ -1,5 +1,5 @@
 diff --git a/CPP/7zip/Archive/Zip/ZipHandler.cpp b/CPP/7zip/Archive/Zip/ZipHandler.cpp
-index c2832fff..5022eea6 100644
+index c6b6e3946997900aad8a67e4c689cd1ef8292bce..cbcab186007d96b31f2c69e0e62c5b9310d66b2e 100644
 --- a/CPP/7zip/Archive/Zip/ZipHandler.cpp
 +++ b/CPP/7zip/Archive/Zip/ZipHandler.cpp
 @@ -387,6 +387,11 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
@@ -15,7 +15,7 @@ index c2832fff..5022eea6 100644
            item.Is_MadeBy_Unix() // useBackslashReplacement
            );
 diff --git a/CPP/7zip/Archive/Zip/ZipItem.cpp b/CPP/7zip/Archive/Zip/ZipItem.cpp
-index 5684cac0..daca8821 100644
+index 5684cac0633dbe02f04e6836862ba627251da96a..daca88216df2a36b50d979ec237515f20639345b 100644
 --- a/CPP/7zip/Archive/Zip/ZipItem.cpp
 +++ b/CPP/7zip/Archive/Zip/ZipItem.cpp
 @@ -279,20 +279,13 @@ bool CItem::IsDir() const
@@ -43,7 +43,7 @@ index 5684cac0..daca8821 100644
  
    if (!FromCentral)
 diff --git a/CPP/7zip/Archive/Zip/ZipItem.h b/CPP/7zip/Archive/Zip/ZipItem.h
-index 4a25de3d..50bec992 100644
+index 4a25de3db82503abbca080cee5e93f822e0894ff..50bec992edf48c071479c9ab54ca58cb5c0741e8 100644
 --- a/CPP/7zip/Archive/Zip/ZipItem.h
 +++ b/CPP/7zip/Archive/Zip/ZipItem.h
 @@ -315,6 +315,20 @@ public:

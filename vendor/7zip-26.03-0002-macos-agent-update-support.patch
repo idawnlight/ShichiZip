@@ -1,8 +1,8 @@
 diff --git a/CPP/7zip/UI/Agent/Agent.cpp b/CPP/7zip/UI/Agent/Agent.cpp
-index 46b740ad..e4352d5f 100644
+index b7815c6c7e0d60db7b74e115de049bf6952fec2d..50577ebf5e2dfa481ed899e7cc62340ae515d548 100644
 --- a/CPP/7zip/UI/Agent/Agent.cpp
 +++ b/CPP/7zip/UI/Agent/Agent.cpp
-@@ -1496,8 +1496,11 @@ Z7_COM7F_IMF(CAgentFolder::Extract(const UInt32 *indices,
+@@ -1516,8 +1516,11 @@ Z7_COM7F_IMF(CAgentFolder::Extract(const UInt32 *indices,
    if (path)
    {
      pathU = us2fs(path);
@@ -16,7 +16,7 @@ index 46b740ad..e4352d5f 100644
      {
        NFile::NName::NormalizeDirPathPrefix(pathU);
        NFile::NDir::CreateComplexDir(pathU);
-@@ -1620,8 +1623,13 @@ Z7_COM7F_IMF(CAgent::Open(
+@@ -1644,8 +1647,13 @@ Z7_COM7F_IMF(CAgent::Open(
        return GetLastError_noZero_HRESULT();
      if (fi.IsDir())
        return E_FAIL;
@@ -30,7 +30,7 @@ index 46b740ad..e4352d5f 100644
      FString dirPrefix, fileName;
      if (NFile::NDir::GetFullPathAndSplit(us2fs(_archiveFilePath), dirPrefix, fileName))
      {
-@@ -1667,7 +1675,7 @@ Z7_COM7F_IMF(CAgent::Open(
+@@ -1691,7 +1699,7 @@ Z7_COM7F_IMF(CAgent::Open(
      if (!inStream)
      {
        arc.MTime.Set_From_FiTime(fi.MTime);
@@ -40,7 +40,7 @@ index 46b740ad..e4352d5f 100644
      
      ArchiveType = GetTypeOfArc(arc);
 diff --git a/CPP/7zip/UI/Agent/Agent.h b/CPP/7zip/UI/Agent/Agent.h
-index a63e4598..3978939f 100644
+index e19ccd8e8e4173bb69599c9435f2d8a38a41236a..36a489b8a489edab49a9ea9c3d954d245d209e2c 100644
 --- a/CPP/7zip/UI/Agent/Agent.h
 +++ b/CPP/7zip/UI/Agent/Agent.h
 @@ -6,6 +6,7 @@
@@ -51,7 +51,7 @@ index a63e4598..3978939f 100644
  
  #include "../Common/LoadCodecs.h"
  #include "../Common/OpenArchive.h"
-@@ -250,7 +251,7 @@ public:
+@@ -257,7 +258,7 @@ public:
  
    bool Is_Attrib_ReadOnly() const
    {
@@ -61,10 +61,10 @@ index a63e4598..3978939f 100644
  
    bool IsThere_ReadOnlyArc() const
 diff --git a/CPP/7zip/UI/Agent/AgentOut.cpp b/CPP/7zip/UI/Agent/AgentOut.cpp
-index 265b9430..e9255913 100644
+index 3b2a8b7ebcf723d22253c6fcd661ddcdb9648434..1bca09f38aabeda00aa30b458ddebfc5c50f64ca 100644
 --- a/CPP/7zip/UI/Agent/AgentOut.cpp
 +++ b/CPP/7zip/UI/Agent/AgentOut.cpp
-@@ -225,19 +225,28 @@ Z7_COM7F_IMF(CAgent::DoOperation(
+@@ -282,19 +282,28 @@ Z7_COM7F_IMF(CAgent::DoOperation(
  
    {
      FString folderPrefix = _folderPrefix;
@@ -94,16 +94,16 @@ index 265b9430..e9255913 100644
        }
      }
    }
-@@ -508,7 +517,7 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
+@@ -565,7 +574,7 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
  
    CDirItem di;
  
 -  di.Attrib = FILE_ATTRIBUTE_DIRECTORY;
 +  di.SetAsDir();
    di.Size = 0;
-   bool isAltStreamFolder = false;
    if (_proxy2)
-@@ -517,9 +526,8 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
+     di.Name = _proxy2->GetDirPath_as_Prefix(_agentFolder->_proxyDirIndex /* , isAltStreamFolder */);
+@@ -573,9 +582,8 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
      di.Name = _proxy->GetDirPath_as_Prefix(_agentFolder->_proxyDirIndex);
    di.Name += folderName;
  
@@ -116,10 +116,10 @@ index 265b9430..e9255913 100644
    dirItems.Items.Add(di);
  
 diff --git a/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp b/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp
-index 1da66015..e291b6b6 100644
+index 44e9d91404b887c8c99ad3abf36f8a443ac23394..f0a87e2085f7cf5a54da74c44894b53703b641c5 100644
 --- a/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp
 +++ b/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp
-@@ -43,7 +43,7 @@ static bool Delete_EmptyFolder_And_EmptySubFolders(const FString &path)
+@@ -44,7 +44,7 @@ static bool Delete_EmptyFolder_And_EmptySubFolders(const FString &path)
            return false;
          if (!found)
            break;
@@ -128,7 +128,7 @@ index 1da66015..e291b6b6 100644
            names.Add(fileInfo.Name);
        }
      }
-@@ -57,7 +57,7 @@ static bool Delete_EmptyFolder_And_EmptySubFolders(const FString &path)
+@@ -58,7 +58,7 @@ static bool Delete_EmptyFolder_And_EmptySubFolders(const FString &path)
        return false;
    }
    // we clear read-only attrib to remove read-only dir
@@ -138,7 +138,7 @@ index 1da66015..e291b6b6 100644
    return RemoveDir(path);
  }
 diff --git a/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp b/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp
-index 8299902d..42ebd403 100644
+index 8299902dac48348314b659d275b32b87202f97d9..42ebd403d407d4ddb134fdb2c28e8b26800710f3 100644
 --- a/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp
 +++ b/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp
 @@ -36,14 +36,14 @@ HRESULT CUpdateCallbackAgent::WriteSfx(const wchar_t * /* name */, UInt64 /* siz
@@ -159,7 +159,7 @@ index 8299902d..42ebd403 100644
    if (Callback)
      return Callback->SetCompleted(completeValue);
 diff --git a/CPP/7zip/UI/Common/WorkDir.cpp b/CPP/7zip/UI/Common/WorkDir.cpp
-index a4929671..a2c112ed 100644
+index a49296718b6e69efb8a77b7e042af74138ffdbcb..a2c112ed7d7a4ce6356e9aaa04afcdcac8f2d4a9 100644
 --- a/CPP/7zip/UI/Common/WorkDir.cpp
 +++ b/CPP/7zip/UI/Common/WorkDir.cpp
 @@ -11,6 +11,10 @@ using namespace NWindows;

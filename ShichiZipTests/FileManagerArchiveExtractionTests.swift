@@ -112,7 +112,7 @@ final class FileManagerArchiveExtractionTests: XCTestCase {
     func testPreparedExtractionReportsAutoRenamedFilesInsteadOfExistingFiles() throws {
         for overwriteMode in [SZOverwriteMode.ask, .rename] {
             let prepared = try makePreparedExtraction(names: ["report.txt"],
-                                                       overwriteMode: overwriteMode)
+                                                      overwriteMode: overwriteMode)
             let existingURL = prepared.destinationURL.appendingPathComponent("report.txt")
             try Data("existing".utf8).write(to: existingURL)
             let session = SZOperationSession()
@@ -150,7 +150,7 @@ final class FileManagerArchiveExtractionTests: XCTestCase {
 
     func testPreparedExtractionOmitsSkippedFiles() throws {
         let prepared = try makePreparedExtraction(names: ["existing.txt", "new.txt"],
-                                                   overwriteMode: .skip)
+                                                  overwriteMode: .skip)
         let existingURL = prepared.destinationURL.appendingPathComponent("existing.txt")
         try Data("preserved".utf8).write(to: existingURL)
 
@@ -162,7 +162,7 @@ final class FileManagerArchiveExtractionTests: XCTestCase {
 
     func testPreparedExtractionHasNothingToRevealWhenEveryFileIsSkipped() throws {
         let prepared = try makePreparedExtraction(names: ["existing.txt"],
-                                                   overwriteMode: .skip)
+                                                  overwriteMode: .skip)
         try Data("preserved".utf8).write(to: prepared.destinationURL.appendingPathComponent("existing.txt"))
 
         let outputs = try prepared.perform(session: nil, collectOutputURLs: true)
@@ -212,7 +212,7 @@ final class FileManagerArchiveExtractionTests: XCTestCase {
                              entryPaths: ["empty/", "file.txt", "link", "dangling"],
                              preserveSymlinks: true)
         let prepared = try makePreparedExtraction(archiveURL: archiveURL,
-                                                   destinationURL: root.appendingPathComponent("Destination", isDirectory: true))
+                                                  destinationURL: root.appendingPathComponent("Destination", isDirectory: true))
 
         let outputs = try prepared.perform(session: nil, collectOutputURLs: true)
 
@@ -268,8 +268,8 @@ final class FileManagerArchiveExtractionTests: XCTestCase {
         let archiveURL = root.appendingPathComponent("source.7z")
         try createArchive(at: archiveURL, from: sourceURLs)
         return try makePreparedExtraction(archiveURL: archiveURL,
-                                           destinationURL: destination,
-                                           overwriteMode: overwriteMode)
+                                          destinationURL: destination,
+                                          overwriteMode: overwriteMode)
     }
 
     private func makePreparedExtraction(archiveURL: URL,
@@ -285,14 +285,14 @@ final class FileManagerArchiveExtractionTests: XCTestCase {
                                                           currentSubdir: "",
                                                           quarantineSourceArchivePath: nil)
         return try XCTUnwrap(FileManagerArchiveExtraction.prepare(items: entries,
-                                                                   context: context,
-                                                                   destinationURL: destinationURL,
-                                                                   overwriteMode: overwriteMode,
-                                                                   pathMode: .currentPaths,
-                                                                   password: nil,
-                                                                   preserveNtSecurityInfo: false,
-                                                                   eliminateDuplicates: false,
-                                                                   inheritDownloadedFileQuarantine: false))
+                                                                  context: context,
+                                                                  destinationURL: destinationURL,
+                                                                  overwriteMode: overwriteMode,
+                                                                  pathMode: .currentPaths,
+                                                                  password: nil,
+                                                                  preserveNtSecurityInfo: false,
+                                                                  eliminateDuplicates: false,
+                                                                  inheritDownloadedFileQuarantine: false))
     }
 
     private func makeContext(allEntries: [ArchiveItem] = [],

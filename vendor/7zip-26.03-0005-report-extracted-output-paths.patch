@@ -1,0 +1,34 @@
+diff --git a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
+index cdfe5aad253fe28cfb75bb527a33a919de736cf9..b80765155d9e3611648ec41ea12c455f1a663e5b 100644
+--- a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
++++ b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
+@@ -2918,6 +2918,15 @@ Z7_COM7F_IMF(CArchiveExtractCallback::SetOperationResult(Int32 opRes))
+ 
+   SET_OWNER
+ 
++  if (ExtractedPaths && opRes == NArchive::NExtract::NOperationResult::kOK
++      && _extractMode && !_itemFailure && !_diskFilePath.IsEmpty())
++  {
++    bool isAnti = false;
++    RINOK(_arc->IsItem_Anti(_index, isAnti))
++    if (!isAnti)
++      ExtractedPaths->Add(_diskFilePath);
++  }
++
+   return _extractCallback2->SetOperationResult(opRes, BoolToInt(_encrypted));
+   
+   COM_TRY_END
+diff --git a/CPP/7zip/UI/Common/ArchiveExtractCallback.h b/CPP/7zip/UI/Common/ArchiveExtractCallback.h
+index 8b1645b5263ca53873ae9cbb77bad26045c5cace..8c88f170f07ea24b52e42681e1585d8b18a5d1e3 100644
+--- a/CPP/7zip/UI/Common/ArchiveExtractCallback.h
++++ b/CPP/7zip/UI/Common/ArchiveExtractCallback.h
+@@ -493,6 +493,9 @@ public:
+   
+   FString DirPathPrefix_for_HashFiles;
+ 
++  // Optional caller-owned sink for output paths after overwrite/rename handling.
++  FStringVector *ExtractedPaths = NULL;
++
+   CArchiveExtractCallback();
+ 
+   void InitForMulti(bool multiArchives,

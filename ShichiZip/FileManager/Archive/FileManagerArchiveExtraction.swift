@@ -289,7 +289,7 @@ struct FileManagerPreparedExtraction: @unchecked Sendable {
     }
 
     nonisolated func perform(session: SZOperationSession?,
-                            collectOutputURLs: Bool) throws -> [URL]
+                             collectOutputURLs: Bool) throws -> [URL]
     {
         if materializeNewDestination,
            settings.pathMode != .absolutePaths,

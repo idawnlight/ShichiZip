@@ -1,5 +1,5 @@
 diff --git a/CPP/Common/StringConvert.cpp b/CPP/Common/StringConvert.cpp
-index 79ff9e00..e2cdbf55 100644
+index 79ff9e00f9d579af0dd135ea2701968f70697af0..e2cdbf5531ca301eb9bfe7e61b4daedf5fcc9be5 100644
 --- a/CPP/Common/StringConvert.cpp
 +++ b/CPP/Common/StringConvert.cpp
 @@ -5,7 +5,8 @@

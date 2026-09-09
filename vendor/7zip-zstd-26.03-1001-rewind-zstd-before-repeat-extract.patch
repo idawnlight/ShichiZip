@@ -1,5 +1,5 @@
 diff --git a/CPP/7zip/Archive/ZstdHandler.cpp b/CPP/7zip/Archive/ZstdHandler.cpp
-index 92e454bf..f8e607ca 100644
+index a9ea379e2322888aa9111f0689d172053f4c39bc..fe5b2b1dde749df6d2e5b538b9e22a064e876ed1 100644
 --- a/CPP/7zip/Archive/ZstdHandler.cpp
 +++ b/CPP/7zip/Archive/ZstdHandler.cpp
 @@ -31,6 +31,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_3(

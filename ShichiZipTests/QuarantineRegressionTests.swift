@@ -172,6 +172,44 @@ final class QuarantineRegressionTests: XCTestCase {
         )
     }
 
+    func testExtractionQuarantinesNewDirectoriesWithoutChangingExistingOnes() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "quarantine-directory-merge")
+        try skipUnlessExtendedAttributesWork(at: tempRoot)
+
+        let sourceRoot = tempRoot.appendingPathComponent("payload", isDirectory: true)
+        let nestedSource = sourceRoot.appendingPathComponent("nested/empty", isDirectory: true)
+        try FileManager.default.createDirectory(at: nestedSource, withIntermediateDirectories: true)
+        try Data("payload".utf8).write(to: sourceRoot.appendingPathComponent("nested/file.txt"))
+        let archiveURL = tempRoot.appendingPathComponent("payload.7z")
+        try createArchive(at: archiveURL, from: [sourceRoot])
+
+        let archiveQuarantine = Data("0081;661aaff0;ShichiZipTests;".utf8)
+        let existingQuarantine = Data("0081;661aaff1;ExistingDirectory;".utf8)
+        try setExtendedAttribute(quarantineAttributeName, data: archiveQuarantine, on: archiveURL)
+        let destination = tempRoot.appendingPathComponent("extract", isDirectory: true)
+        let existingDirectory = destination.appendingPathComponent("payload", isDirectory: true)
+        try FileManager.default.createDirectory(at: existingDirectory, withIntermediateDirectories: true)
+        try setExtendedAttribute(quarantineAttributeName, data: existingQuarantine, on: existingDirectory)
+
+        let archive = SZArchive()
+        try archive.open(atPath: archiveURL.path, session: nil)
+        defer { archive.close() }
+        let settings = SZExtractionSettings()
+        settings.pathMode = .fullPaths
+        settings.sourceArchivePathForQuarantine = archiveURL.path
+
+        try archive.extract(toPath: destination.path, settings: settings, session: nil)
+
+        XCTAssertEqual(try extendedAttributeData(quarantineAttributeName, on: existingDirectory),
+                       existingQuarantine)
+        for path in ["nested", "nested/empty", "nested/file.txt"] {
+            XCTAssertEqual(try extendedAttributeData(quarantineAttributeName,
+                                                     on: existingDirectory.appendingPathComponent(path)),
+                           archiveQuarantine,
+                           path)
+        }
+    }
+
     func testStagedArchiveItemsShouldNotResolveTraversalEntryOutsideTemporaryDirectory() throws {
         let tempRoot = try makeTemporaryDirectory(named: "staged-traversal")
         let escapedLeafName = "staged-traversal-\(UUID().uuidString).txt"
