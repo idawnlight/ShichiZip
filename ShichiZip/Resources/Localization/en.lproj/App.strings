@@ -27,6 +27,7 @@
 "app.archive.error.sfxUnsupportedMethod" = "The selected compression method does not support Windows SFX archives.";
 "app.archive.error.zipPasswordRequiresEncryption" = "A password was supplied but no zip encryption method was selected. Choose AES-256 (recommended) or ZipCrypto explicitly before creating the archive.";
 "app.archive.password.enterForArchive" = "Enter password for \"%@\".";
+"app.archive.password.enterForEntry" = "Enter the password for \"%2$@\" in \"%1$@\".";
 
 "app.benchmark.cannotFindCodecs" = "Can't find 7-Zip codecs";
 "app.benchmark.decodingError" = "Decoding error";

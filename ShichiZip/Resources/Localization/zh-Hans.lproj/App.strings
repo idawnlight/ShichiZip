@@ -27,6 +27,7 @@
 "app.archive.error.sfxUnsupportedMethod" = "所选压缩方法不支持 Windows 自解压压缩包。";
 "app.archive.error.zipPasswordRequiresEncryption" = "已提供密码，但未选择 zip 加密方法。请先明确选择 AES-256（推荐）或 ZipCrypto，再创建压缩包。";
 "app.archive.password.enterForArchive" = "请输入「%@」的密码。";
+"app.archive.password.enterForEntry" = "请输入「%1$@」中「%2$@」的密码。";
 
 "app.benchmark.cannotFindCodecs" = "找不到 7-Zip 编解码器";
 "app.benchmark.decodingError" = "解码错误";

@@ -389,10 +389,12 @@ Z7_COM7F_IMF(SZFolderExtractCallback::SetTotal(UInt64 total)) {
 }
 
 Z7_COM7F_IMF(SZFolderExtractCallback::SetCompleted(const UInt64* completed)) {
+    SZOperationSession* session = Session;
+    if ([session shouldCancel])
+        return E_ABORT;
     if (completed && TotalSize > 0) {
         double f = (double)*completed / (double)TotalSize;
         UInt64 c = *completed, t = TotalSize;
-        SZOperationSession* session = Session;
         if (session) {
             [session reportProgressFraction:f];
             [session reportBytesCompleted:c total:t];

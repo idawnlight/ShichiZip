@@ -2,6 +2,7 @@
 
 #include "SZBridgeCommon.h"
 #include "SZCallbacks.h"
+#include "SZZipExtraction.h"
 
 #include <algorithm>
 #include <memory>
@@ -1109,6 +1110,7 @@ static UInt32 SZCompressionEstimateAutoThreads(SZCompressionSettings* settings,
     NSString* _openType;
     NSString* _cachedPassword;
     BOOL _cachedPasswordIsDefined;
+    SZZipPasswordCache _zipPasswords;
     NSUUID* _entrySnapshotIdentifier;
 }
 
@@ -1965,6 +1967,17 @@ static SZArchiveUpdateOutcome* SZFinalizeAgentUpdateResult(
     }
 }
 
+- (void)updateCachedPasswordFromZipEntriesWithResult:(HRESULT)result
+                                           callback:(SZFolderExtractCallback*)callback {
+    // Preserve read-then-update behavior for ordinary ZIPs, but never choose
+    // one member's password as the write password of a known mixed archive.
+    if (const UString* password = _zipPasswords.SinglePassword()) {
+        [self storeCachedPassword:*password defined:true];
+    } else if (_zipPasswords.HasMultiplePasswords() || result != S_OK || callback->NumErrors > 0) {
+        [self clearCachedPassword];
+    }
+}
+
 - (BOOL)reopenAfterExternalMutationWithSession:(SZOperationSession*)session
                                          error:(NSError**)error {
     SZArchiveOperationGuard operationGuard(self);
@@ -2228,6 +2241,7 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     _isOpen = NO;
     _openType = nil;
     _entrySnapshotIdentifier = nil;
+    _zipPasswords.Clear();
     [self clearCachedPassword];
 }
 
@@ -2589,48 +2603,12 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
              settings:(SZExtractionSettings*)s
               session:(SZOperationSession*)session
                 error:(NSError**)error {
-    SZArchiveOperationGuard operationGuard(self);
-
-    if (!_isOpen) {
-        if (error)
-            *error = SZMakeError(SZArchiveErrorCodeNoOpenArchive,
-                SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
-        return NO;
-    }
-    IInArchive* archive = _arcLink->GetArchive();
-    const CArc& arc = _arcLink->Arcs.Back();
-    if (!EnsureExtractionDirectoryExists(dest, error)) {
-        return NO;
-    }
-
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
-    SZFolderExtractCallback* faeSpec = new SZFolderExtractCallback;
-    CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
-    faeSpec->Session = resolvedSession;
-    faeSpec->OverwriteMode = s.overwriteMode;
-    faeSpec->ArchivePath = ToU(_archivePath);
-    faeSpec->TestMode = false;
-    NSData* quarantineData = s.sourceArchivePathForQuarantine ? SZQuarantineDataForArchivePath(s.sourceArchivePathForQuarantine) : nil;
-    [self configureExtractPasswordForCallback:faeSpec
-                             explicitPassword:s.password];
-
-    CArchiveExtractCallback* ecs = new CArchiveExtractCallback;
-    CMyComPtr<IArchiveExtractCallback> ec(ecs);
-    CExtractNtOptions ntOptions = SZExtractNtOptionsForSettings(s);
-    UStringVector removePathParts = BuildRemovePathParts(s.pathPrefixToStrip);
-
-    ecs->InitForMulti(false, MapPathMode(s.pathMode),
-        MapOverwriteMode(s.overwriteMode),
-        NExtract::NZoneIdMode::kNone, false);
-    if (quarantineData.length > 0) {
-        ecs->ZoneBuf.CopyFrom((const Byte*)quarantineData.bytes, quarantineData.length);
-    }
-    ecs->Init(ntOptions, NULL, &arc, faeCallback, false, false, us2fs(ToU(dest)),
-        removePathParts, false, arc.GetEstmatedPhySize());
-
-    HRESULT r = SZExtractAndFinalize(archive, nullptr, (UInt32)(Int32)-1, 0, ec, ecs);
-    [self updateCachedPasswordFromExtractCallback:faeSpec result:r];
-    return CheckExtractResult(faeSpec, r, error);
+    return [self extractEntries:nil
+                         toPath:dest
+                       settings:s
+                        session:session
+                    outputPaths:NULL
+                          error:error];
 }
 
 - (BOOL)extractEntries:(NSArray<NSNumber*>*)indices
@@ -2684,10 +2662,6 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     }
     IInArchive* archive = _arcLink->GetArchive();
     const CArc& arc = _arcLink->Arcs.Back();
-    if (!EnsureExtractionDirectoryExists(dest, error)) {
-        return NO;
-    }
-
     SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
     SZFolderExtractCallback* faeSpec = new SZFolderExtractCallback;
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
@@ -2698,6 +2672,53 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     NSData* quarantineData = s.sourceArchivePathForQuarantine ? SZQuarantineDataForArchivePath(s.sourceArchivePathForQuarantine) : nil;
     [self configureExtractPasswordForCallback:faeSpec
                              explicitPassword:s.password];
+
+    std::vector<UInt32> ia;
+    ia.reserve(indices.count);
+    for (NSNumber* n in indices)
+        ia.push_back([n unsignedIntValue]);
+    // UINT32_MAX is 7-Zip's "extract all" sentinel.
+    if (ia.size() >= (size_t)UINT32_MAX) {
+        if (error)
+            *error = SZMakeError(E_INVALIDARG,
+                SZLocalizedString(@"archive.tooManyItems"));
+        return NO;
+    }
+
+    const bool isZip = [self.formatName.lowercaseString isEqualToString:@"zip"];
+    SZZipExtractionProgress zipProgress;
+    if (isZip) {
+        UInt32 itemCount = 0;
+        HRESULT r = archive->GetNumberOfItems(&itemCount);
+        if (r != S_OK)
+            return CheckExtractResult(faeSpec, r, error);
+        if (!indices) {
+            ia.reserve(itemCount);
+            for (UInt32 index = 0; index < itemCount; ++index)
+                ia.push_back(index);
+        }
+        for (NSNumber* index in indices) {
+            if (index.longLongValue < 0 || index.unsignedLongLongValue >= itemCount) {
+                if (error) {
+                    *error = SZMakeError(E_INVALIDARG,
+                        SZLocalizedString(@"app.archive.error.invalidItemSelection"));
+                }
+                return NO;
+            }
+        }
+        std::vector<UInt32> verifiedIndices;
+        r = SZPrepareZipPasswords(archive, ia, _zipPasswords, s.password,
+            _cachedPasswordIsDefined ? _cachedPassword : nil,
+            faeSpec, false, verifiedIndices, zipProgress);
+        [self updateCachedPasswordFromZipEntriesWithResult:r callback:faeSpec];
+        if (r != S_OK || faeSpec->NumErrors > 0)
+            return CheckExtractResult(faeSpec, r, error);
+    }
+
+    // Resolve ZIP passwords before upstream opens/truncates any destination.
+    if (!EnsureExtractionDirectoryExists(dest, error)) {
+        return NO;
+    }
 
     CArchiveExtractCallback* ecs = new CArchiveExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(ecs);
@@ -2714,19 +2735,15 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         removePathParts, false, arc.GetEstmatedPhySize());
     ecs->ExtractedPaths = outputPaths;
 
-    std::vector<UInt32> ia;
-    ia.reserve(indices.count);
-    for (NSNumber* n in indices)
-        ia.push_back([n unsignedIntValue]);
-    // UINT32_MAX is 7-Zip's "extract all" sentinel.
-    if (ia.size() >= (size_t)UINT32_MAX) {
-        if (error)
-            *error = SZMakeError(E_INVALIDARG,
-                SZLocalizedString(@"archive.tooManyItems"));
-        return NO;
-    }
-    HRESULT r = SZExtractAndFinalize(archive, ia.data(), (UInt32)ia.size(), 0, ec, ecs);
-    [self updateCachedPasswordFromExtractCallback:faeSpec result:r];
+    CMyComPtr<IArchiveExtractCallback> passwordCallback;
+    if (isZip)
+        passwordCallback = SZZipExtractionCallback(ec, _zipPasswords, zipProgress);
+    HRESULT r = SZExtractAndFinalize(archive,
+        indices ? ia.data() : nullptr,
+        indices ? (UInt32)ia.size() : UINT32_MAX, 0,
+        isZip ? passwordCallback : ec, ecs);
+    if (!isZip)
+        [self updateCachedPasswordFromExtractCallback:faeSpec result:r];
     return CheckExtractResult(faeSpec, r, error);
 }
 
@@ -2750,6 +2767,31 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     faeSpec->TestMode = true;
     [self configureExtractPasswordForCallback:faeSpec explicitPassword:nil];
 
+    const bool isZip = [self.formatName.lowercaseString isEqualToString:@"zip"];
+    SZZipExtractionProgress zipProgress;
+    std::vector<UInt32> testIndices;
+    if (isZip) {
+        UInt32 itemCount = 0;
+        HRESULT r = archive->GetNumberOfItems(&itemCount);
+        if (r != S_OK)
+            return CheckExtractResult(faeSpec, r, error);
+        testIndices.reserve(itemCount);
+        for (UInt32 index = 0; index < itemCount; ++index)
+            testIndices.push_back(index);
+        std::vector<UInt32> verifiedIndices;
+        r = SZPrepareZipPasswords(archive, testIndices, _zipPasswords, nil,
+            _cachedPasswordIsDefined ? _cachedPassword : nil,
+            faeSpec, true, verifiedIndices, zipProgress);
+        [self updateCachedPasswordFromZipEntriesWithResult:r callback:faeSpec];
+        if (r != S_OK || faeSpec->NumErrors > 0)
+            return CheckExtractResult(faeSpec, r, error);
+        // Encrypted entries have already been tested, including cached ones.
+        std::sort(verifiedIndices.begin(), verifiedIndices.end());
+        std::erase_if(testIndices, [&](UInt32 index) {
+            return std::binary_search(verifiedIndices.begin(), verifiedIndices.end(), index);
+        });
+    }
+
     CArchiveExtractCallback* ecs = new CArchiveExtractCallback;
     CMyComPtr<IArchiveExtractCallback> ec(ecs);
     CExtractNtOptions ntOptions = SZExtractNtOptionsForSettings(nil);
@@ -2761,8 +2803,15 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     ecs->Init(ntOptions, NULL, &arc, faeCallback, false, true, FString(),
         removePathParts, false, arc.GetEstmatedPhySize());
 
-    HRESULT r = SZExtractAndFinalize(archive, nullptr, (UInt32)(Int32)-1, 1, ec, ecs);
-    [self updateCachedPasswordFromExtractCallback:faeSpec result:r];
+    CMyComPtr<IArchiveExtractCallback> passwordCallback;
+    if (isZip)
+        passwordCallback = SZZipExtractionCallback(ec, _zipPasswords, zipProgress);
+    HRESULT r = SZExtractAndFinalize(archive,
+        isZip ? testIndices.data() : nullptr,
+        isZip ? (UInt32)testIndices.size() : UINT32_MAX, 1,
+        isZip ? passwordCallback : ec, ecs);
+    if (!isZip)
+        [self updateCachedPasswordFromExtractCallback:faeSpec result:r];
     return CheckExtractResult(faeSpec, r, error);
 }
 
