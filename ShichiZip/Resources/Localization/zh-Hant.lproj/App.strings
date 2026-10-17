@@ -109,8 +109,6 @@
 "app.fileManager.error.unableToCreate" = "無法建立「%@」。";
 "app.fileManager.fileManager" = "檔案管理器";
 "app.fileManager.operationNotAvailable" = "操作無法使用";
-"app.fileManager.revealAfterExtract" = "完成後在 Finder 中顯示解壓縮項目";
-"app.fileManager.revealAfterTransfer" = "完成後在 Finder 中顯示傳輸項目";
 "app.fileManager.quickLook.cannotPreview" = "目前選取項目無法預覽。";
 "app.fileManager.quickLook.cannotPreviewArchive" = "目前選取的壓縮檔項目無法預覽。";
 "app.fileManager.quickLook.combinedSizeLimit" = "目前選取項目的壓縮檔快速查看預覽限制為 %@。所選檔案總計 %@。";
@@ -120,6 +118,8 @@
 "app.fileManager.quickLook.selectItems" = "請選取一或多個項目來預覽。";
 "app.fileManager.quickLook.solidArchiveSizeLimit" = "結實壓縮檔的快速查看預覽限制為最大 %@ 的壓縮檔。此壓縮檔大小為 %@。";
 "app.fileManager.reactivatePane" = "開啟資料夾";
+"app.fileManager.revealAfterExtract" = "完成後在 Finder 中顯示解壓縮項目";
+"app.fileManager.revealAfterTransfer" = "完成後在 Finder 中顯示傳輸項目";
 "app.fileManager.selectArchiveToExtract" = "請選取要解壓縮的壓縮檔。";
 "app.fileManager.selectArchiveToTest" = "請選取要測試的壓縮檔。";
 "app.fileManager.selectFilesToAdd" = "請選取要加入壓縮檔的檔案或資料夾。";
@@ -248,6 +248,7 @@
 "app.shortcut.toggleDualPane" = "切換雙窗格";
 "app.shortcut.toggleHiddenFiles" = "切換隱藏檔顯示";
 
+"app.view.showWindowSubtitle" = "顯示完整路徑";
 "app.view.systemTimeFormat" = "系統格式";
 "app.view.unifiedToolbarStyle" = "融合工具列樣式";
 

@@ -40,20 +40,21 @@ enum FileManagerPaneNavigationCommands {
         }
     }
 
+    @discardableResult
     static func submitPath(_ enteredPath: String,
-                           in pane: FileManagerPaneController)
+                           in pane: FileManagerPaneController) -> Bool
     {
         let path = enteredPath.trimmingCharacters(in: .whitespacesAndNewlines)
         if path.isEmpty {
-            return
+            return false
         }
-        guard let navigationGeneration = pane.navigationCommandBeginNavigation() else { return }
+        guard let navigationGeneration = pane.navigationCommandBeginNavigation() else { return false }
 
         switch FileManagerFileSystemNavigation.addressBarTarget(for: path) {
         case let .directory(url):
             if pane.navigationCommandIsInsideArchive {
                 guard let transitionToken = pane.navigationCommandBeginTransition(navigationGeneration) else {
-                    return
+                    return false
                 }
                 Task { @MainActor [weak pane] in
                     guard let pane else { return }
@@ -86,7 +87,9 @@ enum FileManagerPaneNavigationCommands {
             pane.navigationCommandRestorePathField()
             pane.navigationCommandShowError(invalidPathError(for: path))
             pane.navigationCommandReturnFocusToFileList()
+            return false
         }
+        return true
     }
 
     static func goUp(in pane: FileManagerPaneController) {

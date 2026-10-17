@@ -17,6 +17,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     private var leftPane: FileManagerPaneController!
     private var rightPane: FileManagerPaneController!
     private var toolbar: NSToolbar!
+    private var toolbarGroupVisibility: (archive: Bool, standard: Bool)?
+    private var titlePathField: FileManagerTitlePathField?
+    private var toolbarDisplayModeObservation: NSKeyValueObservation?
+    private var titlePathToolbar: FileManagerPathToolbar?
+    private(set) var showsWindowSubtitle = false
+
     private var isDualPane = FileManagerPanePreferences.showsDualPane
     private weak var trackedActivePane: FileManagerPaneController?
     private var viewPreferencesObserver: NSObjectProtocol?
@@ -45,7 +51,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     init(windowCoordinator: any FileManagerWindowCoordinating) {
-        let window = NSWindow(
+        let window = FileManagerWindow(
             contentRect: FileManagerWindowPreferences.defaultContentRect,
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
@@ -74,6 +80,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     isolated deinit {
+        titlePathField?.uninstall()
         if let viewPreferencesObserver {
             NotificationCenter.default.removeObserver(viewPreferencesObserver)
         }
@@ -185,6 +192,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     func windowDidResize(_ notification: Notification) {
+        titlePathToolbar?.updateWidth()
         guard let window = notification.object as? NSWindow,
               !window.inLiveResize
         else {
@@ -247,22 +255,123 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         ])
     }
 
+    private func updateLocationTitle() {
+        guard leftPane != nil, rightPane != nil else { return }
+        let path = activePane.currentLocationDisplayPath
+        let name = (path as NSString).lastPathComponent
+        window?.title = FileManagerToolbarPreferences.style == .unified
+            ? (name.isEmpty ? path : name) : AppBuildInfo.appDisplayName()
+        window?.subtitle = FileManagerToolbarPreferences.style == .unified &&
+            showsWindowSubtitle && titlePathField == nil ? activePane.addressBarPath : ""
+    }
+
+    private func expandTitlePath() {
+        guard titlePathField == nil, let window else { return }
+        let pane = activePane
+        let field = FileManagerTitlePathField(path: pane.addressBarPath)
+        let editor = FileManagerPathToolbar(window: window, field: field)
+        field.onSubmit = { [weak pane] path in
+            guard let pane else { return false }
+            return FileManagerPaneNavigationCommands.submitPath(path, in: pane)
+        }
+        field.onFinish = { [weak self, weak field] in
+            guard let self, let field else { return }
+            self.window?.makeFirstResponder(nil)
+            field.uninstall()
+            self.titlePathField = nil
+            self.titlePathToolbar?.restore()
+            self.titlePathToolbar = nil
+            self.updateLocationTitle()
+            self.activePane.focusFileList()
+        }
+        titlePathField = field
+        titlePathToolbar = editor
+        editor.install()
+        field.install()
+        field.beginPathEditing()
+    }
+
+    func handleTitlePathMouseEvent(_ event: NSEvent) -> Bool {
+        guard FileManagerToolbarPreferences.style == .unified,
+              let window, event.window === window else { return false }
+        let rightClick = event.type == .rightMouseDown || event.modifierFlags.contains(.control)
+        if rightClick, titlePathField == nil,
+           [window.title, window.subtitle].contains(where: { text in
+               guard let field = FileManagerPathToolbar.titleField(in: window, text: text) else { return false }
+               return field.bounds.contains(field.convert(event.locationInWindow, from: nil))
+           }) {
+            expandTitlePath()
+            return true
+        }
+        if !rightClick, let field = titlePathField,
+           !field.bounds.contains(field.convert(event.locationInWindow, from: nil)) {
+            field.cancelPathEditing()
+        }
+        return false
+    }
+
     private func setupToolbar() {
-        guard FileManagerToolbarPreferences.showsArchiveToolbar || FileManagerToolbarPreferences.showsStandardToolbar else {
+        titlePathField?.onFinish = nil
+        titlePathField?.uninstall()
+        titlePathField = nil
+        titlePathToolbar?.restore()
+        titlePathToolbar = nil
+        let unified = FileManagerToolbarPreferences.style == .unified
+        (leftPane.view as? FileManagerPaneView)?.setAddressBarHidden(unified)
+        (rightPane.view as? FileManagerPaneView)?.setAddressBarHidden(unified)
+        updateLocationTitle()
+        let groups = (archive: FileManagerToolbarPreferences.showsArchiveToolbar,
+                      standard: FileManagerToolbarPreferences.showsStandardToolbar)
+        guard unified || groups.archive || groups.standard else {
+            toolbarDisplayModeObservation = nil
             toolbar = nil
             window?.toolbar = nil
+            toolbarGroupVisibility = nil
             return
         }
 
-        let newToolbar = NSToolbar(identifier: "FileManagerToolbar")
-        newToolbar.delegate = self
-        toolbar = newToolbar
+        let identifier = NSToolbar.Identifier(unified ? "FileManagerUnifiedToolbar" : "FileManagerToolbar")
+        if !unified || toolbar == nil || toolbar.identifier != identifier {
+            toolbar = NSToolbar(identifier: identifier)
+            toolbar.delegate = self
+            toolbar.displayMode = FileManagerToolbarPreferences.showsButtonText ? .iconAndLabel : .iconOnly
+            toolbar.allowsUserCustomization = unified
+            toolbar.autosavesConfiguration = unified
+            toolbarDisplayModeObservation = toolbar.observe(\.displayMode, options: [.initial, .new]) { toolbar, _ in
+                MainActor.assumeIsolated {
+                    FileManagerToolbarPreferences.setShowsButtonText(toolbar.displayMode != .iconOnly)
+                }
+            }
+            toolbarGroupVisibility = nil
+        }
         window?.toolbarStyle = FileManagerToolbarPreferences.style.toolbarStyle
-        window?.toolbar = newToolbar
-        applyToolbarPresentation()
+        window?.toolbar = toolbar
+        if let previous = toolbarGroupVisibility {
+            updateToolbarGroup([Self.addItem, Self.extractItem, Self.testItem], wasVisible: previous.archive, isVisible: groups.archive)
+            updateToolbarGroup([Self.copyItem, Self.moveItem, Self.deleteItem, Self.infoItem], wasVisible: previous.standard, isVisible: groups.standard)
+        }
+        toolbarGroupVisibility = groups
+        refreshToolbarItemPresentation()
+        toolbar.validateVisibleItems()
+    }
+
+    private func updateToolbarGroup(_ identifiers: [NSToolbarItem.Identifier], wasVisible: Bool, isVisible: Bool) {
+        guard wasVisible != isVisible else { return }
+        if isVisible {
+            for identifier in identifiers where !toolbar.items.contains(where: { $0.itemIdentifier == identifier }) {
+                toolbar.insertItem(withItemIdentifier: identifier, at: toolbar.items.count)
+            }
+        } else {
+            for index in toolbar.items.indices.reversed() where identifiers.contains(toolbar.items[index].itemIdentifier) {
+                toolbar.removeItem(at: index)
+            }
+        }
     }
 
     private func applyToolbarPresentation() {
+        if titlePathField != nil {
+            setupToolbar()
+        }
         guard let toolbar else { return }
         toolbar.displayMode = FileManagerToolbarPreferences.showsButtonText ? .iconAndLabel : .iconOnly
         window?.toolbarStyle = FileManagerToolbarPreferences.style.toolbarStyle
@@ -720,7 +829,12 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     @objc func toggleUnifiedToolbarStyle(_: Any?) {
         FileManagerToolbarPreferences.setStyle(FileManagerToolbarPreferences.style == .unified ? .expanded : .unified)
-        applyToolbarPresentation()
+        setupToolbar()
+    }
+
+    @objc func toggleWindowSubtitle(_: Any?) {
+        showsWindowSubtitle.toggle()
+        updateLocationTitle()
     }
 
     @objc func openFavoriteSlot(_ sender: Any?) {
@@ -760,6 +874,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     private func setActivePane(_ pane: FileManagerPaneController) {
         trackedActivePane = paneRoutingContext.normalizedTrackedPane(for: pane)
+        updateLocationTitle()
     }
 
     // MARK: - Copy/Move (PanelCopy.cpp pattern)
@@ -1131,6 +1246,7 @@ private extension FileManagerShortcutCommand {
 protocol FileManagerPaneDelegate: AnyObject {
     func paneDidRequestOpenArchiveInNewWindow(_ url: URL)
     func paneDidBecomeActive(_ pane: FileManagerPaneController)
+    func paneLocationDidChange(_ pane: FileManagerPaneController)
     func paneSelectionDidChange(_ pane: FileManagerPaneController)
     func paneDidRequestQuickLook(_ pane: FileManagerPaneController)
     func pane(_ pane: FileManagerPaneController, didRequestShortcutCommand command: FileManagerShortcutCommand) -> Bool
@@ -1148,6 +1264,11 @@ extension FileManagerWindowController: FileManagerPaneDelegate {
         quickLookPanelController.retargetPreviewIfVisible(to: pane,
                                                           currentController: self,
                                                           showError: quickLookErrorReporter())
+    }
+
+    func paneLocationDidChange(_ pane: FileManagerPaneController) {
+        guard leftPane != nil, rightPane != nil else { return }
+        if pane === activePane { updateLocationTitle() }
     }
 
     func paneSelectionDidChange(_ pane: FileManagerPaneController) {

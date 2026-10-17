@@ -800,6 +800,8 @@ enum FileManagerCommandValidator {
             menuItem.state = FileManagerToolbarPreferences.showsButtonText ? .on : .off
         case #selector(FileManagerWindowController.toggleUnifiedToolbarStyle(_:)):
             menuItem.state = FileManagerToolbarPreferences.style == .unified ? .on : .off
+        case #selector(FileManagerWindowController.toggleWindowSubtitle(_:)):
+            menuItem.state = (context.window?.windowController as? FileManagerWindowController)?.showsWindowSubtitle == true ? .on : .off
         default:
             menuItem.state = .off
         }
