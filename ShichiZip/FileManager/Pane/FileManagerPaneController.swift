@@ -1052,6 +1052,8 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         isInsideArchive ? currentArchiveDisplayPathPrefix() : currentDirectory.path
     }
 
+    var addressBarPath: String { pathField.stringValue }
+
     var selectedRealItemCount: Int {
         paneSelectionState.realItems.count
     }
@@ -1965,6 +1967,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         updateLocationIcon()
+        delegate?.paneLocationDidChange(self)
     }
 
     private func updateLocationIcon() {

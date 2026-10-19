@@ -110,8 +110,6 @@
 "app.fileManager.error.unableToCreate" = "Unable to create \"%@\".";
 "app.fileManager.fileManager" = "File Manager";
 "app.fileManager.operationNotAvailable" = "Operation Not Available";
-"app.fileManager.revealAfterExtract" = "Reveal extracted items in Finder when done";
-"app.fileManager.revealAfterTransfer" = "Reveal transferred items in Finder when done";
 "app.fileManager.quickLook.cannotPreview" = "The current selection cannot be previewed.";
 "app.fileManager.quickLook.cannotPreviewArchive" = "The current archive selection cannot be previewed.";
 "app.fileManager.quickLook.combinedSizeLimit" = "Quick Look previews from archives are limited to %@ for the current selection. The selected files total %@.";
@@ -121,6 +119,8 @@
 "app.fileManager.quickLook.selectItems" = "Select one or more items to preview.";
 "app.fileManager.quickLook.solidArchiveSizeLimit" = "Quick Look previews from solid archives are limited to archives up to %@. This archive is %@.";
 "app.fileManager.reactivatePane" = "Open Folder";
+"app.fileManager.revealAfterExtract" = "Reveal extracted items in Finder when done";
+"app.fileManager.revealAfterTransfer" = "Reveal transferred items in Finder when done";
 "app.fileManager.selectArchiveToExtract" = "Select an archive to extract.";
 "app.fileManager.selectArchiveToTest" = "Select an archive to test.";
 "app.fileManager.selectFilesToAdd" = "Select files or folders to add to the archive.";
@@ -249,6 +249,7 @@
 "app.shortcut.toggleDualPane" = "Toggle dual pane";
 "app.shortcut.toggleHiddenFiles" = "Toggle hidden files";
 
+"app.view.showWindowSubtitle" = "Show Full Path";
 "app.view.systemTimeFormat" = "System Format";
 "app.view.unifiedToolbarStyle" = "Unified Style";
 

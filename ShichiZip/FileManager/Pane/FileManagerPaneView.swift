@@ -159,7 +159,18 @@ final class FileManagerPaneView: NSView {
         addSubview(statusView)
     }
 
+    private var addressBarTopConstraint: NSLayoutConstraint!
+    private var contentTopConstraint: NSLayoutConstraint!
+
+    func setAddressBarHidden(_ hidden: Bool) {
+        [upButton, locationIconView, pathField].forEach { $0.isHidden = hidden }
+        NSLayoutConstraint.deactivate([addressBarTopConstraint, contentTopConstraint])
+        (hidden ? contentTopConstraint : addressBarTopConstraint).isActive = true
+    }
+
     private func installLayout(addressBarIconSize: CGFloat) {
+        addressBarTopConstraint = scrollView.topAnchor.constraint(equalTo: pathField.bottomAnchor, constant: 4)
+        contentTopConstraint = scrollView.topAnchor.constraint(equalTo: topAnchor)
         NSLayoutConstraint.activate([
             upButton.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             upButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
@@ -176,7 +187,7 @@ final class FileManagerPaneView: NSView {
             pathField.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             pathField.heightAnchor.constraint(equalToConstant: 24),
 
-            scrollView.topAnchor.constraint(equalTo: pathField.bottomAnchor, constant: 4),
+            addressBarTopConstraint,
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: statusView.topAnchor, constant: -2),
