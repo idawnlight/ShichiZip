@@ -9,157 +9,149 @@ import XCTest
 @MainActor
 final class FileManagerPaneSuspensionCoordinatorTests: XCTestCase {
     func testPrepareForCloseKeepsPaneActiveWhenArchiveCloseFails() async {
-        var closeShowError: Bool?
-        let harness = makeCoordinator(isInsideArchive: { true },
-                                      closeAllArchives: { showError in
-                                          closeShowError = showError
-                                          return false
-                                      },
-                                      prepareDirectoryForSuspension: {
-                                          XCTFail("Failed archive close must not suspend the pane")
-                                      })
+        let host = TestSuspensionHost()
+        host.isInsideArchive = true
+        host.closeResult = false
 
-        let didPrepare = await harness.coordinator.prepareForClose(showError: true)
+        let didPrepare = await host.coordinator.prepareForClose(showError: true)
+
         XCTAssertFalse(didPrepare)
-
-        XCTAssertEqual(closeShowError, true)
-        XCTAssertFalse(harness.coordinator.isSuspended)
-        XCTAssertNil(suspendedOverlay(in: harness))
+        XCTAssertEqual(host.closeRequests, [true])
+        XCTAssertFalse(host.coordinator.isSuspended)
+        XCTAssertEqual(host.suspensionCount, 0)
+        XCTAssertNil(host.suspendedOverlay)
     }
 
     func testPrepareForCloseSuspendsAfterArchiveCloseSucceeds() async {
-        var isInsideArchive = true
-        var closeShowError: Bool?
-        var prepareCount = 0
-        var cancelRefreshCount = 0
-        var clearArchiveDisplayCount = 0
-        let harness = makeCoordinator(isInsideArchive: { isInsideArchive },
-                                      closeAllArchives: { showError in
-                                          closeShowError = showError
-                                          isInsideArchive = false
-                                          return true
-                                      },
-                                      prepareDirectoryForSuspension: { prepareCount += 1 },
-                                      cancelPendingArchiveRefresh: { cancelRefreshCount += 1 },
-                                      clearArchiveDisplayItems: { clearArchiveDisplayCount += 1 })
+        let host = TestSuspensionHost()
+        host.isInsideArchive = true
 
-        let didPrepare = await harness.coordinator.prepareForClose(showError: false)
+        let didPrepare = await host.coordinator.prepareForClose(showError: false)
+
         XCTAssertTrue(didPrepare)
-
-        XCTAssertEqual(closeShowError, false)
-        XCTAssertTrue(harness.coordinator.isSuspended)
-        XCTAssertEqual(prepareCount, 1)
-        XCTAssertEqual(cancelRefreshCount, 1)
-        XCTAssertEqual(clearArchiveDisplayCount, 1)
-        XCTAssertEqual(harness.statusLabel.stringValue, "")
-        XCTAssertNotNil(suspendedOverlay(in: harness))
+        XCTAssertEqual(host.closeRequests, [false])
+        XCTAssertTrue(host.coordinator.isSuspended)
+        XCTAssertEqual(host.suspensionCount, 1)
+        XCTAssertNotNil(host.suspendedOverlay)
     }
 
     func testPrepareForDeactivationSuspendsLoadedFilesystemPaneWithoutClosingArchive() async {
-        var closeCount = 0
-        var prepareCount = 0
-        let harness = makeCoordinator(isInsideArchive: { false },
-                                      closeAllArchives: { _ in
-                                          closeCount += 1
-                                          return true
-                                      },
-                                      prepareDirectoryForSuspension: { prepareCount += 1 })
+        let host = TestSuspensionHost()
 
-        let didPrepare = await harness.coordinator.prepareForDeactivation(showError: true)
+        let didPrepare = await host.coordinator.prepareForDeactivation(showError: true)
+
         XCTAssertTrue(didPrepare)
-
-        XCTAssertEqual(closeCount, 0)
-        XCTAssertEqual(prepareCount, 1)
-        XCTAssertTrue(harness.coordinator.isSuspended)
-        XCTAssertNotNil(suspendedOverlay(in: harness))
+        XCTAssertTrue(host.closeRequests.isEmpty)
+        XCTAssertEqual(host.suspensionCount, 1)
+        XCTAssertTrue(host.coordinator.isSuspended)
+        XCTAssertNotNil(host.suspendedOverlay)
     }
 
     func testPrepareEmptyPaneForDeactivationSuspendsWithoutClosingArchive() {
-        var closeCount = 0
-        let harness = makeCoordinator(isInsideArchive: { false },
-                                      closeAllArchives: { _ in
-                                          closeCount += 1
-                                          return true
-                                      })
+        let host = TestSuspensionHost()
 
-        harness.coordinator.prepareEmptyPaneForDeactivation()
+        host.coordinator.prepareEmptyPaneForDeactivation()
 
-        XCTAssertEqual(closeCount, 0)
-        XCTAssertTrue(harness.coordinator.isSuspended)
-        XCTAssertNotNil(suspendedOverlay(in: harness))
+        XCTAssertTrue(host.closeRequests.isEmpty)
+        XCTAssertTrue(host.coordinator.isSuspended)
+        XCTAssertEqual(host.suspensionCount, 1)
+        XCTAssertNotNil(host.suspendedOverlay)
+    }
+
+    func testDeactivationDoesNotLoadAnUnloadedPane() async {
+        let host = TestSuspensionHost()
+        host.isViewLoaded = false
+
+        let didPrepare = await host.coordinator.prepareForDeactivation()
+
+        XCTAssertTrue(didPrepare)
+        XCTAssertFalse(host.coordinator.isSuspended)
+        XCTAssertEqual(host.suspensionCount, 0)
+        XCTAssertNil(host.suspendedOverlay)
     }
 
     func testCloseDirectoryDoesNotRepeatSuspensionWhenAlreadySuspended() async {
-        var prepareCount = 0
-        let harness = makeCoordinator(isInsideArchive: { false },
-                                      prepareDirectoryForSuspension: { prepareCount += 1 })
+        let host = TestSuspensionHost()
 
-        await harness.coordinator.closeDirectory()
-        await harness.coordinator.closeDirectory()
+        await host.coordinator.closeDirectory()
+        await host.coordinator.closeDirectory()
 
-        XCTAssertTrue(harness.coordinator.isSuspended)
-        XCTAssertEqual(prepareCount, 1)
-        XCTAssertNotNil(suspendedOverlay(in: harness))
+        XCTAssertTrue(host.coordinator.isSuspended)
+        XCTAssertEqual(host.suspensionCount, 1)
+        XCTAssertNotNil(host.suspendedOverlay)
     }
 
     func testCloseDirectorySuspendsOnlyAfterArchiveActuallyCloses() async {
-        var isInsideArchive = true
-        var prepareCount = 0
-        let harness = makeCoordinator(isInsideArchive: { isInsideArchive },
-                                      closeAllArchives: { _ in
-                                          isInsideArchive = false
-                                          return true
-                                      },
-                                      prepareDirectoryForSuspension: { prepareCount += 1 })
+        let host = TestSuspensionHost()
+        host.isInsideArchive = true
 
-        await harness.coordinator.closeDirectory()
+        await host.coordinator.closeDirectory()
 
-        XCTAssertFalse(isInsideArchive)
-        XCTAssertTrue(harness.coordinator.isSuspended)
-        XCTAssertEqual(prepareCount, 1)
+        XCTAssertFalse(host.isInsideArchive)
+        XCTAssertTrue(host.coordinator.isSuspended)
+        XCTAssertEqual(host.closeRequests, [true])
+        XCTAssertEqual(host.suspensionCount, 1)
     }
 
-    func testReactivateIfSuspendedLoadsCurrentDirectoryAndClearsStateOnSuccess() async {
-        let directoryURL = URL(fileURLWithPath: "/tmp/reactivate-success", isDirectory: true)
-        var loadRequest: (url: URL, showError: Bool)?
-        let harness = makeCoordinator(currentDirectory: { directoryURL },
-                                      loadDirectory: { url, showError in
-                                          loadRequest = (url, showError)
-                                          return true
-                                      })
-        await harness.coordinator.closeDirectory()
+    func testCloseDirectoryKeepsPaneActiveIfArchiveRemainsOpen() async {
+        let host = TestSuspensionHost()
+        host.isInsideArchive = true
+        host.closeResult = false
 
-        harness.coordinator.reactivateIfSuspended()
+        await host.coordinator.closeDirectory()
 
-        XCTAssertEqual(loadRequest?.url, directoryURL)
-        XCTAssertEqual(loadRequest?.showError, true)
-        XCTAssertFalse(harness.coordinator.isSuspended)
-        XCTAssertNil(suspendedOverlay(in: harness))
+        XCTAssertTrue(host.isInsideArchive)
+        XCTAssertFalse(host.coordinator.isSuspended)
+        XCTAssertEqual(host.suspensionCount, 0)
+    }
+
+    func testReactivateIfSuspendedRequestsDirectoryReloadAndClearsStateOnSuccess() async {
+        let host = TestSuspensionHost()
+        await host.coordinator.closeDirectory()
+
+        let didReactivate = host.coordinator.reactivateIfSuspended()
+
+        XCTAssertTrue(didReactivate)
+        XCTAssertEqual(host.reloadCount, 1)
+        XCTAssertFalse(host.coordinator.isSuspended)
+        XCTAssertNil(host.suspendedOverlay)
     }
 
     func testReactivateKeepsPaneSuspendedWhenDirectoryLoadFails() async {
-        let harness = makeCoordinator(loadDirectory: { _, _ in false })
-        await harness.coordinator.closeDirectory()
+        let host = TestSuspensionHost()
+        host.reloadResult = false
+        await host.coordinator.closeDirectory()
 
-        harness.coordinator.reactivateIfSuspended()
+        let didReactivate = host.coordinator.reactivateIfSuspended()
 
-        XCTAssertTrue(harness.coordinator.isSuspended)
-        XCTAssertNotNil(suspendedOverlay(in: harness))
+        XCTAssertFalse(didReactivate)
+        XCTAssertEqual(host.reloadCount, 1)
+        XCTAssertTrue(host.coordinator.isSuspended)
+        XCTAssertNotNil(host.suspendedOverlay)
     }
 
     func testReactivateIsRejectedDuringClosePreparation() async {
-        var loadCount = 0
-        let harness = makeCoordinator(canReactivate: { false },
-                                      loadDirectory: { _, _ in
-                                          loadCount += 1
-                                          return true
-                                      })
-        await harness.coordinator.closeDirectory()
+        let host = TestSuspensionHost()
+        host.canReactivate = false
+        await host.coordinator.closeDirectory()
 
-        harness.coordinator.reactivateIfSuspended()
+        let didReactivate = host.coordinator.reactivateIfSuspended()
 
-        XCTAssertEqual(loadCount, 0)
-        XCTAssertTrue(harness.coordinator.isSuspended)
+        XCTAssertFalse(didReactivate)
+        XCTAssertEqual(host.reloadCount, 0)
+        XCTAssertTrue(host.coordinator.isSuspended)
+    }
+
+    func testCoordinatorDoesNotRetainItsHost() async throws {
+        var host: TestSuspensionHost? = TestSuspensionHost()
+        weak let weakHost = host
+        let coordinator = try XCTUnwrap(host).coordinator
+
+        host = nil
+
+        XCTAssertNil(weakHost)
+        let didPrepare = await coordinator.prepareForClose()
+        XCTAssertFalse(didPrepare)
     }
 
     func testActivityStateInvalidatesNavigationWhenClosePreparationBegins() throws {
@@ -212,18 +204,24 @@ final class FileManagerPaneSuspensionCoordinatorTests: XCTestCase {
         XCTAssertNotNil(state.beginNavigation())
     }
 
-    private func makeCoordinator(isViewLoaded: @escaping () -> Bool = { true },
-                                 isInsideArchive: @escaping () -> Bool = { false },
-                                 closeAllArchives: @escaping (Bool) async -> Bool = { _ in true },
-                                 prepareDirectoryForSuspension: @escaping () -> Void = {},
-                                 cancelPendingArchiveRefresh: @escaping () -> Void = {},
-                                 clearArchiveDisplayItems: @escaping () -> Void = {},
-                                 currentDirectory: @escaping () -> URL = { FileManager.default.homeDirectoryForCurrentUser },
-                                 canReactivate: @escaping () -> Bool = { true },
-                                 loadDirectory: @escaping (URL, Bool) -> Bool = { _, _ in true }) -> SuspensionHarness
-    {
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 240))
-        let scrollView = NSScrollView()
+}
+
+@MainActor
+private final class TestSuspensionHost: FileManagerPaneSuspensionHost {
+    var isViewLoaded = true
+    var isInsideArchive = false
+    var closeResult = true
+    var canReactivate = true
+    var reloadResult = true
+    private(set) var closeRequests: [Bool] = []
+    private(set) var suspensionCount = 0
+    private(set) var reloadCount = 0
+
+    let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 240))
+    let scrollView = NSScrollView()
+    lazy var coordinator = FileManagerPaneSuspensionCoordinator(host: self)
+
+    init() {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(scrollView)
         NSLayoutConstraint.activate([
@@ -232,36 +230,31 @@ final class FileManagerPaneSuspensionCoordinatorTests: XCTestCase {
             scrollView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
         ])
-
-        let statusLabel = NSTextField(labelWithString: "ready")
-        let coordinator = FileManagerPaneSuspensionCoordinator(isViewLoaded: isViewLoaded,
-                                                               isInsideArchive: isInsideArchive,
-                                                               closeAllArchives: closeAllArchives,
-                                                               prepareDirectoryForSuspension: prepareDirectoryForSuspension,
-                                                               cancelPendingArchiveRefresh: cancelPendingArchiveRefresh,
-                                                               clearArchiveDisplayItems: clearArchiveDisplayItems,
-                                                               clearStatusText: { statusLabel.stringValue = "" },
-                                                               containerView: { containerView },
-                                                               scrollView: { scrollView },
-                                                               currentDirectory: currentDirectory,
-                                                               canReactivate: canReactivate,
-                                                               loadDirectory: loadDirectory)
-
-        return SuspensionHarness(coordinator: coordinator,
-                                 containerView: containerView,
-                                 scrollView: scrollView,
-                                 statusLabel: statusLabel)
     }
 
-    private func suspendedOverlay(in harness: SuspensionHarness) -> NSView? {
-        harness.containerView.subviews.first { $0 !== harness.scrollView }
+    var suspensionOverlayViews: (container: NSView, content: NSView)? {
+        isViewLoaded ? (containerView, scrollView) : nil
     }
-}
 
-@MainActor
-private struct SuspensionHarness {
-    let coordinator: FileManagerPaneSuspensionCoordinator
-    let containerView: NSView
-    let scrollView: NSScrollView
-    let statusLabel: NSTextField
+    var suspendedOverlay: NSView? {
+        containerView.subviews.first { $0 !== scrollView }
+    }
+
+    func closeAllArchives(showError: Bool) async -> Bool {
+        closeRequests.append(showError)
+        if closeResult {
+            isInsideArchive = false
+        }
+        return closeResult
+    }
+
+    func preparePaneForSuspension() {
+        suspensionCount += 1
+    }
+
+    func reloadSuspendedDirectory() -> Bool {
+        guard canReactivate else { return false }
+        reloadCount += 1
+        return reloadResult
+    }
 }
