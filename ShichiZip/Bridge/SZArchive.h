@@ -416,6 +416,36 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 - (BOOL)testWithSession:(nullable SZOperationSession*)session
                   error:(NSError**)error;
 
+/// Get list of supported format infos
++ (NSArray<SZFormatInfo*>*)supportedFormats;
+
+/// Calculate hash of files — returns dict of algorithmName → hexDigest
++ (nullable NSDictionary<NSString*, NSString*>*)
+    calculateHashForPath:(NSString*)path
+                   error:(NSError**)error;
+
+/// Calculate hash of files with an explicit operation session
++ (nullable NSDictionary<NSString*, NSString*>*)
+    calculateHashForPath:(NSString*)path
+                 session:(nullable SZOperationSession*)session
+                   error:(NSError**)error;
+
+/// Get the underlying 7-Zip core version string.
++ (NSString*)sevenZipVersionString;
+
+/// Correct an archive item path exactly as 7-Zip does before writing it to the
+/// file system for non-absolute extraction modes.
++ (NSString*)correctedFileSystemRelativePathForArchivePath:(NSString*)path
+                                               isDirectory:(BOOL)isDirectory;
+
+/// Return a hashable key with the same filename-equivalence semantics used by
+/// the bundled 7-Zip Agent hierarchy.
++ (NSData*)fileNameComparisonKeyForArchivePathComponent:(NSString*)component;
+
+@end
+
+@interface SZArchive (Mutation)
+
 /// Create a folder inside the currently open archive.
 - (nullable SZArchiveUpdateOutcome*)createFolderNamed:(NSString*)folderName
                                       inArchiveSubdir:(NSString*)archiveSubdir
@@ -457,36 +487,14 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
                                          session:(nullable SZOperationSession*)session
                                            error:(NSError**)error;
 
-/// Get list of supported format infos
-+ (NSArray<SZFormatInfo*>*)supportedFormats;
+@end
+
+@interface SZArchive (CompressionEstimate)
 
 /// Get estimated compression and decompression memory usage for archive
 /// creation settings.
 + (SZCompressionResourceInfo*)compressionResourceEstimateForSettings:
     (SZCompressionSettings*)settings;
-
-/// Calculate hash of files — returns dict of algorithmName → hexDigest
-+ (nullable NSDictionary<NSString*, NSString*>*)
-    calculateHashForPath:(NSString*)path
-                   error:(NSError**)error;
-
-/// Calculate hash of files with an explicit operation session
-+ (nullable NSDictionary<NSString*, NSString*>*)
-    calculateHashForPath:(NSString*)path
-                 session:(nullable SZOperationSession*)session
-                   error:(NSError**)error;
-
-/// Get the underlying 7-Zip core version string.
-+ (NSString*)sevenZipVersionString;
-
-/// Correct an archive item path exactly as 7-Zip does before writing it to the
-/// file system for non-absolute extraction modes.
-+ (NSString*)correctedFileSystemRelativePathForArchivePath:(NSString*)path
-                                               isDirectory:(BOOL)isDirectory;
-
-/// Return a hashable key with the same filename-equivalence semantics used by
-/// the bundled 7-Zip Agent hierarchy.
-+ (NSData*)fileNameComparisonKeyForArchivePathComponent:(NSString*)component;
 
 @end
 

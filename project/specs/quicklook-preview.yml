@@ -22,6 +22,8 @@ targets:
         path: ../../ShichiZip/Bridge
         excludes:
           - "SZArchive+Benchmark.mm"
+          - "SZArchive+CompressionEstimate.mm"
+          - "SZArchive+Mutation.mm"
       - &archive_preview_log_source
         path: ../../ShichiZip/Utilities/SZLog.swift
       - &archive_preview_objc_log_source

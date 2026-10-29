@@ -9,6 +9,31 @@
 #include <mutex>
 #include <vector>
 
+@implementation SZBenchDisplayRow
+- (instancetype)init {
+    if ((self = [super init])) {
+        _sizeText = @"...";
+        _speedText = @"...";
+        _usageText = @"...";
+        _rpuText = @"...";
+        _ratingText = @"...";
+    }
+    return self;
+}
+@end
+
+@implementation SZBenchSnapshot
+- (instancetype)init {
+    if ((self = [super init])) {
+        _passesCompleted = 0;
+        _passesTotal = 1;
+        _finished = NO;
+        _logText = @"";
+    }
+    return self;
+}
+@end
+
 static std::atomic_bool g_BenchStop(false);
 
 namespace {
