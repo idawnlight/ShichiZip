@@ -8,7 +8,18 @@ enum AppOperationSessionFactory {
 
     nonisolated static func makeSession() -> SZOperationSession {
         let session = SZOperationSession()
+        configureHandlers(on: session)
+        return session
+    }
+
+    nonisolated static func configureHandlers(
+        on session: SZOperationSession,
+        willPresentPrompt: (@MainActor @Sendable () -> Void)? = nil
+    ) {
         session.passwordRequestHandler = { title, message, initialValue, passwordPointer in
+            if let willPresentPrompt {
+                MainActor.assumeIsolated { willPresentPrompt() }
+            }
             guard let password = szPromptForPasswordSync(title: title,
                                                          message: message,
                                                          initialValue: initialValue)
@@ -16,24 +27,30 @@ enum AppOperationSessionFactory {
             passwordPointer?.pointee = password as NSString
             return true
         }
-        session.choiceRequestHandler = { szRunChoiceDialog($0) }
+        session.choiceRequestHandler = { request in
+            if let willPresentPrompt {
+                MainActor.assumeIsolated { willPresentPrompt() }
+            }
+            return szRunChoiceDialog(request)
+        }
         session.updateEncryptionRequestHandler = { archivePath, defaultEncryption in
             MainActor.assumeIsolated {
-                ArchiveUpdateEncryptionDialog.runModal(forArchive: archivePath,
-                                                        defaultEncryption: defaultEncryption)
+                willPresentPrompt?()
+                return ArchiveUpdateEncryptionDialog.runModal(forArchive: archivePath,
+                                                               defaultEncryption: defaultEncryption)
             }
         }
         session.memoryLimitRequestHandler = { requiredBytes, currentLimitBytes, archivePath, filePath, testMode, showRemember in
             MainActor.assumeIsolated {
-                requestMemoryLimit(requiredBytes: requiredBytes,
-                                   currentLimitBytes: currentLimitBytes,
-                                   archivePath: archivePath,
-                                   filePath: filePath,
-                                   testMode: testMode,
-                                   showRemember: showRemember)
+                willPresentPrompt?()
+                return requestMemoryLimit(requiredBytes: requiredBytes,
+                                          currentLimitBytes: currentLimitBytes,
+                                          archivePath: archivePath,
+                                          filePath: filePath,
+                                          testMode: testMode,
+                                          showRemember: showRemember)
             }
         }
-        return session
     }
 
     static func requestMemoryLimit(requiredBytes: UInt64,

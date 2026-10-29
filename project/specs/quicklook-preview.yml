@@ -33,9 +33,7 @@ targets:
       - &archive_preview_preferences_source
         path: ../../ShichiZip/Utilities/ArchivePreviewPreferences.swift
       - &archive_preview_timestamp_preferences_source
-        path: ../../ShichiZip/Utilities/FileManagerTimestampPreferences.swift
-      - &archive_preview_view_preferences_source
-        path: ../../ShichiZip/Utilities/FileManagerViewPreferences.swift
+        path: ../../ShichiZip/FileManager/Preferences/FileManagerTimestampPreferences.swift
       - &archive_preview_column_source
         path: ../../ShichiZip/FileManager/Pane/FileManagerColumn.swift
       - &archive_preview_column_preferences_source
@@ -190,7 +188,6 @@ targets:
       - *archive_preview_shared_defaults_source
       - *archive_preview_preferences_source
       - *archive_preview_timestamp_preferences_source
-      - *archive_preview_view_preferences_source
       - *archive_preview_column_source
       - *archive_preview_column_preferences_source
       - *archive_preview_item_presentation_source

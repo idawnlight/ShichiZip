@@ -600,7 +600,7 @@ Z7_COM7F_IMF(SZFolderExtractCallback::RequestMemoryUse(
     if ((flags & NRequestMemoryUseFlags::k_IsReport) == 0) {
         if (!RememberMemoryDecision) {
             const BOOL showRemember = indexType != NArchive::NEventIndexType::kNoIndex || path != NULL;
-            SZOperationSession* session = Session ?: [SZOperationSession makeDefaultSession];
+            SZOperationSession* session = Session;
             SZMemoryLimitPromptResult* promptResult = [session requestMemoryLimitWithRequiredBytes:requiredSize
                                                                               currentLimitBytes:currentLimitBytes
                                                                                     archivePath:archivePath

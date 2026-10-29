@@ -30,7 +30,7 @@ struct ArchivePreviewSnapshot {
         visibleRowsWithoutHiddenItems = rows.filter { !$0.isHidden }
         allTreeNodes = ArchivePreviewTreeBuilder.treeNodes(for: rows,
                                                            columns: columns)
-        visibleTreeNodesWithoutHiddenItems = ArchivePreviewTreeBuilder.treeNodes(for: rows.filter { !$0.isHidden },
+        visibleTreeNodesWithoutHiddenItems = ArchivePreviewTreeBuilder.treeNodes(for: visibleRowsWithoutHiddenItems,
                                                                                  columns: columns)
         allSummaryText = ArchivePreviewPresentation.summaryText(for: allTreeNodes)
         visibleSummaryText = ArchivePreviewPresentation.summaryText(for: visibleTreeNodesWithoutHiddenItems)
@@ -358,12 +358,14 @@ enum ArchivePreviewTreeBuilder {
             stack.append(contentsOf: directory.childDirectories)
         }
 
+        let dateFormatter = ArchivePreviewPreferences.makeListDateFormatter()
         var finalizedDirectories: [ObjectIdentifier: ArchivePreviewTreeNode] = [:]
         for directory in directoryOrder.reversed() {
             let row = directory.representativeItemIndex
                 .flatMap { rowsByItemIndex[$0] }
                 ?? syntheticDirectoryRow(for: directory,
-                                         columns: columns)
+                                         columns: columns,
+                                         dateFormatter: dateFormatter)
             finalizedDirectories[ObjectIdentifier(directory)] = ArchivePreviewTreeNode(
                 row: row,
                 children: finalizedChildren(
@@ -402,6 +404,7 @@ enum ArchivePreviewTreeBuilder {
     private static func syntheticDirectoryRow(
         for directory: ArchiveHierarchy.Directory,
         columns: [FileManagerColumn],
+        dateFormatter: DateFormatter,
     ) -> ArchivePreviewRow {
         let path = directory.pathParts.joined(separator: "/")
         let item = ArchiveItem(index: -1,
@@ -422,7 +425,6 @@ enum ArchivePreviewTreeBuilder {
                                position: 0,
                                block: 0,
                                comment: "")
-        let dateFormatter = ArchivePreviewPreferences.makeListDateFormatter()
         let columnTexts = Dictionary(uniqueKeysWithValues: columns.map { column in
             (column.id.rawValue,
              ArchiveItemPresentation.listCellText(for: item,

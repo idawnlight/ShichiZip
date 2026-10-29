@@ -29,7 +29,7 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
          parentWindow: NSWindow?,
          deferredDisplay: Bool)
     {
-        session = AppOperationSessionFactory.makeSession()
+        session = SZOperationSession()
         model = OperationProgressModel(operationTitle: operationTitle,
                                        initialFileName: initialFileName,
                                        session: session)
@@ -61,43 +61,8 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
                 self?.receive(snapshot)
             }
         }
-        session.passwordRequestHandler = { [weak self] title, message, initialValue, passwordPointer in
-            MainActor.assumeIsolated {
-                self?.showProgressIfNeeded()
-            }
-
-            guard let password = szPromptForPasswordSync(title: title,
-                                                         message: message,
-                                                         initialValue: initialValue)
-            else {
-                return false
-            }
-
-            passwordPointer?.pointee = password as NSString
-            return true
-        }
-        session.choiceRequestHandler = { [weak self] request in
-            MainActor.assumeIsolated {
-                self?.showProgressIfNeeded()
-            }
-            return szRunChoiceDialog(request)
-        }
-        session.updateEncryptionRequestHandler = { [weak self] archivePath, defaultEncryption in
-            MainActor.assumeIsolated {
-                self?.showProgressIfNeeded()
-                return ArchiveUpdateEncryptionDialog.runModal(forArchive: archivePath, defaultEncryption: defaultEncryption)
-            }
-        }
-        session.memoryLimitRequestHandler = { [weak self] requiredBytes, currentLimitBytes, archivePath, filePath, testMode, showRemember in
-            MainActor.assumeIsolated {
-                self?.showProgressIfNeeded()
-                return AppOperationSessionFactory.requestMemoryLimit(requiredBytes: requiredBytes,
-                                                                    currentLimitBytes: currentLimitBytes,
-                                                                    archivePath: archivePath,
-                                                                    filePath: filePath,
-                                                                    testMode: testMode,
-                                                                    showRemember: showRemember)
-            }
+        AppOperationSessionFactory.configureHandlers(on: session) { [weak self] in
+            self?.showProgressIfNeeded()
         }
     }
 
