@@ -20,8 +20,6 @@
 #endif
 #endif
 
-#import "../Utilities/SZOperationSessionDefaults.h"
-
 #include "7zVersion.h"
 #include "CPP/7zip/Common/MethodProps.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
@@ -2360,7 +2358,7 @@ static BOOL SZValidateArchiveMutationName(NSString* name, NSError** error) {
     options.stream = NULL;
     options.filePath = ToU(path);
 
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
+    SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZOpenCallbackUI callbackUI;
     callbackUI.Session = resolvedSession;
     callbackUI.ArchivePath = ToU(path ?: @"");
@@ -2817,7 +2815,7 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     }
     IInArchive* archive = _arcLink->GetArchive();
     const CArc& arc = _arcLink->Arcs.Back();
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
+    SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZFolderExtractCallback* faeSpec = new SZFolderExtractCallback;
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
     faeSpec->Session = resolvedSession;
@@ -2914,7 +2912,7 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     IInArchive* archive = _arcLink->GetArchive();
     const CArc& arc = _arcLink->Arcs.Back();
 
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
+    SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZFolderExtractCallback* faeSpec = new SZFolderExtractCallback;
     CMyComPtr<IFolderArchiveExtractCallback> faeCallback(faeSpec);
     faeSpec->Session = resolvedSession;
@@ -2986,7 +2984,7 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
                 SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return nil;
     }
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
+    SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
     updateSpec->Session = resolvedSession;
@@ -3062,7 +3060,7 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
                 SZLocalizedString(@"app.fileManager.error.noArchiveOpen"));
         return nil;
     }
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
+    SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
     updateSpec->Session = resolvedSession;
@@ -3145,7 +3143,7 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         }
         return nil;
     }
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
+    SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
     updateSpec->Session = resolvedSession;
@@ -3270,7 +3268,7 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         pathPointers.push_back(path.Ptr());
     }
 
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
+    SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
     updateSpec->Session = resolvedSession;
@@ -3375,7 +3373,7 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         }
         return nil;
     }
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
+    SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
     updateSpec->Session = resolvedSession;
@@ -4035,7 +4033,7 @@ static bool SZParseVolumeSizes(const UString& text,
         SZAddOfficeLockFileExcludes(censor);
     }
 
-    SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();
+    SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZUpdateCallbackUI callbackUI;
     callbackUI.Session = resolvedSession;
     callbackUI.InputErrorPolicy = stopOnInputError

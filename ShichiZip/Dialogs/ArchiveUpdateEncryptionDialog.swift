@@ -1,9 +1,7 @@
 import SwiftUI
 
 @MainActor
-@objc(SZArchiveUpdateEncryptionDialog)
-final class ArchiveUpdateEncryptionDialog: NSObject {
-    @objc(runModalForArchive:defaultEncryption:)
+enum ArchiveUpdateEncryptionDialog {
     static func runModal(forArchive archivePath: String, defaultEncryption: SZEncryptionMethod) -> SZArchiveUpdateEncryption? {
         let options = CompressDialogController.encryptionOptions(for: .formatZip)
         let model = Model(encryption: defaultEncryption)

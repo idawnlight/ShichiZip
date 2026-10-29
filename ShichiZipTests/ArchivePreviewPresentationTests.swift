@@ -40,7 +40,7 @@ final class ArchivePreviewPresentationTests: XCTestCase {
                                                       folderCount: 1,
                                                       fileSize: 7))
         XCTAssertEqual(ArchivePreviewPresentation.summaryText(for: items),
-                       "2 \(ArchivePreviewLocalization.string("app.fileManager.statusFiles")), 1 \(ArchivePreviewLocalization.string("app.fileManager.statusFolder")) — \(ByteCountFormatter.string(fromByteCount: 7, countStyle: .file))")
+                       "2 \(SZL10n.string("app.fileManager.statusFiles")), 1 \(SZL10n.string("app.fileManager.statusFolder")) — \(ByteCountFormatter.string(fromByteCount: 7, countStyle: .file))")
     }
 
     func testSummaryAndCellsOmitUnknownSizeWithoutHidingKnownZero() {
@@ -49,11 +49,11 @@ final class ArchivePreviewPresentationTests: XCTestCase {
         let zeroText = ByteCountFormatter.string(fromByteCount: 0, countStyle: .file)
         let dateFormatter = DateFormatter()
 
-        XCTAssertEqual(ArchivePreviewPresentation.listCellText(for: unknown,
+        XCTAssertEqual(ArchiveItemPresentation.listCellText(for: unknown,
                                                                columnID: .size,
                                                                dateFormatter: dateFormatter),
                        "")
-        XCTAssertEqual(ArchivePreviewPresentation.listCellText(for: zero,
+        XCTAssertEqual(ArchiveItemPresentation.listCellText(for: zero,
                                                                columnID: .size,
                                                                dateFormatter: dateFormatter),
                        zeroText)
@@ -63,17 +63,51 @@ final class ArchivePreviewPresentationTests: XCTestCase {
         XCTAssertTrue(ArchivePreviewPresentation.summaryText(for: [zero]).contains(zeroText))
     }
 
+    func testLoadingDifferentArchivesBuildsSharedColumnsAndPathPresentation() throws {
+        let directory = try makeTemporaryDirectory(named: "preview-shared-presentation")
+        let folder = directory.appendingPathComponent("Folder", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+
+        for name in ["first.txt", "second.txt"] {
+            try name.write(to: folder.appendingPathComponent(name), atomically: true, encoding: .utf8)
+            let archiveURL = directory.appendingPathComponent(name + ".zip")
+            let entryPath = "Folder/" + name
+            try createZipFixture(at: archiveURL, currentDirectory: directory, entryPaths: [entryPath])
+
+            let snapshot = try ArchivePreviewLoader.loadArchiveContents(at: archiveURL)
+
+            XCTAssertEqual(snapshot.items.map(\.path), [entryPath])
+            XCTAssertEqual(snapshot.presentationRows(showHiddenItems: true).first?.text(for: .name), entryPath)
+            XCTAssertEqual(snapshot.treeNodes(showHiddenItems: true).first?.text(for: .name), "Folder")
+            XCTAssertEqual(snapshot.treeNodes(showHiddenItems: true).first?.children.first?.text(for: .name), name)
+            XCTAssertEqual(snapshot.availableColumns.first?.id, .name)
+            XCTAssertTrue(snapshot.availableColumns.contains { $0.id == .size })
+        }
+    }
+
+    func testPreviewRowsKeepFullPathsWhileMainAppCellsUseNames() {
+        let item = makeItem(path: "Folder/file.txt")
+        let columns = FileManagerColumn.archiveColumns(entryProperties: [])
+        let rows = ArchivePreviewPresentation.rows(for: [item], columns: columns)
+
+        XCTAssertEqual(rows.first?.text(for: .name), "Folder/file.txt")
+        XCTAssertEqual(FileManagerItemPresentation.listCellText(for: item,
+                                                                columnID: .name,
+                                                                dateFormatter: DateFormatter()),
+                       "file.txt")
+    }
+
     func testArchiveColumnsUseMainAppArchiveDefaults() {
-        let columns = ArchivePreviewColumn.archiveColumns(entryProperties: [
-            ArchivePreviewEntryProperty(id: .size,
+        let columns = FileManagerColumn.archiveColumns(entryProperties: [
+            FileManagerArchiveEntryProperty(id: .size,
                                         titleKey: "column.size",
                                         title: "Size",
                                         valueType: 21),
-            ArchivePreviewEntryProperty(id: .packedSize,
+            FileManagerArchiveEntryProperty(id: .packedSize,
                                         titleKey: "column.packedSize",
                                         title: "Packed Size",
                                         valueType: 21),
-            ArchivePreviewEntryProperty(id: .modified,
+            FileManagerArchiveEntryProperty(id: .modified,
                                         titleKey: "column.modified",
                                         title: "Modified",
                                         valueType: 64),
@@ -111,24 +145,24 @@ final class ArchivePreviewPresentationTests: XCTestCase {
                                                    forFolderTypeID: folderTypeID,
                                                    defaults: defaults)
 
-        let columns = ArchivePreviewColumn.archiveColumns(entryProperties: [
-            ArchivePreviewEntryProperty(id: .size,
+        let columns = FileManagerColumn.archiveColumns(entryProperties: [
+            FileManagerArchiveEntryProperty(id: .size,
                                         titleKey: "column.size",
                                         title: "Size",
                                         valueType: 21),
-            ArchivePreviewEntryProperty(id: .packedSize,
+            FileManagerArchiveEntryProperty(id: .packedSize,
                                         titleKey: "column.packedSize",
                                         title: "Packed Size",
                                         valueType: 21),
-            ArchivePreviewEntryProperty(id: .modified,
+            FileManagerArchiveEntryProperty(id: .modified,
                                         titleKey: "column.modified",
                                         title: "Modified",
                                         valueType: 64),
         ])
 
-        let resolved = ArchivePreviewColumnPreferences.resolvedColumns(columns,
-                                                                       folderTypeID: folderTypeID,
-                                                                       defaults: defaults)
+        let storedInfo = FileManagerViewPreferences.listViewInfo(forFolderTypeID: folderTypeID,
+                                                                  defaults: defaults)
+        let resolved = FileManagerViewPreferences.resolvedListViewColumns(columns, using: storedInfo)
 
         XCTAssertEqual(resolved.map(\.column.id), [.packedSize, .name, .modified])
         XCTAssertEqual(resolved.map(\.width), [123, 321, 180])
@@ -144,7 +178,7 @@ final class ArchivePreviewPresentationTests: XCTestCase {
                 makeItem(path: "root.txt"),
             ],
             entryProperties: [
-                ArchivePreviewEntryProperty(id: .size,
+                FileManagerArchiveEntryProperty(id: .size,
                                             titleKey: "column.size",
                                             title: "Size",
                                             valueType: 21),
@@ -161,7 +195,7 @@ final class ArchivePreviewPresentationTests: XCTestCase {
         XCTAssertEqual(visibleRoots.first?.children.first?.children.map { $0.text(for: .name) },
                        ["nested.txt"])
         XCTAssertEqual(snapshot.summaryText(showHiddenItems: false),
-                       "3 \(ArchivePreviewLocalization.string("app.fileManager.statusFiles")), 2 \(ArchivePreviewLocalization.string("app.fileManager.statusFolders")) — \(ByteCountFormatter.string(fromByteCount: 3, countStyle: .file))")
+                       "3 \(SZL10n.string("app.fileManager.statusFiles")), 2 \(SZL10n.string("app.fileManager.statusFolders")) — \(ByteCountFormatter.string(fromByteCount: 3, countStyle: .file))")
 
         XCTAssertEqual(snapshot.treeNodes(showHiddenItems: true).map { $0.text(for: .name) },
                        [".hidden", "Folder", "root.txt"])

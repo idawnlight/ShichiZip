@@ -136,9 +136,6 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
 
 @end
 
-@implementation SZMemoryLimitPromptResult
-@end
-
 @implementation SZMemoryLimitAccessoryController {
     uint32_t _requiredGB;
     uint32_t _currentLimitGB;
@@ -497,12 +494,10 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     }
 
     if (result) {
-        SZMemoryLimitPromptResult* promptResult = [SZMemoryLimitPromptResult new];
-        promptResult.saveLimit = accessoryController.saveLimit;
-        promptResult.skipArchive = accessoryController.skipArchive;
-        promptResult.rememberChoice = accessoryController.rememberChoice;
-        promptResult.limitGB = accessoryController.limitGB;
-        *result = promptResult;
+        *result = [[SZMemoryLimitPromptResult alloc] initWithSaveLimit:accessoryController.saveLimit
+                                                       skipArchive:accessoryController.skipArchive
+                                                    rememberChoice:accessoryController.rememberChoice
+                                                           limitGB:accessoryController.limitGB];
     }
     return YES;
 }

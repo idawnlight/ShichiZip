@@ -6,7 +6,7 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
     private let summaryLabel = NSTextField(labelWithString: "")
     private let statusLabel = NSTextField(labelWithString: "")
     private let hiddenItemsButton = NSButton(
-        checkboxWithTitle: ArchivePreviewLocalization.string("app.quickLook.archivePreview.showHiddenItems"),
+        checkboxWithTitle: SZL10n.string("app.quickLook.archivePreview.showHiddenItems"),
         target: nil,
         action: nil,
     )
@@ -15,7 +15,7 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
 
     private var snapshot: ArchivePreviewSnapshot?
     private var rootNodes: [ArchivePreviewTreeNode] = []
-    private var visibleColumns: [ArchivePreviewColumn] = []
+    private var visibleColumns: [FileManagerColumn] = []
     private var iconCache: [ArchivePreviewIconKey: NSImage] = [:]
     private var expandedDirectoryIDs = Set<ArchiveDirectoryID>()
     private var hasRecordedExpansionState = false
@@ -31,6 +31,8 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
     func preparePreviewOfFile(at url: URL,
                               completionHandler handler: @escaping (Error?) -> Void)
     {
+        SZL10n.reloadBundle()
+        hiddenItemsButton.title = SZL10n.string("app.quickLook.archivePreview.showHiddenItems")
         Task {
             do {
                 try await applyPreview(Self.loadSnapshot(at: url))
@@ -139,14 +141,14 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
     }
 
     private func showErrorState(_ error: Error) {
-        summaryLabel.stringValue = ArchivePreviewLocalization.string("app.quickLook.archivePreview.unavailable")
+        summaryLabel.stringValue = SZL10n.string("app.quickLook.archivePreview.unavailable")
         statusLabel.stringValue = error.localizedDescription
         statusLabel.textColor = .secondaryLabelColor
     }
 
     private func reloadTable() {
         guard let snapshot else {
-            summaryLabel.stringValue = ArchivePreviewLocalization.string("app.quickLook.archivePreview.empty")
+            summaryLabel.stringValue = SZL10n.string("app.quickLook.archivePreview.empty")
             rootNodes = []
             tableView.reloadData()
             return
@@ -160,8 +162,9 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
     }
 
     private func configureColumns(for snapshot: ArchivePreviewSnapshot) {
-        let resolvedColumns = ArchivePreviewColumnPreferences.resolvedColumns(snapshot.availableColumns,
-                                                                              folderTypeID: snapshot.folderTypeID)
+        let listViewInfo = FileManagerViewPreferences.listViewInfo(forFolderTypeID: snapshot.folderTypeID)
+        let resolvedColumns = FileManagerViewPreferences.resolvedListViewColumns(snapshot.availableColumns,
+                                                                                using: listViewInfo)
         resetColumns()
         visibleColumns = resolvedColumns.map(\.column)
 
@@ -206,8 +209,8 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
         return icon
     }
 
-    private func column(for tableColumn: NSTableColumn) -> ArchivePreviewColumn? {
-        let id = ArchivePreviewColumnID(rawValue: tableColumn.identifier.rawValue)
+    private func column(for tableColumn: NSTableColumn) -> FileManagerColumn? {
+        let id = FileManagerColumnID(rawValue: tableColumn.identifier.rawValue)
         return visibleColumns.first { $0.id == id }
     }
 
@@ -417,7 +420,7 @@ extension ArchivePreviewViewController: NSOutlineViewDataSource, NSOutlineViewDe
         }
 
         let previewRow = node.row
-        let alignment = column.alignment.textAlignment
+        let alignment = column.alignment
         let font = column.textStyle.font
         if column.id == .name {
             let cell = outlineView.makeView(withIdentifier: ArchivePreviewNameCellView.reuseIdentifier,
@@ -443,31 +446,5 @@ extension ArchivePreviewViewController: NSOutlineViewDataSource, NSOutlineViewDe
 
     private func node(for item: Any?) -> ArchivePreviewTreeNode? {
         item as? ArchivePreviewTreeNode
-    }
-}
-
-private extension ArchivePreviewColumnAlignment {
-    var textAlignment: NSTextAlignment {
-        switch self {
-        case .left:
-            .left
-        case .right:
-            .right
-        }
-    }
-}
-
-private extension ArchivePreviewColumnTextStyle {
-    var font: NSFont {
-        switch self {
-        case .standard:
-            .systemFont(ofSize: NSFont.systemFontSize)
-        case .tabularNumbers:
-            .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize,
-                                       weight: .regular)
-        case .fixedWidth:
-            .monospacedSystemFont(ofSize: NSFont.systemFontSize,
-                                  weight: .regular)
-        }
     }
 }

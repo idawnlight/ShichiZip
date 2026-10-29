@@ -29,7 +29,7 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
          parentWindow: NSWindow?,
          deferredDisplay: Bool)
     {
-        session = SZOperationSession()
+        session = AppOperationSessionFactory.makeSession()
         model = OperationProgressModel(operationTitle: operationTitle,
                                        initialFileName: initialFileName,
                                        session: session)
@@ -86,6 +86,17 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
             MainActor.assumeIsolated {
                 self?.showProgressIfNeeded()
                 return ArchiveUpdateEncryptionDialog.runModal(forArchive: archivePath, defaultEncryption: defaultEncryption)
+            }
+        }
+        session.memoryLimitRequestHandler = { [weak self] requiredBytes, currentLimitBytes, archivePath, filePath, testMode, showRemember in
+            MainActor.assumeIsolated {
+                self?.showProgressIfNeeded()
+                return AppOperationSessionFactory.requestMemoryLimit(requiredBytes: requiredBytes,
+                                                                    currentLimitBytes: currentLimitBytes,
+                                                                    archivePath: archivePath,
+                                                                    filePath: filePath,
+                                                                    testMode: testMode,
+                                                                    showRemember: showRemember)
             }
         }
     }
@@ -264,6 +275,7 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
         session.passwordRequestHandler = nil
         session.choiceRequestHandler = nil
         session.updateEncryptionRequestHandler = nil
+        session.memoryLimitRequestHandler = nil
         model.closeAction = nil
         requestedParentWindow = nil
         activeSheetParent = nil

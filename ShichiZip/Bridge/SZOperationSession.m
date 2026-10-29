@@ -14,6 +14,24 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
 
 static const CFTimeInterval SZOperationSnapshotMinimumInterval = 0.05;
 static const NSUInteger SZOperationIssueDetailLimit = 256;
+static SZOperationSessionFactory SZDefaultSessionFactory;
+
+@implementation SZMemoryLimitPromptResult
+
+- (instancetype)initWithSaveLimit:(BOOL)saveLimit
+                       skipArchive:(BOOL)skipArchive
+                    rememberChoice:(BOOL)rememberChoice
+                           limitGB:(uint32_t)limitGB {
+    if ((self = [super init])) {
+        _saveLimit = saveLimit;
+        _skipArchive = skipArchive;
+        _rememberChoice = rememberChoice;
+        _limitGB = limitGB;
+    }
+    return self;
+}
+
+@end
 
 @implementation SZOperationChoiceRequest
 
@@ -125,6 +143,23 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 @end
 
 @implementation SZOperationSession
+
++ (SZOperationSessionFactory)defaultSessionFactory {
+    @synchronized([SZOperationSession class]) {
+        return [SZDefaultSessionFactory copy];
+    }
+}
+
++ (void)setDefaultSessionFactory:(SZOperationSessionFactory)factory {
+    @synchronized([SZOperationSession class]) {
+        SZDefaultSessionFactory = [factory copy];
+    }
+}
+
++ (SZOperationSession*)makeDefaultSession {
+    SZOperationSessionFactory factory = self.defaultSessionFactory;
+    return factory ? factory() : [[SZOperationSession alloc] init];
+}
 
 - (instancetype)init {
     if ((self = [super init])) {
@@ -402,6 +437,31 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
         SZDispatchSyncOnMain(^{
             if (![self shouldCancel]) {
                 selection = handler(archivePath, defaultEncryption);
+            }
+        });
+    } @finally {
+        [self finishUserInteraction];
+    }
+    return [self shouldCancel] ? nil : selection;
+}
+
+- (SZMemoryLimitPromptResult*)requestMemoryLimitWithRequiredBytes:(uint64_t)requiredBytes
+                                              currentLimitBytes:(uint64_t)currentLimitBytes
+                                                    archivePath:(NSString*)archivePath
+                                                       filePath:(NSString*)filePath
+                                                       testMode:(BOOL)testMode
+                                                   showRemember:(BOOL)showRemember {
+    SZOperationMemoryLimitRequestHandler handler = self.memoryLimitRequestHandler;
+    if (!handler || [self shouldCancel]) {
+        return nil;
+    }
+
+    [self prepareForUserInteraction];
+    __block SZMemoryLimitPromptResult* selection = nil;
+    @try {
+        SZDispatchSyncOnMain(^{
+            if (![self shouldCancel]) {
+                selection = handler(requiredBytes, currentLimitBytes, archivePath, filePath, testMode, showRemember);
             }
         });
     } @finally {

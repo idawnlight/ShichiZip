@@ -24,10 +24,24 @@ targets:
           - "SZArchive+Benchmark.mm"
       - &archive_preview_log_source
         path: ../../ShichiZip/Utilities/SZLog.swift
+      - &archive_preview_objc_log_source
+        path: ../../ShichiZip/Utilities/SZObjCLog.m
+      - &archive_preview_localization_source
+        path: ../../ShichiZip/Utilities/SZL10n.swift
       - &archive_preview_shared_defaults_source
         path: ../../ShichiZip/Utilities/SZSharedUserDefaults.swift
       - &archive_preview_preferences_source
         path: ../../ShichiZip/Utilities/ArchivePreviewPreferences.swift
+      - &archive_preview_timestamp_preferences_source
+        path: ../../ShichiZip/Utilities/FileManagerTimestampPreferences.swift
+      - &archive_preview_view_preferences_source
+        path: ../../ShichiZip/Utilities/FileManagerViewPreferences.swift
+      - &archive_preview_column_source
+        path: ../../ShichiZip/FileManager/Pane/FileManagerColumn.swift
+      - &archive_preview_column_preferences_source
+        path: ../../ShichiZip/FileManager/Preferences/FileManagerListViewPreferences.swift
+      - &archive_preview_item_presentation_source
+        path: ../../ShichiZip/Utilities/ArchiveItemPresentation.swift
     dependencies: &archive_preview_dependencies
       - sdk: AppKit.framework
       - sdk: QuickLookUI.framework
@@ -171,8 +185,15 @@ targets:
       - *archive_preview_archive_hierarchy_source
       - *archive_preview_bridge_sources
       - *archive_preview_log_source
+      - *archive_preview_objc_log_source
+      - *archive_preview_localization_source
       - *archive_preview_shared_defaults_source
       - *archive_preview_preferences_source
+      - *archive_preview_timestamp_preferences_source
+      - *archive_preview_view_preferences_source
+      - *archive_preview_column_source
+      - *archive_preview_column_preferences_source
+      - *archive_preview_item_presentation_source
     dependencies:
       - sdk: AppKit.framework
       - sdk: QuickLookUI.framework
