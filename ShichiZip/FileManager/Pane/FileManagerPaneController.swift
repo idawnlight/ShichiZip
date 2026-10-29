@@ -1928,10 +1928,12 @@ extension FileManagerPaneController: FileManagerPaneArchiveCoordinatorHost {
             updatePathField()
             updateStatusBar()
             tableView.reloadData()
+            updateTableColumnsForCurrentLocation()
         } else if isViewLoaded {
             archiveLocationDidChange(selectingPaths: [])
+        } else {
+            updateTableColumnsForCurrentLocation()
         }
-        updateTableColumnsForCurrentLocation()
     }
 
     func archiveDidOpenTopLevel(_ url: URL) {
