@@ -1066,6 +1066,14 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     calculateHashForPath:(NSString*)path
                  session:(SZOperationSession*)session
                    error:(NSError**)error {
+    return [self calculateHashForPath:path methods:@[] session:session error:error];
+}
+
++ (NSDictionary<NSString*, NSString*>*)
+    calculateHashForPath:(NSString*)path
+                 methods:(NSArray<NSString*>*)methods
+                 session:(SZOperationSession*)session
+                   error:(NSError**)error {
     CCodecs* codecs = SZGetCodecs();
     if (!codecs) {
         if (error)
@@ -1073,17 +1081,14 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         return nil;
     }
 
+    NSArray<NSString*>* effectiveMethods = methods.count > 0 ? methods : @[
+        @"CRC32", @"CRC64", @"XXH64", @"MD5", @"SHA1",
+        @"SHA256", @"SHA384", @"SHA512", @"SHA3-256", @"BLAKE2sp"
+    ];
     CHashOptions options;
-    options.Methods.Add(UString(L"CRC32"));
-    options.Methods.Add(UString(L"CRC64"));
-    options.Methods.Add(UString(L"XXH64"));
-    options.Methods.Add(UString(L"MD5"));
-    options.Methods.Add(UString(L"SHA1"));
-    options.Methods.Add(UString(L"SHA256"));
-    options.Methods.Add(UString(L"SHA384"));
-    options.Methods.Add(UString(L"SHA512"));
-    options.Methods.Add(UString(L"SHA3-256"));
-    options.Methods.Add(UString(L"BLAKE2sp"));
+    for (NSString* method in effectiveMethods) {
+        options.Methods.Add(ToU(method));
+    }
 
     NWildcard::CCensor censor;
     NWildcard::CCensorPathProps props;

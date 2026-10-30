@@ -431,6 +431,15 @@ NS_SWIFT_SENDABLE
                  session:(nullable SZOperationSession*)session
                    error:(NSError**)error;
 
+/// Calculate only the named algorithms, without initializing other hashers.
+/// An empty array selects the same 10 algorithms as the compatibility APIs.
++ (nullable NSDictionary<NSString*, NSString*>*)
+    calculateHashForPath:(NSString*)path
+                 methods:(NSArray<NSString*>*)methods
+                 session:(nullable SZOperationSession*)session
+                   error:(NSError**)error
+    NS_SWIFT_NAME(calculateHash(forPath:methods:session:));
+
 /// Get the underlying 7-Zip core version string.
 + (NSString*)sevenZipVersionString;
 

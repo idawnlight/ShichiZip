@@ -641,6 +641,10 @@ enum FileManagerHashAlgorithm: Int, CaseIterable {
         definition.bridgeName
     }
 
+    var bridgeMethodNames: [String] {
+        self == .all ? [] : [bridgeName]
+    }
+
     func details(hashValues: [String: String]) -> String {
         displayedAlgorithms
             .map { currentAlgorithm in

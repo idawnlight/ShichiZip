@@ -1003,6 +1003,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         let itemName = item.name
         let itemPath = item.url.path
+        let methods = algorithm.bridgeMethodNames
 
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -1012,7 +1013,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                                       parentWindow: window,
                                                                       deferredDisplay: true)
                 { session in
-                    try SZArchive.calculateHash(forPath: itemPath, session: session)
+                    try SZArchive.calculateHash(forPath: itemPath, methods: methods, session: session)
                 }
                 let details = algorithm.details(hashValues: hashValues)
                 szShowDetailsDialog(title: itemName,
