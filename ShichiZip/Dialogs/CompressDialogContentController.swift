@@ -3,19 +3,6 @@ import Cocoa
 @MainActor
 extension CompressDialogController {
     @MainActor
-    private final class ActionHandler: NSObject {
-        private let handler: () -> Void
-
-        init(handler: @escaping () -> Void) {
-            self.handler = handler
-        }
-
-        @objc func invoke(_: Any?) {
-            handler()
-        }
-    }
-
-    @MainActor
     final class CompressDialogContentController {
         let accessoryView: NSView
         private let controls: CompressDialogControls

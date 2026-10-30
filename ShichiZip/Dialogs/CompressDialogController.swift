@@ -437,18 +437,6 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         }
     }
 
-    private func reloadMethodDependentControls(preferredDictionarySize: UInt64?,
-                                               preferredWordSize: UInt32?)
-    {
-        guard let contentController else { return }
-        if contentController.reloadMethodDependentControls(preferredDictionarySize: preferredDictionarySize,
-                                                           preferredWordSize: preferredWordSize,
-                                                           dependencies: makeContentRefreshDependencies())
-        {
-            updateArchivePathExtension()
-        }
-    }
-
     private func refreshOptionAvailability() {
         guard let contentController else { return }
         if contentController.refreshOptionAvailability(dependencies: makeContentRefreshDependencies()) {
