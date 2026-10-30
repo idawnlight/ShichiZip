@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct OperationProgressView: View {
-    @ObservedObject var model: OperationProgressModel
+    let model: OperationProgressModel
 
     var body: some View {
         Group {

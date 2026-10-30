@@ -1,3 +1,4 @@
+import Observation
 import SwiftUI
 
 @MainActor
@@ -34,9 +35,10 @@ enum ArchiveUpdateEncryptionDialog {
         return dialog.runModal() == 1 ? result : nil
     }
 
-    private final class Model: ObservableObject {
-        @Published var encryption: SZEncryptionMethod
-        @Published var password = ""
+    @Observable
+    fileprivate final class Model {
+        var encryption: SZEncryptionMethod
+        var password = ""
 
         init(encryption: SZEncryptionMethod) {
             self.encryption = encryption
@@ -93,7 +95,7 @@ enum ArchiveUpdateEncryptionDialog {
     }
 
     private struct Content: View {
-        @ObservedObject var model: Model
+        @Bindable var model: Model
         let options: [CompressDialogController.Option<SZEncryptionMethod>]
         @State private var showsPassword = false
         @FocusState private var focusedField: PasswordField?

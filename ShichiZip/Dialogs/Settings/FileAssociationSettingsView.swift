@@ -9,7 +9,7 @@ private struct TableWidthPreferenceKey: PreferenceKey {
 }
 
 struct FileAssociationSettingsView: View {
-    @ObservedObject var model: FileAssociationSettingsModel
+    let model: FileAssociationSettingsModel
     @State private var searchText = ""
     @State private var tableWidth: CGFloat = 0
 

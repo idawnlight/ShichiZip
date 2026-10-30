@@ -10,7 +10,7 @@ struct GeneralSettingsView: View {
         }
     }
 
-    @ObservedObject var store: SettingsStore
+    let store: SettingsStore
     @State private var resetAction: ResetAction?
 
     var body: some View {

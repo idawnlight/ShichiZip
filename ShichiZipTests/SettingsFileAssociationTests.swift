@@ -1,4 +1,6 @@
 import Foundation
+import Observation
+import os
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
@@ -134,6 +136,49 @@ final class SettingsFileAssociationTests: XCTestCase {
             ["com.example.one", "com.example.two"],
         )
         XCTAssertTrue(model.state(for: association).isCurrentDefault)
+    }
+
+    @MainActor
+    func testRecommendedAvailabilityObservationTracksUpdateStartAndFinish() async throws {
+        let associations = ["one", "two"].map { name in
+            FileAssociation(
+                displayName: "Test Archive \(name)",
+                handlerRank: "Default",
+                fileExtensions: [name],
+                contentTypeIdentifiers: ["com.example.\(name)"],
+            )
+        }
+        let model = FileAssociationSettingsModel(
+            associations: associations,
+            workspace: TestFileAssociationWorkspace(),
+        )
+        model.refresh()
+        XCTAssertTrue(model.canSetRecommendedAsDefault)
+
+        let startChanges = OSAllocatedUnfairLock(initialState: 0)
+        withObservationTracking {
+            _ = model.canSetRecommendedAsDefault
+        } onChange: {
+            startChanges.withLock { $0 += 1 }
+        }
+
+        let task = try XCTUnwrap(model.setDefaultApplication(for: associations[0]))
+        XCTAssertEqual(startChanges.withLock { $0 }, 1)
+        XCTAssertFalse(model.canSetRecommendedAsDefault)
+
+        let finishChanges = OSAllocatedUnfairLock(initialState: 0)
+        withObservationTracking {
+            _ = model.canSetRecommendedAsDefault
+        } onChange: {
+            finishChanges.withLock { $0 += 1 }
+        }
+
+        await task.value
+
+        XCTAssertEqual(finishChanges.withLock { $0 }, 1)
+        XCTAssertTrue(model.state(for: associations[0]).isCurrentDefault)
+        XCTAssertFalse(model.state(for: associations[1]).isCurrentDefault)
+        XCTAssertTrue(model.canSetRecommendedAsDefault)
     }
 
     @MainActor

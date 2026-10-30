@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ArchiveSettingsView: View {
-    @ObservedObject var store: SettingsStore
+    let store: SettingsStore
 
     var body: some View {
         SettingsPageView {

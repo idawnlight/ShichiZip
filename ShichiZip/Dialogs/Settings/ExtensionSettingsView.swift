@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ExtensionSettingsView: View {
-    @ObservedObject var store: SettingsStore
+    let store: SettingsStore
     @State private var showsQuickActionsError = false
 
     var body: some View {
