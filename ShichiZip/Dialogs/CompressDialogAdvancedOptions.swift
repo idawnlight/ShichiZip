@@ -3,10 +3,10 @@ import Cocoa
 @MainActor
 extension CompressDialogController {
     private static let knownTimePrecisionValues: [SZCompressionTimePrecision] = [
-        SZCompressionTimePrecision(rawValue: 0)!,
-        SZCompressionTimePrecision(rawValue: 1)!,
-        SZCompressionTimePrecision(rawValue: 2)!,
-        SZCompressionTimePrecision(rawValue: 3)!,
+        .windows,
+        .unix,
+        .DOS,
+        .linux,
     ]
 
     func advancedOptionsSummary(for state: AdvancedOptionsState,
@@ -93,7 +93,7 @@ extension CompressDialogController {
             return (info.supportedTimePrecisionMask & (UInt32(1) << bit)) != 0
         }
 
-        var defaultTimePrecision = info?.defaultTimePrecision ?? SZCompressionTimePrecision(rawValue: -1)!
+        var defaultTimePrecision = info?.defaultTimePrecision ?? .automatic
         if defaultTimePrecision.rawValue < 0
             || !supportedTimePrecisions.contains(where: { $0.rawValue == defaultTimePrecision.rawValue }),
             let firstSupportedTimePrecision = supportedTimePrecisions.first
@@ -137,7 +137,7 @@ extension CompressDialogController {
         let effectiveTimePrecision = timePrecision.rawValue < 0 ? capabilities.defaultTimePrecision : timePrecision
 
         if format.codecName.caseInsensitiveCompare("zip") == .orderedSame,
-           effectiveTimePrecision.rawValue != 0
+           effectiveTimePrecision != .windows
         {
             adjustedCapabilities.supportsCreationTime = false
             adjustedCapabilities.defaultCreationTime = false
@@ -165,7 +165,7 @@ extension CompressDialogController {
         var state = baseState
         if baseCapabilities.supportedTimePrecisions.isEmpty {
             state.timePrecision = AdvancedTimePrecisionState(isSet: false,
-                                                             value: SZCompressionTimePrecision(rawValue: -1)!)
+                                                             value: .automatic)
         } else if !baseCapabilities.supportedTimePrecisions.contains(where: { $0.rawValue == state.timePrecision.value.rawValue }) {
             state.timePrecision = AdvancedTimePrecisionState(isSet: false,
                                                              value: baseCapabilities.defaultTimePrecision)
@@ -186,14 +186,14 @@ extension CompressDialogController {
     }
 
     private func timePrecisionTitle(for precision: SZCompressionTimePrecision) -> String {
-        switch precision.rawValue {
-        case 0:
+        switch precision {
+        case .windows:
             "100 \(SZL10n.string("time.nanosecondsAbbrev")) : Windows"
-        case 1:
+        case .unix:
             "1 \(SZL10n.string("time.secondsAbbrev")) : Unix"
-        case 2:
+        case .DOS:
             "2 \(SZL10n.string("time.secondsAbbrev")) : DOS"
-        case 3:
+        case .linux:
             "1 \(SZL10n.string("time.nanosecondsAbbrev")) : Linux"
         default:
             "Automatic"
@@ -204,18 +204,18 @@ extension CompressDialogController {
                                          supported: Bool) -> SZCompressionBoolSetting
     {
         guard supported, value else {
-            return SZCompressionBoolSetting(rawValue: -1)!
+            return .notDefined
         }
-        return SZCompressionBoolSetting(rawValue: 1)!
+        return .on
     }
 
     private func compressionBoolPairSetting(for state: AdvancedBoolPairState,
                                             supported: Bool) -> SZCompressionBoolSetting
     {
         guard supported, state.isSet else {
-            return SZCompressionBoolSetting(rawValue: -1)!
+            return .notDefined
         }
-        return SZCompressionBoolSetting(rawValue: state.value ? 1 : 0)!
+        return state.value ? .on : .off
     }
 
     func applyAdvancedOptions(_ state: AdvancedOptionsState,
@@ -241,7 +241,7 @@ extension CompressDialogController {
         settings.setArchiveTimeToLatestFile = compressionBoolPairSetting(for: state.setArchiveTimeToLatestFile,
                                                                          supported: true)
         settings.timePrecision = capabilities.supportedTimePrecisions.isEmpty || !state.timePrecision.isSet
-            ? SZCompressionTimePrecision(rawValue: -1)!
+            ? .automatic
             : state.timePrecision.value
     }
 

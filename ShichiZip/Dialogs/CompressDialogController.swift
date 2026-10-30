@@ -105,7 +105,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                                             setArchiveTimeToLatestFile: AdvancedBoolPairState(isSet: false,
                                                                                                               value: false),
                                                             timePrecision: AdvancedTimePrecisionState(isSet: false,
-                                                                                                      value: SZCompressionTimePrecision(rawValue: -1)!))
+                                                                                                      value: .automatic))
     private var advancedOptionsWereCustomized = false
     private var isPresentingAdvancedOptions = false
 
