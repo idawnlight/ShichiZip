@@ -232,6 +232,7 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 @end
 
 /// Represents a single entry in an archive
+NS_SWIFT_SENDABLE
 @interface SZArchiveItemReference : NSObject
 @property (nonatomic, readonly) NSUInteger archiveIndex;
 @property (nonatomic, readonly, getter=hasArchiveIndex) BOOL archiveIndexAvailable;

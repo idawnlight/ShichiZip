@@ -59,7 +59,7 @@ struct ArchivePreviewSummary: Equatable {
     let fileSize: UInt64?
 }
 
-struct ArchivePreviewRow {
+struct ArchivePreviewRow: Sendable {
     let itemIndex: Int
     let path: String
     let pathParts: [String]
@@ -75,7 +75,7 @@ struct ArchivePreviewRow {
     }
 }
 
-final class ArchivePreviewTreeNode: @unchecked Sendable {
+final class ArchivePreviewTreeNode: Sendable {
     let row: ArchivePreviewRow
     let children: [ArchivePreviewTreeNode]
     let directoryID: ArchiveDirectoryID?
@@ -100,7 +100,7 @@ final class ArchivePreviewTreeNode: @unchecked Sendable {
     }
 }
 
-enum ArchivePreviewIconKey: Hashable {
+enum ArchivePreviewIconKey: Hashable, Sendable {
     case folder
     case fileExtension(String)
     case genericFile
