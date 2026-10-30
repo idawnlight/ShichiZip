@@ -32,7 +32,8 @@ extension CompressDialogController {
 
         init(owner: CompressDialogController,
              initialState: CompressDialogState,
-             availableFormats: [FormatOption])
+             availableFormats: [FormatOption],
+             onPasswordChange: @escaping () -> Void)
         {
             state = initialState
             self.availableFormats = availableFormats
@@ -212,34 +213,17 @@ extension CompressDialogController {
             let encryptionPopup = NSPopUpButton(frame: .zero, pullsDown: false)
             encryptionPopup.setAccessibilityIdentifier("compress.encryption")
 
-            let securePasswordField = NSSecureTextField(frame: .zero)
-            securePasswordField.stringValue = initialState.password
-            securePasswordField.placeholderString = SZL10n.string("app.optional")
-            securePasswordField.delegate = owner
-            securePasswordField.setAccessibilityIdentifier("compress.password")
-
-            let plainPasswordField = NSTextField(frame: .zero)
-            plainPasswordField.stringValue = initialState.password
-            plainPasswordField.placeholderString = SZL10n.string("app.optional")
-            plainPasswordField.delegate = owner
-            plainPasswordField.setAccessibilityIdentifier("compress.passwordPlain")
-
-            let secureConfirmPasswordField = NSSecureTextField(frame: .zero)
-            secureConfirmPasswordField.stringValue = initialState.confirmation
-            secureConfirmPasswordField.placeholderString = SZL10n.string("app.reenterPassword")
-            secureConfirmPasswordField.delegate = owner
-            secureConfirmPasswordField.setAccessibilityIdentifier("compress.confirmPassword")
-
-            let plainConfirmPasswordField = NSTextField(frame: .zero)
-            plainConfirmPasswordField.stringValue = initialState.confirmation
-            plainConfirmPasswordField.placeholderString = SZL10n.string("app.reenterPassword")
-            plainConfirmPasswordField.delegate = owner
-            plainConfirmPasswordField.setAccessibilityIdentifier("compress.confirmPasswordPlain")
-
-            let passwordContainer = CompressDialogLayout.makePasswordContainer(secureField: securePasswordField,
-                                                                               plainField: plainPasswordField)
-            let confirmPasswordContainer = CompressDialogLayout.makePasswordContainer(secureField: secureConfirmPasswordField,
-                                                                                      plainField: plainConfirmPasswordField)
+            let passwordField = SZPasswordField(value: initialState.password,
+                                                placeholder: SZL10n.string("app.optional"),
+                                                accessibilityIdentifier: "compress.password")
+            let confirmationField = SZPasswordField(value: initialState.confirmation,
+                                                    placeholder: SZL10n.string("app.reenterPassword"),
+                                                    accessibilityIdentifier: "compress.confirmPassword")
+            for field in [passwordField, confirmationField] {
+                field.widthAnchor.constraint(equalToConstant: 220).isActive = true
+                field.heightAnchor.constraint(equalToConstant: 24).isActive = true
+                field.textDidChangeHandler = { _ in onPasswordChange() }
+            }
 
             let showPasswordCheckbox = NSButton(checkboxWithTitle: SZL10n.string("password.showPassword"),
                                                 target: owner,
@@ -285,8 +269,8 @@ extension CompressDialogController {
             ])
 
             let encryptionColumn = CompressDialogLayout.makeTitledSection(title: SZL10n.string("compress.encryption"), rows: [
-                CompressDialogLayout.makeFormRow(label: SZL10n.string("password.password") + ":", control: passwordContainer),
-                CompressDialogLayout.makeFormRow(label: SZL10n.string("password.reenterPassword"), control: confirmPasswordContainer),
+                CompressDialogLayout.makeFormRow(label: SZL10n.string("password.password") + ":", control: passwordField),
+                CompressDialogLayout.makeFormRow(label: SZL10n.string("password.reenterPassword"), control: confirmationField),
                 showPasswordCheckbox,
                 CompressDialogLayout.makeFormRow(label: SZL10n.string("compress.encryptionMethod"), control: encryptionPopup),
                 encryptNamesCheckbox,
@@ -348,16 +332,13 @@ extension CompressDialogController {
                                               memoryUsageRow: memoryUsageRow,
                                               compressionMemoryRow: compressionMemoryRow,
                                               decompressionMemoryRow: decompressionMemoryRow,
-                                              securePasswordField: securePasswordField,
-                                              plainPasswordField: plainPasswordField,
-                                              secureConfirmPasswordField: secureConfirmPasswordField,
-                                              plainConfirmPasswordField: plainConfirmPasswordField,
+                                              passwordField: passwordField,
+                                              confirmationField: confirmationField,
                                               showPasswordCheckbox: showPasswordCheckbox,
                                               advancedOptionsSummaryLabel: advancedOptionsSummaryLabel)
         }
 
         func updateStateFromControls(advancedOptions: AdvancedOptionsState) {
-            syncPasswordFields()
             state = CompressDialogState(archivePath: controls.archivePathField.stringValue,
                                         format: selectedFormatOption() ?? state.format,
                                         level: selectedLevelOption()?.levelValue ?? state.level,
@@ -384,28 +365,12 @@ extension CompressDialogController {
                                         showPassword: controls.showPasswordCheckbox.state == .on)
         }
 
-        func syncPasswordFields() {
-            let password = currentPasswordValue()
-            controls.securePasswordField.stringValue = password
-            controls.plainPasswordField.stringValue = password
-
-            let confirmation = currentConfirmationValue()
-            controls.secureConfirmPasswordField.stringValue = confirmation
-            controls.plainConfirmPasswordField.stringValue = confirmation
-        }
-
         func currentPasswordValue() -> String {
-            if controls.showPasswordCheckbox.state == .on {
-                return controls.plainPasswordField.stringValue
-            }
-            return controls.securePasswordField.stringValue
+            controls.passwordField.stringValue
         }
 
         func currentConfirmationValue() -> String {
-            if controls.showPasswordCheckbox.state == .on {
-                return controls.plainConfirmPasswordField.stringValue
-            }
-            return controls.secureConfirmPasswordField.stringValue
+            controls.confirmationField.stringValue
         }
 
         func currentThreadText() -> String {
@@ -562,51 +527,10 @@ extension CompressDialogController {
             return comboBox === controls.threadField
         }
 
-        @discardableResult
-        func syncPasswordFields(changedField field: NSTextField) -> Bool {
-            if field === controls.securePasswordField || field === controls.plainPasswordField {
-                controls.securePasswordField.stringValue = field.stringValue
-                controls.plainPasswordField.stringValue = field.stringValue
-                return true
-            }
-
-            if field === controls.secureConfirmPasswordField || field === controls.plainConfirmPasswordField {
-                controls.secureConfirmPasswordField.stringValue = field.stringValue
-                controls.plainConfirmPasswordField.stringValue = field.stringValue
-                return true
-            }
-
-            return false
-        }
-
-        func updatePasswordVisibilityUI(moveFocus: Bool,
-                                        in window: NSWindow?)
-        {
+        func updatePasswordVisibilityUI() {
             let showsPassword = controls.showPasswordCheckbox.state == .on
-            controls.securePasswordField.isHidden = showsPassword
-            controls.secureConfirmPasswordField.isHidden = showsPassword
-            controls.plainPasswordField.isHidden = !showsPassword
-            controls.plainConfirmPasswordField.isHidden = !showsPassword
-
-            guard moveFocus,
-                  let window,
-                  let textView = window.firstResponder as? NSTextView,
-                  let owner = textView.delegate as? NSView
-            else {
-                return
-            }
-
-            let replacementResponder: NSView? = if owner === controls.securePasswordField || owner === controls.plainPasswordField {
-                showsPassword ? controls.plainPasswordField : controls.securePasswordField
-            } else if owner === controls.secureConfirmPasswordField || owner === controls.plainConfirmPasswordField {
-                showsPassword ? controls.plainConfirmPasswordField : controls.secureConfirmPasswordField
-            } else {
-                nil
-            }
-
-            if let replacementResponder {
-                window.makeFirstResponder(replacementResponder)
-            }
+            controls.passwordField.showsPassword = showsPassword
+            controls.confirmationField.showsPassword = showsPassword
         }
 
         @discardableResult
@@ -759,10 +683,8 @@ extension CompressDialogController {
 
             let encryptionAvailable = !format.encryptionOptions.isEmpty
             controls.encryptionPopup.isEnabled = encryptionAvailable && format.encryptionOptions.count > 1
-            controls.securePasswordField.isEnabled = encryptionAvailable
-            controls.plainPasswordField.isEnabled = encryptionAvailable
-            controls.secureConfirmPasswordField.isEnabled = encryptionAvailable
-            controls.plainConfirmPasswordField.isEnabled = encryptionAvailable
+            controls.passwordField.isEnabled = encryptionAvailable
+            controls.confirmationField.isEnabled = encryptionAvailable
             controls.showPasswordCheckbox.isEnabled = encryptionAvailable
 
             let canEncryptNames = encryptionAvailable && format.supportsEncryptFileNames && !currentPasswordValue().isEmpty
