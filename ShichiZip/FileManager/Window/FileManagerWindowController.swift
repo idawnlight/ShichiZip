@@ -293,11 +293,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     func handleTitlePathMouseEvent(_ event: NSEvent) -> Bool {
         guard FileManagerToolbarPreferences.style == .unified,
-              let window, event.window === window else { return false }
+              let window = window as? FileManagerWindow, event.window === window else { return false }
         let rightClick = event.type == .rightMouseDown || event.modifierFlags.contains(.control)
         if rightClick, titlePathField == nil,
            [window.title, window.subtitle].contains(where: { text in
-               guard let field = FileManagerPathToolbar.titleField(in: window, text: text) else { return false }
+               guard let field = window.titleField(matching: text) else { return false }
                return field.bounds.contains(field.convert(event.locationInWindow, from: nil))
            }) {
             expandTitlePath()
