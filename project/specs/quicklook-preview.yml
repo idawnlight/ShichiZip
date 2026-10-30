@@ -70,7 +70,7 @@ targets:
             - $(inherited)
             - "@executable_path/../Frameworks"
             - "@executable_path/../../../../Frameworks"
-          MACOSX_DEPLOYMENT_TARGET: "13.0"
+          MACOSX_DEPLOYMENT_TARGET: "14.0"
           GENERATE_INFOPLIST_FILE: false
           APPLICATION_EXTENSION_API_ONLY: true
           CLANG_ENABLE_OBJC_ARC: true
@@ -96,7 +96,7 @@ targets:
           CFBundleShortVersionString: $(MARKETING_VERSION)
           CFBundleVersion: $(CURRENT_PROJECT_VERSION)
           CFBundleAllowMixedLocalizations: true
-          LSMinimumSystemVersion: "13.0"
+          LSMinimumSystemVersion: "14.0"
           ShichiZipQuickActionAppGroupIdentifier: $(SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.quicklook.preview

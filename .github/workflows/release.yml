@@ -91,7 +91,7 @@ jobs:
             artifact_prefix: ShichiZipZS
             target_arch: x86_64
     env:
-      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      MACOSX_DEPLOYMENT_TARGET: "14.0"
       XCODE_PROJECT: ShichiZip.xcodeproj
       XCODE_CONFIGURATION: Release
 

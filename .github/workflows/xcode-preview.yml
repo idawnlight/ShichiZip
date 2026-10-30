@@ -26,7 +26,7 @@ jobs:
             cache_key: xcode-27.2-rc
     env:
       DEVELOPER_DIR: ${{ matrix.developer_dir }}
-      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      MACOSX_DEPLOYMENT_TARGET: "14.0"
       XCODE_PROJECT: ShichiZip.xcodeproj
       XCODE_CONFIGURATION: Debug
       XCODE_DERIVED_DATA_PATH: build/DerivedData/ShichiZipZS-${{ matrix.cache_key }}

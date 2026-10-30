@@ -17,7 +17,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.Localization
         PRODUCT_NAME: ShichiZipLocalization
-        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
         GENERATE_INFOPLIST_FILE: true
         DEFINES_MODULE: false
         APPLICATION_EXTENSION_API_ONLY: true

@@ -135,7 +135,7 @@ enum ArchiveUpdateEncryptionDialog {
             .frame(width: 360)
             .fixedSize(horizontal: false, vertical: true)
             .onAppear { focusedField = .secure }
-            .onChange(of: showsPassword) { shown in
+            .onChange(of: showsPassword) { _, shown in
                 focusedField = shown ? .plain : .secure
             }
         }
