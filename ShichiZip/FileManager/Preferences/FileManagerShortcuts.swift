@@ -299,8 +299,9 @@ enum FileManagerShortcuts {
     static func command(for event: NSEvent,
                         preset: FileManagerShortcutPreset = SZSettings.fileManagerShortcutPreset) -> FileManagerShortcutCommand?
     {
+        let bindingMap = resolvedBindingMap(for: preset)
         for command in FileManagerShortcutCommand.allCases {
-            guard let shortcut = resolvedBindingMap(for: preset)[command] else {
+            guard let shortcut = bindingMap[command] else {
                 continue
             }
             if shortcut.matches(event) {
