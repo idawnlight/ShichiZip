@@ -59,6 +59,32 @@ final class SharedArchivePreferencesTests: XCTestCase {
         XCTAssertEqual(SZL10n.string("app.fileManager.statusFiles"), "files")
     }
 
+    func testBundleReloadKeepsInjectedSuitesIsolatedAndClearsInvalidOverrides() throws {
+        let english = try makeIsolatedDefaults()
+        let chinese = try makeIsolatedDefaults()
+        let fallback = try makeIsolatedDefaults()
+        defer { SZL10n.reloadBundle() }
+
+        SZL10n.reloadBundle(defaults: fallback)
+        let baseBundle = SZL10n.bundle
+        english.set("en", forKey: "LanguageOverride")
+        chinese.set("zh-Hans", forKey: "LanguageOverride")
+
+        for defaults in [english, chinese, english] {
+            SZL10n.reloadBundle(defaults: defaults)
+            let expected = defaults === chinese ? "个文件" : "files"
+            XCTAssertEqual(SZL10n.string("app.fileManager.statusFiles"), expected)
+        }
+
+        chinese.set("missing-language", forKey: "LanguageOverride")
+        SZL10n.reloadBundle(defaults: chinese)
+        XCTAssertTrue(SZL10n.bundle === baseBundle)
+
+        english.removeObject(forKey: "LanguageOverride")
+        SZL10n.reloadBundle(defaults: english)
+        XCTAssertTrue(SZL10n.bundle === baseBundle)
+    }
+
     private func makeIsolatedDefaults() throws -> UserDefaults {
         let suiteName = "SharedArchivePreferencesTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

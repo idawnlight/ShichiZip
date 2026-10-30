@@ -10,26 +10,27 @@ enum SZSharedUserDefaults {
         sharedDefaults ?? .standard
     }
 
-    static var appGroupIdentifier: String? {
+    static let appGroupIdentifier: String? = {
         guard let value = Bundle.main.object(forInfoDictionaryKey: appGroupIdentifierInfoKey) as? String else {
             return nil
         }
 
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedValue.isEmpty ? nil : trimmedValue
-    }
+    }()
 
-    static var sharedDefaults: UserDefaults? {
+    /// Foundation documents UserDefaults as thread-safe, but does not declare it Sendable.
+    nonisolated(unsafe) static let sharedDefaults: UserDefaults? = {
         guard let appGroupIdentifier else {
             return nil
         }
 
         return UserDefaults(suiteName: appGroupIdentifier)
-    }
+    }()
 
     static func migrateStandardDefaultsIfNeeded() {
         guard let appGroupIdentifier,
-              let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier),
+              let sharedDefaults,
               let appDefaultsDomainName = Bundle.main.bundleIdentifier
         else {
             return

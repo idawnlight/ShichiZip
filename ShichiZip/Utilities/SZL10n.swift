@@ -146,9 +146,7 @@ enum SZL10n {
 
     // MARK: - Private
 
-    private static var baseBundle: Bundle {
-        localizationBundle() ?? .main
-    }
+    private static let baseBundle = localizationBundle() ?? Bundle.main
 
     private static func localizationBundle() -> Bundle? {
         if let bundle = Bundle(identifier: localizationBundleIdentifier) {

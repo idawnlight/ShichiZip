@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import <dispatch/dispatch.h>
 
 #include "SZStringConversion.h"
 
@@ -44,16 +45,19 @@ static NSString* const kSZWorkDirRemovableOnlyPreferenceKey = @"WorkDirForRemova
 static NSString* const kSZAppGroupIdentifierInfoKey = @"ShichiZipQuickActionAppGroupIdentifier";
 
 static NSUserDefaults* SZSharedNSUserDefaults(void) {
-    NSString* appGroupIdentifier =
-        [[NSBundle mainBundle] objectForInfoDictionaryKey:kSZAppGroupIdentifierInfoKey];
-    if (appGroupIdentifier.length > 0) {
-        NSUserDefaults* defaults = [[NSUserDefaults alloc] initWithSuiteName:appGroupIdentifier];
-        if (defaults) {
-            return defaults;
+    static NSUserDefaults* defaults;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSString* appGroupIdentifier =
+            [[NSBundle mainBundle] objectForInfoDictionaryKey:kSZAppGroupIdentifierInfoKey];
+        if (appGroupIdentifier.length > 0) {
+            defaults = [[NSUserDefaults alloc] initWithSuiteName:appGroupIdentifier];
         }
-    }
-
-    return [NSUserDefaults standardUserDefaults];
+        if (!defaults) {
+            defaults = [NSUserDefaults standardUserDefaults];
+        }
+    });
+    return defaults;
 }
 
 bool SZWorkDirShouldUseConfiguredMode(const FString& path) {
