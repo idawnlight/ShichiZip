@@ -564,7 +564,25 @@ enum FileManagerClipboardSupport {
     }
 }
 
-enum FileManagerHashAlgorithm {
+enum FileManagerSortField: Int, CaseIterable {
+    case name
+    case type
+    case modified
+    case size
+    case created
+
+    var key: String {
+        switch self {
+        case .name: "name"
+        case .type: "type"
+        case .modified: "modified"
+        case .size: "size"
+        case .created: "created"
+        }
+    }
+}
+
+enum FileManagerHashAlgorithm: Int, CaseIterable {
     case all
     case crc32
     case crc64
@@ -615,12 +633,16 @@ enum FileManagerHashAlgorithm {
         }
     }
 
-    private var title: String {
+    var title: String {
         definition.title
     }
 
     private var bridgeName: String {
         definition.bridgeName
+    }
+
+    var bridgeMethodNames: [String] {
+        self == .all ? [] : [bridgeName]
     }
 
     func details(hashValues: [String: String]) -> String {
@@ -681,18 +703,8 @@ enum FileManagerCommandValidator {
             return capabilities.canDeleteSelection
         case #selector(FileManagerWindowController.showProperties(_:)):
             return capabilities.canShowSelectedItemProperties
-        case #selector(FileManagerWindowController.showCRC32Hash(_:)),
-             #selector(FileManagerWindowController.showAllHashes(_:)),
-             #selector(FileManagerWindowController.showCRC64Hash(_:)),
-             #selector(FileManagerWindowController.showXXH64Hash(_:)),
-             #selector(FileManagerWindowController.showMD5Hash(_:)),
-             #selector(FileManagerWindowController.showSHA1Hash(_:)),
-             #selector(FileManagerWindowController.showSHA256Hash(_:)),
-             #selector(FileManagerWindowController.showSHA384Hash(_:)),
-             #selector(FileManagerWindowController.showSHA512Hash(_:)),
-             #selector(FileManagerWindowController.showSHA3256Hash(_:)),
-             #selector(FileManagerWindowController.showBLAKE2spHash(_:)):
-            return capabilities.canCalculateSelectionHashes
+        case #selector(FileManagerWindowController.showHash(_:)):
+            return FileManagerHashAlgorithm(rawValue: item.tag) != nil && capabilities.canCalculateSelectionHashes
         case #selector(FileManagerWindowController.goUpOneLevel(_:)):
             return capabilities.canGoUp
         case #selector(NSText.copy(_:)):
@@ -713,21 +725,15 @@ enum FileManagerCommandValidator {
         case #selector(FileManagerWindowController.deselectAllItems(_:)):
             return capabilities.canDeselectSelection
         case #selector(FileManagerWindowController.refreshActivePane(_:)),
-             #selector(FileManagerWindowController.toggleHiddenFiles(_:)),
-             #selector(FileManagerWindowController.sortByName(_:)),
-             #selector(FileManagerWindowController.sortByType(_:)),
-             #selector(FileManagerWindowController.sortBySize(_:)),
-             #selector(FileManagerWindowController.sortByModifiedDate(_:)),
-             #selector(FileManagerWindowController.sortByCreatedDate(_:)):
+             #selector(FileManagerWindowController.toggleHiddenFiles(_:)):
             return true
+        case #selector(FileManagerWindowController.sortItems(_:)):
+            return FileManagerSortField(rawValue: item.tag) != nil
         case #selector(FileManagerWindowController.closeDirectory(_:)):
             return !activePane.isSuspended
-        case #selector(FileManagerWindowController.showTimestampDay(_:)),
-             #selector(FileManagerWindowController.showTimestampMinute(_:)),
-             #selector(FileManagerWindowController.showTimestampSecond(_:)),
-             #selector(FileManagerWindowController.showTimestampNTFS(_:)),
-             #selector(FileManagerWindowController.showTimestampNanoseconds(_:)),
-             #selector(FileManagerWindowController.toggleTimestampUTC(_:)),
+        case #selector(FileManagerWindowController.showTimestamp(_:)):
+            return FileManagerViewPreferences.TimestampDisplayLevel(rawValue: item.tag) != nil
+        case #selector(FileManagerWindowController.toggleTimestampUTC(_:)),
              #selector(FileManagerWindowController.toggleTimestampSystemFormat(_:)),
              #selector(FileManagerWindowController.toggleAutoRefresh(_:)):
             return true
@@ -764,26 +770,12 @@ enum FileManagerCommandValidator {
         switch menuItem.action {
         case #selector(FileManagerWindowController.toggleDualPane(_:)):
             menuItem.state = context.isDualPane ? .on : .off
-        case #selector(FileManagerWindowController.sortByName(_:)):
-            menuItem.state = activePane.primarySortKey == "name" ? .on : .off
-        case #selector(FileManagerWindowController.sortByType(_:)):
-            menuItem.state = activePane.primarySortKey == "type" ? .on : .off
-        case #selector(FileManagerWindowController.sortBySize(_:)):
-            menuItem.state = activePane.primarySortKey == "size" ? .on : .off
-        case #selector(FileManagerWindowController.sortByModifiedDate(_:)):
-            menuItem.state = activePane.primarySortKey == "modified" ? .on : .off
-        case #selector(FileManagerWindowController.sortByCreatedDate(_:)):
-            menuItem.state = activePane.primarySortKey == "created" ? .on : .off
-        case #selector(FileManagerWindowController.showTimestampDay(_:)):
-            menuItem.state = FileManagerViewPreferences.timestampDisplayLevel == .day ? .on : .off
-        case #selector(FileManagerWindowController.showTimestampMinute(_:)):
-            menuItem.state = FileManagerViewPreferences.timestampDisplayLevel == .minute ? .on : .off
-        case #selector(FileManagerWindowController.showTimestampSecond(_:)):
-            menuItem.state = FileManagerViewPreferences.timestampDisplayLevel == .second ? .on : .off
-        case #selector(FileManagerWindowController.showTimestampNTFS(_:)):
-            menuItem.state = FileManagerViewPreferences.timestampDisplayLevel == .ntfs ? .on : .off
-        case #selector(FileManagerWindowController.showTimestampNanoseconds(_:)):
-            menuItem.state = FileManagerViewPreferences.timestampDisplayLevel == .nanoseconds ? .on : .off
+        case #selector(FileManagerWindowController.sortItems(_:)):
+            let field = FileManagerSortField(rawValue: menuItem.tag)
+            menuItem.state = field != nil && field?.key == activePane.primarySortKey ? .on : .off
+        case #selector(FileManagerWindowController.showTimestamp(_:)):
+            let level = FileManagerViewPreferences.TimestampDisplayLevel(rawValue: menuItem.tag)
+            menuItem.state = level == FileManagerViewPreferences.timestampDisplayLevel ? .on : .off
         case #selector(FileManagerWindowController.toggleTimestampUTC(_:)):
             menuItem.state = FileManagerViewPreferences.usesUTCTimestamps ? .on : .off
         case #selector(FileManagerWindowController.toggleTimestampSystemFormat(_:)):

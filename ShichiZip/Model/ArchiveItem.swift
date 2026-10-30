@@ -1,7 +1,7 @@
 import Foundation
 
 /// Swift-friendly wrapper around SZArchiveEntry
-struct ArchiveItem: @unchecked Sendable {
+struct ArchiveItem: Sendable {
     let index: Int
     let path: String
     let pathParts: [String]

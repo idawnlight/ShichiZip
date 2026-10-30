@@ -270,10 +270,6 @@ struct FileManagerArchiveStack {
         try levels.map(transform)
     }
 
-    func compactMap<T>(_ transform: (FileManagerArchiveLevel) throws -> T?) rethrows -> [T] {
-        try levels.compactMap(transform)
-    }
-
     mutating func replaceEntries(at index: Int,
                                  with entries: [ArchiveItem],
                                  preservingSubdir subdir: String? = nil) -> Bool
@@ -575,25 +571,6 @@ final class FileManagerArchiveSession {
 
     func coordinationSnapshots(isDirty: (FileManagerArchiveLevel) -> Bool) -> [FileManagerNestedArchiveOpenSnapshot] {
         stack.coordinationSnapshots(isDirty: isDirty)
-    }
-
-    func preserveNestedTemporaryDirectories() -> [URL] {
-        stack.compactMap { level in
-            guard level.nestedWriteBackInfo != nil,
-                  let temporaryDirectory = level.temporaryDirectory
-            else {
-                return nil
-            }
-
-            itemWorkflowService.unregister(temporaryDirectory)
-            return temporaryDirectory.standardizedFileURL
-        }
-    }
-
-    func preserveRemainingTemporaryDirectories(_ urls: [URL]) {
-        for url in urls {
-            itemWorkflowService.register(url)
-        }
     }
 
     func cleanupTemporaryDirectory(_ url: URL?) {

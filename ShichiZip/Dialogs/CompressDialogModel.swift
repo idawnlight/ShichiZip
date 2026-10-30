@@ -296,26 +296,17 @@ extension CompressDialogController {
                                   countStyle: .memory)
     }
 
+    @MainActor
     enum ArchivePathHistory {
-        private static var defaults: UserDefaults {
-            SZSharedUserDefaults.defaults
-        }
-
-        private static let entriesKey = "FileManager.CompressArchivePathHistory"
-        private static let maxEntries = 20
+        private static let store = PathHistoryStore(entriesKey: "FileManager.CompressArchivePathHistory")
 
         static func entries() -> [String] {
-            defaults.stringArray(forKey: entriesKey) ?? []
+            store.entries()
         }
 
         static func record(_ path: String) {
             let normalizedPath = URL(fileURLWithPath: path).standardizedFileURL.path
-            var updatedEntries = entries().filter { $0 != normalizedPath }
-            updatedEntries.insert(normalizedPath, at: 0)
-            if updatedEntries.count > maxEntries {
-                updatedEntries.removeSubrange(maxEntries ..< updatedEntries.count)
-            }
-            defaults.set(updatedEntries, forKey: entriesKey)
+            store.record(normalizedPath)
         }
     }
 

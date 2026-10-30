@@ -1,9 +1,8 @@
+import Observation
 import SwiftUI
 
 @MainActor
-@objc(SZArchiveUpdateEncryptionDialog)
-final class ArchiveUpdateEncryptionDialog: NSObject {
-    @objc(runModalForArchive:defaultEncryption:)
+enum ArchiveUpdateEncryptionDialog {
     static func runModal(forArchive archivePath: String, defaultEncryption: SZEncryptionMethod) -> SZArchiveUpdateEncryption? {
         let options = CompressDialogController.encryptionOptions(for: .formatZip)
         let model = Model(encryption: defaultEncryption)
@@ -36,9 +35,10 @@ final class ArchiveUpdateEncryptionDialog: NSObject {
         return dialog.runModal() == 1 ? result : nil
     }
 
-    private final class Model: ObservableObject {
-        @Published var encryption: SZEncryptionMethod
-        @Published var password = ""
+    @Observable
+    fileprivate final class Model {
+        var encryption: SZEncryptionMethod
+        var password = ""
 
         init(encryption: SZEncryptionMethod) {
             self.encryption = encryption
@@ -95,7 +95,7 @@ final class ArchiveUpdateEncryptionDialog: NSObject {
     }
 
     private struct Content: View {
-        @ObservedObject var model: Model
+        @Bindable var model: Model
         let options: [CompressDialogController.Option<SZEncryptionMethod>]
         @State private var showsPassword = false
         @FocusState private var focusedField: PasswordField?
@@ -137,7 +137,7 @@ final class ArchiveUpdateEncryptionDialog: NSObject {
             .frame(width: 360)
             .fixedSize(horizontal: false, vertical: true)
             .onAppear { focusedField = .secure }
-            .onChange(of: showsPassword) { shown in
+            .onChange(of: showsPassword) { _, shown in
                 focusedField = shown ? .plain : .secure
             }
         }

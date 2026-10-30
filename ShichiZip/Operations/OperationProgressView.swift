@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct OperationProgressView: View {
-    @ObservedObject var model: OperationProgressModel
+    let model: OperationProgressModel
 
     var body: some View {
         Group {
@@ -67,8 +67,8 @@ struct OperationProgressView: View {
             }
 
             HStack(alignment: .center, spacing: 7) {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    metricRows(at: context.date)
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    metricRows()
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -98,7 +98,7 @@ struct OperationProgressView: View {
         .accessibilityIdentifier("operationProgress.progress")
     }
 
-    private func metricRows(at date: Date) -> some View {
+    private func metricRows() -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 if let bytes = model.bytesText {
@@ -122,7 +122,7 @@ struct OperationProgressView: View {
             .frame(height: 14)
 
             HStack(spacing: 8) {
-                if let elapsed = model.elapsedDuration(at: date) {
+                if let elapsed = model.elapsedDuration() {
                     Text(SZL10n.labelValue("progress.elapsedTime", value: elapsed))
                         .accessibilityIdentifier("operationProgress.elapsed")
                 }

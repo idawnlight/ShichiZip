@@ -1,3 +1,5 @@
+import Observation
+import os
 import XCTest
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
@@ -79,14 +81,23 @@ final class OperationProgressModelTests: XCTestCase {
                 }
             },
         )
+        let snapshotChanges = OSAllocatedUnfairLock(initialState: 0)
+        withObservationTracking {
+            _ = model.snapshot
+        } onChange: {
+            snapshotChanges.withLock { $0 += 1 }
+        }
 
         session.reportBytesCompleted(10, total: 100)
         XCTAssertFalse(model.receive(session.snapshot()))
+        XCTAssertEqual(snapshotChanges.withLock { $0 }, 0)
         session.reportBytesCompleted(75, total: 100)
         XCTAssertFalse(model.receive(session.snapshot()))
+        XCTAssertEqual(snapshotChanges.withLock { $0 }, 0)
 
         XCTAssertNil(model.progressValue)
         try XCTUnwrap(scheduledUpdate)()
+        XCTAssertEqual(snapshotChanges.withLock { $0 }, 1)
         XCTAssertEqual(model.progressValue, 0.75)
         XCTAssertEqual(model.snapshot.bytesCompleted, 75)
     }

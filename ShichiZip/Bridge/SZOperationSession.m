@@ -1,6 +1,7 @@
 #import "SZOperationSession.h"
 
 #import <QuartzCore/QuartzCore.h>
+#include <os/lock.h>
 
 #import "SZArchive.h"
 
@@ -12,8 +13,36 @@ static inline void SZDispatchSyncOnMain(dispatch_block_t block) {
     }
 }
 
+static inline void SZUnlockUnfairLock(os_unfair_lock_t _Nonnull* _Nonnull lockPtr) {
+    os_unfair_lock_unlock(*lockPtr);
+}
+
+#define SZ_SCOPED_LOCK_NAME(counter) szScopedLock##counter
+#define SZ_SCOPED_LOCK_IMPL(lock, counter)                                                                \
+    os_unfair_lock_t SZ_SCOPED_LOCK_NAME(counter) __attribute__((cleanup(SZUnlockUnfairLock))) = &(lock); \
+    os_unfair_lock_lock(SZ_SCOPED_LOCK_NAME(counter))
+#define SZ_SCOPED_LOCK(lock) SZ_SCOPED_LOCK_IMPL(lock, __COUNTER__)
+
 static const CFTimeInterval SZOperationSnapshotMinimumInterval = 0.05;
 static const NSUInteger SZOperationIssueDetailLimit = 256;
+static SZOperationSessionFactory SZDefaultSessionFactory;
+
+@implementation SZMemoryLimitPromptResult
+
+- (instancetype)initWithSaveLimit:(BOOL)saveLimit
+                      skipArchive:(BOOL)skipArchive
+                   rememberChoice:(BOOL)rememberChoice
+                          limitGB:(uint32_t)limitGB {
+    if ((self = [super init])) {
+        _saveLimit = saveLimit;
+        _skipArchive = skipArchive;
+        _rememberChoice = rememberChoice;
+        _limitGB = limitGB;
+    }
+    return self;
+}
+
+@end
 
 @implementation SZOperationChoiceRequest
 
@@ -103,6 +132,7 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 @end
 
 @interface SZOperationSession () {
+    os_unfair_lock _stateLock;
     SZOperationPhase _phase;
     double _progressFraction;
     NSString* _currentFileName;
@@ -126,8 +156,26 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 
 @implementation SZOperationSession
 
++ (SZOperationSessionFactory)defaultSessionFactory {
+    @synchronized([SZOperationSession class]) {
+        return [SZDefaultSessionFactory copy];
+    }
+}
+
++ (void)setDefaultSessionFactory:(SZOperationSessionFactory)factory {
+    @synchronized([SZOperationSession class]) {
+        SZDefaultSessionFactory = [factory copy];
+    }
+}
+
++ (SZOperationSession*)makeDefaultSession {
+    SZOperationSessionFactory factory = self.defaultSessionFactory;
+    return factory ? factory() : [[SZOperationSession alloc] init];
+}
+
 - (instancetype)init {
     if ((self = [super init])) {
+        _stateLock = (os_unfair_lock)OS_UNFAIR_LOCK_INIT;
         _phase = SZOperationPhaseWaiting;
         _currentFileName = @"";
         _cancellationAllowed = YES;
@@ -137,92 +185,81 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 }
 
 - (SZOperationSnapshotHandler)snapshotHandler {
-    @synchronized(self) {
-        return [_snapshotHandler copy];
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return [_snapshotHandler copy];
 }
 
 - (void)setSnapshotHandler:(SZOperationSnapshotHandler)snapshotHandler {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _snapshotHandler = [snapshotHandler copy];
     }
     [self scheduleSnapshotDelivery];
 }
 
 - (SZOperationPhase)phase {
-    @synchronized(self) {
-        return _phase;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _phase;
 }
 
 - (double)progressFraction {
-    @synchronized(self) {
-        return _progressFraction;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _progressFraction;
 }
 
 - (NSString*)currentFileName {
-    @synchronized(self) {
-        return [_currentFileName copy];
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return [_currentFileName copy];
 }
 
 - (uint64_t)bytesCompleted {
-    @synchronized(self) {
-        return _bytesCompleted;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _bytesCompleted;
 }
 
 - (uint64_t)bytesTotal {
-    @synchronized(self) {
-        return _bytesTotal;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _bytesTotal;
 }
 
 - (uint64_t)filesCompleted {
-    @synchronized(self) {
-        return _filesCompleted;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _filesCompleted;
 }
 
 - (uint64_t)filesTotal {
-    @synchronized(self) {
-        return _filesTotal;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _filesTotal;
 }
 
 - (BOOL)hasReportedProgress {
-    @synchronized(self) {
-        return _hasReportedProgress;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _hasReportedProgress;
 }
 
 - (BOOL)isWaitingForUserInteraction {
-    @synchronized(self) {
-        return _waitingForUserInteraction;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _waitingForUserInteraction;
 }
 
 - (BOOL)isCancellationRequested {
-    @synchronized(self) {
-        return _cancellationRequested;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _cancellationRequested;
 }
 
 - (BOOL)isCancellationAllowed {
-    @synchronized(self) {
-        return _cancellationAllowed;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _cancellationAllowed;
 }
 
 - (uint64_t)totalIssueCount {
-    @synchronized(self) {
-        return _totalIssueCount;
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return _totalIssueCount;
 }
 
 - (void)reportPhase:(SZOperationPhase)phase {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _phase = phase;
     }
     [self scheduleSnapshotDelivery];
@@ -230,7 +267,8 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 
 - (void)reportProgressFraction:(double)fraction {
     const double clamped = MIN(MAX(fraction, 0.0), 1.0);
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _progressFraction = clamped;
         _hasReportedProgress = YES;
     }
@@ -238,14 +276,16 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 }
 
 - (void)reportCurrentFileName:(NSString*)fileName {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _currentFileName = [fileName copy] ?: @"";
     }
     [self scheduleSnapshotDelivery];
 }
 
 - (void)reportBytesCompleted:(uint64_t)completed total:(uint64_t)total {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _bytesCompleted = completed;
         _bytesTotal = total;
         if (total > 0) {
@@ -257,14 +297,16 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 }
 
 - (void)reportFilesCompleted:(uint64_t)count {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _filesCompleted = count;
     }
     [self scheduleSnapshotDelivery];
 }
 
 - (void)reportFilesTotal:(uint64_t)count {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _filesTotal = count;
     }
     [self scheduleSnapshotDelivery];
@@ -275,7 +317,8 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
         return;
     }
 
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _totalIssueCount++;
         if (_issues.count < SZOperationIssueDetailLimit) {
             [_issues addObject:issue];
@@ -291,7 +334,8 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 }
 
 - (void)requestCancel {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         if (!_cancellationAllowed) {
             return;
         }
@@ -302,7 +346,8 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 }
 
 - (void)clearCancellationRequest {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _cancellationRequested = NO;
         if (_phase == SZOperationPhaseCancelling) {
             _phase = SZOperationPhaseWaiting;
@@ -312,7 +357,8 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 }
 
 - (void)beginFinalizing {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _cancellationRequested = NO;
         _cancellationAllowed = NO;
         _phase = SZOperationPhaseFinalizing;
@@ -321,23 +367,24 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
 }
 
 - (void)prepareForUserInteraction {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _waitingForUserInteraction = YES;
     }
     [self scheduleSnapshotDelivery];
 }
 
 - (void)finishUserInteraction {
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         _waitingForUserInteraction = NO;
     }
     [self scheduleSnapshotDelivery];
 }
 
 - (SZOperationSnapshot*)snapshot {
-    @synchronized(self) {
-        return [self newSnapshotWhileLocked];
-    }
+    SZ_SCOPED_LOCK(_stateLock);
+    return [self newSnapshotWhileLocked];
 }
 
 - (BOOL)requestPasswordWithTitle:(NSString*)title
@@ -410,6 +457,31 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
     return [self shouldCancel] ? nil : selection;
 }
 
+- (SZMemoryLimitPromptResult*)requestMemoryLimitWithRequiredBytes:(uint64_t)requiredBytes
+                                                currentLimitBytes:(uint64_t)currentLimitBytes
+                                                      archivePath:(NSString*)archivePath
+                                                         filePath:(NSString*)filePath
+                                                         testMode:(BOOL)testMode
+                                                     showRemember:(BOOL)showRemember {
+    SZOperationMemoryLimitRequestHandler handler = self.memoryLimitRequestHandler;
+    if (!handler || [self shouldCancel]) {
+        return nil;
+    }
+
+    [self prepareForUserInteraction];
+    __block SZMemoryLimitPromptResult* selection = nil;
+    @try {
+        SZDispatchSyncOnMain(^{
+            if (![self shouldCancel]) {
+                selection = handler(requiredBytes, currentLimitBytes, archivePath, filePath, testMode, showRemember);
+            }
+        });
+    } @finally {
+        [self finishUserInteraction];
+    }
+    return [self shouldCancel] ? nil : selection;
+}
+
 - (SZOperationSnapshot*)newSnapshotWhileLocked {
     return [[SZOperationSnapshot alloc]
                     initWithPhase:_phase
@@ -432,7 +504,8 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
     __block BOOL shouldSchedule = NO;
     __block CFTimeInterval delay = 0;
 
-    @synchronized(self) {
+    {
+        SZ_SCOPED_LOCK(_stateLock);
         if (!_snapshotHandler || _snapshotDispatchScheduled) {
             return;
         }
@@ -456,7 +529,8 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
         dispatch_get_main_queue(), ^{
             SZOperationSnapshotHandler handler;
             SZOperationSnapshot* snapshot;
-            @synchronized(self) {
+            {
+                SZ_SCOPED_LOCK(self->_stateLock);
                 self->_snapshotDispatchScheduled = NO;
                 self->_lastSnapshotDispatchTime = CACurrentMediaTime();
                 handler = [self->_snapshotHandler copy];

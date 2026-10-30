@@ -20,7 +20,7 @@ targets:
         <<: &archive_core_mainline_settings
           PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.ArchiveCore
           PRODUCT_NAME: ShichiZipArchiveCore
-          MACOSX_DEPLOYMENT_TARGET: "13.0"
+          MACOSX_DEPLOYMENT_TARGET: "14.0"
           GENERATE_INFOPLIST_FILE: true
           DEFINES_MODULE: false
           APPLICATION_EXTENSION_API_ONLY: true

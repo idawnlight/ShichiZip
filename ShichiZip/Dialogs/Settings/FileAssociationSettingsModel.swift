@@ -1,5 +1,5 @@
 import AppKit
-import Combine
+import Observation
 import UniformTypeIdentifiers
 
 @MainActor
@@ -42,17 +42,19 @@ struct FileAssociationUpdateFailure: Identifiable {
 }
 
 @MainActor
-final class FileAssociationSettingsModel: ObservableObject {
-    @Published private(set) var states: [String: FileAssociationState] = [:]
-    @Published private(set) var updateFailure: FileAssociationUpdateFailure?
+@Observable
+final class FileAssociationSettingsModel {
+    private(set) var states: [String: FileAssociationState] = [:]
+    private(set) var updateFailure: FileAssociationUpdateFailure?
 
     let associations: [FileAssociation]
 
     private let workspace: any FileAssociationWorkspace
     private let currentApplicationURL: URL
     private let currentBundleIdentifier: String?
-    private var pendingAssociationIDs: Set<String> = []
-    private var updateTask: Task<Void, Never>?
+    private var isUpdating = false
+    @ObservationIgnored private var pendingAssociationIDs: Set<String> = []
+    @ObservationIgnored private var updateTask: Task<Void, Never>?
 
     init(
         associations: [FileAssociation] = FileAssociation.registeredAssociations(),
@@ -77,7 +79,7 @@ final class FileAssociationSettingsModel: ObservableObject {
     }
 
     var canSetRecommendedAsDefault: Bool {
-        updateTask == nil
+        !isUpdating
             && recommendedAssociations.contains {
                 states[$0.id]?.isCurrentDefault != true
             }
@@ -172,6 +174,7 @@ final class FileAssociationSettingsModel: ObservableObject {
             await performUpdate(for: associations)
         }
         updateTask = task
+        isUpdating = true
         return task
     }
 
@@ -183,6 +186,7 @@ final class FileAssociationSettingsModel: ObservableObject {
         defer {
             pendingAssociationIDs.subtract(associationIDs)
             updateTask = nil
+            isUpdating = false
             refresh()
         }
 

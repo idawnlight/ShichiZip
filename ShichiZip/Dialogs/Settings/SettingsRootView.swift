@@ -45,8 +45,8 @@ enum SettingsDestination: String, CaseIterable, Identifiable {
 
 @MainActor
 struct SettingsRootView: View {
-    @ObservedObject var store: SettingsStore
-    @ObservedObject var fileAssociations: FileAssociationSettingsModel
+    let store: SettingsStore
+    let fileAssociations: FileAssociationSettingsModel
     @State private var selection: SettingsDestination? = .general
     @FocusState private var sidebarHasFocus: Bool
 

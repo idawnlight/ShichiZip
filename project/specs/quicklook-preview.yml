@@ -22,12 +22,26 @@ targets:
         path: ../../ShichiZip/Bridge
         excludes:
           - "SZArchive+Benchmark.mm"
+          - "SZArchive+CompressionEstimate.mm"
+          - "SZArchive+Mutation.mm"
       - &archive_preview_log_source
         path: ../../ShichiZip/Utilities/SZLog.swift
+      - &archive_preview_objc_log_source
+        path: ../../ShichiZip/Utilities/SZObjCLog.m
+      - &archive_preview_localization_source
+        path: ../../ShichiZip/Utilities/SZL10n.swift
       - &archive_preview_shared_defaults_source
         path: ../../ShichiZip/Utilities/SZSharedUserDefaults.swift
       - &archive_preview_preferences_source
         path: ../../ShichiZip/Utilities/ArchivePreviewPreferences.swift
+      - &archive_preview_timestamp_preferences_source
+        path: ../../ShichiZip/FileManager/Preferences/FileManagerTimestampPreferences.swift
+      - &archive_preview_column_source
+        path: ../../ShichiZip/FileManager/Pane/FileManagerColumn.swift
+      - &archive_preview_column_preferences_source
+        path: ../../ShichiZip/FileManager/Preferences/FileManagerListViewPreferences.swift
+      - &archive_preview_item_presentation_source
+        path: ../../ShichiZip/Utilities/ArchiveItemPresentation.swift
     dependencies: &archive_preview_dependencies
       - sdk: AppKit.framework
       - sdk: QuickLookUI.framework
@@ -56,7 +70,7 @@ targets:
             - $(inherited)
             - "@executable_path/../Frameworks"
             - "@executable_path/../../../../Frameworks"
-          MACOSX_DEPLOYMENT_TARGET: "13.0"
+          MACOSX_DEPLOYMENT_TARGET: "14.0"
           GENERATE_INFOPLIST_FILE: false
           APPLICATION_EXTENSION_API_ONLY: true
           CLANG_ENABLE_OBJC_ARC: true
@@ -82,7 +96,7 @@ targets:
           CFBundleShortVersionString: $(MARKETING_VERSION)
           CFBundleVersion: $(CURRENT_PROJECT_VERSION)
           CFBundleAllowMixedLocalizations: true
-          LSMinimumSystemVersion: "13.0"
+          LSMinimumSystemVersion: "14.0"
           ShichiZipQuickActionAppGroupIdentifier: $(SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.quicklook.preview
@@ -171,8 +185,14 @@ targets:
       - *archive_preview_archive_hierarchy_source
       - *archive_preview_bridge_sources
       - *archive_preview_log_source
+      - *archive_preview_objc_log_source
+      - *archive_preview_localization_source
       - *archive_preview_shared_defaults_source
       - *archive_preview_preferences_source
+      - *archive_preview_timestamp_preferences_source
+      - *archive_preview_column_source
+      - *archive_preview_column_preferences_source
+      - *archive_preview_item_presentation_source
     dependencies:
       - sdk: AppKit.framework
       - sdk: QuickLookUI.framework

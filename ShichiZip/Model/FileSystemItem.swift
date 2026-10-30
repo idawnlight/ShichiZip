@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 
 /// Represents a file system item for the file manager view
-final class FileSystemItem: Sendable {
+struct FileSystemItem: Sendable {
     static let resourceKeys: [URLResourceKey] = [
         .isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey,
         .contentModificationDateKey, .creationDateKey, .contentAccessDateKey,
@@ -24,7 +24,7 @@ final class FileSystemItem: Sendable {
     let links: UInt64?
     let isHidden: Bool
 
-    convenience init(url: URL) {
+    init(url: URL) {
         let values = try? url.resourceValues(forKeys: Set(Self.resourceKeys))
         self.init(url: url, resourceValues: values)
     }

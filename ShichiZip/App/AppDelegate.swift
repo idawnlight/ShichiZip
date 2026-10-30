@@ -40,6 +40,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
     )
 
     override init() {
+        SZSettingsMigrations.preparePreferences()
         let fileManagerWindowRegistry = FileManagerWindowRegistry()
         self.fileManagerWindowRegistry = fileManagerWindowRegistry
         quickActionHandler = AppQuickActionHandler(fileManagerWindowRegistry: fileManagerWindowRegistry,
@@ -47,10 +48,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
                                                        AppDelegate.shouldRevealSmartQuickExtractDestination
                                                    })
         super.init()
+        AppOperationSessionFactory.install()
     }
 
     func applicationWillFinishLaunching(_: Notification) {
-        SZSettingsMigrations.preparePreferences()
         let documentController = ShichiZipDocumentController()
         precondition(NSDocumentController.shared === documentController,
                      "ShichiZipDocumentController must be the shared document controller")

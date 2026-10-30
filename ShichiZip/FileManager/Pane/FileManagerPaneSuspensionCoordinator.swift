@@ -1,58 +1,33 @@
 import Cocoa
 
 @MainActor
-final class FileManagerPaneSuspensionCoordinator: NSObject {
-    private let isViewLoaded: () -> Bool
-    private let isInsideArchive: () -> Bool
-    private let closeAllArchives: (Bool) async -> Bool
-    private let prepareDirectoryForSuspension: () -> Void
-    private let cancelPendingArchiveRefresh: () -> Void
-    private let clearArchiveDisplayItems: () -> Void
-    private let clearStatusText: () -> Void
-    private let containerView: () -> NSView?
-    private let scrollView: () -> NSView?
-    private let currentDirectory: () -> URL
-    private let canReactivate: () -> Bool
-    private let loadDirectory: (URL, Bool) -> Bool
+protocol FileManagerPaneSuspensionHost: AnyObject {
+    var isViewLoaded: Bool { get }
+    var isInsideArchive: Bool { get }
+    var suspensionOverlayViews: (container: NSView, content: NSView)? { get }
 
+    func closeAllArchives(showError: Bool) async -> Bool
+    func preparePaneForSuspension()
+    func reloadSuspendedDirectory() -> Bool
+}
+
+@MainActor
+final class FileManagerPaneSuspensionCoordinator: NSObject {
+    private weak var host: (any FileManagerPaneSuspensionHost)?
     private var suspendedOverlay: NSView?
     private(set) var isSuspended = false
 
-    init(isViewLoaded: @escaping () -> Bool,
-         isInsideArchive: @escaping () -> Bool,
-         closeAllArchives: @escaping (Bool) async -> Bool,
-         prepareDirectoryForSuspension: @escaping () -> Void,
-         cancelPendingArchiveRefresh: @escaping () -> Void,
-         clearArchiveDisplayItems: @escaping () -> Void,
-         clearStatusText: @escaping () -> Void,
-         containerView: @escaping () -> NSView?,
-         scrollView: @escaping () -> NSView?,
-         currentDirectory: @escaping () -> URL,
-         canReactivate: @escaping () -> Bool = { true },
-         loadDirectory: @escaping (URL, Bool) -> Bool)
-    {
-        self.isViewLoaded = isViewLoaded
-        self.isInsideArchive = isInsideArchive
-        self.closeAllArchives = closeAllArchives
-        self.prepareDirectoryForSuspension = prepareDirectoryForSuspension
-        self.cancelPendingArchiveRefresh = cancelPendingArchiveRefresh
-        self.clearArchiveDisplayItems = clearArchiveDisplayItems
-        self.clearStatusText = clearStatusText
-        self.containerView = containerView
-        self.scrollView = scrollView
-        self.currentDirectory = currentDirectory
-        self.canReactivate = canReactivate
-        self.loadDirectory = loadDirectory
+    init(host: any FileManagerPaneSuspensionHost) {
+        self.host = host
     }
 
     @discardableResult
     func prepareForClose(showError: Bool = true) async -> Bool {
-        guard isInsideArchive() else {
-            return true
-        }
+        guard let host else { return false }
+        guard host.isInsideArchive else { return true }
 
-        let didClose = await closeAllArchives(showError)
-        if didClose, isViewLoaded() {
+        let didClose = await host.closeAllArchives(showError: showError)
+        if didClose, host.isViewLoaded {
             enterSuspendedState()
         }
         return didClose
@@ -64,7 +39,7 @@ final class FileManagerPaneSuspensionCoordinator: NSObject {
             return false
         }
 
-        if isViewLoaded() {
+        if host?.isViewLoaded == true {
             enterSuspendedState()
         }
 
@@ -72,9 +47,10 @@ final class FileManagerPaneSuspensionCoordinator: NSObject {
     }
 
     func prepareEmptyPaneForDeactivation() {
-        precondition(!isInsideArchive(),
+        guard let host else { return }
+        precondition(!host.isInsideArchive,
                      "Empty-pane deactivation cannot close an archive")
-        if isViewLoaded() {
+        if host.isViewLoaded {
             enterSuspendedState()
         }
     }
@@ -86,11 +62,11 @@ final class FileManagerPaneSuspensionCoordinator: NSObject {
     }
 
     func closeDirectory() async {
-        guard !isSuspended else { return }
-        if isInsideArchive() {
-            _ = await closeAllArchives(true)
+        guard let host, !isSuspended else { return }
+        if host.isInsideArchive {
+            _ = await host.closeAllArchives(showError: true)
         }
-        if !isInsideArchive(), isViewLoaded() {
+        if !host.isInsideArchive, host.isViewLoaded {
             enterSuspendedState()
         }
     }
@@ -103,19 +79,11 @@ final class FileManagerPaneSuspensionCoordinator: NSObject {
     }
 
     private func enterSuspendedState() {
-        guard !isSuspended else { return }
+        guard let host, !isSuspended else { return }
         isSuspended = true
+        host.preparePaneForSuspension()
 
-        prepareDirectoryForSuspension()
-        cancelPendingArchiveRefresh()
-        clearArchiveDisplayItems()
-        clearStatusText()
-
-        guard let containerView = containerView(),
-              let scrollView = scrollView()
-        else {
-            return
-        }
+        guard let (containerView, scrollView) = host.suspensionOverlayViews else { return }
 
         let overlay = makeSuspendedOverlay()
         containerView.addSubview(overlay)
@@ -173,9 +141,8 @@ final class FileManagerPaneSuspensionCoordinator: NSObject {
 
     @discardableResult
     private func reactivatePane() -> Bool {
-        guard canReactivate() else { return false }
         guard isSuspended else { return true }
-        let didLoad = loadDirectory(currentDirectory(), true)
+        let didLoad = host?.reloadSuspendedDirectory() == true
         if didLoad {
             clearSuspendedState()
         }

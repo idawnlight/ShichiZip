@@ -208,22 +208,6 @@ enum FileManagerPaneMutationCommandSupport {
         }
     }
 
-    static func promptForFolderCreation(in pane: FileManagerPaneController) {
-        guard let window = pane.view.window else { return }
-        szBeginTextInput(on: window,
-                         title: SZL10n.string("create.folder"),
-                         placeholder: SZL10n.string("create.newFolder"),
-                         confirmTitle: SZL10n.string("create.folder"))
-        { [weak pane] value in
-            guard let pane,
-                  let name = value,
-                  !name.isEmpty
-            else { return }
-            createFolder(named: name,
-                         in: pane)
-        }
-    }
-
     private static func renameArchiveSelection(in pane: FileManagerPaneController) {
         guard let target = pane.currentArchiveMutationTarget() else {
             pane.showReadOnlyArchiveMutationAlert(action: SZL10n.string("app.fileManager.action.renamingArchiveItems"))

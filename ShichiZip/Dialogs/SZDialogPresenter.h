@@ -5,15 +5,6 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface SZMemoryLimitPromptResult : NSObject
-
-@property (nonatomic) BOOL saveLimit;
-@property (nonatomic) BOOL skipArchive;
-@property (nonatomic) BOOL rememberChoice;
-@property (nonatomic) uint32_t limitGB;
-
-@end
-
 @interface SZDialogPresenter : NSObject
 
 + (nullable NSWindow*)sheetParentWindowForWindow:(nullable NSWindow*)window;

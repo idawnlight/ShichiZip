@@ -105,29 +105,20 @@ func szNormalizedDestinationDisplayPath(_ path: String) -> String {
     return path.hasSuffix("/") ? path : path + "/"
 }
 
+@MainActor
 enum FileOperationDestinationHistory {
-    private static var defaults: UserDefaults {
-        SZSharedUserDefaults.defaults
-    }
-
-    private static let entriesKey = "FileManager.CopyMoveDestinationHistory"
-    private static let maxEntries = 20
+    private static let store = PathHistoryStore(entriesKey: "FileManager.CopyMoveDestinationHistory")
 
     static func entries() -> [String] {
-        defaults.stringArray(forKey: entriesKey) ?? []
+        store.entries()
     }
 
     static func record(_ path: String) {
         let normalizedPath = URL(fileURLWithPath: path).standardizedFileURL.path
         let displayPath = szNormalizedDestinationDisplayPath(normalizedPath)
-        var updatedEntries = entries().filter {
-            URL(fileURLWithPath: $0).standardizedFileURL.path != normalizedPath
-        }
-        updatedEntries.insert(displayPath, at: 0)
-        if updatedEntries.count > maxEntries {
-            updatedEntries.removeSubrange(maxEntries ..< updatedEntries.count)
-        }
-        defaults.set(updatedEntries, forKey: entriesKey)
+        store.record(displayPath, replacing: {
+            URL(fileURLWithPath: $0).standardizedFileURL.path == normalizedPath
+        })
     }
 }
 

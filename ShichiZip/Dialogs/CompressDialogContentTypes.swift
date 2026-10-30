@@ -145,10 +145,8 @@ extension CompressDialogController {
         let memoryUsageRow: NSView
         let compressionMemoryRow: NSView
         let decompressionMemoryRow: NSView
-        let securePasswordField: NSSecureTextField
-        let plainPasswordField: NSTextField
-        let secureConfirmPasswordField: NSSecureTextField
-        let plainConfirmPasswordField: NSTextField
+        let passwordField: SZPasswordField
+        let confirmationField: SZPasswordField
         let showPasswordCheckbox: NSButton
         let advancedOptionsSummaryLabel: NSTextField
     }

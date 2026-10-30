@@ -31,10 +31,7 @@ struct FileAssociation: Identifiable {
         extensionSummary.isEmpty ? displayName : "\(displayName) (\(extensionSummary))"
     }
 
-    private static let excludedTypeIdentifiers: Set<String> = [
-        "public.data",
-        "com.aone.keka-extraction",
-    ]
+    static let excludedTypeIdentifiers: Set<String> = ["public.data"]
 
     static func supportedDocumentTypes(bundle: Bundle = .main) -> [FileAssociation] {
         supportedDocumentTypes(infoDictionary: bundle.infoDictionary ?? [:])

@@ -2,7 +2,6 @@
 
 #include "SZCallbacks.h"
 
-#import "../Dialogs/SZDialogPresenter.h"
 #import "../Utilities/SZObjCLog.h"
 
 static HRESULT SZHRESULTFromSystemError(DWORD systemError) {
@@ -133,14 +132,6 @@ UString SZUpdateDiagnostics::MakeSummary() const {
         }
     }
     return summary;
-}
-
-static inline void SZDispatchSyncOnMainThread(dispatch_block_t block) {
-    if ([NSThread isMainThread]) {
-        block();
-    } else {
-        dispatch_sync(dispatch_get_main_queue(), block);
-    }
 }
 
 static void SZAppendErrorMessage(UString& storage, const UString& message) {
@@ -608,30 +599,15 @@ Z7_COM7F_IMF(SZFolderExtractCallback::RequestMemoryUse(
 
     if ((flags & NRequestMemoryUseFlags::k_IsReport) == 0) {
         if (!RememberMemoryDecision) {
-            __block BOOL confirmed = NO;
-            __block SZMemoryLimitPromptResult* promptResult = nil;
             const BOOL showRemember = indexType != NArchive::NEventIndexType::kNoIndex || path != NULL;
-
             SZOperationSession* session = Session;
-            if (session) {
-                [session prepareForUserInteraction];
-            }
-
-            SZDispatchSyncOnMainThread(^{
-                confirmed = [SZDialogPresenter promptForMemoryLimitWithRequiredBytes:requiredSize
-                                                                   currentLimitBytes:currentLimitBytes
-                                                                         archivePath:archivePath
-                                                                            filePath:filePath
-                                                                            testMode:TestMode
-                                                                        showRemember:showRemember
-                                                                              result:&promptResult];
-            });
-
-            if (session) {
-                [session finishUserInteraction];
-            }
-
-            if (!confirmed) {
+            SZMemoryLimitPromptResult* promptResult = [session requestMemoryLimitWithRequiredBytes:requiredSize
+                                                                                 currentLimitBytes:currentLimitBytes
+                                                                                       archivePath:archivePath
+                                                                                          filePath:filePath
+                                                                                          testMode:TestMode
+                                                                                      showRemember:showRemember];
+            if (!promptResult) {
                 *answerFlags = NRequestMemoryAnswerFlags::k_Stop;
                 return E_ABORT;
             }

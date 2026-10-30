@@ -74,6 +74,8 @@
 #error "7-Zip headers not found"
 #endif
 #undef BOOL
+
+#include "../../vendor/SZStringConversion.h"
 #endif
 
 NS_ASSUME_NONNULL_BEGIN
@@ -103,97 +105,12 @@ static inline NSError* SZMakeDetailedError(NSInteger code, NSString* desc, NSStr
                            }];
 }
 
-static NSString* const SZSharedUserDefaultsAppGroupIdentifierInfoKey = @"ShichiZipQuickActionAppGroupIdentifier";
-static NSString* const SZLocalizationBundleIdentifier = @"ee.dawn.ShichiZip.Localization";
-
-static inline NSUserDefaults* SZSharedNSUserDefaults(void) {
-    NSString* appGroupIdentifier =
-        [[NSBundle mainBundle] objectForInfoDictionaryKey:SZSharedUserDefaultsAppGroupIdentifierInfoKey];
-    if (appGroupIdentifier.length > 0) {
-        NSUserDefaults* defaults = [[NSUserDefaults alloc] initWithSuiteName:appGroupIdentifier];
-        if (defaults) {
-            return defaults;
-        }
-    }
-
-    return [NSUserDefaults standardUserDefaults];
-}
-
-static inline NSBundle* SZLocalizationBundle(void) {
-    NSBundle* bundle = [NSBundle bundleWithIdentifier:SZLocalizationBundleIdentifier];
-    if (bundle) {
-        return bundle;
-    }
-
-    NSMutableArray<NSURL*>* candidateURLs = [NSMutableArray array];
-    NSURL* privateFrameworksURL = [[NSBundle mainBundle] privateFrameworksURL];
-    if (privateFrameworksURL) {
-        [candidateURLs addObject:[privateFrameworksURL URLByAppendingPathComponent:@"ShichiZipLocalization.framework"
-                                                                       isDirectory:YES]];
-    }
-    [candidateURLs addObject:[[[NSBundle mainBundle] bundleURL]
-                                 URLByAppendingPathComponent:@"Contents/Frameworks/ShichiZipLocalization.framework"
-                                                 isDirectory:YES]];
-    [candidateURLs addObject:[[[[[NSBundle mainBundle] bundleURL] URLByDeletingLastPathComponent]
-                                 URLByDeletingLastPathComponent]
-                                 URLByAppendingPathComponent:@"Frameworks/ShichiZipLocalization.framework"
-                                                 isDirectory:YES]];
-
-    for (NSURL* candidateURL in candidateURLs) {
-        NSBundle* candidateBundle = [NSBundle bundleWithURL:candidateURL];
-        if ([candidateBundle.bundleIdentifier isEqualToString:SZLocalizationBundleIdentifier]) {
-            return candidateBundle;
-        }
-    }
-
-    return [NSBundle mainBundle];
-}
+FOUNDATION_EXPORT NSUserDefaults* SZSharedNSUserDefaults(void);
+FOUNDATION_EXPORT NSBundle* SZLocalizationBundle(void);
 
 /// Look up a localized string: checks App.strings first, then Upstream.strings.
 /// Mirrors the SZL10n.string() Swift API for use in Objective-C bridge code.
-static inline NSString* SZLocalizedString(NSString* key) {
-    NSBundle* baseBundle = SZLocalizationBundle();
-
-    // Check override bundle from language preference
-    NSString* override = [SZSharedNSUserDefaults() stringForKey:@"LanguageOverride"];
-    NSBundle* bundle = baseBundle;
-    if (override.length > 0) {
-        NSString* lpath = [bundle pathForResource:override ofType:@"lproj"];
-        if (lpath) {
-            NSBundle* overrideBundle = [NSBundle bundleWithPath:lpath];
-            if (overrideBundle)
-                bundle = overrideBundle;
-        }
-    }
-    // App table first
-    NSString* appValue = [bundle localizedStringForKey:key value:nil table:@"App"];
-    if (![appValue isEqualToString:key])
-        return appValue;
-    // Upstream table
-    NSString* upstreamValue = [bundle localizedStringForKey:key value:nil table:@"Upstream"];
-    if (![upstreamValue isEqualToString:key])
-        return upstreamValue;
-    // Fallback to main bundle if override was active
-    if (bundle != baseBundle) {
-        appValue = [baseBundle localizedStringForKey:key value:nil table:@"App"];
-        if (![appValue isEqualToString:key])
-            return appValue;
-        upstreamValue = [baseBundle localizedStringForKey:key value:nil table:@"Upstream"];
-        if (![upstreamValue isEqualToString:key])
-            return upstreamValue;
-    }
-
-    if (baseBundle != [NSBundle mainBundle]) {
-        appValue = [[NSBundle mainBundle] localizedStringForKey:key value:nil table:@"App"];
-        if (![appValue isEqualToString:key])
-            return appValue;
-        upstreamValue = [[NSBundle mainBundle] localizedStringForKey:key value:nil table:@"Upstream"];
-        if (![upstreamValue isEqualToString:key])
-            return upstreamValue;
-    }
-
-    return key;
-}
+FOUNDATION_EXPORT NSString* SZLocalizedString(NSString* key);
 
 static inline NSString* SZLocalizedStringReplacingPlaceholder(NSString* key,
     NSString* placeholder,
@@ -260,41 +177,11 @@ CCodecs* _Nullable SZGetCodecs(void);
 // String conversion: UString <-> NSString
 // ============================================================
 static inline UString ToU(NSString* _Nullable s) {
-    if (!s)
-        return UString();
-    const NSUInteger len = s.length;
-    if (len == 0)
-        return UString();
-
-    unichar stackBuffer[256];
-    unichar* utf16 = len <= 256 ? stackBuffer : (unichar*)malloc(len * sizeof(unichar));
-    [s getCharacters:utf16 range:NSMakeRange(0, len)];
-
-    UString u;
-    wchar_t* buffer = u.GetBuf_SetEnd((unsigned)len);
-    for (NSUInteger i = 0; i < len; i++)
-        buffer[i] = (wchar_t)utf16[i];
-
-    if (utf16 != stackBuffer)
-        free(utf16);
-    return u;
+    return SZToUString(s);
 }
 
 static inline NSString* ToNS(const UString& u) {
-    const unsigned len = u.Len();
-    if (len == 0)
-        return @"";
-
-    const wchar_t* chars = u.Ptr();
-    unichar stackBuffer[256];
-    unichar* utf16 = len <= 256 ? stackBuffer : (unichar*)malloc((size_t)len * sizeof(unichar));
-    for (unsigned i = 0; i < len; i++)
-        utf16[i] = (unichar)chars[i];
-
-    NSString* result = [NSString stringWithCharacters:utf16 length:len];
-    if (utf16 != stackBuffer)
-        free(utf16);
-    return result;
+    return SZToNSString(u);
 }
 
 // Convert a C string to NSString without returning nil; invalid UTF-8

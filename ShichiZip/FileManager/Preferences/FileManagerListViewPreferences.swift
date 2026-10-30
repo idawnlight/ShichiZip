@@ -1,6 +1,10 @@
 import Cocoa
 
-extension FileManagerViewPreferences {
+extension Notification.Name {
+    static let fileManagerViewPreferencesDidChange = Notification.Name("FileManagerViewPreferencesDidChange")
+}
+
+enum FileManagerViewPreferences {
     struct ListViewColumnInfo: Equatable {
         let id: FileManagerColumnID
         let isVisible: Bool

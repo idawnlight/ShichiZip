@@ -1,4 +1,7 @@
 #import <Foundation/Foundation.h>
+#import <dispatch/dispatch.h>
+
+#include "SZStringConversion.h"
 
 #define BOOL BOOL_7Z_COMPAT
 #include "CPP/7zip/UI/Agent/Agent.h"
@@ -42,37 +45,19 @@ static NSString* const kSZWorkDirRemovableOnlyPreferenceKey = @"WorkDirForRemova
 static NSString* const kSZAppGroupIdentifierInfoKey = @"ShichiZipQuickActionAppGroupIdentifier";
 
 static NSUserDefaults* SZSharedNSUserDefaults(void) {
-    NSString* appGroupIdentifier =
-        [[NSBundle mainBundle] objectForInfoDictionaryKey:kSZAppGroupIdentifierInfoKey];
-    if (appGroupIdentifier.length > 0) {
-        NSUserDefaults* defaults = [[NSUserDefaults alloc] initWithSuiteName:appGroupIdentifier];
-        if (defaults) {
-            return defaults;
+    static NSUserDefaults* defaults;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSString* appGroupIdentifier =
+            [[NSBundle mainBundle] objectForInfoDictionaryKey:kSZAppGroupIdentifierInfoKey];
+        if (appGroupIdentifier.length > 0) {
+            defaults = [[NSUserDefaults alloc] initWithSuiteName:appGroupIdentifier];
         }
-    }
-
-    return [NSUserDefaults standardUserDefaults];
-}
-
-static UString SZToUString(NSString* string) {
-    if (!string) {
-        return UString();
-    }
-    const NSUInteger len = string.length;
-    UString converted;
-    converted.Empty();
-    for (NSUInteger index = 0; index < len; index++)
-        converted += (wchar_t)[string characterAtIndex:index];
-    return converted;
-}
-
-static NSString* SZToNSString(const UString& string) {
-    NSMutableString* converted = [NSMutableString stringWithCapacity:string.Len()];
-    for (unsigned index = 0; index < string.Len(); index++) {
-        const unichar character = (unichar)string[index];
-        [converted appendString:[NSString stringWithCharacters:&character length:1]];
-    }
-    return converted;
+        if (!defaults) {
+            defaults = [NSUserDefaults standardUserDefaults];
+        }
+    });
+    return defaults;
 }
 
 bool SZWorkDirShouldUseConfiguredMode(const FString& path) {

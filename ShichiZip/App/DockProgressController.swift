@@ -64,12 +64,37 @@ final class DockProgressController {
         let bounds = NSRect(origin: .zero, size: size)
         let image = NSImage(size: size)
 
+        guard let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: Int(size.width * 2),
+            pixelsHigh: Int(size.height * 2),
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0,
+        ) else {
+            return NSApp.applicationIconImage ?? image
+        }
+        // The 2x bitmap retains the tile's point size, so the context uses the
+        // same drawing coordinates as the progress bar below.
+        bitmap.size = size
+        guard let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
+            return NSApp.applicationIconImage ?? image
+        }
+
         // Drawn synchronously rather than through NSImage's drawing handler,
         // which AppKit may invoke off the main actor when it caches.
-        image.lockFocus()
+        let previousContext = NSGraphicsContext.current
+        NSGraphicsContext.current = context
+        defer { NSGraphicsContext.current = previousContext }
+
+        context.cgContext.clear(bounds)
         NSApp.applicationIconImage?.draw(in: bounds)
         Self.drawProgressBar(in: bounds, fraction: fraction)
-        image.unlockFocus()
+        image.addRepresentation(bitmap)
 
         return image
     }

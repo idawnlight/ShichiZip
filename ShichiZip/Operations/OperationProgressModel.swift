@@ -1,8 +1,9 @@
-import Combine
 import Foundation
+import Observation
 
 @MainActor
-final class OperationProgressModel: ObservableObject {
+@Observable
+final class OperationProgressModel {
     typealias SnapshotUpdateScheduler = (
         _ action: @escaping @MainActor () -> Void,
     ) -> () -> Void
@@ -16,20 +17,20 @@ final class OperationProgressModel: ObservableObject {
 
     let operationTitle: String
 
-    @Published private(set) var snapshot: SZOperationSnapshot
-    @Published private(set) var completionState = CompletionState.running
-    @Published private(set) var speedBytesPerSecond: Double?
-    @Published private(set) var updateOutcome: SZArchiveUpdateOutcome?
+    private(set) var snapshot: SZOperationSnapshot
+    private(set) var completionState = CompletionState.running
+    private(set) var speedBytesPerSecond: Double?
+    private(set) var updateOutcome: SZArchiveUpdateOutcome?
 
-    var closeAction: (() -> Void)?
+    @ObservationIgnored var closeAction: (() -> Void)?
 
     private let session: SZOperationSession
     private let now: () -> TimeInterval
     private let snapshotUpdateScheduler: SnapshotUpdateScheduler
-    private var metricsStartTime: TimeInterval?
-    private var metricsStartBytes: UInt64 = 0
-    private var pendingSnapshot: SZOperationSnapshot?
-    private var cancelScheduledSnapshotUpdate: (() -> Void)?
+    @ObservationIgnored private var metricsStartTime: TimeInterval?
+    @ObservationIgnored private var metricsStartBytes: UInt64 = 0
+    @ObservationIgnored private var pendingSnapshot: SZOperationSnapshot?
+    @ObservationIgnored private var cancelScheduledSnapshotUpdate: (() -> Void)?
 
     init(operationTitle: String,
          initialFileName: String?,
@@ -213,11 +214,10 @@ final class OperationProgressModel: ObservableObject {
         "\(SZL10n.string("column.warningFlags")): \(totalIssueCount)"
     }
 
-    func elapsedDuration(at time: Date = Date()) -> String? {
+    func elapsedDuration() -> String? {
         guard let metricsStartTime else { return nil }
         let elapsed = max(now() - metricsStartTime, 0)
         guard elapsed >= 0.3 else { return nil }
-        _ = time
         return Self.durationString(elapsed)
     }
 

@@ -66,7 +66,7 @@ final class FileManagerPaneActivityState {
 }
 
 /// Single pane of the file manager — displays file system contents
-class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSTextFieldDelegate, NSMenuItemValidation, FileManagerPaneTransferHost {
+class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSTextFieldDelegate, FileManagerPaneTransferHost {
     // MARK: - Types
 
     private static let addressBarIconSize: CGFloat = 14
@@ -115,77 +115,14 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return directoryCoordinatorStorage
         }
 
-        let coordinator = FileManagerPaneDirectoryCoordinator(
-            isViewLoaded: { [weak self] in
-                self?.isViewLoaded == true
-            },
-            isInsideArchive: { [weak self] in
-                self?.isInsideArchive == true
-            },
-            showsParentRow: { [weak self] in
-                self?.showsParentRow == true
-            },
-            selectedFileSystemItems: { [weak self] in
-                self?.selectedFileSystemItems() ?? []
-            },
-            focusedFileSystemItemPath: { [weak self] in
-                guard let self,
-                      let focusedItem = paneItem(at: tableView.selectedRow),
-                      case let .filesystem(item) = focusedItem
-                else {
-                    return nil
-                }
-                return item.url.standardizedFileURL.path
-            },
-            clearSuspendedState: { [weak self] in
-                self?.clearSuspendedState()
-            },
-            updatePathField: { [weak self] in
-                self?.updatePathField()
-            },
-            updateStatusBar: { [weak self] in
-                self?.updateStatusBar()
-            },
-            updateTableColumns: { [weak self] in
-                self?.updateTableColumnsForCurrentLocation()
-            },
-            sortCurrentItems: { [weak self] in
-                self?.sortCurrentItemsByCurrentListViewDescriptors()
-            },
-            reloadTableData: { [weak self] in
-                self?.tableView.reloadData()
-            },
-            focusFileList: { [weak self] in
-                self?.focusFileList()
-            },
-            selectRows: { [weak self] rows in
-                self?.tableView.selectRowIndexes(rows,
-                                                 byExtendingSelection: false)
-            },
-            deselectRows: { [weak self] in
-                self?.tableView.deselectAll(nil)
-            },
-            scrollRow: { [weak self] row, placement in
-                self?.scrollFileListRow(row,
-                                        placement: placement)
-            },
-            showError: { [weak self] error in
-                self?.showErrorAlert(error)
-            },
-            directoryDidChange: { [weak self] in
-                self?.autoRefreshIfPossible()
-            },
-            setDirectoryLoadingVisible: { [weak self] visible in
-                self?.setDirectoryLoadingOverlayVisible(visible)
-            },
-        )
+        let coordinator = FileManagerPaneDirectoryCoordinator(host: self)
         directoryCoordinatorStorage = coordinator
         return coordinator
     }
 
     private let archiveSession = FileManagerArchiveSession()
     private var archiveCoordinatorStorage: FileManagerPaneArchiveCoordinator?
-    private var isInsideArchive: Bool {
+    var isInsideArchive: Bool {
         archiveSession.isInsideArchive
     }
 
@@ -197,59 +134,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         let coordinator = FileManagerPaneArchiveCoordinator(
             archiveSession: archiveSession,
             observerIdentifier: ObjectIdentifier(self),
-            parentWindow: { [weak self] in
-                guard let self, isViewLoaded else { return nil }
-                return view.window
-            },
-            isViewLoaded: { [weak self] in
-                self?.isViewLoaded == true
-            },
-            didOpenTopLevelArchive: { url in
-                RecentArchiveHistory.recordOpenedArchive(url)
-            },
-            updateTableColumns: { [weak self] in
-                self?.updateTableColumnsForCurrentLocation()
-            },
-            currentDirectory: { [weak self] in
-                self?.directoryCoordinator.currentDirectory ?? FileManager.default.homeDirectoryForCurrentUser
-            },
-            prepareDirectoryForArchivePresentation: { [weak self] hostDirectory in
-                self?.directoryCoordinator.prepareForArchivePresentation(hostDirectory: hostDirectory)
-            },
-            sortCurrentItems: { [weak self] in
-                self?.sortCurrentItemsByCurrentListViewDescriptors()
-            },
-            updatePathField: { [weak self] in
-                self?.updatePathField()
-            },
-            updateStatusBar: { [weak self] in
-                self?.updateStatusBar()
-            },
-            reloadTableData: { [weak self] in
-                self?.tableView.reloadData()
-            },
-            selectArchivePaths: { [weak self] paths in
-                self?.selectArchivePaths(paths)
-            },
-            selectedArchivePaths: { [weak self] in
-                guard let self else { return [] }
-                return selectedArchiveItems().map { normalizeArchivePath($0.path) }
-            },
-            hasConflictingNestedArchiveInstance: { [weak self] identity in
-                self?.hasConflictingNestedArchiveInstance(for: identity) == true
-            },
-            hasDirtyNestedArchiveInstance: { [weak self] identity in
-                self?.hasDirtyNestedArchiveInstance(for: identity) == true
-            },
-            beginStateReplacement: { [weak self] in
-                self?.activityState.beginCurrentNavigationTransition()
-            },
-            endStateReplacement: { [weak self] token in
-                self?.activityState.endNavigationTransition(token)
-            },
-            showError: { [weak self] error in
-                self?.showErrorAlert(error)
-            },
+            host: self,
         )
         archiveCoordinatorStorage = coordinator
         return coordinator
@@ -277,48 +162,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
             return suspensionCoordinatorStorage
         }
 
-        let coordinator = FileManagerPaneSuspensionCoordinator(
-            isViewLoaded: { [weak self] in
-                self?.isViewLoaded == true
-            },
-            isInsideArchive: { [weak self] in
-                self?.isInsideArchive == true
-            },
-            closeAllArchives: { [weak self] showError in
-                guard let self else { return false }
-                return await closeAllArchives(showError: showError)
-            },
-            prepareDirectoryForSuspension: { [weak self] in
-                self?.directoryCoordinator.prepareForSuspension()
-            },
-            cancelPendingArchiveRefresh: { [weak self] in
-                self?.cancelPendingArchiveRefresh()
-            },
-            clearArchiveDisplayItems: { [weak self] in
-                self?.archiveSession.clearDisplayItems()
-            },
-            clearStatusText: { [weak self] in
-                self?.statusView?.clear()
-            },
-            containerView: { [weak self] in
-                guard let self, isViewLoaded else { return nil }
-                return view
-            },
-            scrollView: { [weak self] in
-                guard let self, isViewLoaded else { return nil }
-                return scrollView
-            },
-            currentDirectory: { [weak self] in
-                self?.currentDirectory ?? FileManager.default.homeDirectoryForCurrentUser
-            },
-            canReactivate: { [weak self] in
-                self?.activityState.isClosePreparationActive == false
-            },
-            loadDirectory: { [weak self] url, showError in
-                self?.loadDirectory(url,
-                                    showError: showError) == true
-            },
-        )
+        let coordinator = FileManagerPaneSuspensionCoordinator(host: self)
         suspensionCoordinatorStorage = coordinator
         return coordinator
     }
@@ -327,7 +171,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         SZSettings.bool(.showRealFileIcons)
     }
 
-    private var showsParentRow: Bool {
+    var showsParentRow: Bool {
         guard SZSettings.bool(.showDots) else {
             return false
         }
@@ -456,29 +300,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     private func installEventCoordinator() {
         eventCoordinator = FileManagerPaneEventCoordinator(
+            host: self,
             tableView: tableView,
             scrollView: scrollView,
-            columnLayoutDidChange: { [weak self] in
-                self?.handleTableColumnLayoutDidChange()
-            },
-            settingsDidChange: { [weak self] settingsKey in
-                self?.handleSettingsDidChange(settingsKey)
-            },
-            resetListViewPreferences: { [weak self] in
-                self?.listViewCoordinator.resetForCurrentLocation()
-            },
-            reloadPresentedValues: { [weak self] in
-                self?.reloadPresentedValues()
-            },
-            archiveDidChange: { [weak self] change in
-                self?.handlePublishedArchiveChange(change)
-            },
-            languageDidChange: { [weak self] in
-                self?.handleLanguageDidChange()
-            },
-            autoRefreshCurrentDirectoryIfNeeded: { [weak self] in
-                self?.autoRefreshCurrentDirectoryIfNeeded()
-            },
         )
     }
 
@@ -516,21 +340,21 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                         budget: budget)
     }
 
-    private func beginNavigation() -> Int? {
+    func beginNavigation() -> Int? {
         guard let generation = activityState.beginNavigation() else { return nil }
         archiveCoordinatorStorage?.invalidatePendingArchiveOpen()
         return generation
     }
 
-    private func isCurrentNavigation(_ generation: Int) -> Bool {
+    func isCurrentNavigation(_ generation: Int) -> Bool {
         activityState.isCurrentNavigation(generation)
     }
 
-    private func beginNavigationTransition(_ generation: Int) -> UUID? {
+    func beginNavigationTransition(_ generation: Int) -> UUID? {
         activityState.beginNavigationTransition(for: generation)
     }
 
-    private func endNavigationTransition(_ token: UUID) {
+    func endNavigationTransition(_ token: UUID) {
         activityState.endNavigationTransition(token)
         reactivateAfterCloseCancellationIfPossible()
     }
@@ -542,7 +366,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return beginNavigation() != nil
     }
 
-    private func setDirectoryLoadingOverlayVisible(_ visible: Bool) {
+    func setDirectoryLoadingVisible(_ visible: Bool) {
         if visible {
             showDirectoryLoadingOverlay()
         } else {
@@ -584,7 +408,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         directoryCoordinator.reloadCurrentDirectoryPreservingSelection()
     }
 
-    private func autoRefreshCurrentDirectoryIfNeeded() {
+    func autoRefreshCurrentDirectoryIfNeeded() {
         directoryCoordinator.autoRefreshCurrentDirectoryIfNeeded()
     }
 
@@ -606,7 +430,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         listViewCoordinator.refreshColumnTitles()
     }
 
-    private func handleTableColumnLayoutDidChange() {
+    func handleTableColumnLayoutDidChange() {
         listViewCoordinator.handleColumnLayoutDidChange()
     }
 
@@ -645,7 +469,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     func focusFileList() {
         delegate?.paneDidBecomeActive(self)
-        view.window?.makeFirstResponder(tableView)
+        returnFocusToFileList()
     }
 
     var preferredInitialFirstResponder: NSView {
@@ -742,41 +566,29 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         FileManagerPaneOpenCommandSupport.openSelectionOutside(in: self)
     }
 
-    var openCommandActivationRow: Int {
+    var activationRow: Int {
         tableView.clickedRow >= 0 ? tableView.clickedRow : tableView.selectedRow
     }
 
-    func openCommandItem(at row: Int) -> FileManagerPaneItem? {
-        paneItem(at: row)
+    var currentArchiveLevel: FileManagerArchiveLevel? {
+        archiveSession.currentLevel
     }
 
-    func openCommandArchiveItemWorkflowContext() -> FileManagerArchiveItemWorkflowContext? {
-        currentArchiveItemWorkflowContext()
-    }
-
-    var openCommandItemWorkflowService: FileManagerArchiveItemWorkflowService {
+    var archiveItemWorkflowService: FileManagerArchiveItemWorkflowService {
         archiveSession.itemWorkflowService
     }
 
-    func openCommandBeginNavigation() -> Int? {
-        beginNavigation()
-    }
-
-    func openCommandIsCurrentNavigation(_ generation: Int) -> Bool {
-        isCurrentNavigation(generation)
-    }
-
-    func openCommandBeginArchiveOpen() -> Int? {
+    func beginArchiveOpen() -> Int? {
         guard beginNavigation() != nil else { return nil }
         return archiveCoordinator.beginArchiveOpen()
     }
 
     @discardableResult
-    func openCommandOpenArchiveInline(_ url: URL,
-                                      hostDirectory: URL? = nil,
-                                      openMode: FileManagerArchiveOpenMode = .defaultBehavior,
-                                      showError: Bool = true,
-                                      expectedNavigationGeneration: Int) async -> FileManagerArchiveOpenResult
+    func openArchiveInline(_ url: URL,
+                           hostDirectory: URL? = nil,
+                           openMode: FileManagerArchiveOpenMode = .defaultBehavior,
+                           showError: Bool = true,
+                           expectedNavigationGeneration: Int) async -> FileManagerArchiveOpenResult
     {
         guard isCurrentNavigation(expectedNavigationGeneration) else {
             return .cancelled
@@ -791,12 +603,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return result
     }
 
-    func openCommandFinishArchiveOpen(_ preparedResult: FileManagerPreparedArchiveOpenResult,
-                                      temporaryDirectory: URL?,
-                                      preserveTemporaryDirectoryOnUnsupported: Bool,
-                                      replaceCurrentState: Bool,
-                                      showError: Bool,
-                                      expectedOpenGeneration: Int) async -> FileManagerArchiveOpenResult
+    func finishArchiveOpen(_ preparedResult: FileManagerPreparedArchiveOpenResult,
+                           temporaryDirectory: URL?,
+                           preserveTemporaryDirectoryOnUnsupported: Bool,
+                           replaceCurrentState: Bool,
+                           showError: Bool,
+                           expectedOpenGeneration: Int) async -> FileManagerArchiveOpenResult
     {
         await archiveCoordinator.finishArchiveOpen(preparedResult,
                                                    temporaryDirectory: temporaryDirectory,
@@ -808,135 +620,39 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     @discardableResult
-    func openCommandOpenExternallyIfPossible(_ url: URL,
-                                             preservingTemporaryDirectory temporaryDirectory: URL? = nil) -> Bool
+    func openExternallyIfPossible(_ url: URL,
+                                  preservingTemporaryDirectory temporaryDirectory: URL? = nil) -> Bool
     {
         externalOpenService.openIfPossible(url,
                                            preservingTemporaryDirectory: temporaryDirectory)
     }
 
     @discardableResult
-    func openCommandOpenExternally(_ url: URL,
-                                   withApplicationAt applicationURL: URL,
-                                   preservingTemporaryDirectory temporaryDirectory: URL? = nil) -> Bool
+    func openExternally(_ url: URL,
+                        withApplicationAt applicationURL: URL,
+                        preservingTemporaryDirectory temporaryDirectory: URL? = nil) -> Bool
     {
         externalOpenService.open(url,
                                  withApplicationAt: applicationURL,
                                  preservingTemporaryDirectory: temporaryDirectory)
     }
 
-    func openCommandCleanupTemporaryDirectory(_ temporaryDirectory: URL?) {
+    func cleanupTemporaryDirectory(_ temporaryDirectory: URL?) {
         archiveCoordinator.cleanupTemporaryDirectory(temporaryDirectory)
     }
 
-    func openCommandUnavailableExternalOpenError(for itemName: String) -> NSError {
+    func unavailableExternalOpenError(for itemName: String) -> NSError {
         externalOpenService.unavailableExternalOpenError(for: itemName)
     }
 
-    func openCommandShowError(_ error: Error) {
-        showErrorAlert(error)
-    }
-
-    var navigationCommandIsInsideArchive: Bool {
-        isInsideArchive
-    }
-
-    var navigationCommandCurrentArchiveLevel: FileManagerArchiveLevel? {
-        archiveSession.currentLevel
-    }
-
-    func navigationCommandBeginNavigation() -> Int? {
-        beginNavigation()
-    }
-
-    func navigationCommandIsCurrentNavigation(_ generation: Int) -> Bool {
-        isCurrentNavigation(generation)
-    }
-
-    func navigationCommandBeginTransition(_ generation: Int) -> UUID? {
-        beginNavigationTransition(generation)
-    }
-
-    func navigationCommandEndTransition(_ token: UUID) {
-        endNavigationTransition(token)
-    }
-
-    @discardableResult
-    func navigationCommandLoadDirectory(_ url: URL,
-                                        showError: Bool = true,
-                                        expectedNavigationGeneration: Int) -> Bool
-    {
-        loadDirectory(url,
-                      showError: showError,
-                      budget: FileManagerPaneDirectoryCoordinator.navigationBudget,
-                      expectedNavigationGeneration: expectedNavigationGeneration)
-    }
-
-    func navigationCommandNavigateArchiveSubdir(_ subdir: String,
-                                                expectedNavigationGeneration: Int)
+    func navigateArchiveSubdir(_ subdir: String,
+                               expectedNavigationGeneration: Int)
     {
         guard isCurrentNavigation(expectedNavigationGeneration) else { return }
         archiveCoordinator.navigateSubdir(subdir)
     }
 
-    @discardableResult
-    func navigationCommandCloseArchiveLevel(_ level: FileManagerArchiveLevel,
-                                            showError: Bool = false) async -> Bool
-    {
-        await closeArchiveLevel(level,
-                                showError: showError)
-    }
-
-    @discardableResult
-    func navigationCommandCloseAllArchives(showError: Bool = false) async -> Bool {
-        await closeAllArchives(showError: showError)
-    }
-
-    func navigationCommandCanOpenArchive(at url: URL) -> Bool {
-        canOpenArchive(at: url)
-    }
-
-    @discardableResult
-    func navigationCommandOpenArchiveInline(_ url: URL,
-                                            hostDirectory: URL? = nil,
-                                            openMode: FileManagerArchiveOpenMode = .defaultBehavior,
-                                            showError: Bool = true,
-                                            expectedNavigationGeneration: Int) async -> FileManagerArchiveOpenResult
-    {
-        guard isCurrentNavigation(expectedNavigationGeneration) else {
-            return .cancelled
-        }
-        let result = await archiveCoordinator.openArchiveInline(url,
-                                                                hostDirectory: hostDirectory,
-                                                                openMode: openMode,
-                                                                showError: showError)
-        guard isCurrentNavigation(expectedNavigationGeneration) else {
-            return .cancelled
-        }
-        return result
-    }
-
-    @discardableResult
-    func navigationCommandOpenExternallyIfPossible(_ url: URL,
-                                                   preservingTemporaryDirectory temporaryDirectory: URL? = nil) -> Bool
-    {
-        externalOpenService.openIfPossible(url,
-                                           preservingTemporaryDirectory: temporaryDirectory)
-    }
-
-    func navigationCommandUnavailableExternalOpenError(for itemName: String) -> NSError {
-        externalOpenService.unavailableExternalOpenError(for: itemName)
-    }
-
-    func navigationCommandShowError(_ error: Error) {
-        showErrorAlert(error)
-    }
-
-    func navigationCommandRestorePathField() {
-        updatePathField()
-    }
-
-    func navigationCommandReturnFocusToFileList() {
+    func returnFocusToFileList() {
         view.window?.makeFirstResponder(tableView)
     }
 
@@ -945,15 +661,33 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func renameSelection() {
-        renameSelected(nil)
+        FileManagerPaneMutationCommandSupport.renameSelection(in: self)
     }
 
     func deleteSelection() {
-        deleteSelected(nil)
+        FileManagerPaneMutationCommandSupport.deleteSelection(in: self)
     }
 
     func showSelectedItemProperties() {
-        showItemProperties(nil)
+        guard let item = selectedRealPaneItems().first else { return }
+
+        switch item {
+        case let .filesystem(fileSystemItem):
+            let details = FileManagerItemPresentation.details(for: fileSystemItem)
+            szShowDetailsDialog(title: details.title,
+                                details: details.details,
+                                for: view.window)
+
+        case let .archive(archiveItem):
+            let details = FileManagerItemPresentation.details(for: archiveItem,
+                                                              entryProperties: archiveSession.currentLevel?.entryProperties ?? [])
+            szShowDetailsDialog(title: details.title,
+                                details: details.details,
+                                for: view.window)
+
+        case .parent:
+            return
+        }
     }
 
     func extractSelectionHere() {
@@ -1052,7 +786,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         isInsideArchive ? currentArchiveDisplayPathPrefix() : currentDirectory.path
     }
 
-    var addressBarPath: String { pathField.stringValue }
+    var addressBarPath: String {
+        pathField.stringValue
+    }
 
     var selectedRealItemCount: Int {
         paneSelectionState.realItems.count
@@ -1075,22 +811,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         return archiveURL.deletingPathExtension().lastPathComponent
-    }
-
-    func selectedOrDisplayedArchiveEntriesForExtraction() -> [ArchiveItem] {
-        archiveCoordinator.selectedOrDisplayedEntriesForExtraction(from: archiveItemsForSelectionOrDisplayedItems(),
-                                                                   quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
-    }
-
-    func pathPrefixToStripForCurrentExtraction(destinationURL: URL,
-                                               pathMode: SZPathMode,
-                                               eliminateDuplicates: Bool) -> String?
-    {
-        archiveCoordinator.pathPrefixToStripForExtraction(items: archiveItemsForSelectionOrDisplayedItems(),
-                                                          destinationURL: destinationURL,
-                                                          pathMode: pathMode,
-                                                          eliminateDuplicates: eliminateDuplicates,
-                                                          quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
     }
 
     func selectedItemNames(limit: Int? = nil) -> [String] {
@@ -1331,7 +1051,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
     }
 
-    private func handleSettingsDidChange(_ settingsKey: SZSettingsKey) {
+    func handleSettingsDidChange(_ settingsKey: SZSettingsKey) {
         switch settingsKey {
         case .showDots, .showRealFileIcons, .showGridLines, .singleClickOpen:
             if settingsKey == .showRealFileIcons {
@@ -1356,7 +1076,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         updateStatusBar()
     }
 
-    private func handleLanguageDidChange() {
+    func handleLanguageDidChange() {
         refreshColumnTitles()
         refreshContextMenu()
         updateStatusBar()
@@ -1448,50 +1168,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return false
     }
 
-    func extractSelectedArchiveItems(to destinationURL: URL,
-                                     session: SZOperationSession? = nil,
-                                     overwriteMode: SZOverwriteMode = .ask,
-                                     pathMode: SZPathMode = .currentPaths,
-                                     password: String? = nil,
-                                     preserveNtSecurityInfo: Bool = false,
-                                     eliminateDuplicates: Bool = false,
-                                     inheritDownloadedFileQuarantine: Bool = SZSettings.bool(.inheritDownloadedFileQuarantine)) throws
-    {
-        try archiveCoordinator.extractArchiveItems(selectedArchiveItems(),
-                                                   emptySelectionMessage: SZL10n.string("app.fileManager.error.selectArchiveItems"),
-                                                   to: destinationURL,
-                                                   session: session,
-                                                   overwriteMode: overwriteMode,
-                                                   pathMode: pathMode,
-                                                   password: password,
-                                                   preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                                   eliminateDuplicates: eliminateDuplicates,
-                                                   inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine,
-                                                   quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
-    }
-
-    func extractCurrentSelectionOrDisplayedArchiveItems(to destinationURL: URL,
-                                                        session: SZOperationSession? = nil,
-                                                        overwriteMode: SZOverwriteMode = .ask,
-                                                        pathMode: SZPathMode = .currentPaths,
-                                                        password: String? = nil,
-                                                        preserveNtSecurityInfo: Bool = false,
-                                                        eliminateDuplicates: Bool = false,
-                                                        inheritDownloadedFileQuarantine: Bool = SZSettings.bool(.inheritDownloadedFileQuarantine)) throws
-    {
-        try archiveCoordinator.extractArchiveItems(archiveItemsForSelectionOrDisplayedItems(),
-                                                   emptySelectionMessage: SZL10n.string("app.fileManager.error.noArchiveItemsToExtract"),
-                                                   to: destinationURL,
-                                                   session: session,
-                                                   overwriteMode: overwriteMode,
-                                                   pathMode: pathMode,
-                                                   password: password,
-                                                   preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                                   eliminateDuplicates: eliminateDuplicates,
-                                                   inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine,
-                                                   quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
-    }
-
     func prepareExtraction(to destinationURL: URL,
                            overwriteMode: SZOverwriteMode = .ask,
                            pathMode: SZPathMode = .currentPaths,
@@ -1510,10 +1186,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                  eliminateDuplicates: eliminateDuplicates,
                                                  inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine,
                                                  quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
-    }
-
-    func testCurrentArchive(session: SZOperationSession? = nil) throws {
-        try archiveCoordinator.testCurrentArchive(session: session)
     }
 
     /// Returns the current archive paired with an operation-gate lease, for use off the main actor.
@@ -1543,37 +1215,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                  quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
     }
 
-    // MARK: - Menu Validation
-
-    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        guard let command = Self.paneCommand(for: menuItem.action) else { return true }
-        return paneCapabilities.allows(command)
-    }
-
-    private static func paneCommand(for action: Selector?) -> FileManagerPaneCommand? {
-        switch action {
-        case #selector(openSelectedItem(_:)):
-            .openSelection
-        case #selector(openInArchiveViewer(_:)):
-            .openArchiveInViewer
-        case #selector(compressSelected(_:)):
-            .addSelectedItemsToArchive
-        case #selector(extractSelected(_:)), #selector(extractHere(_:)):
-            .extractSelectionOrArchive
-        case #selector(renameSelected(_:)):
-            .renameSelection
-        case #selector(deleteSelected(_:)):
-            .deleteSelection
-        case #selector(createFolderFromMenu(_:)):
-            .createFolderHere
-        case #selector(showItemProperties(_:)):
-            .showSelectedItemProperties
-        default:
-            nil
-        }
-    }
-
-    private func paneItem(at row: Int) -> FileManagerPaneItem? {
+    func paneItem(at row: Int) -> FileManagerPaneItem? {
         tableModel.item(at: row)
     }
 
@@ -1644,10 +1286,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                       selectedRowIndexes: tableView.selectedRowIndexes)
     }
 
-    private func selectedPaneItems() -> [FileManagerPaneItem] {
-        paneSelectionState.items
-    }
-
     private func selectedQuickLookRowsAndItems() -> [(row: Int, item: FileManagerPaneItem)] {
         paneSelectionState.rowsAndItems(excludingParent: true)
     }
@@ -1656,20 +1294,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         paneSelectionState.realItems
     }
 
-    private func selectedSingleRealPaneItem() -> FileManagerPaneItem? {
-        paneSelectionState.singleRealItem
-    }
-
     func selectedFileSystemItems() -> [FileSystemItem] {
         paneSelectionState.fileSystemItems
     }
 
     func selectedArchiveItems() -> [ArchiveItem] {
         paneSelectionState.archiveItems
-    }
-
-    private func paneItemsForSelectionOrDisplayedItems() -> [FileManagerPaneItem] {
-        paneSelectionState.paneItemsForSelectionOrDisplayedItems
     }
 
     private func archiveItemsForSelectionOrDisplayedItems() -> [ArchiveItem] {
@@ -1686,19 +1316,19 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         archiveCoordinator.archiveHostDirectory()
     }
 
-    private func currentArchiveItemWorkflowContext(acquireLease: Bool = true) -> FileManagerArchiveItemWorkflowContext? {
+    func currentArchiveItemWorkflowContext(acquireLease: Bool = true) -> FileManagerArchiveItemWorkflowContext? {
         archiveCoordinator.currentItemWorkflowContext(acquireLease: acquireLease,
                                                       quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
     }
 
     // MARK: - Archive Coordination
 
-    private func hasConflictingNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool {
+    func hasConflictingNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool {
         FileManagerNestedArchiveConflictDetector.hasConflictingOpenInstance(for: identity,
                                                                             in: allVisibleArchiveCoordinationSnapshots())
     }
 
-    private func hasDirtyNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool {
+    func hasDirtyNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool {
         FileManagerNestedArchiveConflictDetector.hasDirtyOpenInstance(for: identity,
                                                                       in: allVisibleArchiveCoordinationSnapshots())
     }
@@ -1707,7 +1337,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         archiveCoordinationProvider?.archiveCoordinationSnapshots() ?? archiveCoordinationSnapshots()
     }
 
-    private func canOpenArchive(at url: URL) -> Bool {
+    func canOpenArchive(at url: URL) -> Bool {
         let archive = SZArchive()
         do {
             try archive.open(atPath: url.path)
@@ -1721,15 +1351,15 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     // MARK: - Archive Stack Closing
 
     @discardableResult
-    private func closeArchiveLevel(_ level: FileManagerArchiveLevel,
-                                   showError: Bool = false) async -> Bool
+    func closeArchiveLevel(_ level: FileManagerArchiveLevel,
+                           showError: Bool = false) async -> Bool
     {
         await archiveCoordinator.closeLevel(level,
                                             showError: showError)
     }
 
     @discardableResult
-    private func closeAllArchives(showError: Bool = false) async -> Bool {
+    func closeAllArchives(showError: Bool = false) async -> Bool {
         await archiveCoordinator.closeAll(showError: showError)
     }
 
@@ -1830,10 +1460,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                 reopenBeforeListing: reopenBeforeListing)
     }
 
-    private func refreshArchiveAfterMutation(selectingPath path: String? = nil) {
-        archiveCoordinator.refreshAfterMutation(selectingPath: path)
-    }
-
     private func cancelPendingArchiveRefresh() {
         archiveCoordinatorStorage?.cancelPendingReload()
     }
@@ -1901,7 +1527,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     // MARK: - Error Presentation
 
-    private func showErrorAlert(_ error: Error) {
+    func showErrorAlert(_ error: Error) {
         szPresentError(error, for: view.window)
     }
 
@@ -1956,7 +1582,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         goUp()
     }
 
-    private func updatePathField() {
+    func updatePathField() {
         if isInsideArchive {
             guard let level = archiveSession.currentLevel else { return }
             pathField.stringValue = level.currentSubdir.isEmpty
@@ -2116,6 +1742,151 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 }
 
+// MARK: - Coordinator Hosts
+
+extension FileManagerPaneController: FileManagerPaneDirectoryCoordinatorHost {
+    func directorySelectionState() -> FileManagerFileSystemSelectionState {
+        let selectedItems = selectedFileSystemItems()
+        let focusedPath: String? = if let focusedItem = paneItem(at: tableView.selectedRow),
+                                      case let .filesystem(item) = focusedItem
+        {
+            item.url.standardizedFileURL.path
+        } else {
+            selectedItems.first?.url.standardizedFileURL.path
+        }
+        return FileManagerFileSystemSelectionState(
+            selectedPaths: Set(selectedItems.map(\.url.standardizedFileURL.path)),
+            focusedPath: focusedPath,
+            scrollPlacement: .visible,
+        )
+    }
+
+    func directoryContentsDidChange(_ change: FileManagerDirectoryContentsChange) {
+        if case .snapshot = change {
+            updatePathField()
+            updateTableColumnsForCurrentLocation()
+        }
+        sortCurrentItemsByCurrentListViewDescriptors()
+        tableView.reloadData()
+        updateStatusBar()
+    }
+
+    func directoryNavigationDidFinish(selection: FileManagerDirectorySelectionRestoration?,
+                                      focusFileList: Bool)
+    {
+        clearSuspendedState()
+        if let selection {
+            restoreDirectorySelection(selection)
+        }
+        if focusFileList {
+            self.focusFileList()
+        }
+    }
+
+    func restoreDirectorySelection(_ selection: FileManagerDirectorySelectionRestoration) {
+        guard !selection.rows.isEmpty else {
+            tableView.deselectAll(nil)
+            return
+        }
+        tableView.selectRowIndexes(selection.rows, byExtendingSelection: false)
+        if let focusedRow = selection.focusedRow {
+            scrollFileListRow(focusedRow, placement: selection.scrollPlacement)
+        }
+    }
+
+    func directoryInitialLoadDidFail() {
+        updatePathField()
+        updateStatusBar()
+    }
+
+    func directoryPresentationDidSuspend() {
+        tableView.reloadData()
+    }
+}
+
+extension FileManagerPaneController: FileManagerPaneArchiveCoordinatorHost {
+    var archiveParentWindow: NSWindow? {
+        isViewLoaded ? view.window : nil
+    }
+
+    var archiveSelectedPaths: [String] {
+        selectedArchiveItems().map { normalizeArchivePath($0.path) }
+    }
+
+    func archivePrepareForPresentation(hostDirectory: URL) {
+        directoryCoordinator.prepareForArchivePresentation(hostDirectory: hostDirectory)
+    }
+
+    func archiveLocationDidChange(selectingPaths paths: [String]) {
+        updateTableColumnsForCurrentLocation()
+        sortCurrentItemsByCurrentListViewDescriptors()
+        updatePathField()
+        updateStatusBar()
+        tableView.reloadData()
+        selectArchivePaths(paths)
+    }
+
+    func archiveVisibilityDidChange(restoringSelection paths: [String]) {
+        tableView.reloadData()
+        updateStatusBar()
+        selectArchivePaths(paths)
+    }
+
+    func archiveStackDidCloseLevel() {
+        if !isInsideArchive {
+            updatePathField()
+            updateStatusBar()
+            tableView.reloadData()
+            updateTableColumnsForCurrentLocation()
+        } else if isViewLoaded {
+            archiveLocationDidChange(selectingPaths: [])
+        } else {
+            updateTableColumnsForCurrentLocation()
+        }
+    }
+
+    func archiveDidOpenTopLevel(_ url: URL) {
+        RecentArchiveHistory.recordOpenedArchive(url)
+    }
+
+    func archiveBeginStateReplacement() -> UUID? {
+        activityState.beginCurrentNavigationTransition()
+    }
+
+    func archiveEndStateReplacement(_ token: UUID) {
+        activityState.endNavigationTransition(token)
+    }
+}
+
+extension FileManagerPaneController: FileManagerPaneSuspensionHost {
+    var suspensionOverlayViews: (container: NSView, content: NSView)? {
+        guard isViewLoaded else { return nil }
+        return (view, scrollView)
+    }
+
+    func preparePaneForSuspension() {
+        directoryCoordinator.prepareForSuspension()
+        cancelPendingArchiveRefresh()
+        archiveSession.clearDisplayItems()
+        statusView?.clear()
+    }
+
+    func reloadSuspendedDirectory() -> Bool {
+        guard !activityState.isClosePreparationActive else { return false }
+        return loadDirectory(currentDirectory, showError: true)
+    }
+}
+
+extension FileManagerPaneController: FileManagerPaneEventHost {
+    func handleViewPreferencesDidChange(resetListView: Bool) {
+        if resetListView {
+            listViewCoordinator.resetForCurrentLocation()
+        } else {
+            reloadPresentedValues()
+        }
+    }
+}
+
 // MARK: - Archive Inline Navigation (matches Panel.cpp _parentFolders stack)
 
 extension FileManagerPaneController {
@@ -2165,70 +1936,5 @@ extension FileManagerPaneController {
 
     func controlTextDidBeginEditing(_: Notification) {
         delegate?.paneDidBecomeActive(self)
-    }
-
-    @objc private func openSelectedItem(_: Any?) {
-        openSelection()
-    }
-
-    @objc private func openInArchiveViewer(_: Any?) {
-        guard let url = selectedArchiveCandidateURL() else { return }
-        delegate?.paneDidRequestOpenArchiveInNewWindow(url)
-    }
-
-    @objc private func compressSelected(_: Any?) {
-        if isInsideArchive, !supportsInPlaceArchiveMutation {
-            showReadOnlyArchiveMutationAlert(action: SZL10n.string("app.fileManager.action.addingFilesToArchive"))
-            return
-        }
-
-        // Forward to FileManagerWindowController
-        if let wc = view.window?.windowController as? FileManagerWindowController {
-            wc.addToArchive(nil)
-        }
-    }
-
-    @objc private func extractSelected(_: Any?) {
-        if let wc = view.window?.windowController as? FileManagerWindowController {
-            wc.extractArchive(nil)
-        }
-    }
-
-    @objc private func extractHere(_: Any?) {
-        extractSelectionHere()
-    }
-
-    @objc private func renameSelected(_: Any?) {
-        FileManagerPaneMutationCommandSupport.renameSelection(in: self)
-    }
-
-    @objc private func deleteSelected(_: Any?) {
-        FileManagerPaneMutationCommandSupport.deleteSelection(in: self)
-    }
-
-    @objc private func createFolderFromMenu(_: Any?) {
-        FileManagerPaneMutationCommandSupport.promptForFolderCreation(in: self)
-    }
-
-    @objc private func showItemProperties(_: Any?) {
-        guard let item = selectedRealPaneItems().first else { return }
-
-        switch item {
-        case let .filesystem(fileSystemItem):
-            let details = FileManagerItemPresentation.details(for: fileSystemItem)
-            szShowDetailsDialog(title: details.title,
-                                details: details.details,
-                                for: view.window)
-
-        case let .archive(archiveItem):
-            let details = FileManagerItemPresentation.details(for: archiveItem,
-                                                              entryProperties: archiveSession.currentLevel?.entryProperties ?? [])
-            szShowDetailsDialog(title: details.title,
-                                details: details.details,
-                                for: view.window)
-
-        case .parent:
-            return
-        }
     }
 }

@@ -61,32 +61,8 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
                 self?.receive(snapshot)
             }
         }
-        session.passwordRequestHandler = { [weak self] title, message, initialValue, passwordPointer in
-            MainActor.assumeIsolated {
-                self?.showProgressIfNeeded()
-            }
-
-            guard let password = szPromptForPasswordSync(title: title,
-                                                         message: message,
-                                                         initialValue: initialValue)
-            else {
-                return false
-            }
-
-            passwordPointer?.pointee = password as NSString
-            return true
-        }
-        session.choiceRequestHandler = { [weak self] request in
-            MainActor.assumeIsolated {
-                self?.showProgressIfNeeded()
-            }
-            return szRunChoiceDialog(request)
-        }
-        session.updateEncryptionRequestHandler = { [weak self] archivePath, defaultEncryption in
-            MainActor.assumeIsolated {
-                self?.showProgressIfNeeded()
-                return ArchiveUpdateEncryptionDialog.runModal(forArchive: archivePath, defaultEncryption: defaultEncryption)
-            }
+        AppOperationSessionFactory.configureHandlers(on: session) { [weak self] in
+            self?.showProgressIfNeeded()
         }
     }
 
@@ -264,6 +240,7 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
         session.passwordRequestHandler = nil
         session.choiceRequestHandler = nil
         session.updateEncryptionRequestHandler = nil
+        session.memoryLimitRequestHandler = nil
         model.closeAction = nil
         requestedParentWindow = nil
         activeSheetParent = nil

@@ -3,7 +3,7 @@ import AppKit
 @MainActor
 enum FileManagerPaneOpenCommandSupport {
     static func openSelection(in pane: FileManagerPaneController) {
-        activateItem(at: pane.openCommandActivationRow,
+        activateItem(at: pane.activationRow,
                      in: pane)
     }
 
@@ -21,13 +21,13 @@ enum FileManagerPaneOpenCommandSupport {
                 pane.loadDirectory(fileSystemItem.url,
                                    budget: FileManagerPaneDirectoryCoordinator.navigationBudget)
             } else {
-                guard let navigationGeneration = pane.openCommandBeginNavigation() else { return }
+                guard let navigationGeneration = pane.beginNavigation() else { return }
                 Task { @MainActor [weak pane] in
                     guard let pane else { return }
-                    _ = await pane.openCommandOpenArchiveInline(fileSystemItem.url,
-                                                                hostDirectory: pane.currentDirectoryURL,
-                                                                openMode: openMode,
-                                                                expectedNavigationGeneration: navigationGeneration)
+                    _ = await pane.openArchiveInline(fileSystemItem.url,
+                                                     hostDirectory: pane.currentDirectoryURL,
+                                                     openMode: openMode,
+                                                     expectedNavigationGeneration: navigationGeneration)
                 }
             }
 
@@ -55,13 +55,13 @@ enum FileManagerPaneOpenCommandSupport {
                 return
             }
 
-            if !pane.openCommandOpenExternallyIfPossible(fileSystemItem.url) {
-                pane.openCommandShowError(pane.openCommandUnavailableExternalOpenError(for: fileSystemItem.name))
+            if !pane.openExternallyIfPossible(fileSystemItem.url) {
+                pane.showErrorAlert(pane.unavailableExternalOpenError(for: fileSystemItem.name))
             }
 
         case let .archive(archiveItem):
             guard !archiveItem.isDirectory,
-                  let context = pane.openCommandArchiveItemWorkflowContext()
+                  let context = pane.currentArchiveItemWorkflowContext()
             else { return }
 
             openArchiveItemExternally(archiveItem,
@@ -74,7 +74,7 @@ enum FileManagerPaneOpenCommandSupport {
     static func activateItem(at row: Int,
                              in pane: FileManagerPaneController)
     {
-        guard let item = pane.openCommandItem(at: row) else { return }
+        guard let item = pane.paneItem(at: row) else { return }
 
         switch item {
         case .parent:
@@ -103,36 +103,36 @@ enum FileManagerPaneOpenCommandSupport {
                                            in pane: FileManagerPaneController)
     {
         if FileManagerExternalOpenRouter.shouldOpenExternallyBeforeArchiveAttempt(fileSystemItem.url) {
-            if !pane.openCommandOpenExternallyIfPossible(fileSystemItem.url) {
-                pane.openCommandShowError(pane.openCommandUnavailableExternalOpenError(for: fileSystemItem.name))
+            if !pane.openExternallyIfPossible(fileSystemItem.url) {
+                pane.showErrorAlert(pane.unavailableExternalOpenError(for: fileSystemItem.name))
             }
             return
         }
 
-        guard let navigationGeneration = pane.openCommandBeginNavigation() else { return }
+        guard let navigationGeneration = pane.beginNavigation() else { return }
         Task { @MainActor [weak pane] in
             guard let pane else { return }
 
-            switch await pane.openCommandOpenArchiveInline(fileSystemItem.url,
-                                                           hostDirectory: pane.currentDirectoryURL,
-                                                           showError: false,
-                                                           expectedNavigationGeneration: navigationGeneration)
+            switch await pane.openArchiveInline(fileSystemItem.url,
+                                                hostDirectory: pane.currentDirectoryURL,
+                                                showError: false,
+                                                expectedNavigationGeneration: navigationGeneration)
             {
             case .opened:
                 break
             case let .unsupportedArchive(error):
                 let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: fileSystemItem.url)
                 if shouldFallbackExternally {
-                    if !pane.openCommandOpenExternallyIfPossible(fileSystemItem.url) {
-                        pane.openCommandShowError(error)
+                    if !pane.openExternallyIfPossible(fileSystemItem.url) {
+                        pane.showErrorAlert(error)
                     }
                 } else {
-                    pane.openCommandShowError(error)
+                    pane.showErrorAlert(error)
                 }
             case .cancelled:
                 break
             case let .failed(error):
-                pane.openCommandShowError(error)
+                pane.showErrorAlert(error)
             }
         }
     }
@@ -142,7 +142,7 @@ enum FileManagerPaneOpenCommandSupport {
                                           in pane: FileManagerPaneController)
     {
         guard item.index >= 0,
-              let context = pane.openCommandArchiveItemWorkflowContext()
+              let context = pane.currentArchiveItemWorkflowContext()
         else { return }
 
         if case .forceExternal = strategy {
@@ -194,7 +194,7 @@ enum FileManagerPaneOpenCommandSupport {
             guard let pane else { return }
 
             do {
-                let workflowService = pane.openCommandItemWorkflowService
+                let workflowService = pane.archiveItemWorkflowService
                 let preparedOpen = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.extracting"),
                                                                         initialFileName: displayPath,
                                                                         parentWindow: pane.view.window,
@@ -210,7 +210,7 @@ enum FileManagerPaneOpenCommandSupport {
                                               itemName: item.name,
                                               in: pane)
             } catch {
-                pane.openCommandShowError(error)
+                pane.showErrorAlert(error)
             }
         }
     }
@@ -220,20 +220,20 @@ enum FileManagerPaneOpenCommandSupport {
                                                       in pane: FileManagerPaneController)
     {
         if let applicationURL = preparedOpen.applicationURL {
-            _ = pane.openCommandOpenExternally(preparedOpen.stagedFileURL,
-                                               withApplicationAt: applicationURL,
-                                               preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
+            _ = pane.openExternally(preparedOpen.stagedFileURL,
+                                    withApplicationAt: applicationURL,
+                                    preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
             return
         }
 
-        if pane.openCommandOpenExternallyIfPossible(preparedOpen.stagedFileURL,
-                                                    preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
+        if pane.openExternallyIfPossible(preparedOpen.stagedFileURL,
+                                         preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
         {
             return
         }
 
-        pane.openCommandCleanupTemporaryDirectory(preparedOpen.temporaryDirectory)
-        pane.openCommandShowError(pane.openCommandUnavailableExternalOpenError(for: itemName))
+        pane.cleanupTemporaryDirectory(preparedOpen.temporaryDirectory)
+        pane.showErrorAlert(pane.unavailableExternalOpenError(for: itemName))
     }
 
     private static func openArchiveItemInternally(_ item: ArchiveItem,
@@ -243,13 +243,13 @@ enum FileManagerPaneOpenCommandSupport {
                                                   in pane: FileManagerPaneController)
     {
         let displayPath = context.displayPath(for: item)
-        guard let openGeneration = pane.openCommandBeginArchiveOpen() else { return }
+        guard let openGeneration = pane.beginArchiveOpen() else { return }
 
         Task { @MainActor [weak pane] in
             guard let pane else { return }
 
             do {
-                let workflowService = pane.openCommandItemWorkflowService
+                let workflowService = pane.archiveItemWorkflowService
                 let preparedOpen = try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.opening"),
                                                                         initialFileName: displayPath,
                                                                         parentWindow: pane.view.window,
@@ -261,12 +261,12 @@ enum FileManagerPaneOpenCommandSupport {
                                                                    session: session)
                 }
 
-                let result = await pane.openCommandFinishArchiveOpen(preparedOpen.preparedResult,
-                                                                     temporaryDirectory: preparedOpen.temporaryDirectory,
-                                                                     preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
-                                                                     replaceCurrentState: false,
-                                                                     showError: false,
-                                                                     expectedOpenGeneration: openGeneration)
+                let result = await pane.finishArchiveOpen(preparedOpen.preparedResult,
+                                                          temporaryDirectory: preparedOpen.temporaryDirectory,
+                                                          preserveTemporaryDirectoryOnUnsupported: preserveTemporaryDirectoryOnUnsupported,
+                                                          replaceCurrentState: false,
+                                                          showError: false,
+                                                          expectedOpenGeneration: openGeneration)
 
                 switch result {
                 case .opened, .cancelled:
@@ -274,32 +274,32 @@ enum FileManagerPaneOpenCommandSupport {
 
                 case let .unsupportedArchive(error):
                     guard preserveTemporaryDirectoryOnUnsupported else {
-                        pane.openCommandShowError(error)
+                        pane.showErrorAlert(error)
                         return
                     }
 
                     let shouldFallbackExternally = FileManagerExternalOpenRouter.shouldFallbackUnsupportedArchiveExternally(for: preparedOpen.stagedArchiveURL)
                     if shouldFallbackExternally {
                         if let applicationURL = FileManagerExternalOpenRouter.defaultExternalApplicationURL(forArchiveItemPath: item.path) {
-                            _ = pane.openCommandOpenExternally(preparedOpen.stagedArchiveURL,
-                                                               withApplicationAt: applicationURL,
-                                                               preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
-                        } else if !pane.openCommandOpenExternallyIfPossible(preparedOpen.stagedArchiveURL,
-                                                                            preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
+                            _ = pane.openExternally(preparedOpen.stagedArchiveURL,
+                                                    withApplicationAt: applicationURL,
+                                                    preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
+                        } else if !pane.openExternallyIfPossible(preparedOpen.stagedArchiveURL,
+                                                                 preservingTemporaryDirectory: preparedOpen.temporaryDirectory)
                         {
-                            pane.openCommandCleanupTemporaryDirectory(preparedOpen.temporaryDirectory)
-                            pane.openCommandShowError(error)
+                            pane.cleanupTemporaryDirectory(preparedOpen.temporaryDirectory)
+                            pane.showErrorAlert(error)
                         }
                     } else {
-                        pane.openCommandCleanupTemporaryDirectory(preparedOpen.temporaryDirectory)
-                        pane.openCommandShowError(error)
+                        pane.cleanupTemporaryDirectory(preparedOpen.temporaryDirectory)
+                        pane.showErrorAlert(error)
                     }
 
                 case let .failed(error):
-                    pane.openCommandShowError(error)
+                    pane.showErrorAlert(error)
                 }
             } catch {
-                pane.openCommandShowError(error)
+                pane.showErrorAlert(error)
             }
         }
     }

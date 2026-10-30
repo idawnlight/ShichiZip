@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
@@ -8,6 +8,8 @@ import XCTest
 
 @MainActor
 final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
+    private var retainedHosts: [ArchiveHostSpy] = []
+
     func testArchiveFingerprintDetectsFileReplacementWithPreservedMetadata() throws {
         let directory = try makeTemporaryDirectory(named: "archive-fingerprint",
                                                    prefix: "ShichiZipArchiveCoordinatorTests")
@@ -83,19 +85,19 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         wait(for: [unexpectedPublish], timeout: 0.1)
     }
 
-    func testCloseAllArchivesClearsSessionAndRunsRefreshCallbacks() async throws {
+    func testCloseAllArchivesClearsSessionAndNotifiesHost() async throws {
         let session = FileManagerArchiveSession()
         try session.appendPreparedArchive(makePreparedArchive(named: "close-all"))
-        var didUpdateTableColumns = false
+        let host = ArchiveHostSpy()
         let coordinator = makeCoordinator(session: session,
-                                          updateTableColumns: { didUpdateTableColumns = true })
+                                          host: host)
 
         let didClose = await coordinator.closeAll(showError: true)
         XCTAssertTrue(didClose)
 
         XCTAssertFalse(session.isInsideArchive)
         XCTAssertTrue(session.displayItems.isEmpty)
-        XCTAssertTrue(didUpdateTableColumns)
+        XCTAssertEqual(host.events, [.closedLevel, .closedLevel])
     }
 
     func testConcurrentCloseAllRequestsShareOneCloseOperation() async throws {
@@ -131,18 +133,9 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                                    makeArchiveItem(path: "folder/", isDirectory: true),
                                                    makeArchiveItem(path: "folder/payload.txt"),
                                                ])
-        var currentDirectory = FileManager.default.homeDirectoryForCurrentUser
-        var preparedDirectory: URL?
-        var didUpdateTableColumns = false
-        var didReloadTableData = false
+        let host = ArchiveHostSpy()
         let coordinator = makeCoordinator(session: session,
-                                          currentDirectory: { currentDirectory },
-                                          prepareDirectoryForArchivePresentation: { hostDirectory in
-                                              preparedDirectory = hostDirectory
-                                              currentDirectory = hostDirectory
-                                          },
-                                          updateTableColumns: { didUpdateTableColumns = true },
-                                          reloadTableData: { didReloadTableData = true })
+                                          host: host)
         let result = await coordinator.finishArchiveOpen(.opened(prepared),
                                                          temporaryDirectory: nil,
                                                          preserveTemporaryDirectoryOnUnsupported: false,
@@ -156,10 +149,8 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(session.currentLevel?.archivePath, prepared.archivePath)
         XCTAssertEqual(session.displayItems.map(\.path), ["folder/"])
-        XCTAssertEqual(currentDirectory, prepared.hostDirectory)
-        XCTAssertEqual(preparedDirectory, prepared.hostDirectory)
-        XCTAssertTrue(didUpdateTableColumns)
-        XCTAssertTrue(didReloadTableData)
+        XCTAssertEqual(host.currentDirectory, prepared.hostDirectory)
+        XCTAssertEqual(host.events, [.prepared(prepared.hostDirectory), .location([])])
         let didClose = await coordinator.closeAll(showError: false)
         XCTAssertTrue(didClose)
     }
@@ -168,9 +159,9 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         let archiveURL = try makeArchive(named: "async-open",
                                          prefix: "ShichiZipArchiveCoordinatorTests")
         let session = FileManagerArchiveSession()
-        var recordedRecentArchiveURL: URL?
+        let host = ArchiveHostSpy()
         let coordinator = makeCoordinator(session: session,
-                                          didOpenTopLevelArchive: { recordedRecentArchiveURL = $0 })
+                                          host: host)
 
         let result = await coordinator.openArchiveInline(archiveURL,
                                                          hostDirectory: archiveURL.deletingLastPathComponent())
@@ -181,7 +172,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         }
         XCTAssertEqual(session.currentLevel?.archivePath, archiveURL.path)
         XCTAssertEqual(session.displayItems.map(\.name), ["payload.txt"])
-        XCTAssertEqual(recordedRecentArchiveURL, archiveURL.standardizedFileURL)
+        XCTAssertEqual(host.openedTopLevelArchives, [archiveURL.standardizedFileURL])
         let didClose = await coordinator.closeAll(showError: false)
         XCTAssertTrue(didClose)
     }
@@ -190,9 +181,9 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         let archiveURL = try makeArchive(named: "temporary-open",
                                          prefix: "ShichiZipArchiveCoordinatorTests")
         let session = FileManagerArchiveSession()
-        var recordedRecentArchiveURL: URL?
+        let host = ArchiveHostSpy()
         let coordinator = makeCoordinator(session: session,
-                                          didOpenTopLevelArchive: { recordedRecentArchiveURL = $0 })
+                                          host: host)
 
         let result = await coordinator.openArchiveInline(
             archiveURL,
@@ -204,7 +195,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
             XCTFail("Expected temporary archive to open")
             return
         }
-        XCTAssertNil(recordedRecentArchiveURL)
+        XCTAssertTrue(host.openedTopLevelArchives.isEmpty)
         let didClose = await coordinator.closeAll(showError: false)
         XCTAssertTrue(didClose)
     }
@@ -240,18 +231,10 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         XCTAssertNotNil(lease)
         let replacementURL = try makeArchive(named: "invalidated-open-replacement",
                                              prefix: "ShichiZipArchiveCoordinatorTests")
-        var activeReplacementToken: UUID?
+        let host = ArchiveHostSpy()
         let coordinator = makeCoordinator(
             session: session,
-            beginStateReplacement: {
-                let token = UUID()
-                activeReplacementToken = token
-                return token
-            },
-            endStateReplacement: { token in
-                XCTAssertEqual(activeReplacementToken, token)
-                activeReplacementToken = nil
-            },
+            host: host,
         )
 
         let openTask = Task { @MainActor in
@@ -276,7 +259,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
             XCTFail("Archive replacement did not begin closing the existing stack")
             return
         }
-        XCTAssertNotNil(activeReplacementToken)
+        XCTAssertNotNil(host.activeReplacementToken)
 
         coordinator.invalidatePendingArchiveOpen()
         lease = nil
@@ -288,7 +271,8 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
             return
         }
         XCTAssertFalse(session.isInsideArchive)
-        XCTAssertNil(activeReplacementToken)
+        XCTAssertNil(host.activeReplacementToken)
+        XCTAssertEqual(host.endedReplacementTokens, host.begunReplacementTokens)
     }
 
     func testPendingNestedOpenIsDiscardedWhenParentCloseBegins() async throws {
@@ -358,10 +342,10 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         XCTAssertTrue(session.navigateSubdir("folder"))
         try session.appendPreparedArchive(makePreparedArchive(named: "nested"))
         let nestedLevel = try XCTUnwrap(session.currentLevel)
-        var didPresentParentSubdir = false
+        let host = ArchiveHostSpy()
+        host.isViewLoaded = true
         let coordinator = makeCoordinator(session: session,
-                                          isViewLoaded: { true },
-                                          reloadTableData: { didPresentParentSubdir = true })
+                                          host: host)
 
         let didCloseNested = await coordinator.closeLevel(nestedLevel,
                                                           showError: true)
@@ -370,7 +354,7 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
         XCTAssertEqual(session.currentLevel?.archivePath, parent.archivePath)
         XCTAssertEqual(session.currentLevel?.currentSubdir, "folder")
         XCTAssertEqual(session.displayItems.map(\.path), ["folder/payload.txt"])
-        XCTAssertTrue(didPresentParentSubdir)
+        XCTAssertEqual(host.events, [.closedLevel])
         let didCloseParent = await coordinator.closeAll(showError: false)
         XCTAssertTrue(didCloseParent)
     }
@@ -673,54 +657,122 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                                                                      nestedWriteBackInfo: nil))
         XCTAssertEqual(Set(session.displayItems.map(\.path)), ["visible.txt", ".secret.txt"])
 
-        var reloadCount = 0
-        var restoredSelection: [String]?
+        let host = ArchiveHostSpy()
+        host.archiveSelectedPaths = ["visible.txt"]
         let coordinator = makeCoordinator(session: session,
-                                          reloadTableData: { reloadCount += 1 },
-                                          selectArchivePaths: { restoredSelection = $0 },
-                                          selectedArchivePaths: { ["visible.txt"] })
+                                          host: host)
 
         showHidden = false
         coordinator.reapplyHiddenVisibility()
 
         XCTAssertEqual(session.displayItems.map(\.path), ["visible.txt"],
                        "Toggling hidden files off must re-filter the cached display items")
-        XCTAssertEqual(reloadCount, 1, "Reapplying visibility must reload the table once")
-        XCTAssertEqual(restoredSelection, ["visible.txt"],
-                       "The captured selection must be restored after re-filtering")
+        XCTAssertEqual(host.events, [.visibility(["visible.txt"])],
+                       "The host must receive one visibility update with the captured selection")
+    }
+
+    func testCoordinatorDoesNotRetainHost() throws {
+        var host: ArchiveHostSpy? = ArchiveHostSpy()
+        weak let weakHost = host
+        let coordinator = try FileManagerPaneArchiveCoordinator(
+            archiveSession: FileManagerArchiveSession(),
+            observerIdentifier: ObjectIdentifier(self),
+            host: XCTUnwrap(host),
+        )
+
+        host = nil
+
+        XCTAssertNil(weakHost)
+        XCTAssertEqual(coordinator.archiveHostDirectory(), FileManager.default.homeDirectoryForCurrentUser)
+    }
+
+    func testSubdirectoryNavigationUpdatesSessionAndNotifiesHost() throws {
+        let session = FileManagerArchiveSession()
+        let prepared = try makePreparedArchive(named: "host-navigation",
+                                               entries: [
+                                                   makeArchiveItem(path: "folder/", isDirectory: true),
+                                                   makeArchiveItem(path: "folder/payload.txt"),
+                                               ])
+        session.appendPreparedArchive(prepared)
+        let host = ArchiveHostSpy()
+        let coordinator = makeCoordinator(session: session, host: host)
+
+        coordinator.navigateSubdir("folder")
+
+        XCTAssertEqual(session.currentLevel?.currentSubdir, "folder")
+        XCTAssertEqual(session.displayItems.map(\.path), ["folder/payload.txt"])
+        XCTAssertEqual(host.events, [.location([])])
+    }
+
+    func testEntriesReloadRestoresSelectionThroughHost() async throws {
+        let session = FileManagerArchiveSession()
+        let prepared = try makePreparedArchive(named: "host-reload-selection")
+        session.appendPreparedArchive(prepared)
+        let host = ArchiveHostSpy()
+        let reloaded = expectation(description: "archive entries refreshed")
+        host.locationUpdateExpectation = reloaded
+        let coordinator = makeCoordinator(session: session, host: host)
+
+        coordinator.reloadCurrentArchiveEntries(selectingPaths: ["/payload.txt/"])
+        await fulfillment(of: [reloaded], timeout: 5)
+
+        XCTAssertEqual(session.displayItems.map(\.path), ["payload.txt"])
+        XCTAssertEqual(host.events, [.location(["payload.txt"])])
+        host.locationUpdateExpectation = nil
+        let didClose = await coordinator.closeAll(showError: false)
+        XCTAssertTrue(didClose)
+    }
+
+    func testReplacementRejectedByHostPreservesExistingArchive() async throws {
+        let session = FileManagerArchiveSession()
+        let original = try makePreparedArchive(named: "host-replacement-original")
+        session.appendPreparedArchive(original)
+        let replacement = try makePreparedArchive(named: "host-replacement-rejected")
+        let host = ArchiveHostSpy()
+        host.allowsStateReplacement = false
+        let coordinator = makeCoordinator(session: session, host: host)
+
+        let result = await coordinator.finishArchiveOpen(.opened(replacement),
+                                                         temporaryDirectory: nil,
+                                                         preserveTemporaryDirectoryOnUnsupported: false,
+                                                         replaceCurrentState: true,
+                                                         showError: true)
+
+        guard case .cancelled = result else {
+            XCTFail("The host must be able to reject an archive state replacement")
+            return
+        }
+        XCTAssertTrue(session.currentLevel?.archive === original.archive)
+        XCTAssertEqual(session.count, 1)
+        XCTAssertTrue(host.events.isEmpty)
+        XCTAssertTrue(host.begunReplacementTokens.isEmpty)
+        let didClose = await coordinator.closeAll(showError: false)
+        XCTAssertTrue(didClose)
+    }
+
+    func testConflictingHostArchiveBlocksInPlaceMutation() throws {
+        let session = FileManagerArchiveSession()
+        let prepared = try makePreparedArchive(named: "host-conflicting-mutation")
+        session.appendPreparedArchive(prepared)
+        let host = ArchiveHostSpy()
+        host.conflictingNestedIdentity = .root(topLevelArchiveURL: URL(fileURLWithPath: prepared.archivePath))
+        let coordinator = makeCoordinator(session: session, host: host)
+
+        XCTAssertFalse(coordinator.supportsInPlaceMutation())
+        XCTAssertNil(coordinator.currentMutationTarget())
+        host.conflictingNestedIdentity = nil
+        XCTAssertTrue(coordinator.supportsInPlaceMutation())
     }
 
     private func makeCoordinator(session: FileManagerArchiveSession,
                                  observerIdentifier: ObjectIdentifier = ObjectIdentifier(NSObject()),
-                                 isViewLoaded: @escaping () -> Bool = { false },
-                                 didOpenTopLevelArchive: @escaping (URL) -> Void = { _ in },
-                                 currentDirectory: @escaping () -> URL = { FileManager.default.homeDirectoryForCurrentUser },
-                                 prepareDirectoryForArchivePresentation: @escaping (URL) -> Void = { _ in },
-                                 updateTableColumns: @escaping () -> Void = {},
-                                 reloadTableData: @escaping () -> Void = {},
-                                 selectArchivePaths: @escaping ([String]) -> Void = { _ in },
-                                 selectedArchivePaths: @escaping () -> [String] = { [] },
-                                 hasConflictingNestedArchiveInstance: @escaping (FileManagerNestedArchiveIdentity) -> Bool = { _ in false },
-                                 beginStateReplacement: @escaping () -> UUID? = { UUID() },
-                                 endStateReplacement: @escaping (UUID) -> Void = { _ in }) -> FileManagerPaneArchiveCoordinator
+                                 host: ArchiveHostSpy? = nil) -> FileManagerPaneArchiveCoordinator
     {
-        FileManagerPaneArchiveCoordinator(archiveSession: session,
-                                          observerIdentifier: observerIdentifier,
-                                          parentWindow: { nil },
-                                          isViewLoaded: isViewLoaded,
-                                          didOpenTopLevelArchive: didOpenTopLevelArchive,
-                                          updateTableColumns: updateTableColumns,
-                                          currentDirectory: currentDirectory,
-                                          prepareDirectoryForArchivePresentation: prepareDirectoryForArchivePresentation,
-                                          reloadTableData: reloadTableData,
-                                          selectArchivePaths: selectArchivePaths,
-                                          selectedArchivePaths: selectedArchivePaths,
-                                          hasConflictingNestedArchiveInstance: hasConflictingNestedArchiveInstance,
-                                          beginStateReplacement: beginStateReplacement,
-                                          endStateReplacement: endStateReplacement,
-                                          showError: { error in
-                                              XCTFail("Unexpected archive coordinator error: \(error)")
-                                          })
+        let host = host ?? ArchiveHostSpy()
+        retainedHosts.append(host)
+        return FileManagerPaneArchiveCoordinator(archiveSession: session,
+                                                 observerIdentifier: observerIdentifier,
+                                                 host: host)
     }
 
     private func makeArchiveURL(named name: String) throws -> URL {
@@ -783,5 +835,81 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
                     position: 0,
                     block: 0,
                     comment: "")
+    }
+}
+
+@MainActor
+private final class ArchiveHostSpy: FileManagerPaneArchiveCoordinatorHost {
+    enum Event: Equatable {
+        case prepared(URL)
+        case location([String])
+        case visibility([String])
+        case closedLevel
+    }
+
+    var archiveParentWindow: NSWindow?
+    var isViewLoaded = false
+    var currentDirectory = FileManager.default.homeDirectoryForCurrentUser
+    var archiveSelectedPaths: [String] = []
+    var events: [Event] = []
+    var locationUpdateExpectation: XCTestExpectation?
+    var openedTopLevelArchives: [URL] = []
+    var conflictingNestedIdentity: FileManagerNestedArchiveIdentity?
+    var dirtyNestedIdentity: FileManagerNestedArchiveIdentity?
+    var allowsStateReplacement = true
+    var activeReplacementToken: UUID?
+    var begunReplacementTokens: [UUID] = []
+    var endedReplacementTokens: [UUID] = []
+    var expectedError = false
+    var errors: [Error] = []
+
+    func archivePrepareForPresentation(hostDirectory: URL) {
+        currentDirectory = hostDirectory
+        events.append(.prepared(hostDirectory))
+    }
+
+    func archiveLocationDidChange(selectingPaths: [String]) {
+        events.append(.location(selectingPaths))
+        locationUpdateExpectation?.fulfill()
+    }
+
+    func archiveVisibilityDidChange(restoringSelection: [String]) {
+        events.append(.visibility(restoringSelection))
+    }
+
+    func archiveStackDidCloseLevel() {
+        events.append(.closedLevel)
+    }
+
+    func archiveDidOpenTopLevel(_ url: URL) {
+        openedTopLevelArchives.append(url)
+    }
+
+    func hasConflictingNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool {
+        identity == conflictingNestedIdentity
+    }
+
+    func hasDirtyNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool {
+        identity == dirtyNestedIdentity
+    }
+
+    func archiveBeginStateReplacement() -> UUID? {
+        guard allowsStateReplacement else { return nil }
+        let token = UUID()
+        activeReplacementToken = token
+        begunReplacementTokens.append(token)
+        return token
+    }
+
+    func archiveEndStateReplacement(_ token: UUID) {
+        endedReplacementTokens.append(token)
+        activeReplacementToken = nil
+    }
+
+    func showErrorAlert(_ error: Error) {
+        errors.append(error)
+        if !expectedError {
+            XCTFail("Unexpected archive coordinator error: \(error)")
+        }
     }
 }

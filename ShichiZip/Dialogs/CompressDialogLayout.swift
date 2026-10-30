@@ -150,31 +150,5 @@ extension CompressDialogController {
             section.spacing = 6
             return section
         }
-
-        static func makePasswordContainer(secureField: NSSecureTextField,
-                                          plainField: NSTextField) -> NSView
-        {
-            let container = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
-            container.translatesAutoresizingMaskIntoConstraints = false
-            secureField.translatesAutoresizingMaskIntoConstraints = false
-            plainField.translatesAutoresizingMaskIntoConstraints = false
-            container.addSubview(secureField)
-            container.addSubview(plainField)
-
-            NSLayoutConstraint.activate([
-                container.widthAnchor.constraint(equalToConstant: 220),
-                container.heightAnchor.constraint(equalToConstant: 24),
-                secureField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                secureField.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                secureField.topAnchor.constraint(equalTo: container.topAnchor),
-                secureField.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-                plainField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                plainField.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                plainField.topAnchor.constraint(equalTo: container.topAnchor),
-                plainField.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            ])
-
-            return container
-        }
     }
 }

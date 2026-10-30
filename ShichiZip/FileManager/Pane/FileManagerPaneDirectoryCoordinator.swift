@@ -48,6 +48,38 @@ struct FileManagerFileSystemSelectionState {
                                                            scrollPlacement: .visible)
 }
 
+struct FileManagerDirectorySelectionRestoration {
+    let rows: IndexSet
+    let focusedRow: Int?
+    let scrollPlacement: FileManagerFileSystemSelectionScrollPlacement
+}
+
+enum FileManagerDirectoryContentsChange {
+    case snapshot
+    case visibility
+}
+
+@MainActor
+protocol FileManagerPaneDirectoryCoordinatorHost: AnyObject {
+    var isViewLoaded: Bool { get }
+    var isInsideArchive: Bool { get }
+    var showsParentRow: Bool { get }
+
+    func directorySelectionState() -> FileManagerFileSystemSelectionState
+    /// Update the path and columns, then sort before reloading the table and status for a new snapshot.
+    /// A visibility change keeps the current path and columns.
+    func directoryContentsDidChange(_ change: FileManagerDirectoryContentsChange)
+    /// Clear suspended presentation, restore selection when supplied, then optionally focus the list.
+    func directoryNavigationDidFinish(selection: FileManagerDirectorySelectionRestoration?,
+                                      focusFileList: Bool)
+    func restoreDirectorySelection(_ selection: FileManagerDirectorySelectionRestoration)
+    func directoryInitialLoadDidFail()
+    func directoryPresentationDidSuspend()
+    func showErrorAlert(_ error: Error)
+    func setDirectoryLoadingVisible(_ visible: Bool)
+    func autoRefreshIfPossible()
+}
+
 @MainActor
 final class FileManagerPaneDirectoryCoordinator {
     private enum SnapshotPurpose {
@@ -68,24 +100,7 @@ final class FileManagerPaneDirectoryCoordinator {
     }
 
     private let snapshotQueue: DispatchQueue
-    private let isViewLoaded: () -> Bool
-    private let isInsideArchive: () -> Bool
-    private let showsParentRow: () -> Bool
-    private let selectedFileSystemItems: () -> [FileSystemItem]
-    private let focusedFileSystemItemPath: () -> String?
-    private let clearSuspendedState: () -> Void
-    private let updatePathField: () -> Void
-    private let updateStatusBar: () -> Void
-    private let updateTableColumns: () -> Void
-    private let sortCurrentItems: () -> Void
-    private let reloadTableData: () -> Void
-    private let focusFileList: () -> Void
-    private let selectRows: (IndexSet) -> Void
-    private let deselectRows: () -> Void
-    private let scrollRow: (Int, FileManagerFileSystemSelectionScrollPlacement) -> Void
-    private let showError: (Error) -> Void
-    private let directoryDidChange: () -> Void
-    private let setDirectoryLoadingVisible: (Bool) -> Void
+    private weak var host: (any FileManagerPaneDirectoryCoordinatorHost)?
     private let makeSnapshot: @Sendable (URL) throws -> FileManagerDirectorySnapshot
     private let showsHiddenFiles: () -> Bool
 
@@ -97,50 +112,16 @@ final class FileManagerPaneDirectoryCoordinator {
     private var allItems: [FileSystemItem] = []
     private(set) var items: [FileSystemItem] = []
 
-    init(initialDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+    init(host: any FileManagerPaneDirectoryCoordinatorHost,
+         initialDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
          snapshotQueue: DispatchQueue = DispatchQueue(label: FileManagerPaneDirectoryCoordinator.snapshotQueueLabel,
                                                       qos: .userInitiated),
-         isViewLoaded: @escaping () -> Bool,
-         isInsideArchive: @escaping () -> Bool,
-         showsParentRow: @escaping () -> Bool,
-         selectedFileSystemItems: @escaping () -> [FileSystemItem],
-         focusedFileSystemItemPath: @escaping () -> String?,
-         clearSuspendedState: @escaping () -> Void,
-         updatePathField: @escaping () -> Void,
-         updateStatusBar: @escaping () -> Void,
-         updateTableColumns: @escaping () -> Void,
-         sortCurrentItems: @escaping () -> Void,
-         reloadTableData: @escaping () -> Void,
-         focusFileList: @escaping () -> Void,
-         selectRows: @escaping (IndexSet) -> Void,
-         deselectRows: @escaping () -> Void,
-         scrollRow: @escaping (Int, FileManagerFileSystemSelectionScrollPlacement) -> Void,
-         showError: @escaping (Error) -> Void,
-         directoryDidChange: @escaping () -> Void,
-         setDirectoryLoadingVisible: @escaping (Bool) -> Void = { _ in },
          makeSnapshot: @escaping @Sendable (URL) throws -> FileManagerDirectorySnapshot = { try FileManagerDirectorySnapshot.make(for: $0) },
          showsHiddenFiles: @escaping () -> Bool = { SZSettings.bool(.showHiddenFiles) })
     {
+        self.host = host
         currentDirectory = initialDirectory
         self.snapshotQueue = snapshotQueue
-        self.isViewLoaded = isViewLoaded
-        self.isInsideArchive = isInsideArchive
-        self.showsParentRow = showsParentRow
-        self.selectedFileSystemItems = selectedFileSystemItems
-        self.focusedFileSystemItemPath = focusedFileSystemItemPath
-        self.clearSuspendedState = clearSuspendedState
-        self.updatePathField = updatePathField
-        self.updateStatusBar = updateStatusBar
-        self.updateTableColumns = updateTableColumns
-        self.sortCurrentItems = sortCurrentItems
-        self.reloadTableData = reloadTableData
-        self.focusFileList = focusFileList
-        self.selectRows = selectRows
-        self.deselectRows = deselectRows
-        self.scrollRow = scrollRow
-        self.showError = showError
-        self.directoryDidChange = directoryDidChange
-        self.setDirectoryLoadingVisible = setDirectoryLoadingVisible
         self.makeSnapshot = makeSnapshot
         self.showsHiddenFiles = showsHiddenFiles
     }
@@ -180,7 +161,7 @@ final class FileManagerPaneDirectoryCoordinator {
                              budget: Duration? = nil) -> Bool
     {
         cancelPendingSnapshot()
-        setDirectoryLoadingVisible(false)
+        host?.setDirectoryLoadingVisible(false)
 
         let standardizedURL = url.standardizedFileURL
 
@@ -210,7 +191,7 @@ final class FileManagerPaneDirectoryCoordinator {
                                            focusAfterLoad: focusAfterLoad)
         } catch {
             if showError {
-                self.showError(error)
+                host?.showErrorAlert(error)
             }
             return false
         }
@@ -252,13 +233,13 @@ final class FileManagerPaneDirectoryCoordinator {
                                                focusAfterLoad: focusAfterLoad)
             case let .failure(error):
                 if showError {
-                    self.showError(error)
+                    host?.showErrorAlert(error)
                 }
                 return false
             }
         }
 
-        setDirectoryLoadingVisible(true)
+        host?.setDirectoryLoadingVisible(true)
         return true
     }
 
@@ -267,16 +248,11 @@ final class FileManagerPaneDirectoryCoordinator {
                                          selectionState: FileManagerFileSystemSelectionState?,
                                          focusAfterLoad: Bool) -> Bool
     {
-        guard !isInsideArchive() else { return false }
+        guard let host, !host.isInsideArchive else { return false }
 
         applyDirectorySnapshot(snapshot)
-        clearSuspendedState()
-        if let selectionState {
-            restoreSelectionState(selectionState)
-        }
-        if focusAfterLoad {
-            focusFileList()
-        }
+        host.directoryNavigationDidFinish(selection: selectionState.flatMap { selectionRestoration(for: $0) },
+                                          focusFileList: focusAfterLoad)
         return true
     }
 
@@ -291,12 +267,10 @@ final class FileManagerPaneDirectoryCoordinator {
     }
 
     func reapplyHiddenFileVisibility() {
-        guard !isInsideArchive() else { return }
+        guard host?.isInsideArchive == false else { return }
         let selectionState = captureSelectionState()
         items = visibleItems(from: allItems)
-        sortCurrentItems()
-        reloadTableData()
-        updateStatusBar()
+        host?.directoryContentsDidChange(.visibility)
         restoreSelectionState(selectionState)
     }
 
@@ -306,8 +280,7 @@ final class FileManagerPaneDirectoryCoordinator {
             applyDirectorySnapshot(snapshot)
         } catch {
             currentDirectory = url.standardizedFileURL
-            updatePathField()
-            updateStatusBar()
+            host?.directoryInitialLoadDidFail()
         }
     }
 
@@ -329,7 +302,7 @@ final class FileManagerPaneDirectoryCoordinator {
         cancelPendingSnapshot()
         allItems.removeAll()
         items.removeAll()
-        reloadTableData()
+        host?.directoryPresentationDidSuspend()
     }
 
     func tearDown() {
@@ -346,40 +319,36 @@ final class FileManagerPaneDirectoryCoordinator {
     }
 
     private func captureSelectionState() -> FileManagerFileSystemSelectionState {
-        guard isViewLoaded(), !isInsideArchive() else {
+        guard let host, host.isViewLoaded, !host.isInsideArchive else {
             return .empty
         }
-
-        let selectedItems = selectedFileSystemItems()
-        let selectedPaths = Set(selectedItems.map(\.url.standardizedFileURL.path))
-        let focusedPath = focusedFileSystemItemPath() ?? selectedItems.first?.url.standardizedFileURL.path
-        return FileManagerFileSystemSelectionState(selectedPaths: selectedPaths,
-                                                   focusedPath: focusedPath,
-                                                   scrollPlacement: .visible)
+        return host.directorySelectionState()
     }
 
     private func restoreSelectionState(_ selectionState: FileManagerFileSystemSelectionState) {
-        guard !isInsideArchive() else { return }
+        guard let selection = selectionRestoration(for: selectionState) else { return }
+        host?.restoreDirectorySelection(selection)
+    }
 
-        let baseRow = showsParentRow() ? 1 : 0
+    private func selectionRestoration(for selectionState: FileManagerFileSystemSelectionState) -> FileManagerDirectorySelectionRestoration? {
+        guard let host, !host.isInsideArchive else { return nil }
+
+        let baseRow = host.showsParentRow ? 1 : 0
         let selectedRows = IndexSet(items.enumerated().compactMap { index, item in
             selectionState.selectedPaths.contains(item.url.standardizedFileURL.path) ? baseRow + index : nil
         })
-
-        if selectedRows.isEmpty {
-            deselectRows()
-            return
-        }
-
-        selectRows(selectedRows)
-
-        if let focusedPath = selectionState.focusedPath,
-           let row = items.firstIndex(where: { $0.url.standardizedFileURL.path == focusedPath }).map({ baseRow + $0 })
+        let focusedRow: Int? = if selectedRows.isEmpty {
+            nil
+        } else if let focusedPath = selectionState.focusedPath,
+                  let index = items.firstIndex(where: { $0.url.standardizedFileURL.path == focusedPath })
         {
-            scrollRow(row, selectionState.scrollPlacement)
-        } else if let firstRow = selectedRows.first {
-            scrollRow(firstRow, selectionState.scrollPlacement)
+            baseRow + index
+        } else {
+            selectedRows.first
         }
+        return FileManagerDirectorySelectionRestoration(rows: selectedRows,
+                                                        focusedRow: focusedRow,
+                                                        scrollPlacement: selectionState.scrollPlacement)
     }
 
     private func scheduleDirectorySnapshot(for url: URL,
@@ -416,7 +385,7 @@ final class FileManagerPaneDirectoryCoordinator {
 
         switch purpose {
         case let .navigate(selectionState, focusAfterLoad, showError):
-            setDirectoryLoadingVisible(false)
+            host?.setDirectoryLoadingVisible(false)
             switch result {
             case let .success(snapshot):
                 applyNavigationSnapshot(snapshot,
@@ -424,19 +393,19 @@ final class FileManagerPaneDirectoryCoordinator {
                                         focusAfterLoad: focusAfterLoad)
             case let .failure(error):
                 if showError {
-                    self.showError(error)
+                    host?.showErrorAlert(error)
                 }
             }
 
         case let .autoRefresh(selectionState):
-            guard case let .success(snapshot) = result, !isInsideArchive() else { return }
+            guard case let .success(snapshot) = result, host?.isInsideArchive == false else { return }
             guard snapshot.url.standardizedFileURL == currentDirectory.standardizedFileURL else { return }
             guard stableSnapshotItems(snapshot.items) != stableSnapshotItems(allItems) else { return }
             applyDirectorySnapshot(snapshot, recordVisit: false)
             restoreSelectionState(selectionState)
 
         case let .refresh(selectionState):
-            guard case let .success(snapshot) = result, !isInsideArchive() else { return }
+            guard case let .success(snapshot) = result, host?.isInsideArchive == false else { return }
             guard snapshot.url.standardizedFileURL == currentDirectory.standardizedFileURL else { return }
             applyDirectorySnapshot(snapshot, recordVisit: false)
             restoreSelectionState(selectionState)
@@ -450,13 +419,9 @@ final class FileManagerPaneDirectoryCoordinator {
         if recordVisit {
             recordDirectoryVisit(snapshot.url)
         }
-        updatePathField()
         allItems = snapshot.items
         items = visibleItems(from: allItems)
-        updateTableColumns()
-        sortCurrentItems()
-        reloadTableData()
-        updateStatusBar()
+        host?.directoryContentsDidChange(.snapshot)
         installDirectoryWatcher(for: snapshot.url)
     }
 
@@ -469,7 +434,7 @@ final class FileManagerPaneDirectoryCoordinator {
         directoryWatcher?.stop()
         let watcher = DirectoryWatcher(directory: url)
         watcher.onChange = { [weak self] in
-            self?.directoryDidChange()
+            self?.host?.autoRefreshIfPossible()
         }
         directoryWatcher = watcher
     }

@@ -50,7 +50,7 @@ pub fn build(b: *std.Build) void {
     const variant = b.option(Variant, "variant", "Variant to build for lib and sfx steps; use all to fan out both variants") orelse .mainline;
     var target_query = b.standardTargetOptionsQueryOnly(.{});
     if (((target_query.os_tag == null and builtin.os.tag == .macos) or target_query.os_tag == .macos) and target_query.os_version_min == null) {
-        target_query.os_version_min = .{ .semver = .{ .major = 13, .minor = 0, .patch = 0 } };
+        target_query.os_version_min = .{ .semver = .{ .major = 14, .minor = 0, .patch = 0 } };
     }
     const target = b.resolveTargetQuery(target_query);
     const optimize = b.standardOptimizeOption(.{});

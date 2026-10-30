@@ -105,7 +105,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                                             setArchiveTimeToLatestFile: AdvancedBoolPairState(isSet: false,
                                                                                                               value: false),
                                                             timePrecision: AdvancedTimePrecisionState(isSet: false,
-                                                                                                      value: SZCompressionTimePrecision(rawValue: -1)!))
+                                                                                                      value: .automatic))
     private var advancedOptionsWereCustomized = false
     private var isPresentingAdvancedOptions = false
 
@@ -150,6 +150,9 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             let contentController = CompressDialogContentController(owner: self,
                                                                     initialState: initialState,
                                                                     availableFormats: availableFormats)
+            { [weak self] in
+                self?.refreshOptionAvailability()
+            }
 
             let controller = SZModalDialogController(style: .informational,
                                                      title: SZL10n.string("compress.title"),
@@ -173,7 +176,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                           preferredWordSize: initialState.wordSize,
                                           preferredEncryption: initialState.encryption)
             contentController.selectSolidMode(initialState.solidMode)
-            updatePasswordVisibilityUI(moveFocus: false)
+            updatePasswordVisibilityUI()
             refreshOptionAvailability()
 
             let picker = ArchivePathPicker(ownerWindow: controller.window,
@@ -268,13 +271,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     func controlTextDidChange(_ obj: Notification) {
         if contentController?.isThreadField(obj.object) == true {
             refreshCompressionEstimateSummary()
-            return
         }
-
-        guard let field = obj.object as? NSTextField else { return }
-        contentController?.syncPasswordFields(changedField: field)
-
-        refreshOptionAvailability()
     }
 
     func comboBoxSelectionDidChange(_ notification: Notification) {
@@ -327,8 +324,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     }
 
     @objc func showPasswordToggled(_: Any?) {
-        syncPasswordFields()
-        updatePasswordVisibilityUI(moveFocus: true)
+        updatePasswordVisibilityUI()
         refreshOptionAvailability()
     }
 
@@ -435,18 +431,6 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                                            preferredDictionarySize: preferredDictionarySize,
                                                            preferredWordSize: preferredWordSize,
                                                            preferredEncryption: preferredEncryption,
-                                                           dependencies: makeContentRefreshDependencies())
-        {
-            updateArchivePathExtension()
-        }
-    }
-
-    private func reloadMethodDependentControls(preferredDictionarySize: UInt64?,
-                                               preferredWordSize: UInt32?)
-    {
-        guard let contentController else { return }
-        if contentController.reloadMethodDependentControls(preferredDictionarySize: preferredDictionarySize,
-                                                           preferredWordSize: preferredWordSize,
                                                            dependencies: makeContentRefreshDependencies())
         {
             updateArchivePathExtension()
@@ -621,13 +605,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                                                                                   method: selectedMethodOption())))
     }
 
-    private func updatePasswordVisibilityUI(moveFocus: Bool) {
-        contentController?.updatePasswordVisibilityUI(moveFocus: moveFocus,
-                                                      in: currentDialogWindow)
-    }
-
-    private func syncPasswordFields() {
-        contentController?.syncPasswordFields()
+    private func updatePasswordVisibilityUI() {
+        contentController?.updatePasswordVisibilityUI()
     }
 
     private func selectedFormatOption() -> FormatOption? {

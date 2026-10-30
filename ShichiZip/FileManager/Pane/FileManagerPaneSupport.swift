@@ -117,14 +117,6 @@ struct FileManagerPaneTableModel {
         selectedItems(in: selectedRowIndexes).compactMap(\.archiveItem)
     }
 
-    func paneItemsForSelectionOrDisplayedArchiveItems(in selectedRowIndexes: IndexSet) -> [FileManagerPaneItem] {
-        let selectedItems = selectedRealItems(in: selectedRowIndexes)
-        if !selectedItems.isEmpty {
-            return selectedItems
-        }
-        return content.displayedArchiveItems.map(FileManagerPaneItem.archive)
-    }
-
     func archiveItemsForSelectionOrDisplayedItems(in selectedRowIndexes: IndexSet) -> [ArchiveItem] {
         let selectedItems = selectedArchiveItems(in: selectedRowIndexes)
         return selectedItems.isEmpty ? content.displayedArchiveItems : selectedItems
@@ -159,10 +151,6 @@ struct FileManagerPaneSelectionState {
 
     var archiveItems: [ArchiveItem] {
         tableModel.selectedArchiveItems(in: selectedRowIndexes)
-    }
-
-    var paneItemsForSelectionOrDisplayedItems: [FileManagerPaneItem] {
-        tableModel.paneItemsForSelectionOrDisplayedArchiveItems(in: selectedRowIndexes)
     }
 
     var archiveItemsForSelectionOrDisplayedItems: [ArchiveItem] {
