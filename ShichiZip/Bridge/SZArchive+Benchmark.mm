@@ -104,23 +104,6 @@ struct CBenchSharedContext {
     CBenchSyncState State;
 };
 
-static void SZBenchCopyState(CBenchSyncState& dest, const CBenchSyncState& src) {
-    dest.DictSize = src.DictSize;
-    dest.PassesTotal = src.PassesTotal;
-    dest.PassesCompleted = src.PassesCompleted;
-    dest.NumFreqThreadsPrev = src.NumFreqThreadsPrev;
-    dest.RatingVectorDeletedIndex = src.RatingVectorDeletedIndex;
-    dest.BenchWasFinished = src.BenchWasFinished;
-    dest.FreqString_Sync = src.FreqString_Sync;
-    dest.FreqString_GUI = src.FreqString_GUI;
-    dest.Enc_BenchRes_1 = src.Enc_BenchRes_1;
-    dest.Enc_BenchRes = src.Enc_BenchRes;
-    dest.Dec_BenchRes_1 = src.Dec_BenchRes_1;
-    dest.Dec_BenchRes = src.Dec_BenchRes;
-    dest.RatingVector = src.RatingVector;
-    dest.LastProgressTime = src.LastProgressTime;
-}
-
 #define SZ_UINT_TO_STR_3(s, val)                  \
     {                                             \
         s[0] = (wchar_t)('0' + (val) / 100);      \
@@ -387,7 +370,7 @@ public:
 
             shouldEmit = SZBenchShouldEmit(state, final);
             if (shouldEmit)
-                SZBenchCopyState(snapshotState, state);
+                snapshotState = state;
         }
 
         if (shouldEmit)
@@ -415,7 +398,7 @@ public:
 
             shouldEmit = SZBenchShouldEmit(state, final);
             if (shouldEmit)
-                SZBenchCopyState(snapshotState, state);
+                snapshotState = state;
         }
 
         if (shouldEmit)
@@ -470,7 +453,7 @@ public:
 
             Context->State.FreqString_GUI = Context->State.FreqString_Sync;
             SZBenchShouldEmit(Context->State, true);
-            SZBenchCopyState(snapshotState, Context->State);
+            snapshotState = Context->State;
         }
 
         SZBenchDispatchSnapshot(Progress, snapshotState);
@@ -563,7 +546,7 @@ public:
                         state.BenchWasFinished = true;
 
                     SZBenchShouldEmit(state, true);
-                    SZBenchCopyState(snapshotState, state);
+                    snapshotState = state;
                 }
 
                 if (progressBlock)
