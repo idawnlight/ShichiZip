@@ -644,48 +644,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
     }
 
-    @objc func showCRC32Hash(_: Any?) {
-        presentSelectionHash(.crc32)
-    }
-
-    @objc func showAllHashes(_: Any?) {
-        presentSelectionHash(.all)
-    }
-
-    @objc func showCRC64Hash(_: Any?) {
-        presentSelectionHash(.crc64)
-    }
-
-    @objc func showXXH64Hash(_: Any?) {
-        presentSelectionHash(.xxh64)
-    }
-
-    @objc func showMD5Hash(_: Any?) {
-        presentSelectionHash(.md5)
-    }
-
-    @objc func showSHA1Hash(_: Any?) {
-        presentSelectionHash(.sha1)
-    }
-
-    @objc func showSHA256Hash(_: Any?) {
-        presentSelectionHash(.sha256)
-    }
-
-    @objc func showSHA384Hash(_: Any?) {
-        presentSelectionHash(.sha384)
-    }
-
-    @objc func showSHA512Hash(_: Any?) {
-        presentSelectionHash(.sha512)
-    }
-
-    @objc func showSHA3256Hash(_: Any?) {
-        presentSelectionHash(.sha3256)
-    }
-
-    @objc func showBLAKE2spHash(_: Any?) {
-        presentSelectionHash(.blake2sp)
+    @objc func showHash(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem,
+              let algorithm = FileManagerHashAlgorithm(rawValue: item.tag)
+        else { return }
+        presentSelectionHash(algorithm)
     }
 
     @objc func copy(_ sender: Any?) {
@@ -739,44 +702,24 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         activePane.invertSelection()
     }
 
-    @objc func sortByName(_: Any?) {
-        activePane.sortByName()
+    @objc func sortItems(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem,
+              let field = FileManagerSortField(rawValue: item.tag)
+        else { return }
+        switch field {
+        case .name: activePane.sortByName()
+        case .type: activePane.sortByType()
+        case .modified: activePane.sortByModifiedDate()
+        case .size: activePane.sortBySize()
+        case .created: activePane.sortByCreatedDate()
+        }
     }
 
-    @objc func sortBySize(_: Any?) {
-        activePane.sortBySize()
-    }
-
-    @objc func sortByType(_: Any?) {
-        activePane.sortByType()
-    }
-
-    @objc func sortByModifiedDate(_: Any?) {
-        activePane.sortByModifiedDate()
-    }
-
-    @objc func sortByCreatedDate(_: Any?) {
-        activePane.sortByCreatedDate()
-    }
-
-    @objc func showTimestampDay(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.day)
-    }
-
-    @objc func showTimestampMinute(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.minute)
-    }
-
-    @objc func showTimestampSecond(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.second)
-    }
-
-    @objc func showTimestampNTFS(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.ntfs)
-    }
-
-    @objc func showTimestampNanoseconds(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.nanoseconds)
+    @objc func showTimestamp(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem,
+              let level = FileManagerViewPreferences.TimestampDisplayLevel(rawValue: item.tag)
+        else { return }
+        FileManagerViewPreferences.setTimestampDisplayLevel(level)
     }
 
     @objc func toggleTimestampUTC(_: Any?) {

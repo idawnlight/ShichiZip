@@ -34,7 +34,8 @@ enum FileManagerMenuFactory {
         case item(title: String,
                   action: Selector,
                   shortcut: Shortcut? = nil,
-                  target: TargetKind = .windowController)
+                  target: TargetKind = .windowController,
+                  tag: Int = 0)
         case submenu(title: String, children: [Node])
         case recentArchives
         case separator
@@ -62,6 +63,26 @@ enum FileManagerMenuFactory {
         return menu
     }
 
+    static func makeSortMenuItems() -> [NSMenuItem] {
+        [FileManagerSortField.name, .type, .modified, .size].map { field in
+            let item = NSMenuItem(title: SZL10n.string("column.\(field.key)"),
+                                  action: #selector(FileManagerWindowController.sortItems(_:)),
+                                  keyEquivalent: "")
+            item.tag = field.rawValue
+            return item
+        }
+    }
+
+    static func makeTimestampMenuItems() -> [NSMenuItem] {
+        FileManagerViewPreferences.TimestampDisplayLevel.allCases.map { level in
+            let item = NSMenuItem(title: FileManagerViewPreferences.timeMenuPreviewTitle(for: level),
+                                  action: #selector(FileManagerWindowController.showTimestamp(_:)),
+                                  keyEquivalent: "")
+            item.tag = level.rawValue
+            return item
+        }
+    }
+
     private static func shortcut(_ command: FileManagerShortcutCommand) -> Shortcut? {
         guard let shortcut = FileManagerShortcuts.menuShortcut(for: command) else {
             return nil
@@ -86,30 +107,11 @@ enum FileManagerMenuFactory {
     }
 
     private static var hashNodes: [Node] {
-        [
-            .item(title: "*",
-                  action: #selector(FileManagerWindowController.showAllHashes(_:))),
-            .item(title: "CRC-32",
-                  action: #selector(FileManagerWindowController.showCRC32Hash(_:))),
-            .item(title: "CRC-64",
-                  action: #selector(FileManagerWindowController.showCRC64Hash(_:))),
-            .item(title: "XXH64",
-                  action: #selector(FileManagerWindowController.showXXH64Hash(_:))),
-            .item(title: "MD5",
-                  action: #selector(FileManagerWindowController.showMD5Hash(_:))),
-            .item(title: "SHA-1",
-                  action: #selector(FileManagerWindowController.showSHA1Hash(_:))),
-            .item(title: "SHA-256",
-                  action: #selector(FileManagerWindowController.showSHA256Hash(_:))),
-            .item(title: "SHA-384",
-                  action: #selector(FileManagerWindowController.showSHA384Hash(_:))),
-            .item(title: "SHA-512",
-                  action: #selector(FileManagerWindowController.showSHA512Hash(_:))),
-            .item(title: "SHA3-256",
-                  action: #selector(FileManagerWindowController.showSHA3256Hash(_:))),
-            .item(title: "BLAKE2sp",
-                  action: #selector(FileManagerWindowController.showBLAKE2spHash(_:))),
-        ]
+        FileManagerHashAlgorithm.allCases.map { algorithm in
+            .item(title: algorithm.title,
+                  action: #selector(FileManagerWindowController.showHash(_:)),
+                  tag: algorithm.rawValue)
+        }
     }
 
     private static var fileMenuNodes: [Node] {
@@ -210,10 +212,11 @@ enum FileManagerMenuFactory {
     {
         for node in nodes {
             switch node {
-            case let .item(title, action, shortcut, targetKind):
+            case let .item(title, action, shortcut, targetKind, tag):
                 let item = NSMenuItem(title: title,
                                       action: action,
                                       keyEquivalent: shortcut?.keyEquivalent ?? "")
+                item.tag = tag
                 if let shortcut {
                     item.keyEquivalentModifierMask = shortcut.modifiers
                 }
@@ -287,10 +290,7 @@ private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
     private func rebuildTimeMenu(_ menu: NSMenu) {
         menu.removeAllItems()
 
-        for level in FileManagerViewPreferences.TimestampDisplayLevel.allCases {
-            let item = NSMenuItem(title: FileManagerViewPreferences.timeMenuPreviewTitle(for: level),
-                                  action: selector(for: level),
-                                  keyEquivalent: "")
+        for item in FileManagerMenuFactory.makeTimestampMenuItems() {
             menu.addItem(item)
         }
 
@@ -353,21 +353,6 @@ private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
                                   keyEquivalent: "")
             item.tag = slot
             menu.addItem(item)
-        }
-    }
-
-    private func selector(for level: FileManagerViewPreferences.TimestampDisplayLevel) -> Selector {
-        switch level {
-        case .day:
-            #selector(FileManagerWindowController.showTimestampDay(_:))
-        case .minute:
-            #selector(FileManagerWindowController.showTimestampMinute(_:))
-        case .second:
-            #selector(FileManagerWindowController.showTimestampSecond(_:))
-        case .ntfs:
-            #selector(FileManagerWindowController.showTimestampNTFS(_:))
-        case .nanoseconds:
-            #selector(FileManagerWindowController.showTimestampNanoseconds(_:))
         }
     }
 }
@@ -470,18 +455,9 @@ enum MainMenu {
         let detailsItem = addDisabledItem(to: viewMenu, title: SZL10n.string("view.details"))
         detailsItem.state = .on
         viewMenu.addItem(.separator())
-        addItem(to: viewMenu,
-                title: SZL10n.string("column.name"),
-                action: #selector(FileManagerWindowController.sortByName(_:)))
-        addItem(to: viewMenu,
-                title: SZL10n.string("column.type"),
-                action: #selector(FileManagerWindowController.sortByType(_:)))
-        addItem(to: viewMenu,
-                title: SZL10n.string("column.modified"),
-                action: #selector(FileManagerWindowController.sortByModifiedDate(_:)))
-        addItem(to: viewMenu,
-                title: SZL10n.string("column.size"),
-                action: #selector(FileManagerWindowController.sortBySize(_:)))
+        for item in FileManagerMenuFactory.makeSortMenuItems() {
+            viewMenu.addItem(item)
+        }
         viewMenu.addItem(.separator())
         addItem(to: viewMenu,
                 title: SZL10n.string("view.showHiddenFiles"),
