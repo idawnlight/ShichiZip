@@ -674,10 +674,10 @@ final class FileManagerPaneArchiveCoordinatorTests: XCTestCase {
     func testCoordinatorDoesNotRetainHost() throws {
         var host: ArchiveHostSpy? = ArchiveHostSpy()
         weak let weakHost = host
-        let coordinator = FileManagerPaneArchiveCoordinator(
+        let coordinator = try FileManagerPaneArchiveCoordinator(
             archiveSession: FileManagerArchiveSession(),
             observerIdentifier: ObjectIdentifier(self),
-            host: try XCTUnwrap(host),
+            host: XCTUnwrap(host),
         )
 
         host = nil

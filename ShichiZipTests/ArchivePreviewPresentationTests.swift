@@ -50,12 +50,12 @@ final class ArchivePreviewPresentationTests: XCTestCase {
         let dateFormatter = DateFormatter()
 
         XCTAssertEqual(ArchiveItemPresentation.listCellText(for: unknown,
-                                                               columnID: .size,
-                                                               dateFormatter: dateFormatter),
+                                                            columnID: .size,
+                                                            dateFormatter: dateFormatter),
                        "")
         XCTAssertEqual(ArchiveItemPresentation.listCellText(for: zero,
-                                                               columnID: .size,
-                                                               dateFormatter: dateFormatter),
+                                                            columnID: .size,
+                                                            dateFormatter: dateFormatter),
                        zeroText)
         XCTAssertNil(ArchivePreviewPresentation.summary(for: [unknown]).fileSize)
         XCTAssertFalse(ArchivePreviewPresentation.summaryText(for: [unknown]).contains(zeroText))
@@ -100,17 +100,17 @@ final class ArchivePreviewPresentationTests: XCTestCase {
     func testArchiveColumnsUseMainAppArchiveDefaults() {
         let columns = FileManagerColumn.archiveColumns(entryProperties: [
             FileManagerArchiveEntryProperty(id: .size,
-                                        titleKey: "column.size",
-                                        title: "Size",
-                                        valueType: 21),
+                                            titleKey: "column.size",
+                                            title: "Size",
+                                            valueType: 21),
             FileManagerArchiveEntryProperty(id: .packedSize,
-                                        titleKey: "column.packedSize",
-                                        title: "Packed Size",
-                                        valueType: 21),
+                                            titleKey: "column.packedSize",
+                                            title: "Packed Size",
+                                            valueType: 21),
             FileManagerArchiveEntryProperty(id: .modified,
-                                        titleKey: "column.modified",
-                                        title: "Modified",
-                                        valueType: 64),
+                                            titleKey: "column.modified",
+                                            title: "Modified",
+                                            valueType: 64),
         ])
 
         XCTAssertEqual(columns.map(\.id), [.name, .size, .packedSize, .modified])
@@ -147,21 +147,21 @@ final class ArchivePreviewPresentationTests: XCTestCase {
 
         let columns = FileManagerColumn.archiveColumns(entryProperties: [
             FileManagerArchiveEntryProperty(id: .size,
-                                        titleKey: "column.size",
-                                        title: "Size",
-                                        valueType: 21),
+                                            titleKey: "column.size",
+                                            title: "Size",
+                                            valueType: 21),
             FileManagerArchiveEntryProperty(id: .packedSize,
-                                        titleKey: "column.packedSize",
-                                        title: "Packed Size",
-                                        valueType: 21),
+                                            titleKey: "column.packedSize",
+                                            title: "Packed Size",
+                                            valueType: 21),
             FileManagerArchiveEntryProperty(id: .modified,
-                                        titleKey: "column.modified",
-                                        title: "Modified",
-                                        valueType: 64),
+                                            titleKey: "column.modified",
+                                            title: "Modified",
+                                            valueType: 64),
         ])
 
         let storedInfo = FileManagerViewPreferences.listViewInfo(forFolderTypeID: folderTypeID,
-                                                                  defaults: defaults)
+                                                                 defaults: defaults)
         let resolved = FileManagerViewPreferences.resolvedListViewColumns(columns, using: storedInfo)
 
         XCTAssertEqual(resolved.map(\.column.id), [.packedSize, .name, .modified])
@@ -179,9 +179,9 @@ final class ArchivePreviewPresentationTests: XCTestCase {
             ],
             entryProperties: [
                 FileManagerArchiveEntryProperty(id: .size,
-                                            titleKey: "column.size",
-                                            title: "Size",
-                                            valueType: 21),
+                                                titleKey: "column.size",
+                                                title: "Size",
+                                                valueType: 21),
             ],
             formatName: "Zip",
         )

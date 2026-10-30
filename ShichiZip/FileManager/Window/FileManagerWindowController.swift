@@ -278,11 +278,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             guard let self, let field else { return }
             self.window?.makeFirstResponder(nil)
             field.uninstall()
-            self.titlePathField = nil
-            self.titlePathToolbar?.restore()
-            self.titlePathToolbar = nil
-            self.updateLocationTitle()
-            self.activePane.focusFileList()
+            titlePathField = nil
+            titlePathToolbar?.restore()
+            titlePathToolbar = nil
+            updateLocationTitle()
+            activePane.focusFileList()
         }
         titlePathField = field
         titlePathToolbar = editor
@@ -299,12 +299,14 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
            [window.title, window.subtitle].contains(where: { text in
                guard let field = window.titleField(matching: text) else { return false }
                return field.bounds.contains(field.convert(event.locationInWindow, from: nil))
-           }) {
+           })
+        {
             expandTitlePath()
             return true
         }
         if !rightClick, let field = titlePathField,
-           !field.bounds.contains(field.convert(event.locationInWindow, from: nil)) {
+           !field.bounds.contains(field.convert(event.locationInWindow, from: nil))
+        {
             field.cancelPathEditing()
         }
         return false
@@ -1268,7 +1270,9 @@ extension FileManagerWindowController: FileManagerPaneDelegate {
 
     func paneLocationDidChange(_ pane: FileManagerPaneController) {
         guard leftPane != nil, rightPane != nil else { return }
-        if pane === activePane { updateLocationTitle() }
+        if pane === activePane {
+            updateLocationTitle()
+        }
     }
 
     func paneSelectionDidChange(_ pane: FileManagerPaneController) {

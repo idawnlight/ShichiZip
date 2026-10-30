@@ -38,11 +38,11 @@ final class OperationSessionMemoryLimitTests: XCTestCase {
         let accepted = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
             DispatchQueue.global().async {
                 let result = session.requestMemoryLimit(withRequiredBytes: 8 << 30,
-                                                       currentLimitBytes: 4 << 30,
-                                                       archivePath: "/archive.7z",
-                                                       filePath: "large.bin",
-                                                       testMode: true,
-                                                       showRemember: true)
+                                                        currentLimitBytes: 4 << 30,
+                                                        archivePath: "/archive.7z",
+                                                        filePath: "large.bin",
+                                                        testMode: true,
+                                                        showRemember: true)
                 continuation.resume(returning: result?.limitGB == 8
                     && result?.saveLimit == true
                     && result?.rememberChoice == true)

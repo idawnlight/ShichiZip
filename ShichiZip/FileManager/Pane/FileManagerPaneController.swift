@@ -768,7 +768,9 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         isInsideArchive ? currentArchiveDisplayPathPrefix() : currentDirectory.path
     }
 
-    var addressBarPath: String { pathField.stringValue }
+    var addressBarPath: String {
+        pathField.stringValue
+    }
 
     var selectedRealItemCount: Int {
         paneSelectionState.realItems.count
@@ -1837,13 +1839,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 extension FileManagerPaneController: FileManagerPaneDirectoryCoordinatorHost {
     func directorySelectionState() -> FileManagerFileSystemSelectionState {
         let selectedItems = selectedFileSystemItems()
-        let focusedPath: String?
-        if let focusedItem = paneItem(at: tableView.selectedRow),
-           case let .filesystem(item) = focusedItem
+        let focusedPath: String? = if let focusedItem = paneItem(at: tableView.selectedRow),
+                                      case let .filesystem(item) = focusedItem
         {
-            focusedPath = item.url.standardizedFileURL.path
+            item.url.standardizedFileURL.path
         } else {
-            focusedPath = selectedItems.first?.url.standardizedFileURL.path
+            selectedItems.first?.url.standardizedFileURL.path
         }
         return FileManagerFileSystemSelectionState(
             selectedPaths: Set(selectedItems.map(\.url.standardizedFileURL.path)),

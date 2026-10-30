@@ -114,7 +114,7 @@ enum ArchivePreviewLoadError: LocalizedError {
         case let .coordinationFailed(error):
             if let error {
                 SZL10n.string("app.quickLook.archivePreview.readErrorFormat",
-                                                  error.localizedDescription)
+                              error.localizedDescription)
             } else {
                 SZL10n.string("app.quickLook.archivePreview.readError")
             }

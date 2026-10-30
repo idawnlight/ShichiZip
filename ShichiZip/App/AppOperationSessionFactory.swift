@@ -14,7 +14,7 @@ enum AppOperationSessionFactory {
 
     nonisolated static func configureHandlers(
         on session: SZOperationSession,
-        willPresentPrompt: (@MainActor @Sendable () -> Void)? = nil
+        willPresentPrompt: (@MainActor @Sendable () -> Void)? = nil,
     ) {
         session.passwordRequestHandler = { title, message, initialValue, passwordPointer in
             if let willPresentPrompt {
@@ -37,7 +37,7 @@ enum AppOperationSessionFactory {
             MainActor.assumeIsolated {
                 willPresentPrompt?()
                 return ArchiveUpdateEncryptionDialog.runModal(forArchive: archivePath,
-                                                               defaultEncryption: defaultEncryption)
+                                                              defaultEncryption: defaultEncryption)
             }
         }
         session.memoryLimitRequestHandler = { requiredBytes, currentLimitBytes, archivePath, filePath, testMode, showRemember in

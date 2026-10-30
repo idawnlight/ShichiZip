@@ -134,10 +134,10 @@ final class FileManagerPaneEventCoordinatorTests: XCTestCase {
     func testCoordinatorDoesNotRetainItsHost() throws {
         var host: TestEventHost? = TestEventHost()
         weak let weakHost = host
-        let coordinator = makeCoordinator(host: try XCTUnwrap(host),
-                                          tableView: NSTableView(),
-                                          scrollView: NSScrollView(),
-                                          notificationCenter: NotificationCenter())
+        let coordinator = try makeCoordinator(host: XCTUnwrap(host),
+                                              tableView: NSTableView(),
+                                              scrollView: NSScrollView(),
+                                              notificationCenter: NotificationCenter())
 
         host = nil
 

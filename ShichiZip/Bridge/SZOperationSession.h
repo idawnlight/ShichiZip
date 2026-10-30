@@ -37,9 +37,9 @@ NS_SWIFT_SENDABLE
 
 - (instancetype)init NS_UNAVAILABLE;
 - (instancetype)initWithSaveLimit:(BOOL)saveLimit
-                       skipArchive:(BOOL)skipArchive
-                    rememberChoice:(BOOL)rememberChoice
-                           limitGB:(uint32_t)limitGB NS_DESIGNATED_INITIALIZER;
+                      skipArchive:(BOOL)skipArchive
+                   rememberChoice:(BOOL)rememberChoice
+                          limitGB:(uint32_t)limitGB NS_DESIGNATED_INITIALIZER;
 
 @property (nonatomic, readonly) BOOL saveLimit;
 @property (nonatomic, readonly) BOOL skipArchive;
@@ -149,11 +149,11 @@ typedef SZOperationSession* _Nonnull (^SZOperationSessionFactory)(void);
 - (nullable SZArchiveUpdateEncryption*)requestUpdateEncryptionForArchive:(NSString*)archivePath
                                                        defaultEncryption:(SZEncryptionMethod)defaultEncryption;
 - (nullable SZMemoryLimitPromptResult*)requestMemoryLimitWithRequiredBytes:(uint64_t)requiredBytes
-                                                        currentLimitBytes:(uint64_t)currentLimitBytes
-                                                              archivePath:(nullable NSString*)archivePath
-                                                                 filePath:(nullable NSString*)filePath
-                                                                 testMode:(BOOL)testMode
-                                                             showRemember:(BOOL)showRemember;
+                                                         currentLimitBytes:(uint64_t)currentLimitBytes
+                                                               archivePath:(nullable NSString*)archivePath
+                                                                  filePath:(nullable NSString*)filePath
+                                                                  testMode:(BOOL)testMode
+                                                              showRemember:(BOOL)showRemember;
 
 @end
 

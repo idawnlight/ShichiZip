@@ -602,11 +602,11 @@ Z7_COM7F_IMF(SZFolderExtractCallback::RequestMemoryUse(
             const BOOL showRemember = indexType != NArchive::NEventIndexType::kNoIndex || path != NULL;
             SZOperationSession* session = Session;
             SZMemoryLimitPromptResult* promptResult = [session requestMemoryLimitWithRequiredBytes:requiredSize
-                                                                              currentLimitBytes:currentLimitBytes
-                                                                                    archivePath:archivePath
-                                                                                       filePath:filePath
-                                                                                       testMode:TestMode
-                                                                                   showRemember:showRemember];
+                                                                                 currentLimitBytes:currentLimitBytes
+                                                                                       archivePath:archivePath
+                                                                                          filePath:filePath
+                                                                                          testMode:TestMode
+                                                                                      showRemember:showRemember];
             if (!promptResult) {
                 *answerFlags = NRequestMemoryAnswerFlags::k_Stop;
                 return E_ABORT;

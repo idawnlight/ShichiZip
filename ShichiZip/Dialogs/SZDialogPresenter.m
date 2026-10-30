@@ -495,9 +495,9 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
 
     if (result) {
         *result = [[SZMemoryLimitPromptResult alloc] initWithSaveLimit:accessoryController.saveLimit
-                                                       skipArchive:accessoryController.skipArchive
-                                                    rememberChoice:accessoryController.rememberChoice
-                                                           limitGB:accessoryController.limitGB];
+                                                           skipArchive:accessoryController.skipArchive
+                                                        rememberChoice:accessoryController.rememberChoice
+                                                               limitGB:accessoryController.limitGB];
     }
     return YES;
 }

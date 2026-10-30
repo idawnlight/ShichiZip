@@ -122,13 +122,11 @@ struct GeneralSettingsView: View {
 
     private var resetAlertTitle: String {
         guard let resetAction else { return "" }
-        let title: String
-
-        switch resetAction {
+        let title: String = switch resetAction {
         case .windowFrame:
-            title = SZL10n.string("app.settings.resetFileManagerWindowFrame")
+            SZL10n.string("app.settings.resetFileManagerWindowFrame")
         case .listLayouts:
-            title = SZL10n.string("app.settings.resetFileListLayout")
+            SZL10n.string("app.settings.resetFileListLayout")
         }
 
         return SZL10n.string("app.settings.confirmActionFormat", title)

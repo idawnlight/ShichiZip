@@ -261,8 +261,8 @@ extension FileManagerViewPreferences {
                                      defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> String
     {
         FileManagerTimestampPreferences.timeMenuPreviewTitle(for: level,
-                                                              referenceDate: referenceDate,
-                                                              defaults: defaults)
+                                                             referenceDate: referenceDate,
+                                                             defaults: defaults)
     }
 
     static func makeListDateFormatter(defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> DateFormatter {
@@ -274,8 +274,8 @@ extension FileManagerViewPreferences {
                                   defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> DateFormatter
     {
         FileManagerTimestampPreferences.makeDateFormatter(dateStyle: dateStyle,
-                                                           timeStyle: timeStyle,
-                                                           defaults: defaults)
+                                                          timeStyle: timeStyle,
+                                                          defaults: defaults)
     }
 
     static func fractionalPattern(from pattern: String, digits: Int) -> String {

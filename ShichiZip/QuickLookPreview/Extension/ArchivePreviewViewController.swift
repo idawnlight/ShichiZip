@@ -164,7 +164,7 @@ final class ArchivePreviewViewController: NSViewController, @MainActor QLPreview
     private func configureColumns(for snapshot: ArchivePreviewSnapshot) {
         let listViewInfo = FileManagerViewPreferences.listViewInfo(forFolderTypeID: snapshot.folderTypeID)
         let resolvedColumns = FileManagerViewPreferences.resolvedListViewColumns(snapshot.availableColumns,
-                                                                                using: listViewInfo)
+                                                                                 using: listViewInfo)
         resetColumns()
         visibleColumns = resolvedColumns.map(\.column)
 

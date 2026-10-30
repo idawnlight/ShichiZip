@@ -938,13 +938,13 @@ using SZArchiveMutationOperation = std::function<HRESULT(IFolderOperations*, IFo
                archiveWasReplaced:(BOOL)archiveWasReplaced
                             error:(NSError**)error;
 - (SZArchiveUpdateOutcome*)performMutationInArchiveSubdir:(NSString*)archiveSubdir
-                                                 session:(SZOperationSession*)session
-                                                 options:(const SZArchiveMutationOptions&)options
-                                        beforeOperations:(const SZArchiveMutationPreflight&)beforeOperations
-                                             beforeWrite:(const SZArchiveMutationValidation&)beforeWrite
-                                               operation:(const SZArchiveMutationOperation&)operation
-                                      failureDescription:(NSString*)failureDescription
-                                                   error:(NSError**)error;
+                                                  session:(SZOperationSession*)session
+                                                  options:(const SZArchiveMutationOptions&)options
+                                         beforeOperations:(const SZArchiveMutationPreflight&)beforeOperations
+                                              beforeWrite:(const SZArchiveMutationValidation&)beforeWrite
+                                                operation:(const SZArchiveMutationOperation&)operation
+                                       failureDescription:(NSString*)failureDescription
+                                                    error:(NSError**)error;
 @end
 
 @implementation SZArchive (Mutation)
@@ -995,13 +995,13 @@ using SZArchiveMutationOperation = std::function<HRESULT(IFolderOperations*, IFo
 // Resolve selection before querying update support; check size limits after.
 // Share agent lifetime and finalization without changing early-error precedence.
 - (SZArchiveUpdateOutcome*)performMutationInArchiveSubdir:(NSString*)archiveSubdir
-                                                 session:(SZOperationSession*)session
-                                                 options:(const SZArchiveMutationOptions&)options
-                                        beforeOperations:(const SZArchiveMutationPreflight&)beforeOperations
-                                             beforeWrite:(const SZArchiveMutationValidation&)beforeWrite
-                                               operation:(const SZArchiveMutationOperation&)operation
-                                      failureDescription:(NSString*)failureDescription
-                                                   error:(NSError**)error {
+                                                  session:(SZOperationSession*)session
+                                                  options:(const SZArchiveMutationOptions&)options
+                                         beforeOperations:(const SZArchiveMutationPreflight&)beforeOperations
+                                              beforeWrite:(const SZArchiveMutationValidation&)beforeWrite
+                                                operation:(const SZArchiveMutationOperation&)operation
+                                       failureDescription:(NSString*)failureDescription
+                                                    error:(NSError**)error {
     SZOperationSession* resolvedSession = session ?: [SZOperationSession makeDefaultSession];
     SZAgentUpdateCallback* updateSpec = new SZAgentUpdateCallback;
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback(updateSpec);
@@ -1079,15 +1079,15 @@ using SZArchiveMutationOperation = std::function<HRESULT(IFolderOperations*, IFo
         return nil;
     }
     return [self performMutationInArchiveSubdir:archiveSubdir
-                                       session:session
-                                       options:SZArchiveMutationOptions{}
-                              beforeOperations:nullptr
-                                   beforeWrite:nullptr
-                                     operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
-                                         return operations->CreateFolder(ToU(folderName), callback);
-                                     }
-                            failureDescription:SZLocalizedString(@"create.errorFolder")
-                                         error:error];
+        session:session
+        options:SZArchiveMutationOptions { }
+        beforeOperations:nullptr
+        beforeWrite:nullptr
+        operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
+            return operations->CreateFolder(ToU(folderName), callback);
+        }
+        failureDescription:SZLocalizedString(@"create.errorFolder")
+        error:error];
 }
 
 - (SZArchiveUpdateOutcome*)renameItemAtReference:(SZArchiveItemReference*)itemReference
@@ -1119,26 +1119,26 @@ using SZArchiveMutationOperation = std::function<HRESULT(IFolderOperations*, IFo
     }
     std::vector<UInt32> indices;
     return [self performMutationInArchiveSubdir:archiveSubdir
-                                       session:session
-                                       options:SZArchiveMutationOptions{}
-                              beforeOperations:[&](IFolderFolder* folder, NSError** error) -> BOOL {
-                                  const HRESULT result = SZResolveFolderItemReferences(
-                                      folder, @[ itemReference ], archiveSubdir, indices);
-                                  if (result != S_OK || indices.size() != 1) {
-                                      if (error) {
-                                          *error = SZArchiveUpdateErrorFromResult(
-                                              E_INVALIDARG, SZLocalizedString(@"fileop.errorRenaming"), UString());
-                                      }
-                                      return NO;
-                                  }
-                                  return YES;
-                              }
-                                   beforeWrite:nullptr
-                                     operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
-                                         return operations->Rename(indices[0], ToU(newName), callback);
-                                     }
-                            failureDescription:SZLocalizedString(@"fileop.errorRenaming")
-                                         error:error];
+        session:session
+        options:SZArchiveMutationOptions { }
+        beforeOperations:[&](IFolderFolder* folder, NSError** error) -> BOOL {
+            const HRESULT result = SZResolveFolderItemReferences(
+                folder, @[ itemReference ], archiveSubdir, indices);
+            if (result != S_OK || indices.size() != 1) {
+                if (error) {
+                    *error = SZArchiveUpdateErrorFromResult(
+                        E_INVALIDARG, SZLocalizedString(@"fileop.errorRenaming"), UString());
+                }
+                return NO;
+            }
+            return YES;
+        }
+        beforeWrite:nullptr
+        operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
+            return operations->Rename(indices[0], ToU(newName), callback);
+        }
+        failureDescription:SZLocalizedString(@"fileop.errorRenaming")
+        error:error];
 }
 
 - (SZArchiveUpdateOutcome*)deleteItemsAtReferences:
@@ -1166,36 +1166,36 @@ using SZArchiveMutationOperation = std::function<HRESULT(IFolderOperations*, IFo
     }
     std::vector<UInt32> indices;
     return [self performMutationInArchiveSubdir:archiveSubdir
-                                       session:session
-                                       options:SZArchiveMutationOptions{}
-                              beforeOperations:[&](IFolderFolder* folder, NSError** error) -> BOOL {
-                                  const HRESULT result = SZResolveFolderItemReferences(
-                                      folder, itemReferences, archiveSubdir, indices);
-                                  if (result != S_OK || indices.empty()) {
-                                      if (error) {
-                                          *error = SZArchiveUpdateErrorFromResult(
-                                              E_INVALIDARG, SZLocalizedString(@"delete.errorDeleting"), UString());
-                                      }
-                                      return NO;
-                                  }
-                                  return YES;
-                              }
-                                   beforeWrite:[&](NSError** error) -> BOOL {
-                                       if (indices.size() > (size_t)UINT32_MAX) {
-                                           if (error) {
-                                               *error = SZMakeError(E_INVALIDARG,
-                                                   SZLocalizedString(@"archive.tooManyItems"));
-                                           }
-                                           return NO;
-                                       }
-                                       return YES;
-                                   }
-                                     operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
-                                         return operations->Delete(indices.data(), (UInt32)indices.size(),
-                                                 callback);
-                                     }
-                            failureDescription:SZLocalizedString(@"delete.errorDeleting")
-                                         error:error];
+        session:session
+        options:SZArchiveMutationOptions { }
+        beforeOperations:[&](IFolderFolder* folder, NSError** error) -> BOOL {
+            const HRESULT result = SZResolveFolderItemReferences(
+                folder, itemReferences, archiveSubdir, indices);
+            if (result != S_OK || indices.empty()) {
+                if (error) {
+                    *error = SZArchiveUpdateErrorFromResult(
+                        E_INVALIDARG, SZLocalizedString(@"delete.errorDeleting"), UString());
+                }
+                return NO;
+            }
+            return YES;
+        }
+        beforeWrite:[&](NSError** error) -> BOOL {
+            if (indices.size() > (size_t)UINT32_MAX) {
+                if (error) {
+                    *error = SZMakeError(E_INVALIDARG,
+                        SZLocalizedString(@"archive.tooManyItems"));
+                }
+                return NO;
+            }
+            return YES;
+        }
+        operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
+            return operations->Delete(indices.data(), (UInt32)indices.size(),
+                callback);
+        }
+        failureDescription:SZLocalizedString(@"delete.errorDeleting")
+        error:error];
 }
 
 - (SZArchiveUpdateOutcome*)addPaths:(NSArray<NSString*>*)sourcePaths
@@ -1261,26 +1261,26 @@ using SZArchiveMutationOperation = std::function<HRESULT(IFolderOperations*, IFo
     // publication because input-open warnings may be destructive.
     options.inputErrorPolicy = SZUpdateInputErrorPolicy::StopOnInputError;
     return [self performMutationInArchiveSubdir:archiveSubdir
-                                       session:session
-                                       options:options
-                              beforeOperations:nullptr
-                                   beforeWrite:[&](NSError** error) -> BOOL {
-                                       if (pathPointers.size() > (size_t)UINT32_MAX) {
-                                           if (error) {
-                                               *error = SZMakeError(E_INVALIDARG,
-                                                   SZLocalizedString(@"archive.tooManyItems"));
-                                           }
-                                           return NO;
-                                       }
-                                       return YES;
-                                   }
-                                     operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
-                                         return operations->CopyFrom(
-                                                 moveMode ? 1 : 0, ToU(folderPrefix ?: @"").Ptr(), pathPointers.data(),
-                                                 (UInt32)pathPointers.size(), callback);
-                                     }
-                            failureDescription:SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", _archivePath)
-                                         error:error];
+        session:session
+        options:options
+        beforeOperations:nullptr
+        beforeWrite:[&](NSError** error) -> BOOL {
+            if (pathPointers.size() > (size_t)UINT32_MAX) {
+                if (error) {
+                    *error = SZMakeError(E_INVALIDARG,
+                        SZLocalizedString(@"archive.tooManyItems"));
+                }
+                return NO;
+            }
+            return YES;
+        }
+        operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
+            return operations->CopyFrom(
+                moveMode ? 1 : 0, ToU(folderPrefix ?: @"").Ptr(), pathPointers.data(),
+                (UInt32)pathPointers.size(), callback);
+        }
+        failureDescription:SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", _archivePath)
+        error:error];
 }
 
 - (SZArchiveUpdateOutcome*)replaceItemAtReference:(SZArchiveItemReference*)itemReference
@@ -1323,28 +1323,28 @@ using SZArchiveMutationOperation = std::function<HRESULT(IFolderOperations*, IFo
     options.inputErrorPolicy = SZUpdateInputErrorPolicy::StopOnInputError;
     std::vector<UInt32> indices;
     return [self performMutationInArchiveSubdir:archiveSubdir
-                                       session:session
-                                       options:options
-                              beforeOperations:[&](IFolderFolder* folder, NSError** error) -> BOOL {
-                                  const HRESULT result = SZResolveFolderItemReferences(
-                                      folder, @[ itemReference ], archiveSubdir, indices);
-                                  if (result != S_OK || indices.size() != 1) {
-                                      if (error) {
-                                          *error = SZArchiveUpdateErrorFromResult(
-                                              E_INVALIDARG, SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemReference.path),
-                                              UString());
-                                      }
-                                      return NO;
-                                  }
-                                  return YES;
-                              }
-                                   beforeWrite:nullptr
-                                     operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
-                                         return operations->CopyFromFile(
-                                                 indices[0], ToU(standardizedSourcePath).Ptr(), callback);
-                                     }
-                            failureDescription:SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemReference.path)
-                                         error:error];
+        session:session
+        options:options
+        beforeOperations:[&](IFolderFolder* folder, NSError** error) -> BOOL {
+            const HRESULT result = SZResolveFolderItemReferences(
+                folder, @[ itemReference ], archiveSubdir, indices);
+            if (result != S_OK || indices.size() != 1) {
+                if (error) {
+                    *error = SZArchiveUpdateErrorFromResult(
+                        E_INVALIDARG, SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemReference.path),
+                        UString());
+                }
+                return NO;
+            }
+            return YES;
+        }
+        beforeWrite:nullptr
+        operation:[&](IFolderOperations* operations, IFolderArchiveUpdateCallback* callback) {
+            return operations->CopyFromFile(
+                indices[0], ToU(standardizedSourcePath).Ptr(), callback);
+        }
+        failureDescription:SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", itemReference.path)
+        error:error];
 }
 
 // MARK: - Create

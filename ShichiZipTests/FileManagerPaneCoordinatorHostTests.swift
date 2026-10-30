@@ -114,7 +114,7 @@ final class FileManagerPaneCoordinatorHostTests: XCTestCase {
         let delegate = tableView.delegate
         tableView.delegate = nil
         tableView.sortDescriptors = [NSSortDescriptor(key: "name", ascending: false,
-                                                     selector: #selector(NSString.localizedStandardCompare(_:)))]
+                                                      selector: #selector(NSString.localizedStandardCompare(_:)))]
         tableView.delegate = delegate
     }
 
@@ -130,7 +130,9 @@ final class FileManagerPaneCoordinatorHostTests: XCTestCase {
 
     private func waitForSelection(of url: URL, in pane: FileManagerPaneController) async {
         for _ in 0 ..< 200 {
-            if pane.selectedFileURLs().map(\.standardizedFileURL.path) == [url.standardizedFileURL.path] { return }
+            if pane.selectedFileURLs().map(\.standardizedFileURL.path) == [url.standardizedFileURL.path] {
+                return
+            }
             try? await Task.sleep(for: .milliseconds(10))
         }
     }

@@ -203,7 +203,6 @@ final class FileManagerPaneSuspensionCoordinatorTests: XCTestCase {
         state.endNavigationTransition(transitionToken)
         XCTAssertNotNil(state.beginNavigation())
     }
-
 }
 
 @MainActor

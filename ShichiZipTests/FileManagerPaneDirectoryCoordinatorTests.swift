@@ -287,7 +287,7 @@ final class FileManagerPaneDirectoryCoordinatorTests: XCTestCase {
         let gate = DispatchSemaphore(value: 0)
         var host: HostSpy? = HostSpy()
         weak let weakHost = host
-        let coordinator = makeCoordinator(host: try XCTUnwrap(host), snapshotQueue: queue, makeSnapshot: { url in
+        let coordinator = try makeCoordinator(host: XCTUnwrap(host), snapshotQueue: queue, makeSnapshot: { url in
             gate.wait()
             return Self.snapshot(for: url, names: ["alpha.txt"])
         })
@@ -325,7 +325,7 @@ final class FileManagerPaneDirectoryCoordinatorTests: XCTestCase {
         try makeTemporaryDirectory(named: name, prefix: "ShichiZipDirectoryCoordinatorTests")
     }
 
-    nonisolated private static func snapshot(for url: URL, names: [String]) -> FileManagerDirectorySnapshot {
+    private nonisolated static func snapshot(for url: URL, names: [String]) -> FileManagerDirectorySnapshot {
         FileManagerDirectorySnapshot(url: url, items: names.map { FileSystemItem(url: url.appendingPathComponent($0), resourceValues: nil) })
     }
 
@@ -381,7 +381,9 @@ final class FileManagerPaneDirectoryCoordinatorTests: XCTestCase {
         var errors: [Error] = []
         var snapshotAppliedExpectation: XCTestExpectation?
 
-        func directorySelectionState() -> FileManagerFileSystemSelectionState { selectionState }
+        func directorySelectionState() -> FileManagerFileSystemSelectionState {
+            selectionState
+        }
 
         func directoryContentsDidChange(_ change: FileManagerDirectoryContentsChange) {
             switch change {
@@ -408,13 +410,25 @@ final class FileManagerPaneDirectoryCoordinatorTests: XCTestCase {
             restoredSelections.append(selection)
         }
 
-        func directoryInitialLoadDidFail() { events.append(.initialFailure) }
-        func directoryPresentationDidSuspend() { events.append(.suspension) }
+        func directoryInitialLoadDidFail() {
+            events.append(.initialFailure)
+        }
+
+        func directoryPresentationDidSuspend() {
+            events.append(.suspension)
+        }
+
         func showErrorAlert(_ error: Error) {
             events.append(.error)
             errors.append(error)
         }
-        func setDirectoryLoadingVisible(_ visible: Bool) { events.append(.loading(visible)) }
-        func autoRefreshIfPossible() { events.append(.changedOnDisk) }
+
+        func setDirectoryLoadingVisible(_ visible: Bool) {
+            events.append(.loading(visible))
+        }
+
+        func autoRefreshIfPossible() {
+            events.append(.changedOnDisk)
+        }
     }
 }

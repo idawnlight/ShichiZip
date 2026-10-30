@@ -19,9 +19,9 @@ static SZOperationSessionFactory SZDefaultSessionFactory;
 @implementation SZMemoryLimitPromptResult
 
 - (instancetype)initWithSaveLimit:(BOOL)saveLimit
-                       skipArchive:(BOOL)skipArchive
-                    rememberChoice:(BOOL)rememberChoice
-                           limitGB:(uint32_t)limitGB {
+                      skipArchive:(BOOL)skipArchive
+                   rememberChoice:(BOOL)rememberChoice
+                          limitGB:(uint32_t)limitGB {
     if ((self = [super init])) {
         _saveLimit = saveLimit;
         _skipArchive = skipArchive;
@@ -446,11 +446,11 @@ static SZOperationSessionFactory SZDefaultSessionFactory;
 }
 
 - (SZMemoryLimitPromptResult*)requestMemoryLimitWithRequiredBytes:(uint64_t)requiredBytes
-                                              currentLimitBytes:(uint64_t)currentLimitBytes
-                                                    archivePath:(NSString*)archivePath
-                                                       filePath:(NSString*)filePath
-                                                       testMode:(BOOL)testMode
-                                                   showRemember:(BOOL)showRemember {
+                                                currentLimitBytes:(uint64_t)currentLimitBytes
+                                                      archivePath:(NSString*)archivePath
+                                                         filePath:(NSString*)filePath
+                                                         testMode:(BOOL)testMode
+                                                     showRemember:(BOOL)showRemember {
     SZOperationMemoryLimitRequestHandler handler = self.memoryLimitRequestHandler;
     if (!handler || [self shouldCancel]) {
         return nil;

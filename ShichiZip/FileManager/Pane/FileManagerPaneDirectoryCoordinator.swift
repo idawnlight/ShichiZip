@@ -252,7 +252,7 @@ final class FileManagerPaneDirectoryCoordinator {
 
         applyDirectorySnapshot(snapshot)
         host.directoryNavigationDidFinish(selection: selectionState.flatMap { selectionRestoration(for: $0) },
-                                           focusFileList: focusAfterLoad)
+                                          focusFileList: focusAfterLoad)
         return true
     }
 
@@ -337,19 +337,18 @@ final class FileManagerPaneDirectoryCoordinator {
         let selectedRows = IndexSet(items.enumerated().compactMap { index, item in
             selectionState.selectedPaths.contains(item.url.standardizedFileURL.path) ? baseRow + index : nil
         })
-        let focusedRow: Int?
-        if selectedRows.isEmpty {
-            focusedRow = nil
+        let focusedRow: Int? = if selectedRows.isEmpty {
+            nil
         } else if let focusedPath = selectionState.focusedPath,
                   let index = items.firstIndex(where: { $0.url.standardizedFileURL.path == focusedPath })
         {
-            focusedRow = baseRow + index
+            baseRow + index
         } else {
-            focusedRow = selectedRows.first
+            selectedRows.first
         }
         return FileManagerDirectorySelectionRestoration(rows: selectedRows,
-                                                         focusedRow: focusedRow,
-                                                         scrollPlacement: selectionState.scrollPlacement)
+                                                        focusedRow: focusedRow,
+                                                        scrollPlacement: selectionState.scrollPlacement)
     }
 
     private func scheduleDirectorySnapshot(for url: URL,
