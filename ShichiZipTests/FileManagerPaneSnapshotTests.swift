@@ -10,10 +10,7 @@ final class FileManagerPaneSnapshotTests: XCTestCase {
     func testFileOperationInfoTextIncludesLocationAndDisplayedNames() {
         let snapshot = makeSnapshot(
             currentLocationDisplayPath: "/tmp/source",
-            selection: FileManagerPaneSelectionSnapshot(fileURLs: [URL(fileURLWithPath: "/tmp/source/a.txt"),
-                                                                   URL(fileURLWithPath: "/tmp/source/b.txt")],
-                                                        displayedNames: ["a.txt", "b.txt"],
-                                                        realItemCount: 2),
+            displayedNames: ["a.txt", "b.txt"],
         )
 
         XCTAssertEqual(snapshot.fileOperationInfoText,
@@ -22,10 +19,8 @@ final class FileManagerPaneSnapshotTests: XCTestCase {
 
     func testFileOperationInfoTextMarksHiddenDisplayedNames() {
         let snapshot = makeSnapshot(
-            currentLocationDisplayPath: "/tmp/source",
-            selection: FileManagerPaneSelectionSnapshot(fileURLs: [],
-                                                        displayedNames: ["a.txt", "b.txt", "c.txt", "d.txt", "e.txt"],
-                                                        realItemCount: 6),
+            displayedNames: ["a.txt", "b.txt", "c.txt", "d.txt", "e.txt"],
+            realItemCount: 6,
         )
 
         XCTAssertEqual(snapshot.fileOperationInfoText,
@@ -41,61 +36,39 @@ final class FileManagerPaneSnapshotTests: XCTestCase {
                                                        realItemCount: 3).hasHiddenDisplayedNames)
     }
 
-    private func makeSnapshot(currentDirectoryURL: URL = URL(fileURLWithPath: "/tmp/source", isDirectory: true),
-                              currentLocationDisplayPath: String = "/tmp/source",
-                              isVirtualLocation: Bool = false,
-                              isSuspended: Bool = false,
-                              primarySortKey: String? = nil,
-                              currentArchiveDestinationDisplayPath: String? = nil,
-                              recentDirectoryHistory: [URL] = [],
-                              acceptsFilePaste: Bool = true,
-                              selectedArchiveCandidateURL: URL? = nil,
-                              selection: FileManagerPaneSelectionSnapshot = FileManagerPaneSelectionSnapshot(fileURLs: [],
-                                                                                                             displayedNames: [],
-                                                                                                             realItemCount: 0),
-                              selectedSingleFileSystemFile: FileManagerPaneSelectedFileSnapshot? = nil,
-                              suggestedExtractDestinationName: String? = nil,
-                              extractDialogInfoText: String = "",
-                              sourceArchiveURLForPostProcessing: URL? = nil,
-                              quarantineSourceArchiveURLForExtraction: URL? = nil,
-                              capabilities: FileManagerPaneCapabilities = unavailableCapabilities()) -> FileManagerPaneSnapshot
+    private func makeSnapshot(currentLocationDisplayPath: String = "/tmp/source",
+                              displayedNames: [String] = [],
+                              realItemCount: Int? = nil) -> FileManagerPaneSnapshot
     {
-        FileManagerPaneSnapshot(currentDirectoryURL: currentDirectoryURL,
-                                currentLocationDisplayPath: currentLocationDisplayPath,
-                                isVirtualLocation: isVirtualLocation,
-                                isSuspended: isSuspended,
-                                primarySortKey: primarySortKey,
-                                currentArchiveDestinationDisplayPath: currentArchiveDestinationDisplayPath,
-                                recentDirectoryHistory: recentDirectoryHistory,
-                                acceptsFilePaste: acceptsFilePaste,
-                                selectedArchiveCandidateURL: selectedArchiveCandidateURL,
-                                selection: selection,
-                                selectedSingleFileSystemFile: selectedSingleFileSystemFile,
-                                suggestedExtractDestinationName: suggestedExtractDestinationName,
-                                extractDialogInfoText: extractDialogInfoText,
-                                sourceArchiveURLForPostProcessing: sourceArchiveURLForPostProcessing,
-                                quarantineSourceArchiveURLForExtraction: quarantineSourceArchiveURLForExtraction,
-                                capabilities: capabilities)
-    }
-
-    private static func unavailableCapabilities() -> FileManagerPaneCapabilities {
-        FileManagerPaneCapabilities(canOpenSelection: false,
-                                    canOpenSelectionInside: false,
-                                    canOpenSelectionOutside: false,
-                                    canAddSelectedItemsToArchive: false,
-                                    canExtractSelectionOrArchive: false,
-                                    canTestArchiveSelection: false,
-                                    canCopySelection: false,
-                                    canMoveSelection: false,
-                                    canRenameSelection: false,
-                                    canCreateFolderHere: false,
-                                    canCreateFileHere: false,
-                                    canDeleteSelection: false,
-                                    canShowSelectedItemProperties: false,
-                                    canCalculateSelectionHashes: false,
-                                    canGoUp: false,
-                                    canSelectVisibleItems: false,
-                                    canDeselectSelection: false,
-                                    canShowFoldersHistory: false)
+        let selection = FileManagerPaneSelectionSnapshot(fileURLs: [],
+                                                         displayedNames: displayedNames,
+                                                         realItemCount: realItemCount ?? displayedNames.count)
+        let capabilities = FileManagerPaneCapabilities(
+            selection: FileManagerPaneSelectionState(tableModel: FileManagerPaneTableModel(fileSystemItems: [], showsParentRow: false),
+                                                     selectedRowIndexes: []),
+            commandState: FileManagerPaneCommandState(isInsideArchive: false,
+                                                      supportsInPlaceArchiveMutation: false,
+                                                      hasCurrentArchive: false,
+                                                      canGoUp: false,
+                                                      canSelectVisibleItems: false,
+                                                      canDeselectSelection: false,
+                                                      canShowFoldersHistory: false),
+        )
+        return FileManagerPaneSnapshot(currentDirectoryURL: URL(fileURLWithPath: "/tmp/source", isDirectory: true),
+                                       currentLocationDisplayPath: currentLocationDisplayPath,
+                                       isVirtualLocation: false,
+                                       isSuspended: false,
+                                       primarySortKey: nil,
+                                       currentArchiveDestinationDisplayPath: nil,
+                                       recentDirectoryHistory: [],
+                                       acceptsFilePaste: true,
+                                       selectedArchiveCandidateURL: nil,
+                                       selection: selection,
+                                       selectedSingleFileSystemFile: nil,
+                                       suggestedExtractDestinationName: nil,
+                                       extractDialogInfoText: "",
+                                       sourceArchiveURLForPostProcessing: nil,
+                                       quarantineSourceArchiveURLForExtraction: nil,
+                                       capabilities: capabilities)
     }
 }

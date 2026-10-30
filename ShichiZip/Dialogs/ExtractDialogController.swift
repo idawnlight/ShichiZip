@@ -242,10 +242,6 @@ final class ExtractDialogController: NSObject {
             ExtractDialogOption(title: SZL10n.string("extract.autoRenameExisting"), value: .renameExisting),
         ]
     }
-
-    nonisolated static func normalizedPassword(from rawValue: String) -> String? {
-        ExtractDialogResultBuilder.normalizedPassword(from: rawValue)
-    }
 }
 
 extension ExtractDialogController {

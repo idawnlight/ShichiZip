@@ -6,6 +6,18 @@
 import XCTest
 
 final class ExtractDialogResultBuilderTests: XCTestCase {
+    func testOnlyEmptyPasswordIsMissingAndWhitespaceIsPreserved() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "extract-dialog-password")
+        let builder = ExtractDialogResultBuilder(baseDirectory: tempRoot)
+        var state = makeState(destinationPath: tempRoot.path)
+
+        XCTAssertNil(try builder.buildResult(from: state).result.password)
+        for password in ["  secret \n", " \t\n"] {
+            state.password = password
+            XCTAssertEqual(try builder.buildResult(from: state).result.password, password)
+        }
+    }
+
     func testRelativeDestinationResolvesUnderBaseDirectoryWithoutCreatingDirectory() throws {
         let tempRoot = try makeTemporaryDirectory(named: "extract-dialog-relative-destination")
         let builder = ExtractDialogResultBuilder(baseDirectory: tempRoot)
