@@ -214,11 +214,10 @@ final class OperationProgressModel {
         "\(SZL10n.string("column.warningFlags")): \(totalIssueCount)"
     }
 
-    func elapsedDuration(at time: Date = Date()) -> String? {
+    func elapsedDuration() -> String? {
         guard let metricsStartTime else { return nil }
         let elapsed = max(now() - metricsStartTime, 0)
         guard elapsed >= 0.3 else { return nil }
-        _ = time
         return Self.durationString(elapsed)
     }
 
