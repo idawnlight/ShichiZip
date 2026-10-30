@@ -327,31 +327,6 @@ final class FileManagerPaneArchiveCoordinator {
                                                   hasConflictingNestedArchiveInstance: hasConflictingNestedArchiveInstance)
     }
 
-    func selectedOrDisplayedEntriesForExtraction(from items: [ArchiveItem],
-                                                 quarantineSourceArchivePath: String?) -> [ArchiveItem]
-    {
-        guard let context = currentExtractionContext(quarantineSourceArchivePath: quarantineSourceArchivePath) else { return [] }
-
-        let indices = Set(FileManagerArchiveExtraction.entryIndices(for: items,
-                                                                    allEntries: context.allEntries).map(\.intValue))
-        return context.allEntries.filter { indices.contains($0.index) }
-    }
-
-    func pathPrefixToStripForExtraction(items: [ArchiveItem],
-                                        destinationURL: URL,
-                                        pathMode: SZPathMode,
-                                        eliminateDuplicates: Bool,
-                                        quarantineSourceArchivePath: String?) -> String?
-    {
-        guard let context = currentExtractionContext(quarantineSourceArchivePath: quarantineSourceArchivePath) else { return nil }
-
-        return FileManagerArchiveExtraction.pathPrefixToStrip(for: items,
-                                                              context: context,
-                                                              destinationURL: destinationURL,
-                                                              pathMode: pathMode,
-                                                              eliminateDuplicates: eliminateDuplicates)
-    }
-
     func prepareExtraction(of itemsToExtract: [ArchiveItem],
                            emptySelectionMessage: String,
                            to destinationURL: URL,
@@ -389,38 +364,6 @@ final class FileManagerPaneArchiveCoordinator {
         }
         preparedExtraction.archiveOperationLease = archiveOperationLease
         return preparedExtraction
-    }
-
-    func extractArchiveItems(_ itemsToExtract: [ArchiveItem],
-                             emptySelectionMessage: String,
-                             to destinationURL: URL,
-                             session: SZOperationSession?,
-                             overwriteMode: SZOverwriteMode,
-                             pathMode: SZPathMode,
-                             password: String?,
-                             preserveNtSecurityInfo: Bool,
-                             eliminateDuplicates: Bool,
-                             inheritDownloadedFileQuarantine: Bool,
-                             quarantineSourceArchivePath: String?) throws
-    {
-        let preparedExtraction = try prepareExtraction(of: itemsToExtract,
-                                                       emptySelectionMessage: emptySelectionMessage,
-                                                       to: destinationURL,
-                                                       overwriteMode: overwriteMode,
-                                                       pathMode: pathMode,
-                                                       password: password,
-                                                       preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                                       eliminateDuplicates: eliminateDuplicates,
-                                                       inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine,
-                                                       quarantineSourceArchivePath: quarantineSourceArchivePath)
-        try preparedExtraction.perform(session: session)
-    }
-
-    func testCurrentArchive(session: SZOperationSession? = nil) throws {
-        guard let level = archiveSession.currentLevel else {
-            throw operationError(SZL10n.string("app.fileManager.error.noArchiveOpen"))
-        }
-        try level.archive.test(with: session)
     }
 
     func currentArchiveForTest() throws -> FileManagerLeasedArchive {
@@ -503,10 +446,6 @@ final class FileManagerPaneArchiveCoordinator {
             : []
         reloadCurrentArchiveEntries(selectingPaths: selectionPaths,
                                     reopenBeforeListing: reopenBeforeListing)
-    }
-
-    func refreshAfterMutation(selectingPath path: String? = nil) {
-        refreshAfterMutation(selectingPaths: path.map { [$0] } ?? [])
     }
 
     func cancelPendingReload() {
@@ -659,14 +598,6 @@ final class FileManagerPaneArchiveCoordinator {
         archiveSession.clearDisplayItems()
         host?.archiveStackDidCloseLevel()
         return true
-    }
-
-    func preserveNestedTemporaryDirectories() -> [URL] {
-        archiveSession.preserveNestedTemporaryDirectories()
-    }
-
-    func preserveRemainingTemporaryDirectories(_ urls: [URL]) {
-        archiveSession.preserveRemainingTemporaryDirectories(urls)
     }
 
     func cleanupAllTemporaryDirectories() {

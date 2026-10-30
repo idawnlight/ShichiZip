@@ -1190,7 +1190,6 @@ private extension FileManagerShortcutCommand {
 
 @MainActor
 protocol FileManagerPaneDelegate: AnyObject {
-    func paneDidRequestOpenArchiveInNewWindow(_ url: URL)
     func paneDidBecomeActive(_ pane: FileManagerPaneController)
     func paneLocationDidChange(_ pane: FileManagerPaneController)
     func paneSelectionDidChange(_ pane: FileManagerPaneController)
@@ -1199,12 +1198,6 @@ protocol FileManagerPaneDelegate: AnyObject {
 }
 
 extension FileManagerWindowController: FileManagerPaneDelegate {
-    func paneDidRequestOpenArchiveInNewWindow(_ url: URL) {
-        Task { @MainActor [windowCoordinator] in
-            await windowCoordinator.openArchiveInNewFileManager(url)
-        }
-    }
-
     func paneDidBecomeActive(_ pane: FileManagerPaneController) {
         setActivePane(pane)
         quickLookPanelController.retargetPreviewIfVisible(to: pane,

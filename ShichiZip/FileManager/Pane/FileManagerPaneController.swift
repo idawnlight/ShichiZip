@@ -66,7 +66,7 @@ final class FileManagerPaneActivityState {
 }
 
 /// Single pane of the file manager — displays file system contents
-class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSTextFieldDelegate, NSMenuItemValidation, FileManagerPaneTransferHost {
+class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSTextFieldDelegate, FileManagerPaneTransferHost {
     // MARK: - Types
 
     private static let addressBarIconSize: CGFloat = 14
@@ -661,15 +661,33 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func renameSelection() {
-        renameSelected(nil)
+        FileManagerPaneMutationCommandSupport.renameSelection(in: self)
     }
 
     func deleteSelection() {
-        deleteSelected(nil)
+        FileManagerPaneMutationCommandSupport.deleteSelection(in: self)
     }
 
     func showSelectedItemProperties() {
-        showItemProperties(nil)
+        guard let item = selectedRealPaneItems().first else { return }
+
+        switch item {
+        case let .filesystem(fileSystemItem):
+            let details = FileManagerItemPresentation.details(for: fileSystemItem)
+            szShowDetailsDialog(title: details.title,
+                                details: details.details,
+                                for: view.window)
+
+        case let .archive(archiveItem):
+            let details = FileManagerItemPresentation.details(for: archiveItem,
+                                                              entryProperties: archiveSession.currentLevel?.entryProperties ?? [])
+            szShowDetailsDialog(title: details.title,
+                                details: details.details,
+                                for: view.window)
+
+        case .parent:
+            return
+        }
     }
 
     func extractSelectionHere() {
@@ -793,22 +811,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         }
 
         return archiveURL.deletingPathExtension().lastPathComponent
-    }
-
-    func selectedOrDisplayedArchiveEntriesForExtraction() -> [ArchiveItem] {
-        archiveCoordinator.selectedOrDisplayedEntriesForExtraction(from: archiveItemsForSelectionOrDisplayedItems(),
-                                                                   quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
-    }
-
-    func pathPrefixToStripForCurrentExtraction(destinationURL: URL,
-                                               pathMode: SZPathMode,
-                                               eliminateDuplicates: Bool) -> String?
-    {
-        archiveCoordinator.pathPrefixToStripForExtraction(items: archiveItemsForSelectionOrDisplayedItems(),
-                                                          destinationURL: destinationURL,
-                                                          pathMode: pathMode,
-                                                          eliminateDuplicates: eliminateDuplicates,
-                                                          quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
     }
 
     func selectedItemNames(limit: Int? = nil) -> [String] {
@@ -1166,50 +1168,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         return false
     }
 
-    func extractSelectedArchiveItems(to destinationURL: URL,
-                                     session: SZOperationSession? = nil,
-                                     overwriteMode: SZOverwriteMode = .ask,
-                                     pathMode: SZPathMode = .currentPaths,
-                                     password: String? = nil,
-                                     preserveNtSecurityInfo: Bool = false,
-                                     eliminateDuplicates: Bool = false,
-                                     inheritDownloadedFileQuarantine: Bool = SZSettings.bool(.inheritDownloadedFileQuarantine)) throws
-    {
-        try archiveCoordinator.extractArchiveItems(selectedArchiveItems(),
-                                                   emptySelectionMessage: SZL10n.string("app.fileManager.error.selectArchiveItems"),
-                                                   to: destinationURL,
-                                                   session: session,
-                                                   overwriteMode: overwriteMode,
-                                                   pathMode: pathMode,
-                                                   password: password,
-                                                   preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                                   eliminateDuplicates: eliminateDuplicates,
-                                                   inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine,
-                                                   quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
-    }
-
-    func extractCurrentSelectionOrDisplayedArchiveItems(to destinationURL: URL,
-                                                        session: SZOperationSession? = nil,
-                                                        overwriteMode: SZOverwriteMode = .ask,
-                                                        pathMode: SZPathMode = .currentPaths,
-                                                        password: String? = nil,
-                                                        preserveNtSecurityInfo: Bool = false,
-                                                        eliminateDuplicates: Bool = false,
-                                                        inheritDownloadedFileQuarantine: Bool = SZSettings.bool(.inheritDownloadedFileQuarantine)) throws
-    {
-        try archiveCoordinator.extractArchiveItems(archiveItemsForSelectionOrDisplayedItems(),
-                                                   emptySelectionMessage: SZL10n.string("app.fileManager.error.noArchiveItemsToExtract"),
-                                                   to: destinationURL,
-                                                   session: session,
-                                                   overwriteMode: overwriteMode,
-                                                   pathMode: pathMode,
-                                                   password: password,
-                                                   preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                                   eliminateDuplicates: eliminateDuplicates,
-                                                   inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine,
-                                                   quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
-    }
-
     func prepareExtraction(to destinationURL: URL,
                            overwriteMode: SZOverwriteMode = .ask,
                            pathMode: SZPathMode = .currentPaths,
@@ -1228,10 +1186,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                  eliminateDuplicates: eliminateDuplicates,
                                                  inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine,
                                                  quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
-    }
-
-    func testCurrentArchive(session: SZOperationSession? = nil) throws {
-        try archiveCoordinator.testCurrentArchive(session: session)
     }
 
     /// Returns the current archive paired with an operation-gate lease, for use off the main actor.
@@ -1259,36 +1213,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                                  eliminateDuplicates: eliminateDuplicates,
                                                  inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine,
                                                  quarantineSourceArchivePath: quarantineSourceArchiveURLForExtraction()?.path)
-    }
-
-    // MARK: - Menu Validation
-
-    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        guard let command = Self.paneCommand(for: menuItem.action) else { return true }
-        return paneCapabilities.allows(command)
-    }
-
-    private static func paneCommand(for action: Selector?) -> FileManagerPaneCommand? {
-        switch action {
-        case #selector(openSelectedItem(_:)):
-            .openSelection
-        case #selector(openInArchiveViewer(_:)):
-            .openArchiveInViewer
-        case #selector(compressSelected(_:)):
-            .addSelectedItemsToArchive
-        case #selector(extractSelected(_:)), #selector(extractHere(_:)):
-            .extractSelectionOrArchive
-        case #selector(renameSelected(_:)):
-            .renameSelection
-        case #selector(deleteSelected(_:)):
-            .deleteSelection
-        case #selector(createFolderFromMenu(_:)):
-            .createFolderHere
-        case #selector(showItemProperties(_:)):
-            .showSelectedItemProperties
-        default:
-            nil
-        }
     }
 
     func paneItem(at row: Int) -> FileManagerPaneItem? {
@@ -1362,10 +1286,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
                                       selectedRowIndexes: tableView.selectedRowIndexes)
     }
 
-    private func selectedPaneItems() -> [FileManagerPaneItem] {
-        paneSelectionState.items
-    }
-
     private func selectedQuickLookRowsAndItems() -> [(row: Int, item: FileManagerPaneItem)] {
         paneSelectionState.rowsAndItems(excludingParent: true)
     }
@@ -1374,20 +1294,12 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         paneSelectionState.realItems
     }
 
-    private func selectedSingleRealPaneItem() -> FileManagerPaneItem? {
-        paneSelectionState.singleRealItem
-    }
-
     func selectedFileSystemItems() -> [FileSystemItem] {
         paneSelectionState.fileSystemItems
     }
 
     func selectedArchiveItems() -> [ArchiveItem] {
         paneSelectionState.archiveItems
-    }
-
-    private func paneItemsForSelectionOrDisplayedItems() -> [FileManagerPaneItem] {
-        paneSelectionState.paneItemsForSelectionOrDisplayedItems
     }
 
     private func archiveItemsForSelectionOrDisplayedItems() -> [ArchiveItem] {
@@ -1546,10 +1458,6 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
         archiveCoordinator.refreshAfterMutation(targetSubdir: targetSubdir,
                                                 selectingPaths: paths,
                                                 reopenBeforeListing: reopenBeforeListing)
-    }
-
-    private func refreshArchiveAfterMutation(selectingPath path: String? = nil) {
-        archiveCoordinator.refreshAfterMutation(selectingPath: path)
     }
 
     private func cancelPendingArchiveRefresh() {
@@ -2028,70 +1936,5 @@ extension FileManagerPaneController {
 
     func controlTextDidBeginEditing(_: Notification) {
         delegate?.paneDidBecomeActive(self)
-    }
-
-    @objc private func openSelectedItem(_: Any?) {
-        openSelection()
-    }
-
-    @objc private func openInArchiveViewer(_: Any?) {
-        guard let url = selectedArchiveCandidateURL() else { return }
-        delegate?.paneDidRequestOpenArchiveInNewWindow(url)
-    }
-
-    @objc private func compressSelected(_: Any?) {
-        if isInsideArchive, !supportsInPlaceArchiveMutation {
-            showReadOnlyArchiveMutationAlert(action: SZL10n.string("app.fileManager.action.addingFilesToArchive"))
-            return
-        }
-
-        // Forward to FileManagerWindowController
-        if let wc = view.window?.windowController as? FileManagerWindowController {
-            wc.addToArchive(nil)
-        }
-    }
-
-    @objc private func extractSelected(_: Any?) {
-        if let wc = view.window?.windowController as? FileManagerWindowController {
-            wc.extractArchive(nil)
-        }
-    }
-
-    @objc private func extractHere(_: Any?) {
-        extractSelectionHere()
-    }
-
-    @objc private func renameSelected(_: Any?) {
-        FileManagerPaneMutationCommandSupport.renameSelection(in: self)
-    }
-
-    @objc private func deleteSelected(_: Any?) {
-        FileManagerPaneMutationCommandSupport.deleteSelection(in: self)
-    }
-
-    @objc private func createFolderFromMenu(_: Any?) {
-        FileManagerPaneMutationCommandSupport.promptForFolderCreation(in: self)
-    }
-
-    @objc private func showItemProperties(_: Any?) {
-        guard let item = selectedRealPaneItems().first else { return }
-
-        switch item {
-        case let .filesystem(fileSystemItem):
-            let details = FileManagerItemPresentation.details(for: fileSystemItem)
-            szShowDetailsDialog(title: details.title,
-                                details: details.details,
-                                for: view.window)
-
-        case let .archive(archiveItem):
-            let details = FileManagerItemPresentation.details(for: archiveItem,
-                                                              entryProperties: archiveSession.currentLevel?.entryProperties ?? [])
-            szShowDetailsDialog(title: details.title,
-                                details: details.details,
-                                for: view.window)
-
-        case .parent:
-            return
-        }
     }
 }
