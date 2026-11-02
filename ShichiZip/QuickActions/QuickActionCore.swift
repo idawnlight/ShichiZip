@@ -6,7 +6,7 @@ enum ShichiZipQuickActionAppInfo {
     static var hostAppDisplayName: String {
         if let configuredName = (Bundle.main.object(forInfoDictionaryKey: hostAppDisplayNameKey) as? String)?
             .trimmingCharacters(in: .whitespacesAndNewlines),
-            !configuredName.isEmpty
+           !configuredName.isEmpty
         {
             return configuredName
         }

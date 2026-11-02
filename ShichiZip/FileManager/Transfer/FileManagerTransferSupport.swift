@@ -309,11 +309,7 @@ enum FileOperationDestinationResolver {
 
         for componentCount in stride(from: pathComponents.count, through: 1, by: -1) {
             let prefixPath = NSString.path(withComponents: Array(pathComponents.prefix(componentCount)))
-            guard let itemKind = FileManager.default.szExistingItemKind(at: URL(fileURLWithPath: prefixPath)) else {
-                continue
-            }
-
-            guard itemKind != .directory else {
+            guard let itemKind = FileManager.default.szExistingItemKind(at: URL(fileURLWithPath: prefixPath)), itemKind != .directory else {
                 continue
             }
 
@@ -790,12 +786,10 @@ final class FileManagerPaneTransferCoordinator {
 
         guard !operation.isEmpty else { return false }
         let urls = FileOperationDropResolver.fileURLs(in: info.draggingPasteboard)
-        guard !urls.isEmpty else { return false }
-
-        guard FileManagerTransferDestinationValidation.canMoveOrCopyFileSystemItems(urls,
-                                                                                    to: destinationDirectory,
-                                                                                    operation: operation,
-                                                                                    presentingIn: host.transferLocation.presentationWindow)
+        guard !urls.isEmpty, FileManagerTransferDestinationValidation.canMoveOrCopyFileSystemItems(urls,
+                                                                                                   to: destinationDirectory,
+                                                                                                   operation: operation,
+                                                                                                   presentingIn: host.transferLocation.presentationWindow)
         else {
             return false
         }
@@ -858,33 +852,16 @@ final class FileManagerPaneTransferCoordinator {
                               operationTitle: String? = nil,
                               onSuccess: (@MainActor () -> Void)? = nil) -> Bool
     {
-        guard !urls.isEmpty else {
-            Self.removeCleanupDirectory(cleanupDirectory)
-            return false
-        }
-
-        guard FileManagerTransferDestinationValidation.canMoveOrCopyFileSystemItemsToArchive(urls,
-                                                                                             archiveURL: target.archiveURL,
-                                                                                             operation: operation,
-                                                                                             presentingIn: parentWindow ?? host.transferLocation.presentationWindow)
+        guard !urls.isEmpty, FileManagerTransferDestinationValidation.canMoveOrCopyFileSystemItemsToArchive(urls,
+                                                                                                            archiveURL: target.archiveURL,
+                                                                                                            operation: operation,
+                                                                                                            presentingIn: parentWindow ?? host.transferLocation.presentationWindow)
         else {
             Self.removeCleanupDirectory(cleanupDirectory)
             return false
         }
 
-        guard requiresConfirmation else {
-            beginDroppedArchiveTransfer(urls,
-                                        to: target,
-                                        operation: operation,
-                                        sourceHost: sourceHost,
-                                        host: host,
-                                        cleanupDirectory: cleanupDirectory,
-                                        operationTitle: operationTitle,
-                                        onSuccess: onSuccess)
-            return true
-        }
-
-        guard let window = parentWindow ?? host.transferLocation.presentationWindow else {
+        guard requiresConfirmation, let window = parentWindow ?? host.transferLocation.presentationWindow else {
             beginDroppedArchiveTransfer(urls,
                                         to: target,
                                         operation: operation,
@@ -907,13 +884,9 @@ final class FileManagerPaneTransferCoordinator {
                             confirmTitle: confirmTitle)
         { [weak self, weak host, weak sourceHost] confirmed in
             guard let self,
-                  let host
+                  let host,
+                  confirmed
             else {
-                Self.removeCleanupDirectory(cleanupDirectory)
-                return
-            }
-
-            guard confirmed else {
                 Self.removeCleanupDirectory(cleanupDirectory)
                 return
             }
@@ -956,13 +929,9 @@ final class FileManagerPaneTransferCoordinator {
                                            dropOperation: NSTableView.DropOperation,
                                            host: any FileManagerPaneTransferHost) -> FileManagerPaneArchiveTransferTarget?
     {
-        guard let target = host.transferCurrentArchiveMutationTarget() else {
-            return nil
-        }
-
-        guard let targetSubdir = FileOperationDropTargetResolver.archiveDestinationSubdir(currentSubdir: target.subdir,
-                                                                                          dropOperation: dropOperation,
-                                                                                          item: host.transferItem(at: row)?.archiveItem)
+        guard let target = host.transferCurrentArchiveMutationTarget(), let targetSubdir = FileOperationDropTargetResolver.archiveDestinationSubdir(currentSubdir: target.subdir,
+                                                                                                                                                    dropOperation: dropOperation,
+                                                                                                                                                    item: host.transferItem(at: row)?.archiveItem)
         else {
             return nil
         }

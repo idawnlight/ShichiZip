@@ -555,8 +555,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     private func applyPendingEvenSplitLayoutIfNeeded() {
-        guard pendingEvenSplitLayout, isDualPane else { return }
-        guard splitView.arrangedSubviews.count > 1 else { return }
+        guard pendingEvenSplitLayout, isDualPane, splitView.arrangedSubviews.count > 1 else { return }
 
         window?.contentView?.layoutSubtreeIfNeeded()
         splitView.layoutSubtreeIfNeeded()
@@ -852,9 +851,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 return
             }
 
-            guard snapshot.capabilities.canCopySelection else { return }
-            guard let destinationSelection = await promptForFileOperationDestination(forMove: false,
-                                                                                     sourcePane: pane)
+            guard snapshot.capabilities.canCopySelection, let destinationSelection = await promptForFileOperationDestination(forMove: false,
+                                                                                                                             sourcePane: pane)
             else { return }
             let unresolvedDestinationTarget = destinationSelection.target
 
@@ -893,10 +891,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
 
         let sourceURLs = snapshot.selection.fileURLs
-        guard !sourceURLs.isEmpty else { return }
-
-        guard let destinationSelection = await promptForFileOperationDestination(forMove: move,
-                                                                                 sourcePane: pane)
+        guard !sourceURLs.isEmpty, let destinationSelection = await promptForFileOperationDestination(forMove: move,
+                                                                                                      sourcePane: pane)
         else { return }
         let destinationTarget = destinationSelection.target
         guard validateTransferDestination(destinationTarget,

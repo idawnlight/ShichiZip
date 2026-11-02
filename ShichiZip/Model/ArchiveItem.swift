@@ -122,8 +122,7 @@ struct ArchiveItem: Sendable {
             for outputURL in itemOutputURLs {
                 let standardizedURL = outputURL.standardizedFileURL
                 // Never return paths that escape the destination directory.
-                guard isURL(standardizedURL, containedIn: standardizedDestination) else { continue }
-                guard seenPaths.insert(standardizedURL.path).inserted else { continue }
+                guard isURL(standardizedURL, containedIn: standardizedDestination), seenPaths.insert(standardizedURL.path).inserted else { continue }
                 outputURLs.append(standardizedURL)
             }
         }

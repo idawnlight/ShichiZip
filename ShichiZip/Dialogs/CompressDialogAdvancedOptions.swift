@@ -96,7 +96,7 @@ extension CompressDialogController {
         var defaultTimePrecision = info?.defaultTimePrecision ?? .automatic
         if defaultTimePrecision.rawValue < 0
             || !supportedTimePrecisions.contains(where: { $0.rawValue == defaultTimePrecision.rawValue }),
-            let firstSupportedTimePrecision = supportedTimePrecisions.first
+           let firstSupportedTimePrecision = supportedTimePrecisions.first
         {
             defaultTimePrecision = firstSupportedTimePrecision
         }

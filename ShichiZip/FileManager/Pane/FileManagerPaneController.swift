@@ -450,10 +450,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func autoRefreshIfPossible() {
-        guard isViewLoaded else { return }
-        guard FileManagerViewPreferences.autoRefreshEnabled else { return }
-        guard !isInsideArchive else { return }
-        guard directoryCoordinator.consumeDirectoryChange() else { return }
+        guard isViewLoaded, FileManagerViewPreferences.autoRefreshEnabled, !isInsideArchive, directoryCoordinator.consumeDirectoryChange() else { return }
         guard let eventCoordinator else {
             autoRefreshCurrentDirectoryIfNeeded()
             return
@@ -919,8 +916,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
 
     @discardableResult
     func revealFileSystemItemURLs(_ urls: [URL]) async -> Bool {
-        guard let navigationGeneration = beginNavigation() else { return false }
-        guard let target = FileManagerFileSystemNavigation.revealTarget(for: urls) else { return false }
+        guard let navigationGeneration = beginNavigation(), let target = FileManagerFileSystemNavigation.revealTarget(for: urls) else { return false }
 
         if isInsideArchive {
             guard let transitionToken = beginNavigationTransition(navigationGeneration) else {
@@ -1618,9 +1614,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     @objc private func singleClickRow(_: Any?) {
-        guard SZSettings.bool(.singleClickOpen) else { return }
-        guard tableView.selectedRowIndexes.count <= 1 else { return }
-        guard let event = NSApp.currentEvent else { return }
+        guard SZSettings.bool(.singleClickOpen), tableView.selectedRowIndexes.count <= 1, let event = NSApp.currentEvent else { return }
 
         let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
         guard modifiers.isEmpty else { return }
@@ -1641,8 +1635,7 @@ class FileManagerPaneController: NSViewController, NSTableViewDataSource, NSTabl
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        guard let tableColumn else { return nil }
-        guard let paneItem = paneItem(at: row) else { return nil }
+        guard let tableColumn, let paneItem = paneItem(at: row) else { return nil }
 
         return FileManagerPaneTableCellRenderer.view(in: tableView,
                                                      for: paneItem,

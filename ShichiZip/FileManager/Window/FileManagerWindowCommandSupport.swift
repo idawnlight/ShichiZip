@@ -537,11 +537,7 @@ enum FileManagerClipboardSupport {
         guard FileManagerTransferDestinationValidation.canMoveOrCopyFileSystemItems(sourceURLs,
                                                                                     to: destinationURL,
                                                                                     operation: .copy,
-                                                                                    presentingIn: parentWindow)
-        else {
-            return
-        }
-        guard let parentWindow else { return }
+                                                                                    presentingIn: parentWindow), let parentWindow else { return }
 
         Task { @MainActor [weak pane, weak parentWindow] in
             guard let pane, let parentWindow else { return }

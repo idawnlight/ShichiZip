@@ -34,9 +34,7 @@ enum FileManagerPaneNavigationCommands {
         Task { @MainActor [weak pane] in
             guard let pane else { return }
             defer { pane.endNavigationTransition(transitionToken) }
-            guard pane.isCurrentNavigation(navigationGeneration) else { return }
-            guard await pane.closeAllArchives(showError: true) else { return }
-            guard pane.isCurrentNavigation(navigationGeneration) else { return }
+            guard pane.isCurrentNavigation(navigationGeneration), await pane.closeAllArchives(showError: true), pane.isCurrentNavigation(navigationGeneration) else { return }
             pane.loadDirectory(url,
                                budget: FileManagerPaneDirectoryCoordinator.navigationBudget,
                                expectedNavigationGeneration: navigationGeneration)
@@ -231,13 +229,8 @@ enum FileManagerPaneNavigationCommands {
         Task { @MainActor [weak pane] in
             guard let pane else { return }
             defer { pane.endNavigationTransition(transitionToken) }
-            guard pane.isCurrentNavigation(navigationGeneration) else { return }
-            guard await pane.closeArchiveLevel(level,
-                                               showError: true)
-            else {
-                return
-            }
-            guard pane.isCurrentNavigation(navigationGeneration) else { return }
+            guard pane.isCurrentNavigation(navigationGeneration), await pane.closeArchiveLevel(level,
+                                                                                               showError: true), pane.isCurrentNavigation(navigationGeneration) else { return }
 
             if !pane.isInsideArchive {
                 pane.loadDirectory(

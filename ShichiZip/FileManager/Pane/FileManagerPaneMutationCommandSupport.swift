@@ -166,8 +166,7 @@ enum FileManagerPaneMutationCommandSupport {
                          initialValue: item.name,
                          confirmTitle: SZL10n.string("menu.rename"))
         { [weak pane] value in
-            guard let newName = value else { return }
-            guard !newName.isEmpty, newName != item.name else { return }
+            guard let newName = value, !newName.isEmpty, newName != item.name else { return }
             let newURL = item.url.deletingLastPathComponent().appendingPathComponent(newName)
             do {
                 try FileManager.default.moveItem(at: item.url, to: newURL)
@@ -188,9 +187,7 @@ enum FileManagerPaneMutationCommandSupport {
         }
 
         let paths = pane.selectedFilePaths()
-        guard !paths.isEmpty else { return }
-
-        guard let window = pane.view.window else { return }
+        guard !paths.isEmpty, let window = pane.view.window else { return }
         szBeginConfirmation(on: window,
                             title: SZL10n.string("app.fileManager.deleteItemsTitle", paths.count),
                             message: SZL10n.string("app.fileManager.deleteItemsMessage"),
@@ -229,9 +226,8 @@ enum FileManagerPaneMutationCommandSupport {
                          confirmTitle: SZL10n.string("menu.rename"))
         { [weak pane] value in
             guard let pane,
-                  let newName = value
-            else { return }
-            guard !newName.isEmpty, newName != item.name else { return }
+                  let newName = value,
+                  !newName.isEmpty, newName != item.name else { return }
 
             let renamedPath = item.parentPath.isEmpty ? newName : item.parentPath + "/" + newName
             Task { @MainActor [weak pane] in

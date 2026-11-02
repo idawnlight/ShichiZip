@@ -287,12 +287,8 @@ final class FileManagerPaneArchiveCoordinator {
                         subdir: String) -> (archive: SZArchive, subdir: String)?
     {
         guard let level = archiveSession.currentLevel,
-              URL(fileURLWithPath: level.archivePath).standardizedFileURL == archiveURL.standardizedFileURL
-        else {
-            return nil
-        }
-
-        guard let target = archiveSession.mutationTarget(for: level,
+              URL(fileURLWithPath: level.archivePath).standardizedFileURL == archiveURL.standardizedFileURL,
+              let target = archiveSession.mutationTarget(for: level,
                                                          subdir: subdir,
                                                          hasConflictingNestedArchiveInstance: hasConflictingNestedArchiveInstance)
         else {
@@ -367,10 +363,7 @@ final class FileManagerPaneArchiveCoordinator {
     }
 
     func currentArchiveForTest() throws -> FileManagerLeasedArchive {
-        guard let level = archiveSession.currentLevel else {
-            throw operationError(SZL10n.string("app.fileManager.error.noArchiveOpen"))
-        }
-        guard let lease = level.operationGate.acquireLease() else {
+        guard let level = archiveSession.currentLevel, let lease = level.operationGate.acquireLease() else {
             throw operationError(SZL10n.string("app.fileManager.error.noArchiveOpen"))
         }
         return FileManagerLeasedArchive(archive: level.archive,
@@ -629,9 +622,7 @@ final class FileManagerPaneArchiveCoordinator {
 
         cancelPendingReload()
 
-        guard let level = archiveSession.currentLevel else { return }
-        guard index == archiveSession.count - 1 else { return }
-        guard let lease = level.operationGate.acquireLease() else { return }
+        guard let level = archiveSession.currentLevel, index == archiveSession.count - 1, let lease = level.operationGate.acquireLease() else { return }
 
         archiveRefreshGeneration += 1
         let generation = archiveRefreshGeneration
@@ -656,9 +647,7 @@ final class FileManagerPaneArchiveCoordinator {
                                           subdir: subdir,
                                           selectingPaths: normalizedPaths)
             } catch {
-                guard !Task.isCancelled else { return }
-                guard !szIsUserCancellation(error) else { return }
-                guard self?.archiveRefreshGeneration == generation else { return }
+                guard !Task.isCancelled, !szIsUserCancellation(error), self?.archiveRefreshGeneration == generation else { return }
                 self?.host?.showErrorAlert(error)
             }
         }
@@ -672,10 +661,8 @@ final class FileManagerPaneArchiveCoordinator {
                                      subdir: String,
                                      selectingPaths paths: [String])
     {
-        guard archiveRefreshGeneration == generation else { return }
-        guard let level = archiveSession.level(at: index) else { return }
-
-        guard level.archive === archive,
+        guard archiveRefreshGeneration == generation, let level = archiveSession.level(at: index),
+              level.archive === archive,
               level.archivePath == archivePath
         else {
             return

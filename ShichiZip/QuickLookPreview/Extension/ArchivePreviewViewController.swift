@@ -410,12 +410,9 @@ extension ArchivePreviewViewController: NSOutlineViewDataSource, NSOutlineViewDe
                      item: Any) -> NSView?
     {
         guard let tableColumn,
-              let column = column(for: tableColumn)
+              let column = column(for: tableColumn),
+              let node = node(for: item)
         else {
-            return nil
-        }
-
-        guard let node = node(for: item) else {
             return nil
         }
 

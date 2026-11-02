@@ -35,9 +35,9 @@ enum FileManagerViewPreferences {
 
     static var isListViewInfoPersistenceDisabled: Bool {
         #if DEBUG
-            return getenv(disableListViewInfoPersistenceEnvironmentKey) != nil
+            getenv(disableListViewInfoPersistenceEnvironmentKey) != nil
         #else
-            return false
+            false
         #endif
     }
 

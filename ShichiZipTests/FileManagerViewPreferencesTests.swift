@@ -1,10 +1,10 @@
 import AppKit
+import XCTest
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
     @testable import ShichiZip
 #endif
-import XCTest
 
 final class FileManagerViewPreferencesTests: XCTestCase {
     func testListViewInfoRoundTripsPerFolderType() throws {

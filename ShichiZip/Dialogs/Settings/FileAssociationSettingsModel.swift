@@ -236,7 +236,7 @@ final class FileAssociationSettingsModel {
         guard let currentBundleIdentifier,
               !currentBundleIdentifier.isEmpty,
               let candidateIdentifier = Bundle(url: normalizedURL)?.bundleIdentifier?
-              .trimmingCharacters(in: .whitespacesAndNewlines),
+                  .trimmingCharacters(in: .whitespacesAndNewlines),
               !candidateIdentifier.isEmpty
         else {
             return false
@@ -249,7 +249,7 @@ final class FileAssociationSettingsModel {
         let normalizedURL = applicationURL.resolvingSymlinksInPath().standardizedFileURL
         if let bundleIdentifier = Bundle(url: normalizedURL)?.bundleIdentifier?
             .trimmingCharacters(in: .whitespacesAndNewlines),
-            !bundleIdentifier.isEmpty
+           !bundleIdentifier.isEmpty
         {
             return "bundle:\(bundleIdentifier)"
         }

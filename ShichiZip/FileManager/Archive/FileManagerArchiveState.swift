@@ -180,15 +180,7 @@ struct FileManagerArchiveLevel {
     }
 
     func supportsInPlaceMutation(hasConflictingNestedArchiveInstance: (FileManagerNestedArchiveIdentity) -> Bool) -> Bool {
-        guard !operationGate.hasActiveLeases else {
-            return false
-        }
-
-        guard temporaryDirectory == nil || nestedWriteBackInfo != nil else {
-            return false
-        }
-
-        guard archive.canWrite else {
+        guard !operationGate.hasActiveLeases, temporaryDirectory == nil || nestedWriteBackInfo != nil, archive.canWrite else {
             return false
         }
 

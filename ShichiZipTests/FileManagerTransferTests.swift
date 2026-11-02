@@ -1,11 +1,11 @@
 import AppKit
 import Darwin
+import XCTest
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
     @testable import ShichiZip
 #endif
-import XCTest
 
 @MainActor
 final class FileSystemTransferTests: XCTestCase {

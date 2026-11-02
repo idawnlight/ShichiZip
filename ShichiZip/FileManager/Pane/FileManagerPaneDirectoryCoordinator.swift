@@ -398,15 +398,12 @@ final class FileManagerPaneDirectoryCoordinator {
             }
 
         case let .autoRefresh(selectionState):
-            guard case let .success(snapshot) = result, host?.isInsideArchive == false else { return }
-            guard snapshot.url.standardizedFileURL == currentDirectory.standardizedFileURL else { return }
-            guard stableSnapshotItems(snapshot.items) != stableSnapshotItems(allItems) else { return }
+            guard case let .success(snapshot) = result, host?.isInsideArchive == false, snapshot.url.standardizedFileURL == currentDirectory.standardizedFileURL, stableSnapshotItems(snapshot.items) != stableSnapshotItems(allItems) else { return }
             applyDirectorySnapshot(snapshot, recordVisit: false)
             restoreSelectionState(selectionState)
 
         case let .refresh(selectionState):
-            guard case let .success(snapshot) = result, host?.isInsideArchive == false else { return }
-            guard snapshot.url.standardizedFileURL == currentDirectory.standardizedFileURL else { return }
+            guard case let .success(snapshot) = result, host?.isInsideArchive == false, snapshot.url.standardizedFileURL == currentDirectory.standardizedFileURL else { return }
             applyDirectorySnapshot(snapshot, recordVisit: false)
             restoreSelectionState(selectionState)
         }

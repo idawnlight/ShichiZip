@@ -753,11 +753,11 @@ class BenchmarkWindowController: NSWindowController, NSWindowDelegate {
 
     private static func arch() -> String {
         #if arch(arm64)
-            return "Apple Silicon (arm64)"
+            "Apple Silicon (arm64)"
         #elseif arch(x86_64)
-            return "Intel (x86_64)"
+            "Intel (x86_64)"
         #else
-            return "Unknown"
+            "Unknown"
         #endif
     }
 

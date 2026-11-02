@@ -1,10 +1,10 @@
 import Foundation
+import XCTest
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
     @testable import ShichiZip
 #endif
-import XCTest
 
 final class FileManagerArchiveListingTests: XCTestCase {
     /// Zstandard frame containing "payload" with no frame content-size field.

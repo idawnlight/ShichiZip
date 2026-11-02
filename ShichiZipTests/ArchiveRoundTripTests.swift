@@ -4,13 +4,13 @@
 // cancellation checks.
 
 import os
+import XCTest
 
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
     @testable import ShichiZip
 #endif
-import XCTest
 
 final class ArchiveRoundTripTests: XCTestCase {
     private static let password = "round-trip-pw"

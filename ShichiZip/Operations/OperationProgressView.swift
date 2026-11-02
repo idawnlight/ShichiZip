@@ -244,15 +244,15 @@ struct OperationProgressView: View {
     private func issueSymbol(_ stage: SZArchiveUpdateIssueStage) -> String {
         switch stage {
         case .scan:
-            return "magnifyingglass"
+            "magnifyingglass"
         case .open:
-            return "doc.badge.ellipsis"
+            "doc.badge.ellipsis"
         case .read:
-            return "doc.text.magnifyingglass"
+            "doc.text.magnifyingglass"
         case .update:
-            return "arrow.triangle.2.circlepath"
+            "arrow.triangle.2.circlepath"
         @unknown default:
-            return "exclamationmark.circle"
+            "exclamationmark.circle"
         }
     }
 }

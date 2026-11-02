@@ -57,7 +57,7 @@ enum FileManagerDirectoryListing {
         let isSymbolicLink = try url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink ?? false
         guard isSymbolicLink,
               let resolvedIsDirectory = try url.resolvingSymlinksInPath()
-              .resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
+                  .resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
               resolvedIsDirectory
         else {
             return url

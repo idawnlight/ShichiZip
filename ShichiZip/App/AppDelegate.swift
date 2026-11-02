@@ -127,8 +127,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, FileManagerDocumentOpenRouti
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_: NSApplication) -> Bool {
-        guard SZSettings.bool(.quitAfterLastWindowClosed) else { return false }
-        guard !launchOpenCoordinator.shouldKeepProcessAlive else { return false }
+        guard SZSettings.bool(.quitAfterLastWindowClosed), !launchOpenCoordinator.shouldKeepProcessAlive else { return false }
         if #available(macOS 26.0, *),
            lastWindowCloseTerminationDeferrer.deferTerminationUntilCloseAnimationFinishes()
         {

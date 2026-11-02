@@ -632,10 +632,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     private func supportsSFX(for format: FormatOption?,
                              method: MethodOption?) -> Bool
     {
-        guard let format else {
-            return false
-        }
-        guard format.codecName.caseInsensitiveCompare("7z") == .orderedSame,
+        guard let format,
+              format.codecName.caseInsensitiveCompare("7z") == .orderedSame,
               Self.hasBundledWindowsSfxModule()
         else {
             return false

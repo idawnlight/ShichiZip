@@ -487,16 +487,14 @@ final class FileManagerArchiveItemWorkflowService {
         guard let parentTarget = context.mutationTarget else {
             return nil
         }
-        guard let parentItemReference = item.reference else {
-            throw extractionPreparationError()
-        }
-        guard let parentArchiveURL = context.backingArchiveURL
-            ?? parentTarget.topLevelArchiveURL,
-            let parentArchiveFingerprint =
-            FileManagerArchiveFileFingerprint.captureIfPossible(
-                for: parentArchiveURL,
-                fileManager: fileManager,
-            )
+        guard let parentItemReference = item.reference,
+              let parentArchiveURL = context.backingArchiveURL
+              ?? parentTarget.topLevelArchiveURL,
+              let parentArchiveFingerprint =
+              FileManagerArchiveFileFingerprint.captureIfPossible(
+                  for: parentArchiveURL,
+                  fileManager: fileManager,
+              )
         else {
             throw extractionPreparationError()
         }
