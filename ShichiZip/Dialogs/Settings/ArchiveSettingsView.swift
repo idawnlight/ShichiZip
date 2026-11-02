@@ -41,6 +41,11 @@ struct ArchiveSettingsView: View {
                 SZL10n.string("app.extract.inheritQuarantine"),
                 isOn: store.boolBinding(.inheritDownloadedFileQuarantine),
             )
+            Toggle(
+                SZL10n.string("app.extract.archiveNamedFolder"),
+                isOn: store.boolBinding(.extractIntoArchiveNamedFolder),
+            )
+            .accessibilityIdentifier("settings.extractArchiveNamedFolder")
 
             Divider()
 

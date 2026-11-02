@@ -54,6 +54,7 @@
 "app.deleteTempFiles.loading" = "正在加载临时文件…";
 "app.deleteTempFiles.title" = "删除临时文件";
 
+"app.extract.archiveNamedFolder" = "解压到与压缩包同名的文件夹";
 "app.extract.createSeparateFolder" = "创建独立的目标文件夹";
 "app.extract.currentPaths" = "当前路径";
 "app.extract.inheritQuarantine" = "继承已下载文件的隔离属性（如果适用）";

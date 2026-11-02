@@ -28,6 +28,11 @@ enum SZSettingsMigrations {
             SZSettingsKey.launchOpenRevealAfterExtract.rawValue,
         ],
         oldKey: "RevealAfterExtract")
+
+        // The Extract dialog's "separate folder" checkbox used to be a per-dialog preference.
+        // It is now the user-visible setting that also drives the dialog default.
+        migrator.migrate(newKey: SZSettingsKey.extractIntoArchiveNamedFolder.rawValue,
+                         oldKey: "FileManager.ExtractSplitDestination")
     }
 }
 

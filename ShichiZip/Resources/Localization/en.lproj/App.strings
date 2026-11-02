@@ -54,6 +54,7 @@
 "app.deleteTempFiles.loading" = "Loading temporary files…";
 "app.deleteTempFiles.title" = "Delete Temporary Files";
 
+"app.extract.archiveNamedFolder" = "Extract into a folder named after the archive";
 "app.extract.createSeparateFolder" = "Create a separate destination folder";
 "app.extract.currentPaths" = "Current Paths";
 "app.extract.inheritQuarantine" = "Inherit quarantine from downloaded file (if applicable)";
