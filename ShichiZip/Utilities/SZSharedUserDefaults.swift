@@ -31,12 +31,9 @@ enum SZSharedUserDefaults {
     static func migrateStandardDefaultsIfNeeded() {
         guard let appGroupIdentifier,
               let sharedDefaults,
-              let appDefaultsDomainName = Bundle.main.bundleIdentifier
+              let appDefaultsDomainName = Bundle.main.bundleIdentifier,
+              sharedDefaults.integer(forKey: migrationVersionKey) < currentMigrationVersion
         else {
-            return
-        }
-
-        guard sharedDefaults.integer(forKey: migrationVersionKey) < currentMigrationVersion else {
             return
         }
 
@@ -75,5 +72,33 @@ enum SZSharedUserDefaults {
         }
 
         return migratedCount
+    }
+}
+
+extension UserDefaults {
+    func bool(forKey key: String, default defaultValue: Bool) -> Bool {
+        object(forKey: key) == nil ? defaultValue : bool(forKey: key)
+    }
+
+    func integer(forKey key: String, default defaultValue: Int) -> Int {
+        object(forKey: key) == nil ? defaultValue : integer(forKey: key)
+    }
+
+    func double(forKey key: String, default defaultValue: Double) -> Double {
+        object(forKey: key) == nil ? defaultValue : double(forKey: key)
+    }
+
+    func enumValue<Value: RawRepresentable>(forKey key: String, default defaultValue: Value) -> Value
+        where Value.RawValue == Int
+    {
+        guard object(forKey: key) != nil else { return defaultValue }
+        return Value(rawValue: integer(forKey: key)) ?? defaultValue
+    }
+
+    func enumValue<Value: RawRepresentable>(forKey key: String, default defaultValue: Value) -> Value
+        where Value.RawValue == String
+    {
+        guard let rawValue = string(forKey: key) else { return defaultValue }
+        return Value(rawValue: rawValue) ?? defaultValue
     }
 }

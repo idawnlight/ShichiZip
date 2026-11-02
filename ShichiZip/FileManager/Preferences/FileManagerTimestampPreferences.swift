@@ -61,12 +61,11 @@ enum FileManagerTimestampPreferences {
     }
 
     static func usesSystemTimestampFormat(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> Bool {
-        defaults.object(forKey: systemFormatKey) == nil || defaults.bool(forKey: systemFormatKey)
+        defaults.bool(forKey: systemFormatKey, default: true)
     }
 
     static func displayLevel(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> DisplayLevel {
-        guard defaults.object(forKey: displayLevelKey) != nil else { return .minute }
-        return DisplayLevel(rawValue: defaults.integer(forKey: displayLevelKey)) ?? .minute
+        defaults.enumValue(forKey: displayLevelKey, default: .minute)
     }
 
     static func makeListDateFormatter(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> DateFormatter {

@@ -1,53 +1,18 @@
 import AppKit
 
-enum FileManagerPreferenceStore {
-    static var defaults: UserDefaults {
-        SZSharedUserDefaults.defaults
-    }
-
-    static func bool(forKey key: String,
-                     defaultValue: Bool,
-                     defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> Bool
-    {
-        guard defaults.object(forKey: key) != nil else {
-            return defaultValue
-        }
-        return defaults.bool(forKey: key)
-    }
-
-    static func integer(forKey key: String, defaultValue: Int) -> Int {
-        guard defaults.object(forKey: key) != nil else {
-            return defaultValue
-        }
-        return defaults.integer(forKey: key)
-    }
-
-    static func string(forKey key: String) -> String? {
-        defaults.string(forKey: key)
-    }
-
-    static func set(_ value: Bool, forKey key: String) {
-        defaults.set(value, forKey: key)
-    }
-
-    static func set(_ value: Int, forKey key: String) {
-        defaults.set(value, forKey: key)
-    }
-
-    static func set(_ value: String, forKey key: String) {
-        defaults.set(value, forKey: key)
-    }
+private var sharedDefaults: UserDefaults {
+    SZSharedUserDefaults.defaults
 }
 
 enum FileManagerPanePreferences {
     private static let dualPaneKey = "FileManager.IsDualPane"
 
     static var showsDualPane: Bool {
-        FileManagerPreferenceStore.bool(forKey: dualPaneKey, defaultValue: false)
+        sharedDefaults.bool(forKey: dualPaneKey)
     }
 
     static func setShowsDualPane(_ value: Bool) {
-        FileManagerPreferenceStore.set(value, forKey: dualPaneKey)
+        sharedDefaults.set(value, forKey: dualPaneKey)
     }
 }
 
@@ -62,19 +27,17 @@ enum FileManagerWindowPreferences {
         remembersWindowFrame()
     }
 
-    static func remembersWindowFrame(defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> Bool {
-        FileManagerPreferenceStore.bool(forKey: rememberWindowFrameKey,
-                                        defaultValue: false,
-                                        defaults: defaults)
+    static func remembersWindowFrame(defaults: UserDefaults = sharedDefaults) -> Bool {
+        defaults.bool(forKey: rememberWindowFrameKey)
     }
 
     static func setRemembersWindowFrame(_ value: Bool,
-                                        defaults: UserDefaults = FileManagerPreferenceStore.defaults)
+                                        defaults: UserDefaults = sharedDefaults)
     {
         defaults.set(value, forKey: rememberWindowFrameKey)
     }
 
-    static func savedWindowFrame(defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> NSRect? {
+    static func savedWindowFrame(defaults: UserDefaults = sharedDefaults) -> NSRect? {
         guard let storedFrame = defaults.string(forKey: savedWindowFrameKey) else { return nil }
         let frame = NSRectFromString(storedFrame)
         guard isValidWindowFrame(frame) else { return nil }
@@ -82,20 +45,20 @@ enum FileManagerWindowPreferences {
     }
 
     static func setSavedWindowFrame(_ frame: NSRect,
-                                    defaults: UserDefaults = FileManagerPreferenceStore.defaults)
+                                    defaults: UserDefaults = sharedDefaults)
     {
         guard isValidWindowFrame(frame) else { return }
         defaults.set(NSStringFromRect(frame), forKey: savedWindowFrameKey)
     }
 
-    static func resetSavedWindowFrame(defaults: UserDefaults = FileManagerPreferenceStore.defaults) {
+    static func resetSavedWindowFrame(defaults: UserDefaults = sharedDefaults) {
         defaults.removeObject(forKey: savedWindowFrameKey)
     }
 
     @discardableResult
     @MainActor
     static func applySavedWindowFrameIfNeeded(to window: NSWindow,
-                                              defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> Bool
+                                              defaults: UserDefaults = sharedDefaults) -> Bool
     {
         guard remembersWindowFrame(defaults: defaults),
               let savedFrame = savedWindowFrame(defaults: defaults)
@@ -182,40 +145,35 @@ enum FileManagerToolbarPreferences {
     private static let styleKey = "FileManager.ToolbarStyle"
 
     static var showsArchiveToolbar: Bool {
-        FileManagerPreferenceStore.bool(forKey: archiveToolbarKey, defaultValue: true)
+        sharedDefaults.bool(forKey: archiveToolbarKey, default: true)
     }
 
     static var showsStandardToolbar: Bool {
-        FileManagerPreferenceStore.bool(forKey: standardToolbarKey, defaultValue: true)
+        sharedDefaults.bool(forKey: standardToolbarKey, default: true)
     }
 
     static var showsButtonText: Bool {
-        FileManagerPreferenceStore.bool(forKey: showTextKey, defaultValue: true)
+        sharedDefaults.bool(forKey: showTextKey, default: true)
     }
 
     static var style: Style {
-        guard let rawValue = FileManagerPreferenceStore.string(forKey: styleKey),
-              let style = Style(rawValue: rawValue)
-        else {
-            return .expanded
-        }
-        return style
+        sharedDefaults.enumValue(forKey: styleKey, default: .expanded)
     }
 
     static func setShowsArchiveToolbar(_ value: Bool) {
-        FileManagerPreferenceStore.set(value, forKey: archiveToolbarKey)
+        sharedDefaults.set(value, forKey: archiveToolbarKey)
     }
 
     static func setShowsStandardToolbar(_ value: Bool) {
-        FileManagerPreferenceStore.set(value, forKey: standardToolbarKey)
+        sharedDefaults.set(value, forKey: standardToolbarKey)
     }
 
     static func setShowsButtonText(_ value: Bool) {
-        FileManagerPreferenceStore.set(value, forKey: showTextKey)
+        sharedDefaults.set(value, forKey: showTextKey)
     }
 
     static func setStyle(_ style: Style) {
-        FileManagerPreferenceStore.set(style.rawValue, forKey: styleKey)
+        sharedDefaults.set(style.rawValue, forKey: styleKey)
     }
 }
 
@@ -237,7 +195,7 @@ extension FileManagerViewPreferences {
     }
 
     static var autoRefreshEnabled: Bool {
-        FileManagerPreferenceStore.bool(forKey: autoRefreshKey, defaultValue: false)
+        sharedDefaults.bool(forKey: autoRefreshKey)
     }
 
     static func setUsesUTCTimestamps(_ value: Bool) {
@@ -258,20 +216,20 @@ extension FileManagerViewPreferences {
 
     static func timeMenuPreviewTitle(for level: TimestampDisplayLevel,
                                      referenceDate: Date = Date(),
-                                     defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> String
+                                     defaults: UserDefaults = sharedDefaults) -> String
     {
         FileManagerTimestampPreferences.timeMenuPreviewTitle(for: level,
                                                              referenceDate: referenceDate,
                                                              defaults: defaults)
     }
 
-    static func makeListDateFormatter(defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> DateFormatter {
+    static func makeListDateFormatter(defaults: UserDefaults = sharedDefaults) -> DateFormatter {
         FileManagerTimestampPreferences.makeListDateFormatter(defaults: defaults)
     }
 
     static func makeDateFormatter(dateStyle: DateFormatter.Style,
                                   timeStyle: DateFormatter.Style,
-                                  defaults: UserDefaults = FileManagerPreferenceStore.defaults) -> DateFormatter
+                                  defaults: UserDefaults = sharedDefaults) -> DateFormatter
     {
         FileManagerTimestampPreferences.makeDateFormatter(dateStyle: dateStyle,
                                                           timeStyle: timeStyle,
@@ -283,12 +241,12 @@ extension FileManagerViewPreferences {
     }
 
     private static func set(_ value: Bool, forKey key: String) {
-        FileManagerPreferenceStore.set(value, forKey: key)
+        sharedDefaults.set(value, forKey: key)
         preferencesDidChange()
     }
 
     private static func set(_ value: Int, forKey key: String) {
-        FileManagerPreferenceStore.set(value, forKey: key)
+        sharedDefaults.set(value, forKey: key)
         preferencesDidChange()
     }
 

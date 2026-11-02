@@ -56,50 +56,28 @@ final class ExtractDialogController: NSObject {
         static func pathMode(defaultValue: SZPathMode,
                              allowedValues: [SZPathMode]) -> SZPathMode
         {
-            guard let rawValue = defaults.object(forKey: pathModeKey) as? Int,
-                  let value = SZPathMode(rawValue: rawValue),
-                  allowedValues.contains(value)
-            else {
-                return defaultValue
-            }
-            return value
+            let value = defaults.enumValue(forKey: pathModeKey, default: defaultValue)
+            return allowedValues.contains(value) ? value : defaultValue
         }
 
         static func overwriteMode(defaultValue: SZOverwriteMode) -> SZOverwriteMode {
-            guard let rawValue = defaults.object(forKey: overwriteModeKey) as? Int,
-                  let value = SZOverwriteMode(rawValue: rawValue)
-            else {
-                return defaultValue
-            }
-            return value
+            defaults.enumValue(forKey: overwriteModeKey, default: defaultValue)
         }
 
         static func preserveNtSecurityInfo() -> Bool {
-            guard defaults.object(forKey: preserveNtSecurityKey) != nil else {
-                return false
-            }
-            return defaults.bool(forKey: preserveNtSecurityKey)
+            defaults.bool(forKey: preserveNtSecurityKey)
         }
 
         static func eliminateDuplicates() -> Bool {
-            guard defaults.object(forKey: eliminateDuplicatesKey) != nil else {
-                return true
-            }
-            return defaults.bool(forKey: eliminateDuplicatesKey)
+            defaults.bool(forKey: eliminateDuplicatesKey, default: true)
         }
 
         static func splitDestination() -> Bool {
-            guard defaults.object(forKey: splitDestinationKey) != nil else {
-                return true
-            }
-            return defaults.bool(forKey: splitDestinationKey)
+            defaults.bool(forKey: splitDestinationKey, default: true)
         }
 
         static func showPassword() -> Bool {
-            guard defaults.object(forKey: showPasswordKey) != nil else {
-                return false
-            }
-            return defaults.bool(forKey: showPasswordKey)
+            defaults.bool(forKey: showPasswordKey)
         }
 
         static func record(pathMode: SZPathMode,

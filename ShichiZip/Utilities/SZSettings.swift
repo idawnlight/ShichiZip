@@ -105,10 +105,7 @@ enum SZSettings {
     }
 
     static func bool(_ key: SZSettingsKey) -> Bool {
-        guard defaults.object(forKey: key.rawValue) != nil else {
-            return defaultBool(for: key)
-        }
-        return defaults.bool(forKey: key.rawValue)
+        defaults.bool(forKey: key.rawValue, default: defaultBool(for: key))
     }
 
     static func set(_ value: Bool, for key: SZSettingsKey) {
@@ -125,27 +122,16 @@ enum SZSettings {
         postChange(for: key)
     }
 
-    static func integer(_ key: SZSettingsKey) -> Int {
-        defaults.integer(forKey: key.rawValue)
-    }
-
     static func set(_ value: Int, for key: SZSettingsKey) {
         defaults.set(value, forKey: key.rawValue)
         postChange(for: key)
     }
 
-    static func integer(_ key: SZSettingsKey, default defaultValue: Int) -> Int {
-        guard defaults.object(forKey: key.rawValue) != nil else {
-            return defaultValue
-        }
-        return defaults.integer(forKey: key.rawValue)
-    }
-
-    static func double(_ key: SZSettingsKey, default defaultValue: Double) -> Double {
-        guard defaults.object(forKey: key.rawValue) != nil else {
-            return defaultValue
-        }
-        return defaults.double(forKey: key.rawValue)
+    private static func enumValue<Value: RawRepresentable>(_ key: SZSettingsKey,
+                                                           default defaultValue: Value) -> Value
+        where Value.RawValue == String
+    {
+        defaults.enumValue(forKey: key.rawValue, default: defaultValue)
     }
 
     static var memLimitGB: Int {
@@ -175,7 +161,7 @@ enum SZSettings {
     // MARK: - Launch-open HUD
 
     static var launchOpenDefaultAction: LaunchOpenAction {
-        get { LaunchOpenAction(rawValue: string(.launchOpenDefaultAction)) ?? .browse }
+        get { enumValue(.launchOpenDefaultAction, default: .browse) }
         set { set(newValue.rawValue, for: .launchOpenDefaultAction) }
     }
 
@@ -186,7 +172,7 @@ enum SZSettings {
 
     /// Cancel-window length, in seconds. `<= 0` bypasses the HUD entirely.
     static var launchOpenDelaySeconds: TimeInterval {
-        get { max(0, double(.launchOpenDelaySeconds, default: 2.0)) }
+        get { max(0, defaults.double(forKey: SZSettingsKey.launchOpenDelaySeconds.rawValue, default: 2.0)) }
         set {
             defaults.set(max(0, newValue), forKey: SZSettingsKey.launchOpenDelaySeconds.rawValue)
             postChange(for: .launchOpenDelaySeconds)
@@ -194,13 +180,12 @@ enum SZSettings {
     }
 
     static var launchOpenBrowseModifier: LaunchOpenBrowseModifier {
-        get { LaunchOpenBrowseModifier(rawValue: string(.launchOpenBrowseModifier)) ?? .control }
+        get { enumValue(.launchOpenBrowseModifier, default: .control) }
         set { set(newValue.rawValue, for: .launchOpenBrowseModifier) }
     }
 
     static var fileManagerShortcutPreset: FileManagerShortcutPreset {
-        FileManagerShortcutPreset(rawValue: integer(.fileManagerShortcutPreset,
-                                                    default: FileManagerShortcutPreset.finder.rawValue)) ?? .finder
+        defaults.enumValue(forKey: SZSettingsKey.fileManagerShortcutPreset.rawValue, default: .finder)
     }
 
     static func setFileManagerShortcutPreset(_ preset: FileManagerShortcutPreset) {

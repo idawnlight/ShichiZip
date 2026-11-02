@@ -10,11 +10,7 @@ enum ArchivePreviewPreferences {
     static let maximumExpansionDepth = 10
 
     static func expansionDepth(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> Int {
-        guard defaults.object(forKey: expansionDepthKey) != nil else {
-            return defaultExpansionDepth
-        }
-
-        return normalizedExpansionDepth(defaults.integer(forKey: expansionDepthKey))
+        normalizedExpansionDepth(defaults.integer(forKey: expansionDepthKey, default: defaultExpansionDepth))
     }
 
     static func normalizedExpansionDepth(_ depth: Int) -> Int {
