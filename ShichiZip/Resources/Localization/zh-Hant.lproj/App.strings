@@ -53,7 +53,6 @@
 "app.deleteTempFiles.loading" = "正在載入暫存檔…";
 "app.deleteTempFiles.title" = "刪除暫存檔";
 
-"app.extract.archiveNamedFolder" = "解壓縮到與壓縮檔同名的資料夾";
 "app.extract.createSeparateFolder" = "建立個別目的地資料夾";
 "app.extract.currentPaths" = "目前路徑";
 "app.extract.inheritQuarantine" = "繼承下載檔案的隔離屬性（若適用）";

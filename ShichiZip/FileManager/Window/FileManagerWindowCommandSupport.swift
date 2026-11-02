@@ -70,12 +70,12 @@ enum FileManagerArchiveCommandSupport {
         if snapshot.isVirtualLocation {
             Task { @MainActor [weak activePane, weak parentWindow] in
                 guard let activePane else { return }
-                await copyArchiveItemsFromOpenArchive(from: activePane,
-                                                      snapshot: snapshot,
-                                                      inactivePaneSnapshot: inactivePaneSnapshot,
-                                                      parentWindow: parentWindow,
-                                                      refreshPaneDisplayingDirectory: refreshPaneDisplayingDirectory,
-                                                      showError: showError)
+                await extractItemsFromOpenArchive(from: activePane,
+                                                  snapshot: snapshot,
+                                                  inactivePaneSnapshot: inactivePaneSnapshot,
+                                                  parentWindow: parentWindow,
+                                                  refreshPaneDisplayingDirectory: refreshPaneDisplayingDirectory,
+                                                  showError: showError)
             }
             return
         }
@@ -146,59 +146,38 @@ enum FileManagerArchiveCommandSupport {
         }
     }
 
-    private static func copyArchiveItemsFromOpenArchive(from activePane: FileManagerPaneController,
-                                                        snapshot: FileManagerPaneSnapshot,
-                                                        inactivePaneSnapshot: FileManagerPaneSnapshot?,
-                                                        parentWindow: NSWindow?,
-                                                        refreshPaneDisplayingDirectory: @escaping @MainActor (URL) -> Void,
-                                                        showError: @escaping @MainActor (Error) -> Void) async
+    private static func extractItemsFromOpenArchive(from activePane: FileManagerPaneController,
+                                                    snapshot: FileManagerPaneSnapshot,
+                                                    inactivePaneSnapshot: FileManagerPaneSnapshot?,
+                                                    parentWindow: NSWindow?,
+                                                    refreshPaneDisplayingDirectory: @escaping @MainActor (URL) -> Void,
+                                                    showError: @escaping @MainActor (Error) -> Void) async
     {
-        let prompt = FileOperationDestinationPrompt(move: false,
-                                                    sourcePane: activePane,
-                                                    defaultPath: suggestedDestinationPath(sourceSnapshot: snapshot,
-                                                                                          inactivePaneSnapshot: inactivePaneSnapshot),
-                                                    infoText: snapshot.extractDialogInfoText)
-        { _ in
-            true
+        let suggestedDestinationURL = inactivePaneSnapshot.flatMap {
+            $0.isVirtualLocation ? nil : $0.currentDirectoryURL
         }
+        guard let result = await promptForArchiveDestination(from: snapshot,
+                                                             suggestedDestinationURL: suggestedDestinationURL,
+                                                             parentWindow: parentWindow),
+              let parentWindow
+        else { return }
 
-        guard let unresolvedDestinationTarget = await prompt.run(for: parentWindow) else { return }
-
-        let destinationTarget: FileOperationDestinationTarget
         do {
-            switch unresolvedDestinationTarget {
-            case .directory:
-                destinationTarget = unresolvedDestinationTarget
-            case .archive:
-                destinationTarget = try FileOperationDestinationResolver.prepare(unresolvedDestinationTarget)
+            let prepared = try activePane.prepareExtraction(to: result.destinationURL,
+                                                            overwriteMode: result.overwriteMode,
+                                                            pathMode: result.pathMode,
+                                                            password: result.password,
+                                                            preserveNtSecurityInfo: result.preserveNtSecurityInfo,
+                                                            eliminateDuplicates: result.eliminateDuplicates,
+                                                            inheritDownloadedFileQuarantine: result.inheritDownloadedFileQuarantine)
+            try await extractPreparedArchiveItems(prepared, parentWindow: parentWindow)
+            refreshPaneDisplayingDirectory(result.destinationURL)
+            if result.revealAfterExtractInFileManager {
+                NSWorkspace.shared.selectFile(result.destinationURL.path,
+                                              inFileViewerRootedAtPath: result.destinationURL.deletingLastPathComponent().path)
             }
         } catch {
             showError(error)
-            return
-        }
-
-        switch destinationTarget {
-        case let .directory(destinationURL):
-            guard let parentWindow else { return }
-
-            do {
-                let prepared = try activePane.prepareExtraction(to: destinationURL,
-                                                                overwriteMode: .ask)
-                let outputURLs = try await copyPreparedArchiveItems(prepared,
-                                                                    parentWindow: parentWindow,
-                                                                    collectOutputURLs: prompt.shouldRevealAfterTransfer)
-                refreshPaneDisplayingDirectory(destinationURL)
-                if prompt.shouldRevealAfterTransfer {
-                    FileOperationTransferReveal.reveal(outputURLs: outputURLs,
-                                                       in: destinationURL)
-                }
-            } catch {
-                showError(error)
-            }
-        case .archive:
-            szPresentMessage(title: SZL10n.string("app.fileManager.operationNotAvailable"),
-                             message: "Copying items from an open archive directly into another archive is not implemented yet.",
-                             for: parentWindow)
         }
     }
 
@@ -288,17 +267,6 @@ enum FileManagerArchiveCommandSupport {
                                              parentWindow: parentWindow)
         { session in
             try prepared.perform(session: session)
-        }
-    }
-
-    private static func copyPreparedArchiveItems(_ prepared: FileManagerPreparedExtraction,
-                                                 parentWindow: NSWindow,
-                                                 collectOutputURLs: Bool) async throws -> [URL]
-    {
-        try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("fileop.copying"),
-                                             parentWindow: parentWindow)
-        { session in
-            try prepared.perform(session: session, collectOutputURLs: collectOutputURLs)
         }
     }
 
@@ -414,32 +382,17 @@ enum FileManagerArchiveCommandSupport {
         return targetSnapshot.currentDirectoryURL.standardizedFileURL
     }
 
-    private static func suggestedDestinationPath(sourceSnapshot: FileManagerPaneSnapshot,
-                                                 inactivePaneSnapshot: FileManagerPaneSnapshot?) -> String
-    {
-        if let inactivePaneSnapshot {
-            if let archivePath = inactivePaneSnapshot.currentArchiveDestinationDisplayPath {
-                return szNormalizedDestinationDisplayPath(archivePath)
-            }
-
-            if !inactivePaneSnapshot.isVirtualLocation {
-                return szNormalizedDestinationDisplayPath(inactivePaneSnapshot.currentDirectoryURL.standardizedFileURL.path)
-            }
-        }
-
-        return szNormalizedDestinationDisplayPath(sourceSnapshot.currentDirectoryURL.standardizedFileURL.path)
-    }
-
     private static func promptForArchiveDestination(from snapshot: FileManagerPaneSnapshot,
+                                                    suggestedDestinationURL: URL? = nil,
                                                     parentWindow: NSWindow?) async -> ExtractDialogResult?
     {
-        let dialog = ExtractDialogController(suggestedDestinationURL: snapshot.currentDirectoryURL,
+        let dialog = ExtractDialogController(suggestedDestinationURL: suggestedDestinationURL ?? snapshot.currentDirectoryURL,
                                              baseDirectory: snapshot.currentDirectoryURL,
                                              message: snapshot.extractDialogInfoText,
                                              defaultPathMode: snapshot.isVirtualLocation ? .currentPaths : .fullPaths,
                                              showsCurrentPathsOption: snapshot.isVirtualLocation,
                                              suggestedSplitDestinationName: snapshot.suggestedExtractDestinationName,
-                                             sourceArchiveAvailableForMoveToTrash: snapshot.sourceArchiveURLForPostProcessing != nil,
+                                             sourceArchiveAvailableForMoveToTrash: !snapshot.isVirtualLocation && snapshot.sourceArchiveURLForPostProcessing != nil,
                                              sourceArchiveAvailableForQuarantineInheritance: snapshot.quarantineSourceArchiveURLForExtraction != nil)
         return await dialog.runModal(for: parentWindow)
     }

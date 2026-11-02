@@ -21,7 +21,6 @@ enum SZSettingsKey: String {
     case excludeOfficeLockFilesByDefault = "ExcludeOfficeLockFilesByDefault"
     case moveArchiveToTrashAfterExtraction = "MoveArchiveToTrashAfterExtraction"
     case inheritDownloadedFileQuarantine = "InheritDownloadedFileQuarantine"
-    case extractIntoArchiveNamedFolder = "ExtractIntoArchiveNamedFolder"
     case revealAfterExtractInFileManager = "RevealAfterExtractInFileManager"
     case revealAfterTransfer = "RevealAfterTransfer"
     case memLimitEnabled = "MemLimitEnabled"
@@ -85,10 +84,10 @@ enum SZSettings {
         SZSettingsMigrations.defaults
     }
 
-    static func defaultBool(for key: SZSettingsKey) -> Bool {
+    private static func defaultBool(for key: SZSettingsKey) -> Bool {
         switch key {
         case .showRealFileIcons, .rememberRecentArchives, .workDirRemovableOnly, .inheritDownloadedFileQuarantine,
-             .launchOpenRevealAfterExtract, .extractIntoArchiveNamedFolder:
+             .launchOpenRevealAfterExtract:
             true
         default:
             false
@@ -145,13 +144,6 @@ enum SZSettings {
     static var revealAfterExtractInFileManager: Bool {
         get { bool(.revealAfterExtractInFileManager) }
         set { set(newValue, for: .revealAfterExtractInFileManager) }
-    }
-
-    /// When enabled, the Extract dialog starts with its separate-folder option on so extraction
-    /// lands in a folder named after the archive instead of scattering files in the target folder.
-    static var extractIntoArchiveNamedFolder: Bool {
-        get { bool(.extractIntoArchiveNamedFolder) }
-        set { set(newValue, for: .extractIntoArchiveNamedFolder) }
     }
 
     static var revealAfterTransfer: Bool {

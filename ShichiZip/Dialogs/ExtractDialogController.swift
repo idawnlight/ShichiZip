@@ -76,6 +76,13 @@ final class ExtractDialogController: NSObject {
             defaults.bool(forKey: splitDestinationKey, default: true)
         }
 
+        static func splitDestination() -> Bool {
+            guard defaults.object(forKey: splitDestinationKey) != nil else {
+                return true
+            }
+            return defaults.bool(forKey: splitDestinationKey)
+        }
+
         static func showPassword() -> Bool {
             defaults.bool(forKey: showPasswordKey)
         }
