@@ -1,14 +1,8 @@
 /ShichiZip.xcodeproj/
 /project/generated/
 /ShichiZip/Resources/Localization/*.lproj/Upstream.strings
-*.xcodeproj/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcuserdata/
 /build/
 __pycache__/
-*.o
-*.a
 **/.DS_Store
-*.zip
-*.rar
 .zig-cache/
 .vscode/
