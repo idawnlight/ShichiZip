@@ -127,13 +127,6 @@ enum SZSettings {
         postChange(for: key)
     }
 
-    private static func enumValue<Value: RawRepresentable>(_ key: SZSettingsKey,
-                                                           default defaultValue: Value) -> Value
-        where Value.RawValue == String
-    {
-        defaults.enumValue(forKey: key.rawValue, default: defaultValue)
-    }
-
     static var memLimitGB: Int {
         let v = defaults.integer(forKey: SZSettingsKey.memLimitGB.rawValue)
         return v > 0 ? v : 4
@@ -161,7 +154,7 @@ enum SZSettings {
     // MARK: - Launch-open HUD
 
     static var launchOpenDefaultAction: LaunchOpenAction {
-        get { enumValue(.launchOpenDefaultAction, default: .browse) }
+        get { defaults.enumValue(forKey: SZSettingsKey.launchOpenDefaultAction.rawValue, default: .browse) }
         set { set(newValue.rawValue, for: .launchOpenDefaultAction) }
     }
 
@@ -180,7 +173,7 @@ enum SZSettings {
     }
 
     static var launchOpenBrowseModifier: LaunchOpenBrowseModifier {
-        get { enumValue(.launchOpenBrowseModifier, default: .control) }
+        get { defaults.enumValue(forKey: SZSettingsKey.launchOpenBrowseModifier.rawValue, default: .control) }
         set { set(newValue.rawValue, for: .launchOpenBrowseModifier) }
     }
 

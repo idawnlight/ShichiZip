@@ -91,8 +91,13 @@ extension UserDefaults {
     func enumValue<Value: RawRepresentable>(forKey key: String, default defaultValue: Value) -> Value
         where Value.RawValue == Int
     {
-        guard object(forKey: key) != nil else { return defaultValue }
-        return Value(rawValue: integer(forKey: key)) ?? defaultValue
+        let rawValue: Int? = switch object(forKey: key) {
+        case let number as NSNumber where CFGetTypeID(number) != CFBooleanGetTypeID(): number as? Int
+        case let string as String: Int(string)
+        default: nil
+        }
+        guard let rawValue else { return defaultValue }
+        return Value(rawValue: rawValue) ?? defaultValue
     }
 
     func enumValue<Value: RawRepresentable>(forKey key: String, default defaultValue: Value) -> Value

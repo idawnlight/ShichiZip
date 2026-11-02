@@ -10,15 +10,6 @@ static SZDialogAction* SZDialogActionMake(NSString* title, SZDialogActionRole ro
     return [[SZDialogAction alloc] initWithTitle:title roles:roles];
 }
 
-static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
-    if (byteCount == 0) {
-        return 1;
-    }
-
-    const uint64_t rounded = (byteCount + (((uint64_t)1 << 30) - 1)) >> 30;
-    return rounded > UINT32_MAX ? UINT32_MAX : (uint32_t)rounded;
-}
-
 @interface SZPasswordAccessoryController : NSViewController
 
 - (instancetype)initWithInitialValue:(nullable NSString*)initialValue;
@@ -130,9 +121,9 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
                              filePath:(NSString*)filePath
                          showRemember:(BOOL)showRemember {
     if ((self = [super initWithNibName:nil bundle:nil])) {
-        _requiredGB = SZDialogRoundUpByteCountToGB(requiredBytes);
-        _currentLimitGB = SZDialogRoundUpByteCountToGB(currentLimitBytes);
-        _installedRAMGB = SZDialogRoundUpByteCountToGB([NSProcessInfo processInfo].physicalMemory);
+        _requiredGB = SZRoundUpByteCountToGB(requiredBytes);
+        _currentLimitGB = SZRoundUpByteCountToGB(currentLimitBytes);
+        _installedRAMGB = SZRoundUpByteCountToGB([NSProcessInfo processInfo].physicalMemory);
         _showRemember = showRemember;
         _archivePath = [archivePath copy] ?: @"";
         _filePath = [filePath copy] ?: @"";

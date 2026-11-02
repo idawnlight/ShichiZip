@@ -261,26 +261,18 @@ private final class MainMenuCoordinator: NSObject, NSMenuDelegate {
     var timeMenuItem: NSMenuItem?
 
     func menuNeedsUpdate(_ menu: NSMenu) {
-        if menu.identifier == MainMenuIdentifiers.viewMenu {
+        switch menu.identifier {
+        case MainMenuIdentifiers.viewMenu:
             refreshTimeMenuTitle()
-            return
-        }
-
-        if menu.identifier == MainMenuIdentifiers.timeMenu {
+        case MainMenuIdentifiers.timeMenu:
             rebuildTimeMenu(menu)
-            return
-        }
-
-        if menu.identifier == MainMenuIdentifiers.recentArchivesMenu {
+        case MainMenuIdentifiers.recentArchivesMenu:
             rebuildRecentArchivesMenu(menu)
-            return
+        case MainMenuIdentifiers.favoritesMenu:
+            rebuildFavoritesMenu(menu)
+        default:
+            break
         }
-
-        guard menu.identifier == MainMenuIdentifiers.favoritesMenu else {
-            return
-        }
-
-        rebuildFavoritesMenu(menu)
     }
 
     func refreshTimeMenuTitle() {

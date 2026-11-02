@@ -2,98 +2,72 @@ import Foundation
 
 enum FileManagerItemSorting {
     static func sort(_ items: inout [FileSystemItem], by descriptors: [NSSortDescriptor]) {
-        guard let descriptor = descriptors.first else {
-            sortByDefaultName(&items)
-            return
-        }
-
-        let key = descriptor.key ?? FileManagerColumnID.name.rawValue
-        let ascending = descriptor.ascending
+        let descriptor = descriptors.first
+        let columnID = FileManagerColumnID(rawValue: descriptor?.key ?? FileManagerColumnID.name.rawValue)
+        let ascending = descriptor?.ascending ?? true
 
         items.sort { firstItem, secondItem in
             if firstItem.isDirectory != secondItem.isDirectory {
                 return firstItem.isDirectory
             }
 
-            let result = compare(firstItem, secondItem, key: key)
+            let result = compare(firstItem, secondItem, columnID: columnID)
             return ascending ? result == .orderedAscending : result == .orderedDescending
         }
     }
 
     static func sort(_ items: inout [ArchiveItem], by descriptors: [NSSortDescriptor]) {
-        guard let descriptor = descriptors.first else {
-            sortByDefaultName(&items)
-            return
-        }
-
-        let key = descriptor.key ?? FileManagerColumnID.name.rawValue
-        let ascending = descriptor.ascending
+        let descriptor = descriptors.first
+        let columnID = FileManagerColumnID(rawValue: descriptor?.key ?? FileManagerColumnID.name.rawValue)
+        let ascending = descriptor?.ascending ?? true
 
         items.sort { firstItem, secondItem in
             if firstItem.isDirectory != secondItem.isDirectory {
                 return firstItem.isDirectory
             }
 
-            let result = compare(firstItem, secondItem, key: key)
+            let result = compare(firstItem, secondItem, columnID: columnID)
             return ascending ? result == .orderedAscending : result == .orderedDescending
-        }
-    }
-
-    private static func sortByDefaultName(_ items: inout [FileSystemItem]) {
-        items.sort { firstItem, secondItem in
-            if firstItem.isDirectory != secondItem.isDirectory {
-                return firstItem.isDirectory
-            }
-            return firstItem.name.localizedStandardCompare(secondItem.name) == .orderedAscending
-        }
-    }
-
-    private static func sortByDefaultName(_ items: inout [ArchiveItem]) {
-        items.sort { firstItem, secondItem in
-            if firstItem.isDirectory != secondItem.isDirectory {
-                return firstItem.isDirectory
-            }
-            return firstItem.name.localizedStandardCompare(secondItem.name) == .orderedAscending
         }
     }
 
     private static func compare(_ firstItem: FileSystemItem,
                                 _ secondItem: FileSystemItem,
-                                key: String) -> ComparisonResult
+                                columnID: FileManagerColumnID) -> ComparisonResult
     {
-        switch key {
-        case FileManagerColumnID.name.rawValue:
+        switch columnID {
+        case .name:
             firstItem.name.localizedStandardCompare(secondItem.name)
         case "type":
-            compareType(firstItem.url.pathExtension,
-                        secondItem.url.pathExtension,
+            compareText(firstItem.url.pathExtension.localizedLowercase,
+                        secondItem.url.pathExtension.localizedLowercase,
                         firstName: firstItem.name,
                         secondName: secondItem.name)
-        case FileManagerColumnID.size.rawValue:
+        case .size:
             compare(firstItem.size, secondItem.size)
-        case FileManagerColumnID.packedSize.rawValue:
+        case .packedSize:
             compare(firstItem.packedSize, secondItem.packedSize)
-        case FileManagerColumnID.modified.rawValue:
+        case .modified:
             compare(firstItem.modifiedDate ?? Date.distantPast,
                     secondItem.modifiedDate ?? Date.distantPast)
-        case FileManagerColumnID.created.rawValue:
+        case .created:
             compare(firstItem.createdDate ?? Date.distantPast,
                     secondItem.createdDate ?? Date.distantPast)
-        case FileManagerColumnID.accessed.rawValue:
+        case .accessed:
             compare(firstItem.accessedDate ?? Date.distantPast,
                     secondItem.accessedDate ?? Date.distantPast)
-        case FileManagerColumnID.changed.rawValue:
+        case .changed:
             compare(firstItem.changedDate ?? Date.distantPast,
                     secondItem.changedDate ?? Date.distantPast)
-        case FileManagerColumnID.attributes.rawValue:
+        case .attributes:
             compare(firstItem.attributes, secondItem.attributes)
-        case FileManagerColumnID.inode.rawValue:
+        case .inode:
             compare(firstItem.inode ?? 0, secondItem.inode ?? 0)
-        case FileManagerColumnID.links.rawValue:
+        case .links:
             compare(firstItem.links ?? 0, secondItem.links ?? 0)
-        case FileManagerColumnID.position.rawValue,
-             FileManagerColumnID.block.rawValue,
-             FileManagerColumnID.anti.rawValue:
+        case .position,
+             .block,
+             .anti:
             .orderedSame
         default:
             firstItem.name.localizedStandardCompare(secondItem.name)
@@ -102,64 +76,62 @@ enum FileManagerItemSorting {
 
     private static func compare(_ firstItem: ArchiveItem,
                                 _ secondItem: ArchiveItem,
-                                key: String) -> ComparisonResult
+                                columnID: FileManagerColumnID) -> ComparisonResult
     {
-        switch key {
-        case FileManagerColumnID.name.rawValue:
-            return firstItem.name.localizedStandardCompare(secondItem.name)
+        switch columnID {
+        case .name:
+            firstItem.name.localizedStandardCompare(secondItem.name)
         case "type":
-            return compareType(firstItem.fileExtension,
-                               secondItem.fileExtension,
-                               firstName: firstItem.name,
-                               secondName: secondItem.name)
-        case FileManagerColumnID.size.rawValue:
-            return compare(firstItem.size, secondItem.size)
-        case FileManagerColumnID.packedSize.rawValue:
-            return compare(firstItem.packedSize, secondItem.packedSize)
-        case FileManagerColumnID.modified.rawValue:
-            return compare(firstItem.modifiedDate ?? Date.distantPast,
-                           secondItem.modifiedDate ?? Date.distantPast)
-        case FileManagerColumnID.created.rawValue:
-            return compare(firstItem.createdDate ?? Date.distantPast,
-                           secondItem.createdDate ?? Date.distantPast)
-        case FileManagerColumnID.accessed.rawValue:
-            return compare(firstItem.accessedDate ?? Date.distantPast,
-                           secondItem.accessedDate ?? Date.distantPast)
-        case FileManagerColumnID.attributes.rawValue:
-            return compare(firstItem.attributes, secondItem.attributes)
-        case FileManagerColumnID.encrypted.rawValue:
-            return compare(firstItem.isEncrypted, secondItem.isEncrypted)
-        case FileManagerColumnID.anti.rawValue:
-            return compare(firstItem.isAnti, secondItem.isAnti)
-        case FileManagerColumnID.method.rawValue:
-            return firstItem.method.localizedStandardCompare(secondItem.method)
-        case FileManagerColumnID.crc.rawValue:
-            return compare(firstItem.crc, secondItem.crc)
-        case FileManagerColumnID.block.rawValue:
-            return compare(firstItem.block, secondItem.block)
-        case FileManagerColumnID.position.rawValue:
-            return compare(firstItem.position, secondItem.position)
-        case FileManagerColumnID.comment.rawValue:
-            return firstItem.comment.localizedStandardCompare(secondItem.comment)
+            compareText(firstItem.fileExtension.localizedLowercase,
+                        secondItem.fileExtension.localizedLowercase,
+                        firstName: firstItem.name,
+                        secondName: secondItem.name)
+        case .size:
+            compare(firstItem.size, secondItem.size)
+        case .packedSize:
+            compare(firstItem.packedSize, secondItem.packedSize)
+        case .modified:
+            compare(firstItem.modifiedDate ?? Date.distantPast,
+                    secondItem.modifiedDate ?? Date.distantPast)
+        case .created:
+            compare(firstItem.createdDate ?? Date.distantPast,
+                    secondItem.createdDate ?? Date.distantPast)
+        case .accessed:
+            compare(firstItem.accessedDate ?? Date.distantPast,
+                    secondItem.accessedDate ?? Date.distantPast)
+        case .attributes:
+            compare(firstItem.attributes, secondItem.attributes)
+        case .encrypted:
+            compare(firstItem.isEncrypted, secondItem.isEncrypted)
+        case .anti:
+            compare(firstItem.isAnti, secondItem.isAnti)
+        case .method:
+            firstItem.method.localizedStandardCompare(secondItem.method)
+        case .crc:
+            compare(firstItem.crc, secondItem.crc)
+        case .block:
+            compare(firstItem.block, secondItem.block)
+        case .position:
+            compare(firstItem.position, secondItem.position)
+        case .comment:
+            firstItem.comment.localizedStandardCompare(secondItem.comment)
         default:
-            let firstValue = firstItem.propertyValues[key] ?? ""
-            let secondValue = secondItem.propertyValues[key] ?? ""
-            let valueResult = firstValue.localizedStandardCompare(secondValue)
-            return valueResult == .orderedSame
-                ? firstItem.name.localizedStandardCompare(secondItem.name)
-                : valueResult
+            compareText(firstItem.propertyValues[columnID.rawValue] ?? "",
+                        secondItem.propertyValues[columnID.rawValue] ?? "",
+                        firstName: firstItem.name,
+                        secondName: secondItem.name)
         }
     }
 
-    private static func compareType(_ firstExtension: String,
-                                    _ secondExtension: String,
+    private static func compareText(_ firstValue: String,
+                                    _ secondValue: String,
                                     firstName: String,
                                     secondName: String) -> ComparisonResult
     {
-        let typeResult = firstExtension.localizedLowercase.localizedStandardCompare(secondExtension.localizedLowercase)
-        return typeResult == .orderedSame
+        let result = firstValue.localizedStandardCompare(secondValue)
+        return result == .orderedSame
             ? firstName.localizedStandardCompare(secondName)
-            : typeResult
+            : result
     }
 
     private static func compare<T: Comparable>(_ firstValue: T, _ secondValue: T) -> ComparisonResult {

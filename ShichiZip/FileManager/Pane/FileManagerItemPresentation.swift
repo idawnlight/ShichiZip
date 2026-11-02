@@ -191,30 +191,7 @@ enum FileManagerItemPresentation {
                              columnID: FileManagerColumnID,
                              dateFormatter: DateFormatter) -> String
     {
-        switch columnID.rawValue {
-        case FileManagerColumnID.name.rawValue:
-            item.name
-        case FileManagerColumnID.size.rawValue:
-            item.formattedSize
-        case FileManagerColumnID.packedSize.rawValue:
-            item.formattedPackedSize
-        case FileManagerColumnID.modified.rawValue:
-            item.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
-        case FileManagerColumnID.created.rawValue:
-            item.createdDate.map { dateFormatter.string(from: $0) } ?? ""
-        case FileManagerColumnID.accessed.rawValue:
-            item.accessedDate.map { dateFormatter.string(from: $0) } ?? ""
-        case FileManagerColumnID.changed.rawValue:
-            item.changedDate.map { dateFormatter.string(from: $0) } ?? ""
-        case FileManagerColumnID.attributes.rawValue:
-            formattedAttributes(item.attributes)
-        case FileManagerColumnID.inode.rawValue:
-            item.inode.map(String.init) ?? ""
-        case FileManagerColumnID.links.rawValue:
-            item.links.map(String.init) ?? ""
-        default:
-            ""
-        }
+        fileSystemDetailValue(for: columnID, item: item, dateFormatter: dateFormatter) ?? ""
     }
 
     static func listCellText(for item: ArchiveItem,
@@ -350,26 +327,26 @@ enum FileManagerItemPresentation {
                                               item: FileSystemItem,
                                               dateFormatter: DateFormatter) -> String?
     {
-        switch columnID.rawValue {
-        case FileManagerColumnID.name.rawValue:
+        switch columnID {
+        case .name:
             item.name
-        case FileManagerColumnID.size.rawValue:
+        case .size:
             item.formattedSize
-        case FileManagerColumnID.packedSize.rawValue:
+        case .packedSize:
             item.formattedPackedSize
-        case FileManagerColumnID.modified.rawValue:
+        case .modified:
             item.modifiedDate.map { dateFormatter.string(from: $0) }
-        case FileManagerColumnID.created.rawValue:
+        case .created:
             item.createdDate.map { dateFormatter.string(from: $0) }
-        case FileManagerColumnID.accessed.rawValue:
+        case .accessed:
             item.accessedDate.map { dateFormatter.string(from: $0) }
-        case FileManagerColumnID.changed.rawValue:
+        case .changed:
             item.changedDate.map { dateFormatter.string(from: $0) }
-        case FileManagerColumnID.attributes.rawValue:
+        case .attributes:
             formattedAttributes(item.attributes)
-        case FileManagerColumnID.inode.rawValue:
+        case .inode:
             item.inode.map(String.init)
-        case FileManagerColumnID.links.rawValue:
+        case .links:
             item.links.map(String.init)
         default:
             nil

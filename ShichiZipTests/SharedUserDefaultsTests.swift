@@ -1,10 +1,10 @@
 import Foundation
+import XCTest
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
     @testable import ShichiZip
 #endif
-import XCTest
 
 final class SharedUserDefaultsTests: XCTestCase {
     private let revealPreferenceKeys: [SZSettingsKey] = [
@@ -12,6 +12,30 @@ final class SharedUserDefaultsTests: XCTestCase {
         .revealAfterTransfer,
         .launchOpenRevealAfterExtract,
     ]
+
+    func testIntegerEnumReadsAcceptNumericStringsAndRejectInvalidTypes() throws {
+        let defaults = try makeIsolatedDefaults().defaults
+        let key = FileManagerTimestampPreferences.displayLevelKey
+        let fallback = FileManagerTimestampPreferences.DisplayLevel.nanoseconds
+        XCTAssertEqual(defaults.enumValue(forKey: key, default: fallback), fallback)
+
+        let cases: [(Any, FileManagerTimestampPreferences.DisplayLevel)] = [
+            (0, .day),
+            ("0", .day),
+            (2.0, .second),
+            ("2", .second),
+            (false, .nanoseconds),
+            (true, .nanoseconds),
+            (1.5, .nanoseconds),
+            ("invalid", .nanoseconds),
+            (99, .nanoseconds),
+        ]
+        for (storedValue, expected) in cases {
+            defaults.set(storedValue, forKey: key)
+            XCTAssertEqual(defaults.enumValue(forKey: key, default: fallback), expected,
+                           "Stored value: \(storedValue)")
+        }
+    }
 
     func testSharedDefaultsUsesConfiguredAppGroupWhenAvailable() throws {
         guard SZSharedUserDefaults.appGroupIdentifier != nil else {

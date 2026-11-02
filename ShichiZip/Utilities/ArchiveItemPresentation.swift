@@ -12,40 +12,34 @@ enum ArchiveItemPresentation {
                              dateFormatter: DateFormatter,
                              nameStyle: NameStyle = .name) -> String
     {
-        switch columnID.rawValue {
-        case FileManagerColumnID.name.rawValue:
+        switch columnID {
+        case .name:
             nameStyle == .path && !item.path.isEmpty ? item.path : item.name
-        case FileManagerColumnID.size.rawValue:
+        case .size:
             item.isDirectory ? "--" : item.formattedSize
-        case FileManagerColumnID.packedSize.rawValue:
+        case .packedSize:
             item.isDirectory ? "" : item.formattedPackedSize
-        case FileManagerColumnID.modified.rawValue:
+        case .modified:
             item.modifiedDate.map { dateFormatter.string(from: $0) } ?? ""
-        case FileManagerColumnID.created.rawValue:
+        case .created:
             item.createdDate.map { dateFormatter.string(from: $0) } ?? ""
-        case FileManagerColumnID.accessed.rawValue:
+        case .accessed:
             item.accessedDate.map { dateFormatter.string(from: $0) } ?? ""
-        case FileManagerColumnID.changed.rawValue:
-            item.propertyValues[FileManagerColumnID.changed.rawValue] ?? ""
-        case FileManagerColumnID.attributes.rawValue:
+        case .attributes:
             formattedAttributes(item.attributes)
-        case FileManagerColumnID.inode.rawValue:
-            item.propertyValues[FileManagerColumnID.inode.rawValue] ?? ""
-        case FileManagerColumnID.links.rawValue:
-            item.propertyValues[FileManagerColumnID.links.rawValue] ?? ""
-        case FileManagerColumnID.encrypted.rawValue:
+        case .encrypted:
             item.isEncrypted ? "+" : "-"
-        case FileManagerColumnID.anti.rawValue:
+        case .anti:
             item.isAnti ? "+" : "-"
-        case FileManagerColumnID.method.rawValue:
+        case .method:
             item.method
-        case FileManagerColumnID.crc.rawValue:
+        case .crc:
             item.crc == 0 ? "" : String(format: "%08X", item.crc)
-        case FileManagerColumnID.block.rawValue:
+        case .block:
             String(item.block)
-        case FileManagerColumnID.position.rawValue:
+        case .position:
             String(item.position)
-        case FileManagerColumnID.comment.rawValue:
+        case .comment:
             item.comment
         default:
             item.propertyValues[columnID.rawValue] ?? ""

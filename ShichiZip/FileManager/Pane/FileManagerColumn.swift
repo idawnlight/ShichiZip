@@ -238,8 +238,8 @@ struct FileManagerColumn: Equatable {
     }
 
     private static func knownDefinition(for id: FileManagerColumnID) -> FileManagerColumn? {
-        switch id.rawValue {
-        case FileManagerColumnID.name.rawValue:
+        switch id {
+        case .name:
             FileManagerColumn(id: id,
                               titleKey: "column.name",
                               titleFallback: "Name",
@@ -249,7 +249,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: #selector(NSString.localizedStandardCompare(_:)),
                               textStyle: .standard)
-        case FileManagerColumnID.size.rawValue:
+        case .size:
             FileManagerColumn(id: id,
                               titleKey: "column.size",
                               titleFallback: "Size",
@@ -259,7 +259,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.packedSize.rawValue:
+        case .packedSize:
             FileManagerColumn(id: id,
                               titleKey: "column.packedSize",
                               titleFallback: "Packed Size",
@@ -269,7 +269,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.modified.rawValue:
+        case .modified:
             FileManagerColumn(id: id,
                               titleKey: "column.modified",
                               titleFallback: "Modified",
@@ -279,7 +279,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.created.rawValue:
+        case .created:
             FileManagerColumn(id: id,
                               titleKey: "column.created",
                               titleFallback: "Created",
@@ -289,7 +289,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.accessed.rawValue:
+        case .accessed:
             FileManagerColumn(id: id,
                               titleKey: "column.accessed",
                               titleFallback: "Accessed",
@@ -299,7 +299,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.changed.rawValue:
+        case .changed:
             FileManagerColumn(id: id,
                               titleKey: "column.changed",
                               titleFallback: "Metadata Changed",
@@ -309,7 +309,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.attributes.rawValue:
+        case .attributes:
             FileManagerColumn(id: id,
                               titleKey: "column.attributes",
                               titleFallback: "Attributes",
@@ -319,7 +319,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .fixedWidth)
-        case FileManagerColumnID.encrypted.rawValue:
+        case .encrypted:
             FileManagerColumn(id: id,
                               titleKey: "column.encrypted",
                               titleFallback: "Encrypted",
@@ -329,7 +329,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .standard)
-        case FileManagerColumnID.anti.rawValue:
+        case .anti:
             FileManagerColumn(id: id,
                               titleKey: "column.anti",
                               titleFallback: "Anti",
@@ -339,7 +339,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .standard)
-        case FileManagerColumnID.method.rawValue:
+        case .method:
             FileManagerColumn(id: id,
                               titleKey: "column.method",
                               titleFallback: "Method",
@@ -349,7 +349,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: #selector(NSString.localizedStandardCompare(_:)),
                               textStyle: .standard)
-        case FileManagerColumnID.crc.rawValue:
+        case .crc:
             FileManagerColumn(id: id,
                               titleKey: "column.crc",
                               titleFallback: "CRC",
@@ -359,7 +359,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .fixedWidth)
-        case FileManagerColumnID.block.rawValue:
+        case .block:
             FileManagerColumn(id: id,
                               titleKey: "column.block",
                               titleFallback: "Block",
@@ -369,7 +369,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.position.rawValue:
+        case .position:
             FileManagerColumn(id: id,
                               titleKey: "column.position",
                               titleFallback: "Position",
@@ -379,7 +379,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.comment.rawValue:
+        case .comment:
             FileManagerColumn(id: id,
                               titleKey: "column.comment",
                               titleFallback: "Comment",
@@ -389,7 +389,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: #selector(NSString.localizedStandardCompare(_:)),
                               textStyle: .standard)
-        case FileManagerColumnID.inode.rawValue:
+        case .inode:
             FileManagerColumn(id: id,
                               titleKey: "column.inode",
                               titleFallback: "iNode",
@@ -399,7 +399,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.links.rawValue:
+        case .links:
             FileManagerColumn(id: id,
                               titleKey: "column.links",
                               titleFallback: "Links",
