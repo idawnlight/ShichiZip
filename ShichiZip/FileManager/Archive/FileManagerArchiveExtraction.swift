@@ -481,13 +481,11 @@ enum FileManagerArchiveExtraction {
                 indices.insert(item.index)
             }
 
-            if item.isDirectory || item.index < 0 {
-                if let directory = hierarchy.directory(at: item.pathParts) {
-                    for itemIndex in hierarchy.recordIndices(in: directory) {
-                        let entry = allEntries[itemIndex]
-                        if entry.index >= 0 {
-                            indices.insert(entry.index)
-                        }
+            if item.isDirectory || item.index < 0, let directory = hierarchy.directory(at: item.pathParts) {
+                for itemIndex in hierarchy.recordIndices(in: directory) {
+                    let entry = allEntries[itemIndex]
+                    if entry.index >= 0 {
+                        indices.insert(entry.index)
                     }
                 }
             }

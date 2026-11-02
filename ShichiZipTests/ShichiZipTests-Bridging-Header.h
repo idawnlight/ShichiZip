@@ -2,4 +2,5 @@
 #import "../ShichiZip/Bridge/SZOperationSession.h"
 #import "../ShichiZip/Dialogs/SZDialogPresenter.h"
 #import "../ShichiZip/Dialogs/SZModalDialogController.h"
+#import "../ShichiZip/Dialogs/SZPasswordField.h"
 #import "BridgeStringConversionTestSupport.h"

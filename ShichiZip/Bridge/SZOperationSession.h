@@ -32,6 +32,29 @@ typedef BOOL (^SZOperationPasswordRequestHandler)(NSString* title,
 typedef SZArchiveUpdateEncryption* _Nullable (^SZOperationUpdateEncryptionRequestHandler)(NSString* archivePath,
     SZEncryptionMethod defaultEncryption);
 
+NS_SWIFT_SENDABLE
+@interface SZMemoryLimitPromptResult : NSObject
+
+- (instancetype)init NS_UNAVAILABLE;
+- (instancetype)initWithSaveLimit:(BOOL)saveLimit
+                      skipArchive:(BOOL)skipArchive
+                   rememberChoice:(BOOL)rememberChoice
+                          limitGB:(uint32_t)limitGB NS_DESIGNATED_INITIALIZER;
+
+@property (nonatomic, readonly) BOOL saveLimit;
+@property (nonatomic, readonly) BOOL skipArchive;
+@property (nonatomic, readonly) BOOL rememberChoice;
+@property (nonatomic, readonly) uint32_t limitGB;
+
+@end
+
+typedef SZMemoryLimitPromptResult* _Nullable (^SZOperationMemoryLimitRequestHandler)(uint64_t requiredBytes,
+    uint64_t currentLimitBytes,
+    NSString* _Nullable archivePath,
+    NSString* _Nullable filePath,
+    BOOL testMode,
+    BOOL showRemember);
+
 @interface SZOperationChoiceRequest : NSObject
 
 - (instancetype)init NS_UNAVAILABLE;
@@ -74,13 +97,22 @@ typedef NSInteger (^SZOperationChoiceRequestHandler)(SZOperationChoiceRequest* r
 
 typedef void (^SZOperationSnapshotHandler)(SZOperationSnapshot* snapshot);
 
+@class SZOperationSession;
+typedef SZOperationSession* _Nonnull (^SZOperationSessionFactory)(void);
+
 @interface SZOperationSession : NSObject
+
+/// A process-local factory configured by the host. A missing factory creates a session without UI handlers.
+@property (class, nonatomic, copy, nullable) SZOperationSessionFactory defaultSessionFactory;
++ (SZOperationSession*)makeDefaultSession;
 
 @property (nonatomic, copy, nullable) SZOperationSnapshotHandler snapshotHandler;
 @property (nonatomic, copy, nullable) SZOperationPasswordRequestHandler passwordRequestHandler;
 /// Return nil to cancel the content update. Called on the main thread.
 @property (nonatomic, copy, nullable) SZOperationUpdateEncryptionRequestHandler updateEncryptionRequestHandler;
 @property (nonatomic, copy, nullable) SZOperationChoiceRequestHandler choiceRequestHandler;
+/// Return nil to cancel the operation. Called on the main thread.
+@property (nonatomic, copy, nullable) SZOperationMemoryLimitRequestHandler memoryLimitRequestHandler;
 
 @property (nonatomic, readonly) SZOperationPhase phase;
 @property (nonatomic, readonly) double progressFraction;
@@ -116,6 +148,12 @@ typedef void (^SZOperationSnapshotHandler)(SZOperationSnapshot* snapshot);
 - (NSInteger)requestChoice:(SZOperationChoiceRequest*)request;
 - (nullable SZArchiveUpdateEncryption*)requestUpdateEncryptionForArchive:(NSString*)archivePath
                                                        defaultEncryption:(SZEncryptionMethod)defaultEncryption;
+- (nullable SZMemoryLimitPromptResult*)requestMemoryLimitWithRequiredBytes:(uint64_t)requiredBytes
+                                                         currentLimitBytes:(uint64_t)currentLimitBytes
+                                                               archivePath:(nullable NSString*)archivePath
+                                                                  filePath:(nullable NSString*)filePath
+                                                                  testMode:(BOOL)testMode
+                                                              showRemember:(BOOL)showRemember;
 
 @end
 

@@ -34,14 +34,9 @@ enum SZSettingsMigrations {
 struct SZPreferenceMigrator {
     let defaults: UserDefaults
 
-    /// Copies by default. A transform must return a UserDefaults-compatible value,
-    /// or nil to leave the old value untouched when conversion is not possible.
-    /// Existing destination values win; successful migrations remove the old key.
-    func migrate(newKey: String, oldKey: String, transform: (Any) -> Any? = { $0 }) {
-        migrate(newKeys: [newKey], oldKey: oldKey, transform: transform)
-    }
-
-    func migrate(newKeys: [String], oldKey: String, transform: (Any) -> Any? = { $0 }) {
+    /// Copies the old value into missing destination keys, then removes the old key.
+    /// Existing destination values are preserved.
+    func migrate(newKeys: [String], oldKey: String) {
         guard !newKeys.isEmpty,
               !newKeys.contains(oldKey),
               let oldValue = defaults.object(forKey: oldKey)
@@ -50,11 +45,8 @@ struct SZPreferenceMigrator {
         }
 
         let missingKeys = newKeys.filter { defaults.object(forKey: $0) == nil }
-        if !missingKeys.isEmpty {
-            guard let newValue = transform(oldValue) else { return }
-            for key in missingKeys {
-                defaults.set(newValue, forKey: key)
-            }
+        for key in missingKeys {
+            defaults.set(oldValue, forKey: key)
         }
         defaults.removeObject(forKey: oldKey)
     }

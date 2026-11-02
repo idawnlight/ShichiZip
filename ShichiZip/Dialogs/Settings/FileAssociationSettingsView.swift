@@ -9,7 +9,7 @@ private struct TableWidthPreferenceKey: PreferenceKey {
 }
 
 struct FileAssociationSettingsView: View {
-    @ObservedObject var model: FileAssociationSettingsModel
+    let model: FileAssociationSettingsModel
     @State private var searchText = ""
     @State private var tableWidth: CGFloat = 0
 
@@ -53,16 +53,19 @@ struct FileAssociationSettingsView: View {
         .onDisappear {
             model.cancelUpdates()
         }
-        .alert(item: updateFailureBinding) { failure in
-            Alert(
-                title: Text(SZL10n.string("app.settings.defaultOpenerFailedTitle")),
-                message: Text(
-                    SZL10n.string(
-                        "app.settings.defaultOpenerFailedDetail",
-                        failure.count,
-                    ),
+        .alert(
+            SZL10n.string("app.settings.defaultOpenerFailedTitle"),
+            isPresented: updateFailurePresented,
+            presenting: model.updateFailure,
+        ) { _ in
+            Button(SZL10n.string("common.ok")) {}
+                .keyboardShortcut(.defaultAction)
+        } message: { failure in
+            Text(
+                SZL10n.string(
+                    "app.settings.defaultOpenerFailedDetail",
+                    failure.count,
                 ),
-                dismissButton: .default(Text(SZL10n.string("common.ok"))),
             )
         }
     }
@@ -247,11 +250,11 @@ struct FileAssociationSettingsView: View {
             .truncationMode(.middle)
     }
 
-    private var updateFailureBinding: Binding<FileAssociationUpdateFailure?> {
+    private var updateFailurePresented: Binding<Bool> {
         Binding(
-            get: { model.updateFailure },
-            set: { failure in
-                if failure == nil {
+            get: { model.updateFailure != nil },
+            set: { isPresented in
+                if !isPresented {
                     model.dismissUpdateFailure()
                 }
             },

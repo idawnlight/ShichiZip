@@ -278,11 +278,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
             guard let self, let field else { return }
             self.window?.makeFirstResponder(nil)
             field.uninstall()
-            self.titlePathField = nil
-            self.titlePathToolbar?.restore()
-            self.titlePathToolbar = nil
-            self.updateLocationTitle()
-            self.activePane.focusFileList()
+            titlePathField = nil
+            titlePathToolbar?.restore()
+            titlePathToolbar = nil
+            updateLocationTitle()
+            activePane.focusFileList()
         }
         titlePathField = field
         titlePathToolbar = editor
@@ -293,18 +293,20 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
     func handleTitlePathMouseEvent(_ event: NSEvent) -> Bool {
         guard FileManagerToolbarPreferences.style == .unified,
-              let window, event.window === window else { return false }
+              let window = window as? FileManagerWindow, event.window === window else { return false }
         let rightClick = event.type == .rightMouseDown || event.modifierFlags.contains(.control)
         if rightClick, titlePathField == nil,
            [window.title, window.subtitle].contains(where: { text in
-               guard let field = FileManagerPathToolbar.titleField(in: window, text: text) else { return false }
+               guard let field = window.titleField(matching: text) else { return false }
                return field.bounds.contains(field.convert(event.locationInWindow, from: nil))
-           }) {
+           })
+        {
             expandTitlePath()
             return true
         }
         if !rightClick, let field = titlePathField,
-           !field.bounds.contains(field.convert(event.locationInWindow, from: nil)) {
+           !field.bounds.contains(field.convert(event.locationInWindow, from: nil))
+        {
             field.cancelPathEditing()
         }
         return false
@@ -553,8 +555,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
     }
 
     private func applyPendingEvenSplitLayoutIfNeeded() {
-        guard pendingEvenSplitLayout, isDualPane else { return }
-        guard splitView.arrangedSubviews.count > 1 else { return }
+        guard pendingEvenSplitLayout, isDualPane, splitView.arrangedSubviews.count > 1 else { return }
 
         window?.contentView?.layoutSubtreeIfNeeded()
         splitView.layoutSubtreeIfNeeded()
@@ -642,48 +643,11 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
     }
 
-    @objc func showCRC32Hash(_: Any?) {
-        presentSelectionHash(.crc32)
-    }
-
-    @objc func showAllHashes(_: Any?) {
-        presentSelectionHash(.all)
-    }
-
-    @objc func showCRC64Hash(_: Any?) {
-        presentSelectionHash(.crc64)
-    }
-
-    @objc func showXXH64Hash(_: Any?) {
-        presentSelectionHash(.xxh64)
-    }
-
-    @objc func showMD5Hash(_: Any?) {
-        presentSelectionHash(.md5)
-    }
-
-    @objc func showSHA1Hash(_: Any?) {
-        presentSelectionHash(.sha1)
-    }
-
-    @objc func showSHA256Hash(_: Any?) {
-        presentSelectionHash(.sha256)
-    }
-
-    @objc func showSHA384Hash(_: Any?) {
-        presentSelectionHash(.sha384)
-    }
-
-    @objc func showSHA512Hash(_: Any?) {
-        presentSelectionHash(.sha512)
-    }
-
-    @objc func showSHA3256Hash(_: Any?) {
-        presentSelectionHash(.sha3256)
-    }
-
-    @objc func showBLAKE2spHash(_: Any?) {
-        presentSelectionHash(.blake2sp)
+    @objc func showHash(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem,
+              let algorithm = FileManagerHashAlgorithm(rawValue: item.tag)
+        else { return }
+        presentSelectionHash(algorithm)
     }
 
     @objc func copy(_ sender: Any?) {
@@ -737,44 +701,24 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         activePane.invertSelection()
     }
 
-    @objc func sortByName(_: Any?) {
-        activePane.sortByName()
+    @objc func sortItems(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem,
+              let field = FileManagerSortField(rawValue: item.tag)
+        else { return }
+        switch field {
+        case .name: activePane.sortByName()
+        case .type: activePane.sortByType()
+        case .modified: activePane.sortByModifiedDate()
+        case .size: activePane.sortBySize()
+        case .created: activePane.sortByCreatedDate()
+        }
     }
 
-    @objc func sortBySize(_: Any?) {
-        activePane.sortBySize()
-    }
-
-    @objc func sortByType(_: Any?) {
-        activePane.sortByType()
-    }
-
-    @objc func sortByModifiedDate(_: Any?) {
-        activePane.sortByModifiedDate()
-    }
-
-    @objc func sortByCreatedDate(_: Any?) {
-        activePane.sortByCreatedDate()
-    }
-
-    @objc func showTimestampDay(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.day)
-    }
-
-    @objc func showTimestampMinute(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.minute)
-    }
-
-    @objc func showTimestampSecond(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.second)
-    }
-
-    @objc func showTimestampNTFS(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.ntfs)
-    }
-
-    @objc func showTimestampNanoseconds(_: Any?) {
-        FileManagerViewPreferences.setTimestampDisplayLevel(.nanoseconds)
+    @objc func showTimestamp(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem,
+              let level = FileManagerViewPreferences.TimestampDisplayLevel(rawValue: item.tag)
+        else { return }
+        FileManagerViewPreferences.setTimestampDisplayLevel(level)
     }
 
     @objc func toggleTimestampUTC(_: Any?) {
@@ -907,9 +851,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                 return
             }
 
-            guard snapshot.capabilities.canCopySelection else { return }
-            guard let destinationSelection = await promptForFileOperationDestination(forMove: false,
-                                                                                     sourcePane: pane)
+            guard snapshot.capabilities.canCopySelection, let destinationSelection = await promptForFileOperationDestination(forMove: false,
+                                                                                                                             sourcePane: pane)
             else { return }
             let unresolvedDestinationTarget = destinationSelection.target
 
@@ -948,10 +891,8 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
         }
 
         let sourceURLs = snapshot.selection.fileURLs
-        guard !sourceURLs.isEmpty else { return }
-
-        guard let destinationSelection = await promptForFileOperationDestination(forMove: move,
-                                                                                 sourcePane: pane)
+        guard !sourceURLs.isEmpty, let destinationSelection = await promptForFileOperationDestination(forMove: move,
+                                                                                                      sourcePane: pane)
         else { return }
         let destinationTarget = destinationSelection.target
         guard validateTransferDestination(destinationTarget,
@@ -1058,6 +999,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
 
         let itemName = item.name
         let itemPath = item.url.path
+        let methods = algorithm.bridgeMethodNames
 
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -1067,7 +1009,7 @@ class FileManagerWindowController: NSWindowController, NSWindowDelegate, NSUserI
                                                                       parentWindow: window,
                                                                       deferredDisplay: true)
                 { session in
-                    try SZArchive.calculateHash(forPath: itemPath, session: session)
+                    try SZArchive.calculateHash(forPath: itemPath, methods: methods, session: session)
                 }
                 let details = algorithm.details(hashValues: hashValues)
                 szShowDetailsDialog(title: itemName,
@@ -1244,7 +1186,6 @@ private extension FileManagerShortcutCommand {
 
 @MainActor
 protocol FileManagerPaneDelegate: AnyObject {
-    func paneDidRequestOpenArchiveInNewWindow(_ url: URL)
     func paneDidBecomeActive(_ pane: FileManagerPaneController)
     func paneLocationDidChange(_ pane: FileManagerPaneController)
     func paneSelectionDidChange(_ pane: FileManagerPaneController)
@@ -1253,12 +1194,6 @@ protocol FileManagerPaneDelegate: AnyObject {
 }
 
 extension FileManagerWindowController: FileManagerPaneDelegate {
-    func paneDidRequestOpenArchiveInNewWindow(_ url: URL) {
-        Task { @MainActor [windowCoordinator] in
-            await windowCoordinator.openArchiveInNewFileManager(url)
-        }
-    }
-
     func paneDidBecomeActive(_ pane: FileManagerPaneController) {
         setActivePane(pane)
         quickLookPanelController.retargetPreviewIfVisible(to: pane,
@@ -1268,7 +1203,9 @@ extension FileManagerWindowController: FileManagerPaneDelegate {
 
     func paneLocationDidChange(_ pane: FileManagerPaneController) {
         guard leftPane != nil, rightPane != nil else { return }
-        if pane === activePane { updateLocationTitle() }
+        if pane === activePane {
+            updateLocationTitle()
+        }
     }
 
     func paneSelectionDidChange(_ pane: FileManagerPaneController) {

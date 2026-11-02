@@ -213,7 +213,7 @@ enum ShichiZipQuickActionInputLoader {
                     return
                 }
 
-                continuation.resume(returning: fileURL(from: string).standardizedFileURL)
+                continuation.resume(returning: fileURL(from: string)?.standardizedFileURL)
             }
         }
     }
@@ -229,70 +229,28 @@ enum ShichiZipQuickActionInputLoader {
                     return
                 }
 
-                do {
-                    let url = try parseFileURL(from: data)
-                    continuation.resume(returning: url.standardizedFileURL)
-                } catch {
+                let url = parseFileURL(from: data)
+                if url == nil {
                     let byteCount = data?.count ?? 0
                     logger.log("loadDataRepresentation returned unparseable data for type=\(typeIdentifier) bytes=\(byteCount)")
-                    continuation.resume(returning: nil)
                 }
+                continuation.resume(returning: url?.standardizedFileURL)
             }
         }
     }
 
-    private nonisolated static func parseFileURL(from item: Any?) throws -> URL {
-        guard let item else {
-            throw ShichiZipQuickActionError.invalidPayload
-        }
-
-        // Iterative DFS over nested array/dictionary payloads so a deeply nested
-        // item-provider value can't overflow the call stack.
-        var stack: [Any] = [item]
-        while let candidate = stack.popLast() {
-            if let url = scalarFileURL(from: candidate) {
-                return url
-            }
-
-            if let array = candidate as? [Any] {
-                stack.append(contentsOf: array.reversed())
-            } else if let dictionary = candidate as? [AnyHashable: Any] {
-                stack.append(contentsOf: dictionary.values.reversed())
-            }
-        }
-
-        throw ShichiZipQuickActionError.invalidPayload
-    }
-
-    private nonisolated static func scalarFileURL(from item: Any) -> URL? {
-        if let url = item as? URL {
-            return url
-        }
-
-        if let nsURL = item as? NSURL {
-            return nsURL as URL
-        }
-
-        if let string = item as? String {
-            return fileURL(from: string)
-        }
-
-        if let data = item as? Data {
-            return fileURL(from: data)
-        }
-
-        return nil
-    }
-
-    private nonisolated static func fileURL(from string: String) -> URL {
+    private nonisolated static func fileURL(from string: String) -> URL? {
         if let url = URL(string: string), url.isFileURL {
             return url
         }
 
-        return URL(fileURLWithPath: string)
+        let path = (string as NSString).expandingTildeInPath
+        guard path.hasPrefix("/") else { return nil }
+        return URL(fileURLWithPath: path)
     }
 
-    private nonisolated static func fileURL(from data: Data) -> URL? {
+    private nonisolated static func parseFileURL(from data: Data?) -> URL? {
+        guard let data else { return nil }
         if let url = try? (NSKeyedUnarchiver.unarchivedObject(ofClass: NSURL.self, from: data) as URL?) {
             return url
         }

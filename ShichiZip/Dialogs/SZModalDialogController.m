@@ -176,16 +176,13 @@ static NSString* SZModalDialogAppDisplayName(void) {
 
 - (NSImage*)symbolImage {
     NSString* symbolName = @"info.circle.fill";
-    NSColor* tintColor = NSColor.systemBlueColor;
 
     switch (_style) {
     case SZDialogStyleWarning:
         symbolName = @"exclamationmark.triangle.fill";
-        tintColor = NSColor.systemOrangeColor;
         break;
     case SZDialogStyleCritical:
         symbolName = @"xmark.octagon.fill";
-        tintColor = NSColor.systemRedColor;
         break;
     case SZDialogStyleInformational:
     default:
@@ -197,10 +194,7 @@ static NSString* SZModalDialogAppDisplayName(void) {
     image = [image imageWithSymbolConfiguration:config];
     image.template = YES;
 
-    NSImageView* imageView = [[NSImageView alloc] init];
-    imageView.image = image;
-    imageView.contentTintColor = tintColor;
-    return imageView.image;
+    return image;
 }
 
 - (void)loadView {

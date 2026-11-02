@@ -238,8 +238,8 @@ struct FileManagerColumn: Equatable {
     }
 
     private static func knownDefinition(for id: FileManagerColumnID) -> FileManagerColumn? {
-        switch id.rawValue {
-        case FileManagerColumnID.name.rawValue:
+        switch id {
+        case .name:
             FileManagerColumn(id: id,
                               titleKey: "column.name",
                               titleFallback: "Name",
@@ -249,7 +249,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: #selector(NSString.localizedStandardCompare(_:)),
                               textStyle: .standard)
-        case FileManagerColumnID.size.rawValue:
+        case .size:
             FileManagerColumn(id: id,
                               titleKey: "column.size",
                               titleFallback: "Size",
@@ -259,7 +259,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.packedSize.rawValue:
+        case .packedSize:
             FileManagerColumn(id: id,
                               titleKey: "column.packedSize",
                               titleFallback: "Packed Size",
@@ -269,7 +269,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.modified.rawValue:
+        case .modified:
             FileManagerColumn(id: id,
                               titleKey: "column.modified",
                               titleFallback: "Modified",
@@ -279,7 +279,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.created.rawValue:
+        case .created:
             FileManagerColumn(id: id,
                               titleKey: "column.created",
                               titleFallback: "Created",
@@ -289,7 +289,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.accessed.rawValue:
+        case .accessed:
             FileManagerColumn(id: id,
                               titleKey: "column.accessed",
                               titleFallback: "Accessed",
@@ -299,7 +299,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.changed.rawValue:
+        case .changed:
             FileManagerColumn(id: id,
                               titleKey: "column.changed",
                               titleFallback: "Metadata Changed",
@@ -309,7 +309,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.attributes.rawValue:
+        case .attributes:
             FileManagerColumn(id: id,
                               titleKey: "column.attributes",
                               titleFallback: "Attributes",
@@ -319,7 +319,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .fixedWidth)
-        case FileManagerColumnID.encrypted.rawValue:
+        case .encrypted:
             FileManagerColumn(id: id,
                               titleKey: "column.encrypted",
                               titleFallback: "Encrypted",
@@ -329,7 +329,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .standard)
-        case FileManagerColumnID.anti.rawValue:
+        case .anti:
             FileManagerColumn(id: id,
                               titleKey: "column.anti",
                               titleFallback: "Anti",
@@ -339,7 +339,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .standard)
-        case FileManagerColumnID.method.rawValue:
+        case .method:
             FileManagerColumn(id: id,
                               titleKey: "column.method",
                               titleFallback: "Method",
@@ -349,7 +349,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: #selector(NSString.localizedStandardCompare(_:)),
                               textStyle: .standard)
-        case FileManagerColumnID.crc.rawValue:
+        case .crc:
             FileManagerColumn(id: id,
                               titleKey: "column.crc",
                               titleFallback: "CRC",
@@ -359,7 +359,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .fixedWidth)
-        case FileManagerColumnID.block.rawValue:
+        case .block:
             FileManagerColumn(id: id,
                               titleKey: "column.block",
                               titleFallback: "Block",
@@ -369,7 +369,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.position.rawValue:
+        case .position:
             FileManagerColumn(id: id,
                               titleKey: "column.position",
                               titleFallback: "Position",
@@ -379,7 +379,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.comment.rawValue:
+        case .comment:
             FileManagerColumn(id: id,
                               titleKey: "column.comment",
                               titleFallback: "Comment",
@@ -389,7 +389,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .left,
                               sortSelector: #selector(NSString.localizedStandardCompare(_:)),
                               textStyle: .standard)
-        case FileManagerColumnID.inode.rawValue:
+        case .inode:
             FileManagerColumn(id: id,
                               titleKey: "column.inode",
                               titleFallback: "iNode",
@@ -399,7 +399,7 @@ struct FileManagerColumn: Equatable {
                               alignment: .right,
                               sortSelector: nil,
                               textStyle: .tabularNumbers)
-        case FileManagerColumnID.links.rawValue:
+        case .links:
             FileManagerColumn(id: id,
                               titleKey: "column.links",
                               titleFallback: "Links",
@@ -450,190 +450,6 @@ struct FileManagerColumn: Equatable {
         default:
             .standard
         }
-    }
-}
-
-enum FileManagerItemSorting {
-    static func sort(_ items: inout [FileSystemItem], by descriptors: [NSSortDescriptor]) {
-        guard let descriptor = descriptors.first else {
-            sortByDefaultName(&items)
-            return
-        }
-
-        let key = descriptor.key ?? FileManagerColumnID.name.rawValue
-        let ascending = descriptor.ascending
-
-        items.sort { firstItem, secondItem in
-            if firstItem.isDirectory != secondItem.isDirectory {
-                return firstItem.isDirectory
-            }
-
-            let result = compare(firstItem, secondItem, key: key)
-            return ascending ? result == .orderedAscending : result == .orderedDescending
-        }
-    }
-
-    static func sort(_ items: inout [ArchiveItem], by descriptors: [NSSortDescriptor]) {
-        guard let descriptor = descriptors.first else {
-            sortByDefaultName(&items)
-            return
-        }
-
-        let key = descriptor.key ?? FileManagerColumnID.name.rawValue
-        let ascending = descriptor.ascending
-
-        items.sort { firstItem, secondItem in
-            if firstItem.isDirectory != secondItem.isDirectory {
-                return firstItem.isDirectory
-            }
-
-            let result = compare(firstItem, secondItem, key: key)
-            return ascending ? result == .orderedAscending : result == .orderedDescending
-        }
-    }
-
-    private static func sortByDefaultName(_ items: inout [FileSystemItem]) {
-        items.sort { firstItem, secondItem in
-            if firstItem.isDirectory != secondItem.isDirectory {
-                return firstItem.isDirectory
-            }
-            return firstItem.name.localizedStandardCompare(secondItem.name) == .orderedAscending
-        }
-    }
-
-    private static func sortByDefaultName(_ items: inout [ArchiveItem]) {
-        items.sort { firstItem, secondItem in
-            if firstItem.isDirectory != secondItem.isDirectory {
-                return firstItem.isDirectory
-            }
-            return firstItem.name.localizedStandardCompare(secondItem.name) == .orderedAscending
-        }
-    }
-
-    private static func compare(_ firstItem: FileSystemItem,
-                                _ secondItem: FileSystemItem,
-                                key: String) -> ComparisonResult
-    {
-        switch key {
-        case FileManagerColumnID.name.rawValue:
-            firstItem.name.localizedStandardCompare(secondItem.name)
-        case "type":
-            compareType(firstItem.url.pathExtension,
-                        secondItem.url.pathExtension,
-                        firstName: firstItem.name,
-                        secondName: secondItem.name)
-        case FileManagerColumnID.size.rawValue:
-            compare(firstItem.size, secondItem.size)
-        case FileManagerColumnID.packedSize.rawValue:
-            compare(firstItem.packedSize, secondItem.packedSize)
-        case FileManagerColumnID.modified.rawValue:
-            compare(firstItem.modifiedDate ?? Date.distantPast,
-                    secondItem.modifiedDate ?? Date.distantPast)
-        case FileManagerColumnID.created.rawValue:
-            compare(firstItem.createdDate ?? Date.distantPast,
-                    secondItem.createdDate ?? Date.distantPast)
-        case FileManagerColumnID.accessed.rawValue:
-            compare(firstItem.accessedDate ?? Date.distantPast,
-                    secondItem.accessedDate ?? Date.distantPast)
-        case FileManagerColumnID.changed.rawValue:
-            compare(firstItem.changedDate ?? Date.distantPast,
-                    secondItem.changedDate ?? Date.distantPast)
-        case FileManagerColumnID.attributes.rawValue:
-            compare(firstItem.attributes, secondItem.attributes)
-        case FileManagerColumnID.inode.rawValue:
-            compare(firstItem.inode ?? 0, secondItem.inode ?? 0)
-        case FileManagerColumnID.links.rawValue:
-            compare(firstItem.links ?? 0, secondItem.links ?? 0)
-        case FileManagerColumnID.position.rawValue,
-             FileManagerColumnID.block.rawValue,
-             FileManagerColumnID.anti.rawValue:
-            .orderedSame
-        default:
-            firstItem.name.localizedStandardCompare(secondItem.name)
-        }
-    }
-
-    private static func compare(_ firstItem: ArchiveItem,
-                                _ secondItem: ArchiveItem,
-                                key: String) -> ComparisonResult
-    {
-        switch key {
-        case FileManagerColumnID.name.rawValue:
-            return firstItem.name.localizedStandardCompare(secondItem.name)
-        case "type":
-            return compareType(firstItem.fileExtension,
-                               secondItem.fileExtension,
-                               firstName: firstItem.name,
-                               secondName: secondItem.name)
-        case FileManagerColumnID.size.rawValue:
-            return compare(firstItem.size, secondItem.size)
-        case FileManagerColumnID.packedSize.rawValue:
-            return compare(firstItem.packedSize, secondItem.packedSize)
-        case FileManagerColumnID.modified.rawValue:
-            return compare(firstItem.modifiedDate ?? Date.distantPast,
-                           secondItem.modifiedDate ?? Date.distantPast)
-        case FileManagerColumnID.created.rawValue:
-            return compare(firstItem.createdDate ?? Date.distantPast,
-                           secondItem.createdDate ?? Date.distantPast)
-        case FileManagerColumnID.accessed.rawValue:
-            return compare(firstItem.accessedDate ?? Date.distantPast,
-                           secondItem.accessedDate ?? Date.distantPast)
-        case FileManagerColumnID.attributes.rawValue:
-            return compare(firstItem.attributes, secondItem.attributes)
-        case FileManagerColumnID.encrypted.rawValue:
-            return compare(firstItem.isEncrypted, secondItem.isEncrypted)
-        case FileManagerColumnID.anti.rawValue:
-            return compare(firstItem.isAnti, secondItem.isAnti)
-        case FileManagerColumnID.method.rawValue:
-            return firstItem.method.localizedStandardCompare(secondItem.method)
-        case FileManagerColumnID.crc.rawValue:
-            return compare(firstItem.crc, secondItem.crc)
-        case FileManagerColumnID.block.rawValue:
-            return compare(firstItem.block, secondItem.block)
-        case FileManagerColumnID.position.rawValue:
-            return compare(firstItem.position, secondItem.position)
-        case FileManagerColumnID.comment.rawValue:
-            return firstItem.comment.localizedStandardCompare(secondItem.comment)
-        default:
-            let firstValue = firstItem.propertyValues[key] ?? ""
-            let secondValue = secondItem.propertyValues[key] ?? ""
-            let valueResult = firstValue.localizedStandardCompare(secondValue)
-            return valueResult == .orderedSame
-                ? firstItem.name.localizedStandardCompare(secondItem.name)
-                : valueResult
-        }
-    }
-
-    private static func compareType(_ firstExtension: String,
-                                    _ secondExtension: String,
-                                    firstName: String,
-                                    secondName: String) -> ComparisonResult
-    {
-        let typeResult = firstExtension.localizedLowercase.localizedStandardCompare(secondExtension.localizedLowercase)
-        return typeResult == .orderedSame
-            ? firstName.localizedStandardCompare(secondName)
-            : typeResult
-    }
-
-    private static func compare<T: Comparable>(_ firstValue: T, _ secondValue: T) -> ComparisonResult {
-        firstValue == secondValue ? .orderedSame : (firstValue < secondValue ? .orderedAscending : .orderedDescending)
-    }
-
-    private static func compare<T: Comparable>(_ firstValue: T?, _ secondValue: T?) -> ComparisonResult {
-        switch (firstValue, secondValue) {
-        case (nil, nil):
-            .orderedSame
-        case (nil, _):
-            .orderedAscending
-        case (_, nil):
-            .orderedDescending
-        case let (firstValue?, secondValue?):
-            compare(firstValue, secondValue)
-        }
-    }
-
-    private static func compare(_ firstValue: Bool, _ secondValue: Bool) -> ComparisonResult {
-        firstValue == secondValue ? .orderedSame : (!firstValue && secondValue ? .orderedAscending : .orderedDescending)
     }
 }
 

@@ -1,5 +1,5 @@
 import AppKit
-import Combine
+import Observation
 import SwiftUI
 
 enum FileManagerShortcutSettings {
@@ -40,16 +40,19 @@ enum FileManagerShortcutSettings {
 }
 
 @MainActor
-final class SettingsStore: @MainActor ObservableObject {
-    let objectWillChange = ObservableObjectPublisher()
+@Observable
+final class SettingsStore {
     private(set) var localizationVersion = 0
+    private var settingsVersion = 0
 
     private let notificationCenter: NotificationCenter
-    private var observers: [NSObjectProtocol] = []
+    @ObservationIgnored private var observers: [NSObjectProtocol] = []
 
     init(notificationCenter: NotificationCenter = .default) {
         self.notificationCenter = notificationCenter
 
+        // Settings are read from shared defaults rather than stored properties.
+        // Bridge the app's settings notifications into Observation.
         for name in [Notification.Name.szSettingsDidChange, .szLanguageDidChange] {
             let isLanguageChange = name == .szLanguageDidChange
             observers.append(
@@ -59,7 +62,7 @@ final class SettingsStore: @MainActor ObservableObject {
                         if isLanguageChange {
                             self.localizationVersion &+= 1
                         }
-                        self.objectWillChange.send()
+                        self.settingsVersion &+= 1
                     }
                 },
             )
@@ -73,11 +76,13 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     var availableLanguages: [SZL10n.Language] {
-        SZL10n.availableLanguages()
+        _ = settingsVersion
+        return SZL10n.availableLanguages()
     }
 
     var languageOverride: String {
-        SZSettings.string(.languageOverride)
+        _ = settingsVersion
+        return SZSettings.string(.languageOverride)
     }
 
     func setLanguageOverride(_ localeCode: String) {
@@ -88,21 +93,30 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     func boolBinding(_ key: SZSettingsKey) -> Binding<Bool> {
-        Binding(
-            get: { SZSettings.bool(key) },
+        _ = settingsVersion
+        return Binding(
+            get: {
+                _ = self.settingsVersion
+                return SZSettings.bool(key)
+            },
             set: { SZSettings.set($0, for: key) },
         )
     }
 
     func stringBinding(_ key: SZSettingsKey) -> Binding<String> {
-        Binding(
-            get: { SZSettings.string(key) },
+        _ = settingsVersion
+        return Binding(
+            get: {
+                _ = self.settingsVersion
+                return SZSettings.string(key)
+            },
             set: { SZSettings.set($0, for: key) },
         )
     }
 
     var remembersRecentArchives: Bool {
-        SZSettings.bool(.rememberRecentArchives)
+        _ = settingsVersion
+        return SZSettings.bool(.rememberRecentArchives)
     }
 
     func setRemembersRecentArchives(_ value: Bool) {
@@ -114,12 +128,13 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     var remembersFileManagerWindowFrame: Bool {
-        FileManagerWindowPreferences.remembersWindowFrame
+        _ = settingsVersion
+        return FileManagerWindowPreferences.remembersWindowFrame
     }
 
     func setRemembersFileManagerWindowFrame(_ value: Bool) {
         FileManagerWindowPreferences.setRemembersWindowFrame(value)
-        objectWillChange.send()
+        settingsVersion &+= 1
     }
 
     func resetFileManagerWindowFrame() {
@@ -131,11 +146,13 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     var memoryLimitGB: Int {
-        SZSettings.memLimitGB
+        _ = settingsVersion
+        return SZSettings.memLimitGB
     }
 
     var isMemoryLimitEnabled: Bool {
-        SZSettings.bool(.memLimitEnabled)
+        _ = settingsVersion
+        return SZSettings.bool(.memLimitEnabled)
     }
 
     func setMemoryLimitGB(_ value: Int) {
@@ -143,7 +160,8 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     var launchOpenAction: LaunchOpenAction {
-        SZSettings.launchOpenDefaultAction
+        _ = settingsVersion
+        return SZSettings.launchOpenDefaultAction
     }
 
     func setLaunchOpenAction(_ action: LaunchOpenAction) {
@@ -151,7 +169,8 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     var launchOpenDelay: TimeInterval {
-        SZSettings.launchOpenDelaySeconds
+        _ = settingsVersion
+        return SZSettings.launchOpenDelaySeconds
     }
 
     func setLaunchOpenDelay(_ delay: TimeInterval) {
@@ -159,7 +178,8 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     var launchOpenModifier: LaunchOpenBrowseModifier {
-        SZSettings.launchOpenBrowseModifier
+        _ = settingsVersion
+        return SZSettings.launchOpenBrowseModifier
     }
 
     func setLaunchOpenModifier(_ modifier: LaunchOpenBrowseModifier) {
@@ -167,7 +187,8 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     var workingDirectoryMode: Int {
-        SZSettings.workDirMode
+        _ = settingsVersion
+        return SZSettings.workDirMode
     }
 
     func setWorkingDirectoryMode(_ mode: Int) {
@@ -186,7 +207,8 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     var shortcutPreset: FileManagerShortcutPreset {
-        SZSettings.fileManagerShortcutPreset
+        _ = settingsVersion
+        return SZSettings.fileManagerShortcutPreset
     }
 
     func selectShortcutPreset(_ preset: FileManagerShortcutPreset) {
@@ -194,7 +216,8 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     func shortcut(for command: FileManagerShortcutCommand) -> FileManagerShortcut? {
-        FileManagerShortcuts.resolvedBindingMap()[command]
+        _ = settingsVersion
+        return FileManagerShortcuts.resolvedBindingMap()[command]
     }
 
     func setShortcut(_ shortcut: FileManagerShortcut?,
@@ -204,7 +227,8 @@ final class SettingsStore: @MainActor ObservableObject {
     }
 
     var quickLookExpansionDepth: Int {
-        SZSettings.quickLookPreviewExpansionDepth
+        _ = settingsVersion
+        return SZSettings.quickLookPreviewExpansionDepth
     }
 
     func setQuickLookExpansionDepth(_ depth: Int) {

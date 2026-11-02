@@ -1,11 +1,11 @@
 import Darwin
 import Foundation
+import XCTest
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
 #else
     @testable import ShichiZip
 #endif
-import XCTest
 
 /// Guarantees the `getattrlistbulk(2)` fast path is a drop-in replacement for
 /// the per-item `URLResourceValues` + `lstat` path: every field that

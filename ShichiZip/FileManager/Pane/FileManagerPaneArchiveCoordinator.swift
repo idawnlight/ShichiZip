@@ -1,6 +1,25 @@
 import Cocoa
 
 @MainActor
+protocol FileManagerPaneArchiveCoordinatorHost: AnyObject {
+    var archiveParentWindow: NSWindow? { get }
+    var isViewLoaded: Bool { get }
+    var currentDirectory: URL { get }
+    var archiveSelectedPaths: [String] { get }
+
+    func archivePrepareForPresentation(hostDirectory: URL)
+    func archiveLocationDidChange(selectingPaths: [String])
+    func archiveVisibilityDidChange(restoringSelection: [String])
+    func archiveStackDidCloseLevel()
+    func archiveDidOpenTopLevel(_ url: URL)
+    func hasConflictingNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool
+    func hasDirtyNestedArchiveInstance(for identity: FileManagerNestedArchiveIdentity) -> Bool
+    func archiveBeginStateReplacement() -> UUID?
+    func archiveEndStateReplacement(_ token: UUID)
+    func showErrorAlert(_ error: Error)
+}
+
+@MainActor
 final class FileManagerPaneArchiveCoordinator {
     private struct CloseOperation {
         let token: UUID
@@ -26,23 +45,7 @@ final class FileManagerPaneArchiveCoordinator {
 
     private let archiveSession: FileManagerArchiveSession
     private let observerIdentifier: ObjectIdentifier
-    private let parentWindow: () -> NSWindow?
-    private let isViewLoaded: () -> Bool
-    private let didOpenTopLevelArchive: (URL) -> Void
-    private let currentDirectory: () -> URL
-    private let prepareDirectoryForArchivePresentation: (URL) -> Void
-    private let updateTableColumns: () -> Void
-    private let sortCurrentItems: () -> Void
-    private let updatePathField: () -> Void
-    private let updateStatusBar: () -> Void
-    private let reloadTableData: () -> Void
-    private let selectArchivePaths: ([String]) -> Void
-    private let selectedArchivePaths: () -> [String]
-    private let hasConflictingNestedArchiveInstance: (FileManagerNestedArchiveIdentity) -> Bool
-    private let hasDirtyNestedArchiveInstance: (FileManagerNestedArchiveIdentity) -> Bool
-    private let beginStateReplacement: () -> UUID?
-    private let endStateReplacement: (UUID) -> Void
-    private let showError: (Error) -> Void
+    private weak var host: (any FileManagerPaneArchiveCoordinatorHost)?
 
     private var archiveRefreshGeneration = 0
     private var archiveRefreshTask: Task<Void, Never>?
@@ -52,43 +55,11 @@ final class FileManagerPaneArchiveCoordinator {
 
     init(archiveSession: FileManagerArchiveSession,
          observerIdentifier: ObjectIdentifier,
-         parentWindow: @escaping () -> NSWindow?,
-         isViewLoaded: @escaping () -> Bool,
-         didOpenTopLevelArchive: @escaping (URL) -> Void = { _ in },
-         updateTableColumns: @escaping () -> Void,
-         currentDirectory: @escaping () -> URL = { FileManager.default.homeDirectoryForCurrentUser },
-         prepareDirectoryForArchivePresentation: @escaping (URL) -> Void = { _ in },
-         sortCurrentItems: @escaping () -> Void = {},
-         updatePathField: @escaping () -> Void = {},
-         updateStatusBar: @escaping () -> Void = {},
-         reloadTableData: @escaping () -> Void = {},
-         selectArchivePaths: @escaping ([String]) -> Void,
-         selectedArchivePaths: @escaping () -> [String] = { [] },
-         hasConflictingNestedArchiveInstance: @escaping (FileManagerNestedArchiveIdentity) -> Bool = { _ in false },
-         hasDirtyNestedArchiveInstance: @escaping (FileManagerNestedArchiveIdentity) -> Bool = { _ in false },
-         beginStateReplacement: @escaping () -> UUID? = { UUID() },
-         endStateReplacement: @escaping (UUID) -> Void = { _ in },
-         showError: @escaping (Error) -> Void)
+         host: any FileManagerPaneArchiveCoordinatorHost)
     {
         self.archiveSession = archiveSession
         self.observerIdentifier = observerIdentifier
-        self.parentWindow = parentWindow
-        self.isViewLoaded = isViewLoaded
-        self.didOpenTopLevelArchive = didOpenTopLevelArchive
-        self.currentDirectory = currentDirectory
-        self.prepareDirectoryForArchivePresentation = prepareDirectoryForArchivePresentation
-        self.updateTableColumns = updateTableColumns
-        self.sortCurrentItems = sortCurrentItems
-        self.updatePathField = updatePathField
-        self.updateStatusBar = updateStatusBar
-        self.reloadTableData = reloadTableData
-        self.selectArchivePaths = selectArchivePaths
-        self.selectedArchivePaths = selectedArchivePaths
-        self.hasConflictingNestedArchiveInstance = hasConflictingNestedArchiveInstance
-        self.hasDirtyNestedArchiveInstance = hasDirtyNestedArchiveInstance
-        self.beginStateReplacement = beginStateReplacement
-        self.endStateReplacement = endStateReplacement
-        self.showError = showError
+        self.host = host
     }
 
     // MARK: - Opening And Presentation
@@ -107,7 +78,7 @@ final class FileManagerPaneArchiveCoordinator {
         let openGeneration = beginArchiveOpen()
         let paneHostDirectory = hostDirectory ?? archiveHostDirectory()
         let resolvedDisplayPathPrefix = displayPathPrefix ?? url.path
-        let progressParentWindow = parentWindow().flatMap { window in
+        let progressParentWindow = host?.archiveParentWindow.flatMap { window in
             window.isVisible ? window : nil
         }
 
@@ -135,7 +106,7 @@ final class FileManagerPaneArchiveCoordinator {
         if case .opened = result,
            let topLevelArchiveURL = archiveSession.currentLevel?.topLevelArchiveURL
         {
-            didOpenTopLevelArchive(topLevelArchiveURL)
+            host?.archiveDidOpenTopLevel(topLevelArchiveURL)
         }
         return result
     }
@@ -181,7 +152,7 @@ final class FileManagerPaneArchiveCoordinator {
         switch preparedResult {
         case let .opened(prepared):
             if let nestedIdentity = prepared.nestedIdentity,
-               hasDirtyNestedArchiveInstance(nestedIdentity)
+               host?.hasDirtyNestedArchiveInstance(for: nestedIdentity) == true
             {
                 prepared.archive.close()
                 archiveSession.cleanupTemporaryDirectory(prepared.temporaryDirectory)
@@ -215,7 +186,7 @@ final class FileManagerPaneArchiveCoordinator {
         if showError {
             switch result {
             case let .unsupportedArchive(error), let .failed(error):
-                self.showError(error)
+                host?.showErrorAlert(error)
             case .opened, .cancelled:
                 break
             }
@@ -240,7 +211,7 @@ final class FileManagerPaneArchiveCoordinator {
     {
         if replaceCurrentState {
             let replacementToken: UUID? = if archiveSession.isInsideArchive {
-                beginStateReplacement()
+                host?.archiveBeginStateReplacement()
             } else {
                 nil
             }
@@ -253,7 +224,7 @@ final class FileManagerPaneArchiveCoordinator {
             }
             defer {
                 if let replacementToken {
-                    endStateReplacement(replacementToken)
+                    host?.archiveEndStateReplacement(replacementToken)
                 }
             }
 
@@ -272,22 +243,22 @@ final class FileManagerPaneArchiveCoordinator {
             return false
         }
 
-        prepareDirectoryForArchivePresentation(prepared.hostDirectory)
+        host?.archivePrepareForPresentation(hostDirectory: prepared.hostDirectory)
         archiveSession.appendPreparedArchive(prepared)
         presentCurrentArchiveSubdir()
         return true
     }
 
-    private func presentCurrentArchiveSubdir() {
-        updateTableColumns()
-        sortCurrentItems()
-        updatePathField()
-        updateStatusBar()
-        reloadTableData()
+    private func presentCurrentArchiveSubdir(selectingPaths paths: [String] = []) {
+        host?.archiveLocationDidChange(selectingPaths: paths)
     }
 
     func archiveHostDirectory() -> URL {
-        archiveSession.currentHostDirectory ?? currentDirectory()
+        archiveSession.currentHostDirectory ?? host?.currentDirectory ?? FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    private func hasConflictingNestedArchiveInstance(_ identity: FileManagerNestedArchiveIdentity) -> Bool {
+        host?.hasConflictingNestedArchiveInstance(for: identity) == true
     }
 
     // MARK: - Command Context
@@ -316,12 +287,8 @@ final class FileManagerPaneArchiveCoordinator {
                         subdir: String) -> (archive: SZArchive, subdir: String)?
     {
         guard let level = archiveSession.currentLevel,
-              URL(fileURLWithPath: level.archivePath).standardizedFileURL == archiveURL.standardizedFileURL
-        else {
-            return nil
-        }
-
-        guard let target = archiveSession.mutationTarget(for: level,
+              URL(fileURLWithPath: level.archivePath).standardizedFileURL == archiveURL.standardizedFileURL,
+              let target = archiveSession.mutationTarget(for: level,
                                                          subdir: subdir,
                                                          hasConflictingNestedArchiveInstance: hasConflictingNestedArchiveInstance)
         else {
@@ -354,31 +321,6 @@ final class FileManagerPaneArchiveCoordinator {
                                                   displayPathPrefix: currentDisplayPathPrefix(),
                                                   quarantineSourceArchivePath: quarantineSourceArchivePath,
                                                   hasConflictingNestedArchiveInstance: hasConflictingNestedArchiveInstance)
-    }
-
-    func selectedOrDisplayedEntriesForExtraction(from items: [ArchiveItem],
-                                                 quarantineSourceArchivePath: String?) -> [ArchiveItem]
-    {
-        guard let context = currentExtractionContext(quarantineSourceArchivePath: quarantineSourceArchivePath) else { return [] }
-
-        let indices = Set(FileManagerArchiveExtraction.entryIndices(for: items,
-                                                                    allEntries: context.allEntries).map(\.intValue))
-        return context.allEntries.filter { indices.contains($0.index) }
-    }
-
-    func pathPrefixToStripForExtraction(items: [ArchiveItem],
-                                        destinationURL: URL,
-                                        pathMode: SZPathMode,
-                                        eliminateDuplicates: Bool,
-                                        quarantineSourceArchivePath: String?) -> String?
-    {
-        guard let context = currentExtractionContext(quarantineSourceArchivePath: quarantineSourceArchivePath) else { return nil }
-
-        return FileManagerArchiveExtraction.pathPrefixToStrip(for: items,
-                                                              context: context,
-                                                              destinationURL: destinationURL,
-                                                              pathMode: pathMode,
-                                                              eliminateDuplicates: eliminateDuplicates)
     }
 
     func prepareExtraction(of itemsToExtract: [ArchiveItem],
@@ -420,43 +362,8 @@ final class FileManagerPaneArchiveCoordinator {
         return preparedExtraction
     }
 
-    func extractArchiveItems(_ itemsToExtract: [ArchiveItem],
-                             emptySelectionMessage: String,
-                             to destinationURL: URL,
-                             session: SZOperationSession?,
-                             overwriteMode: SZOverwriteMode,
-                             pathMode: SZPathMode,
-                             password: String?,
-                             preserveNtSecurityInfo: Bool,
-                             eliminateDuplicates: Bool,
-                             inheritDownloadedFileQuarantine: Bool,
-                             quarantineSourceArchivePath: String?) throws
-    {
-        let preparedExtraction = try prepareExtraction(of: itemsToExtract,
-                                                       emptySelectionMessage: emptySelectionMessage,
-                                                       to: destinationURL,
-                                                       overwriteMode: overwriteMode,
-                                                       pathMode: pathMode,
-                                                       password: password,
-                                                       preserveNtSecurityInfo: preserveNtSecurityInfo,
-                                                       eliminateDuplicates: eliminateDuplicates,
-                                                       inheritDownloadedFileQuarantine: inheritDownloadedFileQuarantine,
-                                                       quarantineSourceArchivePath: quarantineSourceArchivePath)
-        try preparedExtraction.perform(session: session)
-    }
-
-    func testCurrentArchive(session: SZOperationSession? = nil) throws {
-        guard let level = archiveSession.currentLevel else {
-            throw operationError(SZL10n.string("app.fileManager.error.noArchiveOpen"))
-        }
-        try level.archive.test(with: session)
-    }
-
     func currentArchiveForTest() throws -> FileManagerLeasedArchive {
-        guard let level = archiveSession.currentLevel else {
-            throw operationError(SZL10n.string("app.fileManager.error.noArchiveOpen"))
-        }
-        guard let lease = level.operationGate.acquireLease() else {
+        guard let level = archiveSession.currentLevel, let lease = level.operationGate.acquireLease() else {
             throw operationError(SZL10n.string("app.fileManager.error.noArchiveOpen"))
         }
         return FileManagerLeasedArchive(archive: level.archive,
@@ -464,7 +371,7 @@ final class FileManagerPaneArchiveCoordinator {
     }
 
     private func currentDisplayPathPrefix() -> String {
-        archiveSession.currentDisplayPathPrefix ?? currentDirectory().path
+        archiveSession.currentDisplayPathPrefix ?? host?.currentDirectory.path ?? FileManager.default.homeDirectoryForCurrentUser.path
     }
 
     private func currentExtractionContext(quarantineSourceArchivePath: String?) -> FileManagerArchiveExtractionContext? {
@@ -484,11 +391,9 @@ final class FileManagerPaneArchiveCoordinator {
     }
 
     func reapplyHiddenVisibility() {
-        let selectedPaths = selectedArchivePaths()
+        let selectedPaths = host?.archiveSelectedPaths ?? []
         archiveSession.applyHiddenVisibilityFilter()
-        reloadTableData()
-        updateStatusBar()
-        selectArchivePaths(selectedPaths)
+        host?.archiveVisibilityDidChange(restoringSelection: selectedPaths)
     }
 
     func handlePublishedArchiveChange(_ change: FileManagerArchiveChange) {
@@ -534,10 +439,6 @@ final class FileManagerPaneArchiveCoordinator {
             : []
         reloadCurrentArchiveEntries(selectingPaths: selectionPaths,
                                     reopenBeforeListing: reopenBeforeListing)
-    }
-
-    func refreshAfterMutation(selectingPath path: String? = nil) {
-        refreshAfterMutation(selectingPaths: path.map { [$0] } ?? [])
     }
 
     func cancelPendingReload() {
@@ -622,14 +523,10 @@ final class FileManagerPaneArchiveCoordinator {
 
             if !archiveSession.isInsideArchive {
                 archiveSession.clearDisplayItems()
-                updatePathField()
-                updateStatusBar()
-                reloadTableData()
-            } else if isViewLoaded(), let currentLevel = archiveSession.currentLevel {
+            } else if host?.isViewLoaded == true, let currentLevel = archiveSession.currentLevel {
                 archiveSession.navigateSubdir(currentLevel.currentSubdir)
-                presentCurrentArchiveSubdir()
             }
-            updateTableColumns()
+            host?.archiveStackDidCloseLevel()
 
             if let parentReload = nestedWriteBackResult.parentReload,
                closeAllOperation == nil,
@@ -645,14 +542,14 @@ final class FileManagerPaneArchiveCoordinator {
             if showError,
                let committedError = nestedWriteBackResult.committedError
             {
-                self.showError(committedError)
+                host?.showErrorAlert(committedError)
             }
 
             return true
         } catch {
             level.operationGate.cancelClosing()
             if showError {
-                self.showError(error)
+                host?.showErrorAlert(error)
             }
             return false
         }
@@ -692,19 +589,8 @@ final class FileManagerPaneArchiveCoordinator {
             }
         }
         archiveSession.clearDisplayItems()
-        updatePathField()
-        updateStatusBar()
-        reloadTableData()
-        updateTableColumns()
+        host?.archiveStackDidCloseLevel()
         return true
-    }
-
-    func preserveNestedTemporaryDirectories() -> [URL] {
-        archiveSession.preserveNestedTemporaryDirectories()
-    }
-
-    func preserveRemainingTemporaryDirectories(_ urls: [URL]) {
-        archiveSession.preserveRemainingTemporaryDirectories(urls)
     }
 
     func cleanupAllTemporaryDirectories() {
@@ -736,9 +622,7 @@ final class FileManagerPaneArchiveCoordinator {
 
         cancelPendingReload()
 
-        guard let level = archiveSession.currentLevel else { return }
-        guard index == archiveSession.count - 1 else { return }
-        guard let lease = level.operationGate.acquireLease() else { return }
+        guard let level = archiveSession.currentLevel, index == archiveSession.count - 1, let lease = level.operationGate.acquireLease() else { return }
 
         archiveRefreshGeneration += 1
         let generation = archiveRefreshGeneration
@@ -763,10 +647,8 @@ final class FileManagerPaneArchiveCoordinator {
                                           subdir: subdir,
                                           selectingPaths: normalizedPaths)
             } catch {
-                guard !Task.isCancelled else { return }
-                guard !szIsUserCancellation(error) else { return }
-                guard self?.archiveRefreshGeneration == generation else { return }
-                self?.showError(error)
+                guard !Task.isCancelled, !szIsUserCancellation(error), self?.archiveRefreshGeneration == generation else { return }
+                self?.host?.showErrorAlert(error)
             }
         }
     }
@@ -779,10 +661,8 @@ final class FileManagerPaneArchiveCoordinator {
                                      subdir: String,
                                      selectingPaths paths: [String])
     {
-        guard archiveRefreshGeneration == generation else { return }
-        guard let level = archiveSession.level(at: index) else { return }
-
-        guard level.archive === archive,
+        guard archiveRefreshGeneration == generation, let level = archiveSession.level(at: index),
+              level.archive === archive,
               level.archivePath == archivePath
         else {
             return
@@ -792,8 +672,7 @@ final class FileManagerPaneArchiveCoordinator {
                                       with: entries,
                                       preservingSubdir: subdir)
         guard archiveSession.navigateSubdir(subdir) else { return }
-        presentCurrentArchiveSubdir()
-        selectArchivePaths(paths)
+        presentCurrentArchiveSubdir(selectingPaths: paths)
     }
 
     // MARK: - Close Implementation
@@ -833,7 +712,7 @@ final class FileManagerPaneArchiveCoordinator {
         let writeBackTask = Task { @MainActor in
             try await ArchiveOperationRunner.run(operationTitle: SZL10n.string("progress.updating"),
                                                  initialFileName: (writeBackInfo.parentItemPath as NSString).lastPathComponent,
-                                                 parentWindow: parentWindow(),
+                                                 parentWindow: host?.archiveParentWindow,
                                                  deferredDisplay: true)
             { session -> NestedParentMutationResult in
                 guard writeBackInfo.parentArchiveFingerprint.matchesCurrentFile(

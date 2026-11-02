@@ -6,8 +6,7 @@ This document covers building ShichiZip from source. For installing pre-built re
 
 - Xcode and Command Line Tools matching the version used in [CI](https://github.com/idawnlight/ShichiZip/actions). This project tracks the latest Xcode and adopts new Swift features eagerly, so older Xcode releases are not guaranteed to work.
 - [`xcodegen`](https://github.com/yonaskolb/XcodeGen) for generating the Xcode project.
-- [`zig >= 0.16.0`](https://ziglang.org/) for building the bundled 7-Zip libraries and Windows SFX modules.
-  - If you install `zig` from Homebrew, `zig 0.16.0_1` or newer is required. The `0.16.0` bottle shipped a broken `zig ar`; see [Homebrew/homebrew-core#278849](https://github.com/Homebrew/homebrew-core/issues/278849).
+- [`zig >= 0.17.0`](https://ziglang.org/) for building the bundled 7-Zip libraries and Windows SFX modules.
 - Python 3 for the localization scripts under `project/scripts/`.
 
 ```sh

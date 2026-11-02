@@ -16,6 +16,11 @@ case "$input_archive" in
   *) input_archive="$(pwd -P)/$input_archive" ;;
 esac
 
+case "$output_archive" in
+  /*) ;;
+  *) output_archive="$(pwd -P)/$output_archive" ;;
+esac
+
 if [ ! -f "$input_archive" ]; then
   echo "missing input archive: $input_archive" >&2
   exit 1

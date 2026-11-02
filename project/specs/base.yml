@@ -1,7 +1,7 @@
 options:
   bundleIdPrefix: ee.dawn
   deploymentTarget:
-    macOS: "13.0"
+    macOS: "14.0"
   xcodeVersion: "26.0"
   createIntermediateGroups: true
   preGenCommand: python3 project/scripts/generate_strings.py && python3 project/scripts/generate_quick_action_strings.py

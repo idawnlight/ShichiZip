@@ -296,26 +296,17 @@ extension CompressDialogController {
                                   countStyle: .memory)
     }
 
+    @MainActor
     enum ArchivePathHistory {
-        private static var defaults: UserDefaults {
-            SZSharedUserDefaults.defaults
-        }
-
-        private static let entriesKey = "FileManager.CompressArchivePathHistory"
-        private static let maxEntries = 20
+        private static let store = PathHistoryStore(entriesKey: "FileManager.CompressArchivePathHistory")
 
         static func entries() -> [String] {
-            defaults.stringArray(forKey: entriesKey) ?? []
+            store.entries()
         }
 
         static func record(_ path: String) {
             let normalizedPath = URL(fileURLWithPath: path).standardizedFileURL.path
-            var updatedEntries = entries().filter { $0 != normalizedPath }
-            updatedEntries.insert(normalizedPath, at: 0)
-            if updatedEntries.count > maxEntries {
-                updatedEntries.removeSubrange(maxEntries ..< updatedEntries.count)
-            }
-            defaults.set(updatedEntries, forKey: entriesKey)
+            store.record(normalizedPath)
         }
     }
 
@@ -360,21 +351,11 @@ extension CompressDialogController {
         }
 
         static func updateMode(defaultValue: SZCompressionUpdateMode) -> SZCompressionUpdateMode {
-            guard let rawValue = defaults.object(forKey: updateModeKey) as? Int,
-                  let value = SZCompressionUpdateMode(rawValue: rawValue)
-            else {
-                return defaultValue
-            }
-            return value
+            defaults.enumValue(forKey: updateModeKey, default: defaultValue)
         }
 
         static func pathMode(defaultValue: SZCompressionPathMode) -> SZCompressionPathMode {
-            guard let rawValue = defaults.object(forKey: pathModeKey) as? Int,
-                  let value = SZCompressionPathMode(rawValue: rawValue)
-            else {
-                return defaultValue
-            }
-            return value
+            defaults.enumValue(forKey: pathModeKey, default: defaultValue)
         }
 
         static func openSharedFiles() -> Bool {
@@ -418,47 +399,21 @@ extension CompressDialogController {
             return keys.contains { defaults.object(forKey: $0) != nil }
         }
 
-        private static func bool(forKey key: String,
-                                 defaultValue: Bool) -> Bool
-        {
-            guard defaults.object(forKey: key) != nil else {
-                return defaultValue
-            }
-            return defaults.bool(forKey: key)
-        }
-
         private static func advancedBoolPairState(valueKey: String,
                                                   setKey: String,
                                                   defaultValue: Bool) -> AdvancedBoolPairState
         {
-            let storedValueExists = defaults.object(forKey: valueKey) != nil
-            let value = bool(forKey: valueKey, defaultValue: defaultValue)
-
-            let isSet: Bool = if defaults.object(forKey: setKey) != nil {
-                defaults.bool(forKey: setKey)
-            } else if storedValueExists {
-                value != defaultValue
-            } else {
-                false
-            }
+            let value = defaults.bool(forKey: valueKey, default: defaultValue)
+            let isSet = defaults.bool(forKey: setKey, default: value != defaultValue)
 
             return AdvancedBoolPairState(isSet: isSet,
                                          value: isSet ? value : defaultValue)
         }
 
         private static func advancedTimePrecisionState(defaults fallbackState: AdvancedTimePrecisionState) -> AdvancedTimePrecisionState {
-            let rawTimePrecision = defaults.object(forKey: timePrecisionKey) as? Int
-            let value = rawTimePrecision
-                .flatMap(SZCompressionTimePrecision.init(rawValue:))
-                ?? fallbackState.value
-
-            let isSet: Bool = if defaults.object(forKey: timePrecisionSetKey) != nil {
-                defaults.bool(forKey: timePrecisionSetKey)
-            } else if rawTimePrecision != nil {
-                value.rawValue != fallbackState.value.rawValue
-            } else {
-                false
-            }
+            let value = defaults.enumValue(forKey: timePrecisionKey, default: fallbackState.value)
+            let isSet = defaults.bool(forKey: timePrecisionSetKey,
+                                      default: value != fallbackState.value)
 
             return AdvancedTimePrecisionState(isSet: isSet,
                                               value: isSet ? value : fallbackState.value)
@@ -466,16 +421,16 @@ extension CompressDialogController {
 
         static func advancedOptions(defaults fallbackState: AdvancedOptionsState) -> AdvancedOptionsState {
             AdvancedOptionsState(
-                storeSymbolicLinks: bool(forKey: storeSymbolicLinksKey,
-                                         defaultValue: fallbackState.storeSymbolicLinks),
-                storeHardLinks: bool(forKey: storeHardLinksKey,
-                                     defaultValue: fallbackState.storeHardLinks),
-                storeAlternateDataStreams: bool(forKey: storeAlternateDataStreamsKey,
-                                                defaultValue: fallbackState.storeAlternateDataStreams),
-                storeFileSecurity: bool(forKey: storeFileSecurityKey,
-                                        defaultValue: fallbackState.storeFileSecurity),
-                preserveSourceAccessTime: bool(forKey: preserveSourceAccessTimeKey,
-                                               defaultValue: fallbackState.preserveSourceAccessTime),
+                storeSymbolicLinks: defaults.bool(forKey: storeSymbolicLinksKey,
+                                                  default: fallbackState.storeSymbolicLinks),
+                storeHardLinks: defaults.bool(forKey: storeHardLinksKey,
+                                              default: fallbackState.storeHardLinks),
+                storeAlternateDataStreams: defaults.bool(forKey: storeAlternateDataStreamsKey,
+                                                         default: fallbackState.storeAlternateDataStreams),
+                storeFileSecurity: defaults.bool(forKey: storeFileSecurityKey,
+                                                 default: fallbackState.storeFileSecurity),
+                preserveSourceAccessTime: defaults.bool(forKey: preserveSourceAccessTimeKey,
+                                                        default: fallbackState.preserveSourceAccessTime),
                 storeModificationTime: advancedBoolPairState(valueKey: storeModificationTimeKey,
                                                              setKey: storeModificationTimeSetKey,
                                                              defaultValue: fallbackState.storeModificationTime.value),

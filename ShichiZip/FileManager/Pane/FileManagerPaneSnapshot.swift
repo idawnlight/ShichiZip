@@ -2,7 +2,6 @@ import Foundation
 
 struct FileManagerPaneCapabilities {
     let canOpenSelection: Bool
-    let canOpenArchiveInViewer: Bool
     let canOpenSelectionInside: Bool
     let canOpenSelectionOutside: Bool
     let canAddSelectedItemsToArchive: Bool
@@ -20,17 +19,6 @@ struct FileManagerPaneCapabilities {
     let canSelectVisibleItems: Bool
     let canDeselectSelection: Bool
     let canShowFoldersHistory: Bool
-}
-
-enum FileManagerPaneCommand {
-    case openSelection
-    case openArchiveInViewer
-    case addSelectedItemsToArchive
-    case extractSelectionOrArchive
-    case renameSelection
-    case deleteSelection
-    case createFolderHere
-    case showSelectedItemProperties
 }
 
 struct FileManagerPaneCommandState {
@@ -53,7 +41,6 @@ extension FileManagerPaneCapabilities {
         let supportsInPlaceArchiveMutation = commandState.supportsInPlaceArchiveMutation
 
         self.init(canOpenSelection: !selection.items.isEmpty,
-                  canOpenArchiveInViewer: selection.archiveCandidateURL != nil,
                   canOpenSelectionInside: selection.realItems.count == 1,
                   canOpenSelectionOutside: Self.canOpenOutside(selection.singleRealItem),
                   canAddSelectedItemsToArchive: isInsideArchive ? supportsInPlaceArchiveMutation : hasFileSystemSelection,
@@ -71,27 +58,6 @@ extension FileManagerPaneCapabilities {
                   canSelectVisibleItems: commandState.canSelectVisibleItems,
                   canDeselectSelection: commandState.canDeselectSelection,
                   canShowFoldersHistory: commandState.canShowFoldersHistory)
-    }
-
-    func allows(_ command: FileManagerPaneCommand) -> Bool {
-        switch command {
-        case .openSelection:
-            canOpenSelection
-        case .openArchiveInViewer:
-            canOpenArchiveInViewer
-        case .addSelectedItemsToArchive:
-            canAddSelectedItemsToArchive
-        case .extractSelectionOrArchive:
-            canExtractSelectionOrArchive
-        case .renameSelection:
-            canRenameSelection
-        case .deleteSelection:
-            canDeleteSelection
-        case .createFolderHere:
-            canCreateFolderHere
-        case .showSelectedItemProperties:
-            canShowSelectedItemProperties
-        }
     }
 
     private static func canOpenOutside(_ item: FileManagerPaneItem?) -> Bool {
@@ -155,11 +121,6 @@ struct FileManagerPaneSnapshot {
 
 @MainActor
 extension FileManagerPaneController {
-    var paneCapabilities: FileManagerPaneCapabilities {
-        makePaneCapabilities(selection: paneSelectionState,
-                             commandState: paneCommandState)
-    }
-
     var snapshot: FileManagerPaneSnapshot {
         let selection = paneSelectionState
         let commandState = paneCommandState

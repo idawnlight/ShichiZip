@@ -180,15 +180,7 @@ struct FileManagerArchiveLevel {
     }
 
     func supportsInPlaceMutation(hasConflictingNestedArchiveInstance: (FileManagerNestedArchiveIdentity) -> Bool) -> Bool {
-        guard !operationGate.hasActiveLeases else {
-            return false
-        }
-
-        guard temporaryDirectory == nil || nestedWriteBackInfo != nil else {
-            return false
-        }
-
-        guard archive.canWrite else {
+        guard !operationGate.hasActiveLeases, temporaryDirectory == nil || nestedWriteBackInfo != nil, archive.canWrite else {
             return false
         }
 
@@ -268,10 +260,6 @@ struct FileManagerArchiveStack {
 
     func map<T>(_ transform: (FileManagerArchiveLevel) throws -> T) rethrows -> [T] {
         try levels.map(transform)
-    }
-
-    func compactMap<T>(_ transform: (FileManagerArchiveLevel) throws -> T?) rethrows -> [T] {
-        try levels.compactMap(transform)
     }
 
     mutating func replaceEntries(at index: Int,
@@ -575,25 +563,6 @@ final class FileManagerArchiveSession {
 
     func coordinationSnapshots(isDirty: (FileManagerArchiveLevel) -> Bool) -> [FileManagerNestedArchiveOpenSnapshot] {
         stack.coordinationSnapshots(isDirty: isDirty)
-    }
-
-    func preserveNestedTemporaryDirectories() -> [URL] {
-        stack.compactMap { level in
-            guard level.nestedWriteBackInfo != nil,
-                  let temporaryDirectory = level.temporaryDirectory
-            else {
-                return nil
-            }
-
-            itemWorkflowService.unregister(temporaryDirectory)
-            return temporaryDirectory.standardizedFileURL
-        }
-    }
-
-    func preserveRemainingTemporaryDirectories(_ urls: [URL]) {
-        for url in urls {
-            itemWorkflowService.register(url)
-        }
     }
 
     func cleanupTemporaryDirectory(_ url: URL?) {

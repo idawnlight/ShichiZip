@@ -50,7 +50,7 @@ pub fn build(b: *std.Build) void {
     const variant = b.option(Variant, "variant", "Variant to build for lib and sfx steps; use all to fan out both variants") orelse .mainline;
     var target_query = b.standardTargetOptionsQueryOnly(.{});
     if (((target_query.os_tag == null and builtin.os.tag == .macos) or target_query.os_tag == .macos) and target_query.os_version_min == null) {
-        target_query.os_version_min = .{ .semver = .{ .major = 13, .minor = 0, .patch = 0 } };
+        target_query.os_version_min = .{ .semver = .{ .major = 14, .minor = 0, .patch = 0 } };
     }
     const target = b.resolveTargetQuery(target_query);
     const optimize = b.standardOptimizeOption(.{});
@@ -93,37 +93,12 @@ fn concatFlags(b: *std.Build, base: []const []const u8, extra: []const []const u
     return flags.items;
 }
 
-fn addZsCryptoSources(
-    b: *std.Build,
-    root_module: *std.Build.Module,
-    sevenz_root: []const u8,
-    arch: std.Target.Cpu.Arch,
-    cpp_flags: []const []const u8,
-) void {
-    for (zs_crypto_srcs) |file| {
-        // Ascon runtime-gates AVX512, but Clang 21 also requires its separate
-        // evex512 feature for the target-attributed AVX512 intrinsics.
-        const source_flags = if ((arch == .x86_64 or arch == .x86) and
-            std.mem.eql(u8, file, "CPP/7zip/Crypto/Ascon.cpp"))
-            concatFlags(b, cpp_flags, &.{ "-Xclang", "-target-feature", "-Xclang", "+evex512" })
-        else
-            cpp_flags;
-        root_module.addCSourceFile(.{
-            .file = b.path(std.fmt.allocPrint(b.allocator, "{s}/{s}", .{ sevenz_root, file }) catch @panic("OOM")),
-            .flags = source_flags,
-            .language = .cpp,
-        });
-    }
-}
-
-fn prepareVendor(b: *std.Build, variant: Variant) *std.Build.Step {
+fn prepareVendor(b: *std.Build, variant: Variant) ?*std.Build.Step {
     // When building from a source tarball (.build-metadata present),
     // vendor sources are already patched — skip the patch step.
     const io = b.graph.io;
     if (Io.Dir.cwd().statFile(io, ".build-metadata", .{})) |_| {
-        const noop = b.allocator.create(std.Build.Step) catch @panic("OOM");
-        noop.* = std.Build.Step.init(.{ .id = .custom, .name = "vendor sources pre-patched", .owner = b });
-        return noop;
+        return null;
     } else |_| {}
 
     const sevenz_root = variant.vendorRoot();
@@ -209,7 +184,7 @@ fn buildLib(
     variant: Variant,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-    prepare_step: *std.Build.Step,
+    prepare_step: ?*std.Build.Step,
 ) *std.Build.Step.InstallFile {
     const sevenz_root = variant.vendorRoot();
     const lib_name = variant.libName();
@@ -228,7 +203,7 @@ fn buildLib(
         .linkage = .static,
     });
 
-    lib.step.dependOn(prepare_step);
+    if (prepare_step) |prepare| lib.step.dependOn(prepare);
 
     // --- Flags ---
     const sevenz_include = std.fmt.allocPrint(b.allocator, "-I{s}", .{sevenz_root}) catch @panic("OOM");
@@ -351,33 +326,10 @@ fn buildLib(
         }
 
         {
-            const hash_files = collectCFilesRelative(b, sevenz_root, "C/hashes");
-            var common_hash_files = std.ArrayList([]const u8).empty;
-            for (hash_files) |file| {
-                if (std.mem.eql(u8, file, "C/hashes/xxh_x86dispatch.c")) continue;
-                common_hash_files.append(b.allocator, file) catch @panic("OOM");
-            }
-            if (common_hash_files.items.len > 0) {
-                root_module.addCSourceFiles(.{
-                    .root = b.path(sevenz_root),
-                    .files = common_hash_files.items,
-                    .flags = c_flags_zs,
-                    .language = .c,
-                });
-            }
-
-            // Zig's bundled Clang 21 keeps `evex512` disabled on its generic x86
-            // baseline, but xxHash's AVX512 dispatcher only needs that register-state
-            // feature on the one translation unit that already runtime-gates AVX512.
-            // LLVM 22 removed the separate gate, so keep the compatibility shim local.
-            const x86_dispatch_flags = if (target.result.cpu.arch == .x86_64 or target.result.cpu.arch == .x86)
-                concatFlags(b, c_flags_zs, &.{ "-Xclang", "-target-feature", "-Xclang", "+evex512" })
-            else
-                c_flags_zs;
             root_module.addCSourceFiles(.{
                 .root = b.path(sevenz_root),
-                .files = &.{"C/hashes/xxh_x86dispatch.c"},
-                .flags = x86_dispatch_flags,
+                .files = collectCFilesRelative(b, sevenz_root, "C/hashes"),
+                .flags = c_flags_zs,
                 .language = .c,
             });
         }
@@ -611,7 +563,12 @@ fn buildLib(
             .language = .cpp,
         });
     } else {
-        addZsCryptoSources(b, root_module, sevenz_root, target.result.cpu.arch, cpp_flags_zs);
+        root_module.addCSourceFiles(.{
+            .root = b.path(sevenz_root),
+            .files = zs_crypto_srcs,
+            .flags = cpp_flags_zs,
+            .language = .cpp,
+        });
         root_module.addCSourceFiles(.{
             .root = b.path(sevenz_root),
             .files = &.{
@@ -880,7 +837,12 @@ fn buildSfx(
 
     // ZS SFX extras
     if (variant == .zs) {
-        addZsCryptoSources(b, root_module, sevenz_root, sfx_target.result.cpu.arch, cpp_flags);
+        root_module.addCSourceFiles(.{
+            .root = b.path(sevenz_root),
+            .files = zs_crypto_srcs,
+            .flags = cpp_flags,
+            .language = .cpp,
+        });
         root_module.addCSourceFiles(.{
             .root = b.path(sevenz_root),
             .files = &.{

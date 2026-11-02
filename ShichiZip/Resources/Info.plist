@@ -38,7 +38,7 @@
 		</dict>
 	</array>
 	<key>LSMinimumSystemVersion</key>
-	<string>13.0</string>
+	<string>14.0</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSHumanReadableCopyright</key>

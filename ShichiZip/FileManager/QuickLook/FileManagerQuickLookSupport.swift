@@ -603,12 +603,9 @@ extension FileManagerQuickLookPanelController: @preconcurrency QLPreviewPanelDat
 
     func previewPanel(_: QLPreviewPanel!, handle event: NSEvent!) -> Bool {
         guard let event,
-              event.type == .keyDown
+              event.type == .keyDown,
+              let pane = previewState.sourcePane
         else {
-            return false
-        }
-
-        guard let pane = previewState.sourcePane else {
             return false
         }
         return pane.handleQuickLookEvent(event)

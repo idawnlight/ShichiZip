@@ -163,8 +163,7 @@ final class ExtractDialogContentController: NSObject {
     private let overwriteModePopup = NSPopUpButton(frame: .zero, pullsDown: false)
     private let splitDestinationCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let splitNameField = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
-    private let securePasswordField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
-    private let plainPasswordField = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+    private let passwordField = SZPasswordField(value: "", placeholder: SZL10n.string("app.optional"), accessibilityIdentifier: "extract.password")
     private let showPasswordCheckbox = NSButton(checkboxWithTitle: SZL10n.string("password.showPassword"), target: nil, action: nil)
     private let ntSecurityCheckbox = NSButton(checkboxWithTitle: SZL10n.string("extract.restoreSecurity"), target: nil, action: nil)
     private let eliminateDuplicatesCheckbox = NSButton(checkboxWithTitle: SZL10n.string("extract.eliminateDuplication"), target: nil, action: nil)
@@ -216,7 +215,7 @@ final class ExtractDialogContentController: NSObject {
         state.destinationPath = pathField.stringValue
         state.splitDestination = splitDestinationCheckbox.state == .on
         state.splitName = splitNameField.stringValue
-        state.password = visiblePasswordValue()
+        state.password = passwordField.stringValue
         state.showPassword = showPasswordCheckbox.state == .on
         state.pathMode = selectedValue(from: pathModeOptions,
                                        popup: pathModePopup,
@@ -269,15 +268,9 @@ final class ExtractDialogContentController: NSObject {
         splitNameField.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
         splitNameField.setAccessibilityIdentifier("extract.splitName")
 
-        securePasswordField.placeholderString = SZL10n.string("app.optional")
-        securePasswordField.stringValue = state.password
-        securePasswordField.widthAnchor.constraint(greaterThanOrEqualToConstant: 280).isActive = true
-        securePasswordField.setAccessibilityIdentifier("extract.password")
-
-        plainPasswordField.placeholderString = SZL10n.string("app.optional")
-        plainPasswordField.stringValue = state.password
-        plainPasswordField.widthAnchor.constraint(greaterThanOrEqualToConstant: 280).isActive = true
-        plainPasswordField.setAccessibilityIdentifier("extract.passwordPlain")
+        passwordField.stringValue = state.password
+        passwordField.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        passwordField.heightAnchor.constraint(equalToConstant: 24).isActive = true
 
         showPasswordCheckbox.target = self
         showPasswordCheckbox.action = #selector(showPasswordToggled(_:))
@@ -317,13 +310,12 @@ final class ExtractDialogContentController: NSObject {
         splitRow.spacing = 8
         splitRow.distribution = .fill
 
-        let passwordContainer = makePasswordContainer()
         let formStack = NSStackView(views: [
             makeFormRow(label: SZL10n.string("extract.extractTo"), control: pathRow),
             makeFormRow(label: SZL10n.string("app.extract.separateFolder"), control: splitRow),
             makeFormRow(label: SZL10n.string("extract.pathMode"), control: pathModePopup),
             makeFormRow(label: SZL10n.string("extract.overwriteMode"), control: overwriteModePopup),
-            makeFormRow(label: SZL10n.string("password.password") + ":", control: passwordContainer),
+            makeFormRow(label: SZL10n.string("password.password") + ":", control: passwordField),
         ])
         formStack.orientation = .vertical
         formStack.alignment = .leading
@@ -372,28 +364,6 @@ final class ExtractDialogContentController: NSObject {
         return wrapper
     }
 
-    private func makePasswordContainer() -> NSView {
-        let passwordContainer = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        passwordContainer.translatesAutoresizingMaskIntoConstraints = false
-        passwordContainer.addSubview(securePasswordField)
-        passwordContainer.addSubview(plainPasswordField)
-        securePasswordField.translatesAutoresizingMaskIntoConstraints = false
-        plainPasswordField.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            passwordContainer.widthAnchor.constraint(equalToConstant: 300),
-            passwordContainer.heightAnchor.constraint(equalToConstant: 24),
-            securePasswordField.topAnchor.constraint(equalTo: passwordContainer.topAnchor),
-            securePasswordField.leadingAnchor.constraint(equalTo: passwordContainer.leadingAnchor),
-            securePasswordField.trailingAnchor.constraint(equalTo: passwordContainer.trailingAnchor),
-            securePasswordField.bottomAnchor.constraint(equalTo: passwordContainer.bottomAnchor),
-            plainPasswordField.topAnchor.constraint(equalTo: passwordContainer.topAnchor),
-            plainPasswordField.leadingAnchor.constraint(equalTo: passwordContainer.leadingAnchor),
-            plainPasswordField.trailingAnchor.constraint(equalTo: passwordContainer.trailingAnchor),
-            plainPasswordField.bottomAnchor.constraint(equalTo: passwordContainer.bottomAnchor),
-        ])
-        return passwordContainer
-    }
-
     private func makeFormRow(label title: String, control: NSView) -> NSView {
         let label = makeLabel(title)
         label.alignment = .right
@@ -433,13 +403,6 @@ final class ExtractDialogContentController: NSObject {
         return options[index].value
     }
 
-    private func visiblePasswordValue() -> String {
-        if plainPasswordField.isEnabled, !plainPasswordField.isHidden {
-            return plainPasswordField.stringValue
-        }
-        return securePasswordField.stringValue
-    }
-
     @objc private func splitDestinationToggled(_: Any?) {
         updateSplitDestinationUI()
     }
@@ -455,26 +418,6 @@ final class ExtractDialogContentController: NSObject {
     }
 
     private func updatePasswordVisibilityUI(moveFocus: Bool) {
-        let currentValue = visiblePasswordValue()
-        let showPassword = showPasswordCheckbox.state == .on
-
-        securePasswordField.stringValue = currentValue
-        plainPasswordField.stringValue = currentValue
-        securePasswordField.isHidden = showPassword
-        securePasswordField.isEnabled = !showPassword
-        plainPasswordField.isHidden = !showPassword
-        plainPasswordField.isEnabled = showPassword
-
-        guard moveFocus,
-              let currentDialogWindow = view.window
-        else {
-            return
-        }
-
-        if showPassword {
-            currentDialogWindow.makeFirstResponder(plainPasswordField)
-        } else {
-            currentDialogWindow.makeFirstResponder(securePasswordField)
-        }
+        passwordField.setShowsPassword(showPasswordCheckbox.state == .on, moveFocus: moveFocus)
     }
 }

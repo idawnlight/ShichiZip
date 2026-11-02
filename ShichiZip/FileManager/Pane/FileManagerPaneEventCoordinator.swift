@@ -1,39 +1,31 @@
 import Cocoa
 
 @MainActor
+protocol FileManagerPaneEventHost: AnyObject {
+    func handleTableColumnLayoutDidChange()
+    func handleSettingsDidChange(_ settingsKey: SZSettingsKey)
+    func handleViewPreferencesDidChange(resetListView: Bool)
+    func handlePublishedArchiveChange(_ change: FileManagerArchiveChange)
+    func handleLanguageDidChange()
+    func autoRefreshCurrentDirectoryIfNeeded()
+}
+
+@MainActor
 final class FileManagerPaneEventCoordinator {
     private let notificationCenter: NotificationCenter
-    private let columnLayoutDidChange: () -> Void
-    private let settingsDidChange: (SZSettingsKey) -> Void
-    private let resetListViewPreferences: () -> Void
-    private let reloadPresentedValues: () -> Void
-    private let archiveDidChange: (FileManagerArchiveChange) -> Void
-    private let languageDidChange: () -> Void
-    private let autoRefreshCurrentDirectoryIfNeeded: () -> Void
+    private weak var host: (any FileManagerPaneEventHost)?
     private var observers: [NSObjectProtocol] = []
     private var isLiveScrolling = false
     private var pendingAutoRefresh = false
 
-    init(tableView: NSTableView,
+    init(host: any FileManagerPaneEventHost,
+         tableView: NSTableView,
          scrollView: NSScrollView,
          notificationCenter: NotificationCenter = .default,
-         notificationQueue: OperationQueue? = .main,
-         columnLayoutDidChange: @escaping () -> Void,
-         settingsDidChange: @escaping (SZSettingsKey) -> Void,
-         resetListViewPreferences: @escaping () -> Void,
-         reloadPresentedValues: @escaping () -> Void,
-         archiveDidChange: @escaping (FileManagerArchiveChange) -> Void,
-         languageDidChange: @escaping () -> Void,
-         autoRefreshCurrentDirectoryIfNeeded: @escaping () -> Void)
+         notificationQueue: OperationQueue? = .main)
     {
+        self.host = host
         self.notificationCenter = notificationCenter
-        self.columnLayoutDidChange = columnLayoutDidChange
-        self.settingsDidChange = settingsDidChange
-        self.resetListViewPreferences = resetListViewPreferences
-        self.reloadPresentedValues = reloadPresentedValues
-        self.archiveDidChange = archiveDidChange
-        self.languageDidChange = languageDidChange
-        self.autoRefreshCurrentDirectoryIfNeeded = autoRefreshCurrentDirectoryIfNeeded
 
         observers = [
             notificationCenter.addObserver(forName: NSTableView.columnDidMoveNotification,
@@ -41,7 +33,7 @@ final class FileManagerPaneEventCoordinator {
                                            queue: notificationQueue)
             { [weak self] _ in
                 MainActor.assumeIsolated {
-                    self?.columnLayoutDidChange()
+                    self?.host?.handleTableColumnLayoutDidChange()
                 }
             },
             notificationCenter.addObserver(forName: NSTableView.columnDidResizeNotification,
@@ -49,7 +41,7 @@ final class FileManagerPaneEventCoordinator {
                                            queue: notificationQueue)
             { [weak self] _ in
                 MainActor.assumeIsolated {
-                    self?.columnLayoutDidChange()
+                    self?.host?.handleTableColumnLayoutDidChange()
                 }
             },
             notificationCenter.addObserver(forName: NSScrollView.willStartLiveScrollNotification,
@@ -70,7 +62,7 @@ final class FileManagerPaneEventCoordinator {
 
                     guard self.pendingAutoRefresh else { return }
                     self.pendingAutoRefresh = false
-                    self.autoRefreshCurrentDirectoryIfNeeded()
+                    self.host?.autoRefreshCurrentDirectoryIfNeeded()
                 }
             },
             notificationCenter.addObserver(forName: .szSettingsDidChange,
@@ -81,7 +73,7 @@ final class FileManagerPaneEventCoordinator {
                     .flatMap(SZSettingsKey.init(rawValue:))
                 MainActor.assumeIsolated {
                     guard let settingsKey else { return }
-                    self?.settingsDidChange(settingsKey)
+                    self?.host?.handleSettingsDidChange(settingsKey)
                 }
             },
             notificationCenter.addObserver(forName: .fileManagerViewPreferencesDidChange,
@@ -90,11 +82,7 @@ final class FileManagerPaneEventCoordinator {
             { [weak self] notification in
                 let shouldResetListViewPreferences = notification.userInfo?[FileManagerViewPreferences.listViewPreferencesResetUserInfoKey] as? Bool == true
                 MainActor.assumeIsolated {
-                    if shouldResetListViewPreferences {
-                        self?.resetListViewPreferences()
-                    } else {
-                        self?.reloadPresentedValues()
-                    }
+                    self?.host?.handleViewPreferencesDidChange(resetListView: shouldResetListViewPreferences)
                 }
             },
             notificationCenter.addObserver(forName: .fileManagerArchiveDidChange,
@@ -104,7 +92,7 @@ final class FileManagerPaneEventCoordinator {
                 let change = FileManagerArchiveChange(notification: notification)
                 MainActor.assumeIsolated {
                     guard let change else { return }
-                    self?.archiveDidChange(change)
+                    self?.host?.handlePublishedArchiveChange(change)
                 }
             },
             notificationCenter.addObserver(forName: .szLanguageDidChange,
@@ -112,7 +100,7 @@ final class FileManagerPaneEventCoordinator {
                                            queue: notificationQueue)
             { [weak self] _ in
                 MainActor.assumeIsolated {
-                    self?.languageDidChange()
+                    self?.host?.handleLanguageDidChange()
                 }
             },
         ]
@@ -136,6 +124,6 @@ final class FileManagerPaneEventCoordinator {
         }
 
         pendingAutoRefresh = false
-        autoRefreshCurrentDirectoryIfNeeded()
+        host?.autoRefreshCurrentDirectoryIfNeeded()
     }
 }

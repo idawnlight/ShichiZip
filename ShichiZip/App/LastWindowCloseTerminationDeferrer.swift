@@ -5,6 +5,7 @@ final class LastWindowCloseTerminationDeferrer: NSObject {
     private weak var mostRecentClosingWindow: NSWindow?
     private var isObservingWindowWillClose = false
     private var pendingAnimationWindow: NSWindow?
+    private var animationTimeoutTask: Task<Void, Never>?
 
     private let notificationCenter: NotificationCenter
     private let shouldTerminate: @MainActor () -> Bool
@@ -32,7 +33,7 @@ final class LastWindowCloseTerminationDeferrer: NSObject {
         isObservingWindowWillClose = true
     }
 
-    /// Returns true when termination is deferred until AppKit's close animation finishes.
+    /// Returns true when termination is deferred until the close animation finishes or times out.
     /// Returns false when there is no visible closing window to wait for, so the caller
     /// should allow immediate termination.
     func deferTerminationUntilCloseAnimationFinishes() -> Bool {
@@ -50,6 +51,11 @@ final class LastWindowCloseTerminationDeferrer: NSObject {
                                        selector: #selector(windowDidOrderOffScreenAndFinishAnimating(_:)),
                                        name: Self.windowDidOrderOffScreenAndFinishAnimatingNotification,
                                        object: pendingAnimationWindow)
+        animationTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            self?.terminateIfStillNeeded()
+        }
         return true
     }
 
@@ -86,6 +92,8 @@ final class LastWindowCloseTerminationDeferrer: NSObject {
     }
 
     private func clearPendingAnimationObserver() {
+        animationTimeoutTask?.cancel()
+        animationTimeoutTask = nil
         guard let window = pendingAnimationWindow else { return }
         notificationCenter.removeObserver(self,
                                           name: Self.windowDidOrderOffScreenAndFinishAnimatingNotification,

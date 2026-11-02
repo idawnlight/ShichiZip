@@ -56,7 +56,7 @@ final class UnifiedToolbarUITests: ShichiZipUITestCase {
         waitForExpectations(timeout: 10)
     }
 
-    func testToolbarGroupsReappearAndSurvivePathEditing() throws {
+    func testToolbarGroupsReappearAndSurvivePathEditing() {
         XCTAssertTrue(fileManagerWindow.waitForExistence(timeout: 10))
         saveScreenshot("launch")
         setToolbar("Archive Toolbar", button: "Add", visible: true)
@@ -101,12 +101,14 @@ final class UnifiedToolbarUITests: ShichiZipUITestCase {
         let add = toolbar.buttons["Add"]
         copy.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click(
             forDuration: 0.3,
-            thenDragTo: add.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)))
+            thenDragTo: add.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)),
+        )
         XCTAssertLessThan(copy.frame.minX, add.frame.minX)
         let info = toolbar.buttons["Info"]
         info.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click(
             forDuration: 0.3,
-            thenDragTo: leftPaneTable.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+            thenDragTo: leftPaneTable.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+        )
         done.click()
         XCTAssertFalse(info.exists)
         openPathEditor()
@@ -323,7 +325,7 @@ final class UnifiedToolbarUITests: ShichiZipUITestCase {
     }
 }
 
-// This class deliberately uses normal preferences so launch arguments cannot mask menu changes.
+/// This class deliberately uses normal preferences so launch arguments cannot mask menu changes.
 final class ToolbarStyleMenuUITests: ShichiZipUITestCase {
     func testWindowSubtitleTracksLocationAndCanBeDisabled() throws {
         let window = fileManagerWindow

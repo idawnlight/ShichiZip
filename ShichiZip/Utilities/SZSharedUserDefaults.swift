@@ -10,32 +10,30 @@ enum SZSharedUserDefaults {
         sharedDefaults ?? .standard
     }
 
-    static var appGroupIdentifier: String? {
+    static let appGroupIdentifier: String? = {
         guard let value = Bundle.main.object(forInfoDictionaryKey: appGroupIdentifierInfoKey) as? String else {
             return nil
         }
 
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedValue.isEmpty ? nil : trimmedValue
-    }
+    }()
 
-    static var sharedDefaults: UserDefaults? {
+    /// Foundation documents UserDefaults as thread-safe, but does not declare it Sendable.
+    nonisolated(unsafe) static let sharedDefaults: UserDefaults? = {
         guard let appGroupIdentifier else {
             return nil
         }
 
         return UserDefaults(suiteName: appGroupIdentifier)
-    }
+    }()
 
     static func migrateStandardDefaultsIfNeeded() {
         guard let appGroupIdentifier,
-              let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier),
-              let appDefaultsDomainName = Bundle.main.bundleIdentifier
+              let sharedDefaults,
+              let appDefaultsDomainName = Bundle.main.bundleIdentifier,
+              sharedDefaults.integer(forKey: migrationVersionKey) < currentMigrationVersion
         else {
-            return
-        }
-
-        guard sharedDefaults.integer(forKey: migrationVersionKey) < currentMigrationVersion else {
             return
         }
 
@@ -74,5 +72,38 @@ enum SZSharedUserDefaults {
         }
 
         return migratedCount
+    }
+}
+
+extension UserDefaults {
+    func bool(forKey key: String, default defaultValue: Bool) -> Bool {
+        object(forKey: key) == nil ? defaultValue : bool(forKey: key)
+    }
+
+    func integer(forKey key: String, default defaultValue: Int) -> Int {
+        object(forKey: key) == nil ? defaultValue : integer(forKey: key)
+    }
+
+    func double(forKey key: String, default defaultValue: Double) -> Double {
+        object(forKey: key) == nil ? defaultValue : double(forKey: key)
+    }
+
+    func enumValue<Value: RawRepresentable>(forKey key: String, default defaultValue: Value) -> Value
+        where Value.RawValue == Int
+    {
+        let rawValue: Int? = switch object(forKey: key) {
+        case let number as NSNumber where CFGetTypeID(number) != CFBooleanGetTypeID(): number as? Int
+        case let string as String: Int(string)
+        default: nil
+        }
+        guard let rawValue else { return defaultValue }
+        return Value(rawValue: rawValue) ?? defaultValue
+    }
+
+    func enumValue<Value: RawRepresentable>(forKey key: String, default defaultValue: Value) -> Value
+        where Value.RawValue == String
+    {
+        guard let rawValue = string(forKey: key) else { return defaultValue }
+        return Value(rawValue: rawValue) ?? defaultValue
     }
 }

@@ -37,9 +37,9 @@ enum SZL10n {
         bundleStorage.withLock { $0 }
     }
 
-    /// Reload the bundle after the language preference changes.
-    static func reloadBundle() {
-        let newBundle = makeBundle()
+    /// Reload after a language change or before a new out-of-process preview.
+    static func reloadBundle(defaults: UserDefaults = SZSharedUserDefaults.defaults) {
+        let newBundle = makeBundle(defaults: defaults)
         bundleStorage.withLock { $0 = newBundle }
     }
 
@@ -146,9 +146,7 @@ enum SZL10n {
 
     // MARK: - Private
 
-    private static var baseBundle: Bundle {
-        localizationBundle() ?? .main
-    }
+    private static let baseBundle = localizationBundle() ?? Bundle.main
 
     private static func localizationBundle() -> Bundle? {
         if let bundle = Bundle(identifier: localizationBundleIdentifier) {
@@ -185,8 +183,8 @@ enum SZL10n {
         return codes
     }
 
-    private static func makeBundle() -> Bundle {
-        let override = SZSettings.string(.languageOverride)
+    private static func makeBundle(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> Bundle {
+        let override = defaults.string(forKey: "LanguageOverride") ?? ""
         let bundle = baseBundle
         guard !override.isEmpty else { return bundle }
 

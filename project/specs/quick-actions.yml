@@ -24,7 +24,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip.QuickActionCore
         PRODUCT_NAME: ShichiZipQuickActionCore
-        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
         GENERATE_INFOPLIST_FILE: true
         DEFINES_MODULE: true
         APPLICATION_EXTENSION_API_ONLY: true
@@ -49,7 +49,7 @@ targets:
       base:
         <<: &quick_action_mainline_settings
           CODE_SIGN_ENTITLEMENTS: ShichiZip/QuickActions/Resources/QuickAction.entitlements
-          MACOSX_DEPLOYMENT_TARGET: "13.0"
+          MACOSX_DEPLOYMENT_TARGET: "14.0"
           GENERATE_INFOPLIST_FILE: false
           APPLICATION_EXTENSION_API_ONLY: true
           LD_RUNPATH_SEARCH_PATHS:
@@ -76,7 +76,7 @@ targets:
           CFBundleName: $(SHICHIZIP_QUICK_ACTION_DISPLAY_NAME)
           CFBundleShortVersionString: $(MARKETING_VERSION)
           CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-          LSMinimumSystemVersion: "13.0"
+          LSMinimumSystemVersion: "14.0"
           ShichiZipHostAppDisplayName: $(SHICHIZIP_HOST_APP_DISPLAY_NAME)
           ShichiZipQuickActionAppGroupIdentifier: $(SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER)
           ShichiZipQuickActionURLScheme: $(SHICHIZIP_QUICK_ACTION_URL_SCHEME)

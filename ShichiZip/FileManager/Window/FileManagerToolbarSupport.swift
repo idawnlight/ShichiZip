@@ -2,9 +2,12 @@ import AppKit
 
 @MainActor
 final class FileManagerWindow: NSWindow {
+    private weak var cachedTitleField: NSTextField?
+
     override func sendEvent(_ event: NSEvent) {
         if event.type == .leftMouseDown || event.type == .rightMouseDown,
-           (windowController as? FileManagerWindowController)?.handleTitlePathMouseEvent(event) == true {
+           (windowController as? FileManagerWindowController)?.handleTitlePathMouseEvent(event) == true
+        {
             return
         }
         super.sendEvent(event)
@@ -12,7 +15,7 @@ final class FileManagerWindow: NSWindow {
 
     private func locationTitle() -> NSTextField? {
         guard FileManagerToolbarPreferences.style == .unified, titleVisibility == .visible,
-              let title = FileManagerPathToolbar.titleField(in: self) else { return nil }
+              let title = titleField() else { return nil }
         if title.accessibilityIdentifier() != "fileManager.locationTitle" {
             title.setAccessibilityIdentifier("fileManager.locationTitle")
             title.setAccessibilityElement(true)
@@ -22,8 +25,39 @@ final class FileManagerWindow: NSWindow {
         return title
     }
 
+    func titleField(matching text: String? = nil) -> NSTextField? {
+        guard titleVisibility == .visible else {
+            cachedTitleField = nil
+            return nil
+        }
+        let text = text ?? title
+        let isMainTitle = text == title
+        guard !text.isEmpty else {
+            if isMainTitle {
+                cachedTitleField = nil
+            }
+            return nil
+        }
+        if isMainTitle, let cachedTitleField,
+           FileManagerTitleFieldLookup.isValid(cachedTitleField, in: self, text: text)
+        {
+            return cachedTitleField
+        }
+        if isMainTitle {
+            cachedTitleField = nil
+        }
+        let field = FileManagerTitleFieldLookup.find(in: self, text: text,
+                                                     accessibilityTitle: super.accessibilityTitleUIElement())
+        if isMainTitle {
+            cachedTitleField = field
+        }
+        return field
+    }
+
     override func accessibilityTitleUIElement() -> Any? {
-        if let title = locationTitle() { return title }
+        if let title = locationTitle() {
+            return title
+        }
         return super.accessibilityTitleUIElement()
     }
 
@@ -35,6 +69,64 @@ final class FileManagerWindow: NSWindow {
         children.removeAll { ($0 as AnyObject) === proxy || ($0 as AnyObject) === title }
         children.append(title)
         return children
+    }
+}
+
+@MainActor
+enum FileManagerTitleFieldLookup {
+    /// Unified titles share the toolbar container, so exclude only item branches.
+    private static let toolbarItemViewClass: AnyClass? = NSClassFromString("NSToolbarItemViewer")
+
+    static func find(in window: NSWindow, text: String, accessibilityTitle: Any? = nil) -> NSTextField? {
+        guard !text.isEmpty, let frame = window.contentView?.superview else { return nil }
+        let candidate: NSTextField? = if let field = accessibilityTitle as? NSTextField {
+            field
+        } else if let cell = accessibilityTitle as? NSTextFieldCell,
+                  let field = cell.controlView as? NSTextField, field.cell === cell
+        {
+            field
+        } else {
+            nil
+        }
+        if let candidate, isValid(candidate, in: window, text: text) {
+            return candidate
+        }
+        return find(in: frame, window: window, text: text)
+    }
+
+    static func isValid(_ field: NSTextField, in window: NSWindow, text: String) -> Bool {
+        guard !text.isEmpty, let frame = window.contentView?.superview,
+              field.window === window, field.stringValue == text,
+              !field.isHiddenOrHasHiddenAncestor else { return false }
+        var ancestor: NSView? = field
+        while let view = ancestor {
+            if excludes(view, in: window) {
+                return false
+            }
+            if view === frame {
+                return true
+            }
+            ancestor = view.superview
+        }
+        return false
+    }
+
+    private static func excludes(_ view: NSView, in window: NSWindow) -> Bool {
+        view === window.contentView || window.toolbar?.items.contains { $0.view === view } == true ||
+            (toolbarItemViewClass.map { view.isKind(of: $0) } ?? false)
+    }
+
+    private static func find(in view: NSView, window: NSWindow, text: String) -> NSTextField? {
+        guard !excludes(view, in: window), !view.isHidden else { return nil }
+        if let field = view as? NSTextField, field.stringValue == text {
+            return field
+        }
+        for child in view.subviews {
+            if let field = find(in: child, window: window, text: text) {
+                return field
+            }
+        }
+        return nil
     }
 }
 
@@ -160,7 +252,7 @@ extension FileManagerWindowController: NSToolbarDelegate {
             let scale = min(rect.width / symbol.size.width, rect.height / symbol.size.height)
             let size = NSSize(width: symbol.size.width * scale, height: symbol.size.height * scale)
             symbol.draw(in: NSRect(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2,
-                                  width: size.width, height: size.height))
+                                   width: size.width, height: size.height))
             return true
         }
         image.isTemplate = true
@@ -201,13 +293,13 @@ final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
         selectText(nil)
     }
 
-    @objc private func sheetDidEnd(_ notification: Notification) {
+    @objc private func sheetDidEnd(_: Notification) {
         // Let AppKit finish restoring the sheet's previous first responder first.
         isRestoringSheetFocus = true
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.beginPathEditing()
-            self.isRestoringSheetFocus = false
+            beginPathEditing()
+            isRestoringSheetFocus = false
         }
     }
 
@@ -221,12 +313,12 @@ final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
         onFinish?()
     }
 
-    func controlTextDidEndEditing(_ notification: Notification) {
+    func controlTextDidEndEditing(_: Notification) {
         guard !isSubmitting, !isRestoringSheetFocus, window?.attachedSheet == nil else { return }
         finish()
     }
 
-    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+    func control(_: NSControl, textView _: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
         switch commandSelector {
         case #selector(NSResponder.cancelOperation(_:)):
             finish()
@@ -312,25 +404,8 @@ final class FileManagerPathToolbar: NSObject, NSToolbarDelegate {
     }
 
     func toolbar(_: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
-                 willBeInsertedIntoToolbar _: Bool) -> NSToolbarItem? {
+                 willBeInsertedIntoToolbar _: Bool) -> NSToolbarItem?
+    {
         identifier == Self.pathItem ? item : nil
     }
-
-    static func titleField(in window: NSWindow, text: String? = nil) -> NSTextField? {
-        let text = text ?? window.title
-        guard !text.isEmpty else { return nil }
-        guard let content = window.contentView, let frame = content.superview else { return nil }
-        func find(in view: NSView) -> NSTextField? {
-            if let field = view as? NSTextField, field.stringValue == text,
-               !field.isHiddenOrHasHiddenAncestor, !field.isDescendant(of: content) {
-                return field
-            }
-            for child in view.subviews {
-                if let field = find(in: child) { return field }
-            }
-            return nil
-        }
-        return find(in: frame)
-    }
-
 }

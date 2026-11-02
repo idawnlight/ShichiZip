@@ -53,7 +53,7 @@ targets:
             - -needed_framework
             - -Xlinker
             - ShichiZipLocalization
-          MACOSX_DEPLOYMENT_TARGET: "13.0"
+          MACOSX_DEPLOYMENT_TARGET: "14.0"
           GENERATE_INFOPLIST_FILE: false
           CLANG_ENABLE_OBJC_ARC: true
           CLANG_WARN_DOCUMENTATION_COMMENTS: false

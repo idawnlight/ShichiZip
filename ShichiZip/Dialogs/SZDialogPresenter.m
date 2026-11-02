@@ -1,4 +1,5 @@
 #import "SZDialogPresenter.h"
+#import "SZPasswordField.h"
 
 #import "../Bridge/SZArchive.h"
 #import "../Bridge/SZBridgeCommon.h"
@@ -7,15 +8,6 @@ static NSString* const SZShowPasswordPreferenceKey = @"SZShowPasswordInPrompts";
 
 static SZDialogAction* SZDialogActionMake(NSString* title, SZDialogActionRole roles) {
     return [[SZDialogAction alloc] initWithTitle:title roles:roles];
-}
-
-static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
-    if (byteCount == 0) {
-        return 1;
-    }
-
-    const uint64_t rounded = (byteCount + (((uint64_t)1 << 30) - 1)) >> 30;
-    return rounded > UINT32_MAX ? UINT32_MAX : (uint32_t)rounded;
 }
 
 @interface SZPasswordAccessoryController : NSViewController
@@ -46,8 +38,7 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
 @end
 
 @implementation SZPasswordAccessoryController {
-    NSSecureTextField* _secureField;
-    NSTextField* _plainField;
+    SZPasswordField* _passwordField;
     NSButton* _showPasswordButton;
 }
 
@@ -55,18 +46,9 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     if ((self = [super initWithNibName:nil bundle:nil])) {
         NSString* password = initialValue ?: @"";
 
-        _secureField = [[NSSecureTextField alloc] initWithFrame:NSZeroRect];
-        _secureField.translatesAutoresizingMaskIntoConstraints = NO;
-        _secureField.placeholderString = SZLocalizedString(@"password.password");
-        _secureField.stringValue = password;
-        _secureField.accessibilityIdentifier = @"passwordPrompt.password";
-
-        _plainField = [[NSTextField alloc] initWithFrame:NSZeroRect];
-        _plainField.translatesAutoresizingMaskIntoConstraints = NO;
-        _plainField.placeholderString = SZLocalizedString(@"password.password");
-        _plainField.stringValue = password;
-        _plainField.hidden = YES;
-        _plainField.accessibilityIdentifier = @"passwordPrompt.passwordPlain";
+        _passwordField = [[SZPasswordField alloc] initWithValue:password
+                                                    placeholder:SZLocalizedString(@"password.password")
+                                        accessibilityIdentifier:@"passwordPrompt.password"];
 
         _showPasswordButton = [NSButton checkboxWithTitle:SZLocalizedString(@"password.showPassword") target:self action:@selector(togglePasswordVisibility:)];
         _showPasswordButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -79,51 +61,33 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
 - (void)loadView {
     NSView* container = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 320, 56)];
 
-    [container addSubview:_secureField];
-    [container addSubview:_plainField];
+    [container addSubview:_passwordField];
     [container addSubview:_showPasswordButton];
 
     [NSLayoutConstraint activateConstraints:@[
         [container.widthAnchor constraintGreaterThanOrEqualToConstant:320],
 
-        [_secureField.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [_secureField.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [_secureField.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [_passwordField.topAnchor constraintEqualToAnchor:container.topAnchor],
+        [_passwordField.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [_passwordField.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [_passwordField.heightAnchor constraintEqualToConstant:24],
 
-        [_plainField.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [_plainField.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [_plainField.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-
-        [_showPasswordButton.topAnchor constraintEqualToAnchor:_secureField.bottomAnchor
+        [_showPasswordButton.topAnchor constraintEqualToAnchor:_passwordField.bottomAnchor
                                                       constant:8],
         [_showPasswordButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
         [_showPasswordButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
     ]];
 
     self.view = container;
-    [self syncVisibility];
+    _passwordField.showsPassword = self.showsPassword;
 }
 
 - (void)togglePasswordVisibility:(__unused NSButton*)sender {
-    NSString* currentPassword = self.password;
-    _secureField.stringValue = currentPassword;
-    _plainField.stringValue = currentPassword;
-    [self syncVisibility];
-
-    NSView* firstResponder = self.preferredFirstResponderView;
-    if (firstResponder) {
-        [self.view.window makeFirstResponder:firstResponder];
-    }
-}
-
-- (void)syncVisibility {
-    BOOL showPassword = _showPasswordButton.state == NSControlStateValueOn;
-    _secureField.hidden = showPassword;
-    _plainField.hidden = !showPassword;
+    [_passwordField setShowsPassword:self.showsPassword moveFocus:YES];
 }
 
 - (NSString*)password {
-    return _showPasswordButton.state == NSControlStateValueOn ? _plainField.stringValue : _secureField.stringValue;
+    return _passwordField.stringValue;
 }
 
 - (BOOL)showsPassword {
@@ -131,12 +95,9 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
 }
 
 - (NSView*)preferredFirstResponderView {
-    return self.showsPassword ? _plainField : _secureField;
+    return _passwordField.visibleField;
 }
 
-@end
-
-@implementation SZMemoryLimitPromptResult
 @end
 
 @implementation SZMemoryLimitAccessoryController {
@@ -160,9 +121,9 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
                              filePath:(NSString*)filePath
                          showRemember:(BOOL)showRemember {
     if ((self = [super initWithNibName:nil bundle:nil])) {
-        _requiredGB = SZDialogRoundUpByteCountToGB(requiredBytes);
-        _currentLimitGB = SZDialogRoundUpByteCountToGB(currentLimitBytes);
-        _installedRAMGB = SZDialogRoundUpByteCountToGB([NSProcessInfo processInfo].physicalMemory);
+        _requiredGB = SZRoundUpByteCountToGB(requiredBytes);
+        _currentLimitGB = SZRoundUpByteCountToGB(currentLimitBytes);
+        _installedRAMGB = SZRoundUpByteCountToGB([NSProcessInfo processInfo].physicalMemory);
         _showRemember = showRemember;
         _archivePath = [archivePath copy] ?: @"";
         _filePath = [filePath copy] ?: @"";
@@ -497,12 +458,10 @@ static uint32_t SZDialogRoundUpByteCountToGB(uint64_t byteCount) {
     }
 
     if (result) {
-        SZMemoryLimitPromptResult* promptResult = [SZMemoryLimitPromptResult new];
-        promptResult.saveLimit = accessoryController.saveLimit;
-        promptResult.skipArchive = accessoryController.skipArchive;
-        promptResult.rememberChoice = accessoryController.rememberChoice;
-        promptResult.limitGB = accessoryController.limitGB;
-        *result = promptResult;
+        *result = [[SZMemoryLimitPromptResult alloc] initWithSaveLimit:accessoryController.saveLimit
+                                                           skipArchive:accessoryController.skipArchive
+                                                        rememberChoice:accessoryController.rememberChoice
+                                                               limitGB:accessoryController.limitGB];
     }
     return YES;
 }

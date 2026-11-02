@@ -4,11 +4,6 @@ import Cocoa
 /// Windows 7-Zip opens archives through the file-manager panel, so this document
 /// class exists only to redirect archive opens into the unified file-manager UI.
 class ArchiveDocument: NSDocument {
-    private static let excludedTypeIdentifiers: Set<String> = [
-        "public.data",
-        "com.aone.keka-extraction",
-    ]
-
     override class var autosavesInPlace: Bool {
         false
     }
@@ -26,7 +21,7 @@ class ArchiveDocument: NSDocument {
                 continue
             }
 
-            for contentType in contentTypes where !excludedTypeIdentifiers.contains(contentType) {
+            for contentType in contentTypes where !FileAssociation.excludedTypeIdentifiers.contains(contentType) {
                 if seenTypeIdentifiers.insert(contentType).inserted {
                     readableTypeIdentifiers.append(contentType)
                 }

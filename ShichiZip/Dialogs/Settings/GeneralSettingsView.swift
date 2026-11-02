@@ -1,16 +1,12 @@
 import SwiftUI
 
 struct GeneralSettingsView: View {
-    private enum ResetAction: Int, Identifiable {
+    private enum ResetAction {
         case windowFrame
         case listLayouts
-
-        var id: Int {
-            rawValue
-        }
     }
 
-    @ObservedObject var store: SettingsStore
+    let store: SettingsStore
     @State private var resetAction: ResetAction?
 
     var body: some View {
@@ -22,7 +18,21 @@ struct GeneralSettingsView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .alert(item: $resetAction, content: resetAlert)
+        .alert(resetAlertTitle, isPresented: resetAlertPresented, presenting: resetAction) { action in
+            Button(SZL10n.string("app.settings.reset"), role: .destructive) {
+                switch action {
+                case .windowFrame:
+                    store.resetFileManagerWindowFrame()
+                case .listLayouts:
+                    store.resetFileListLayouts()
+                }
+            }
+            Button(SZL10n.string("common.cancel"), role: .cancel) {}
+        } message: { action in
+            if case .listLayouts = action {
+                Text(SZL10n.string("app.settings.resetFileListLayoutConfirmDetail"))
+            }
+        }
     }
 
     private var applicationSection: some View {
@@ -110,31 +120,26 @@ struct GeneralSettingsView: View {
         )
     }
 
-    private func resetAlert(for action: ResetAction) -> Alert {
-        let title: String
-        let message: String?
-
-        switch action {
+    private var resetAlertTitle: String {
+        guard let resetAction else { return "" }
+        let title: String = switch resetAction {
         case .windowFrame:
-            title = SZL10n.string("app.settings.resetFileManagerWindowFrame")
-            message = nil
+            SZL10n.string("app.settings.resetFileManagerWindowFrame")
         case .listLayouts:
-            title = SZL10n.string("app.settings.resetFileListLayout")
-            message = SZL10n.string("app.settings.resetFileListLayoutConfirmDetail")
+            SZL10n.string("app.settings.resetFileListLayout")
         }
 
-        return Alert(
-            title: Text(SZL10n.string("app.settings.confirmActionFormat", title)),
-            message: message.map(Text.init),
-            primaryButton: .destructive(Text(SZL10n.string("app.settings.reset"))) {
-                switch action {
-                case .windowFrame:
-                    store.resetFileManagerWindowFrame()
-                case .listLayouts:
-                    store.resetFileListLayouts()
+        return SZL10n.string("app.settings.confirmActionFormat", title)
+    }
+
+    private var resetAlertPresented: Binding<Bool> {
+        Binding(
+            get: { resetAction != nil },
+            set: { isPresented in
+                if !isPresented {
+                    resetAction = nil
                 }
             },
-            secondaryButton: .cancel(Text(SZL10n.string("common.cancel"))),
         )
     }
 }

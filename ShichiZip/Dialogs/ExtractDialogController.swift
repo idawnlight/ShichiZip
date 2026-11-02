@@ -27,26 +27,17 @@ private final class ExtractDialogValidationContext {
 
 @MainActor
 final class ExtractDialogController: NSObject {
+    @MainActor
     private enum DestinationHistory {
-        private static var defaults: UserDefaults {
-            SZSharedUserDefaults.defaults
-        }
-
-        private static let entriesKey = "FileManager.ExtractDestinationHistory"
-        private static let maxEntries = 20
+        private static let store = PathHistoryStore(entriesKey: "FileManager.ExtractDestinationHistory")
 
         static func entries() -> [String] {
-            defaults.stringArray(forKey: entriesKey) ?? []
+            store.entries()
         }
 
         static func record(_ path: String) {
             let normalizedPath = URL(fileURLWithPath: path).standardizedFileURL.path
-            var updatedEntries = entries().filter { $0 != normalizedPath }
-            updatedEntries.insert(normalizedPath, at: 0)
-            if updatedEntries.count > maxEntries {
-                updatedEntries.removeSubrange(maxEntries ..< updatedEntries.count)
-            }
-            defaults.set(updatedEntries, forKey: entriesKey)
+            store.record(normalizedPath)
         }
     }
 
@@ -65,50 +56,28 @@ final class ExtractDialogController: NSObject {
         static func pathMode(defaultValue: SZPathMode,
                              allowedValues: [SZPathMode]) -> SZPathMode
         {
-            guard let rawValue = defaults.object(forKey: pathModeKey) as? Int,
-                  let value = SZPathMode(rawValue: rawValue),
-                  allowedValues.contains(value)
-            else {
-                return defaultValue
-            }
-            return value
+            let value = defaults.enumValue(forKey: pathModeKey, default: defaultValue)
+            return allowedValues.contains(value) ? value : defaultValue
         }
 
         static func overwriteMode(defaultValue: SZOverwriteMode) -> SZOverwriteMode {
-            guard let rawValue = defaults.object(forKey: overwriteModeKey) as? Int,
-                  let value = SZOverwriteMode(rawValue: rawValue)
-            else {
-                return defaultValue
-            }
-            return value
+            defaults.enumValue(forKey: overwriteModeKey, default: defaultValue)
         }
 
         static func preserveNtSecurityInfo() -> Bool {
-            guard defaults.object(forKey: preserveNtSecurityKey) != nil else {
-                return false
-            }
-            return defaults.bool(forKey: preserveNtSecurityKey)
+            defaults.bool(forKey: preserveNtSecurityKey)
         }
 
         static func eliminateDuplicates() -> Bool {
-            guard defaults.object(forKey: eliminateDuplicatesKey) != nil else {
-                return true
-            }
-            return defaults.bool(forKey: eliminateDuplicatesKey)
+            defaults.bool(forKey: eliminateDuplicatesKey, default: true)
         }
 
         static func splitDestination() -> Bool {
-            guard defaults.object(forKey: splitDestinationKey) != nil else {
-                return true
-            }
-            return defaults.bool(forKey: splitDestinationKey)
+            defaults.bool(forKey: splitDestinationKey, default: true)
         }
 
         static func showPassword() -> Bool {
-            guard defaults.object(forKey: showPasswordKey) != nil else {
-                return false
-            }
-            return defaults.bool(forKey: showPasswordKey)
+            defaults.bool(forKey: showPasswordKey)
         }
 
         static func record(pathMode: SZPathMode,
@@ -250,10 +219,6 @@ final class ExtractDialogController: NSObject {
             ExtractDialogOption(title: SZL10n.string("extract.autoRename"), value: .rename),
             ExtractDialogOption(title: SZL10n.string("extract.autoRenameExisting"), value: .renameExisting),
         ]
-    }
-
-    nonisolated static func normalizedPassword(from rawValue: String) -> String? {
-        ExtractDialogResultBuilder.normalizedPassword(from: rawValue)
     }
 }
 

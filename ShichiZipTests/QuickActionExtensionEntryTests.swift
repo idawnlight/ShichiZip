@@ -1,8 +1,27 @@
 import Darwin
 import Foundation
+@testable import ShichiZipQuickActionCore
 import XCTest
 
 final class QuickActionExtensionEntryTests: XCTestCase {
+    @MainActor
+    func testDataInputRejectsTextAndAcceptsFileReferences() async throws {
+        let url = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+        for (data, expected) in try [(Data("hello world".utf8), nil), (Data(url.path.utf8), url.path), (url.bookmarkData(), url.path)] {
+            let provider = NSItemProvider()
+            provider.registerDataRepresentation(forTypeIdentifier: "public.data", visibility: .all) { completion in
+                completion(data, nil)
+                return nil
+            }
+            let item = NSExtensionItem()
+            item.attachments = [provider]
+            let context = RecordingExtensionContext(expectation: XCTestExpectation())
+            context.items = [item]
+            let urls = try? await ShichiZipQuickActionInputLoader.fileURLs(from: context, action: .showInFileManager)
+            XCTAssertEqual(urls?.first?.path, expected)
+        }
+    }
+
     func testQuickActionAppexEntryPointsAcceptBackgroundQueueRequests() throws {
         for appexName in Self.quickActionAppexNames {
             let handler = try loadQuickActionHandler(from: appexName)
@@ -90,6 +109,7 @@ private struct QuickActionHandlerInvocation {
 
 private final class RecordingExtensionContext: NSExtensionContext {
     let finishedExpectation: XCTestExpectation
+    var items: [Any] = []
 
     private let stateLock = NSLock()
     private var completed = false
@@ -101,7 +121,7 @@ private final class RecordingExtensionContext: NSExtensionContext {
     }
 
     override var inputItems: [Any] {
-        []
+        items
     }
 
     var didComplete: Bool {
