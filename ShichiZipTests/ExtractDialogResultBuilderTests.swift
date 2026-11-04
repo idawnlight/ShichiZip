@@ -54,6 +54,7 @@ final class ExtractDialogResultBuilderTests: XCTestCase {
         XCTAssertEqual(resolved.baseDestinationURL, tempRoot.standardizedFileURL)
         XCTAssertEqual(resolved.result.destinationURL,
                        tempRoot.appendingPathComponent("Archive Output", isDirectory: true).standardizedFileURL)
+        XCTAssertFalse(directoryExists(at: resolved.result.destinationURL))
     }
 
     func testEmptySplitDestinationNameIsRejected() throws {
@@ -81,6 +82,24 @@ final class ExtractDialogResultBuilderTests: XCTestCase {
         XCTAssertTrue(resolved.result.revealAfterExtractInFileManager)
     }
 
+    func testSplitDestinationRejectsPathComponentsAndFilesButAllowsExistingDirectories() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "extract-dialog-invalid-split-name")
+        let builder = ExtractDialogResultBuilder(baseDirectory: tempRoot)
+        for name in [".", "..", "Nested/Output"] {
+            XCTAssertThrowsError(try builder.buildResult(from: makeState(destinationPath: tempRoot.path,
+                                                                         splitDestination: true,
+                                                                         splitName: name)))
+        }
+
+        let outputURL = tempRoot.appendingPathComponent("Output")
+        try Data("payload".utf8).write(to: outputURL)
+        let state = makeState(destinationPath: tempRoot.path, splitDestination: true, splitName: "Output")
+        XCTAssertThrowsError(try builder.buildResult(from: state))
+        try FileManager.default.removeItem(at: outputURL)
+        try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: false)
+        XCTAssertEqual(try builder.buildResult(from: state).result.destinationURL, outputURL.standardizedFileURL)
+    }
+
     private func makeState(destinationPath: String,
                            splitDestination: Bool = false,
                            splitName: String = "Archive") -> ExtractDialogState
@@ -91,8 +110,7 @@ final class ExtractDialogResultBuilderTests: XCTestCase {
                            password: "",
                            preserveNtSecurityInfo: false,
                            eliminateDuplicates: true,
-                           splitDestination: splitDestination,
-                           splitName: splitName,
+                           destinationFolder: ExtractDestinationFolder(isEnabled: splitDestination, name: splitName),
                            showPassword: false,
                            moveArchiveToTrashAfterExtraction: false,
                            inheritDownloadedFileQuarantine: false,

@@ -50,7 +50,6 @@ final class ExtractDialogController: NSObject {
         private static let overwriteModeKey = "FileManager.ExtractOverwriteMode"
         private static let preserveNtSecurityKey = "FileManager.ExtractPreserveNtSecurity"
         private static let eliminateDuplicatesKey = "FileManager.ExtractEliminateDuplicates"
-        private static let splitDestinationKey = "FileManager.ExtractSplitDestination"
         private static let showPasswordKey = "FileManager.ExtractShowPassword"
 
         static func pathMode(defaultValue: SZPathMode,
@@ -72,10 +71,6 @@ final class ExtractDialogController: NSObject {
             defaults.bool(forKey: eliminateDuplicatesKey, default: true)
         }
 
-        static func splitDestination() -> Bool {
-            defaults.bool(forKey: splitDestinationKey, default: true)
-        }
-
         static func showPassword() -> Bool {
             defaults.bool(forKey: showPasswordKey)
         }
@@ -84,14 +79,12 @@ final class ExtractDialogController: NSObject {
                            overwriteMode: SZOverwriteMode,
                            preserveNtSecurityInfo: Bool,
                            eliminateDuplicates: Bool,
-                           splitDestination: Bool,
                            showPassword: Bool)
         {
             defaults.set(pathMode.rawValue, forKey: pathModeKey)
             defaults.set(overwriteMode.rawValue, forKey: overwriteModeKey)
             defaults.set(preserveNtSecurityInfo, forKey: preserveNtSecurityKey)
             defaults.set(eliminateDuplicates, forKey: eliminateDuplicatesKey)
-            defaults.set(splitDestination, forKey: splitDestinationKey)
             defaults.set(showPassword, forKey: showPasswordKey)
         }
     }
@@ -134,8 +127,8 @@ final class ExtractDialogController: NSObject {
                                               password: "",
                                               preserveNtSecurityInfo: DialogPreferences.preserveNtSecurityInfo(),
                                               eliminateDuplicates: DialogPreferences.eliminateDuplicates(),
-                                              splitDestination: DialogPreferences.splitDestination(),
-                                              splitName: suggestedSplitDestinationName ?? "",
+                                              destinationFolder: ExtractDestinationFolder(isEnabled: ExtractDestinationFolder.preferredIsEnabled,
+                                                                                          name: suggestedSplitDestinationName ?? ""),
                                               showPassword: DialogPreferences.showPassword(),
                                               moveArchiveToTrashAfterExtraction: SZSettings.bool(.moveArchiveToTrashAfterExtraction),
                                               inheritDownloadedFileQuarantine: SZSettings.bool(.inheritDownloadedFileQuarantine),
@@ -192,8 +185,8 @@ final class ExtractDialogController: NSObject {
                                  overwriteMode: state.overwriteMode,
                                  preserveNtSecurityInfo: state.preserveNtSecurityInfo,
                                  eliminateDuplicates: state.eliminateDuplicates,
-                                 splitDestination: state.splitDestination,
                                  showPassword: state.showPassword)
+        ExtractDestinationFolder.preferredIsEnabled = state.destinationFolder.isEnabled
         SZSettings.set(state.moveArchiveToTrashAfterExtraction, for: .moveArchiveToTrashAfterExtraction)
         SZSettings.set(state.inheritDownloadedFileQuarantine, for: .inheritDownloadedFileQuarantine)
         SZSettings.revealAfterExtractInFileManager = state.revealAfterExtractInFileManager

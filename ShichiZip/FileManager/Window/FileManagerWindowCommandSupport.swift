@@ -157,7 +157,8 @@ enum FileManagerArchiveCommandSupport {
                                                     sourcePane: activePane,
                                                     defaultPath: suggestedDestinationPath(sourceSnapshot: snapshot,
                                                                                           inactivePaneSnapshot: inactivePaneSnapshot),
-                                                    infoText: snapshot.extractDialogInfoText)
+                                                    infoText: snapshot.extractDialogInfoText,
+                                                    suggestedExtractFolderName: snapshot.suggestedExtractDestinationName)
         { _ in
             true
         }

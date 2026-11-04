@@ -2,6 +2,15 @@ import XCTest
 
 /// Tests for the compress (Add to Archive) dialog.
 final class CompressDialogUITests: ShichiZipUITestCase {
+    override var additionalLaunchArguments: [String] {
+        [
+            "-LanguageOverride", "en",
+            "-FileManager.ExtractSplitDestination", "YES",
+            "-MoveArchiveToTrashAfterExtraction", "NO",
+            "-RevealAfterTransfer", "NO",
+        ]
+    }
+
     func testCompressDialogAppears() throws {
         let tempDir = try makeTemporaryDirectory(named: "compress")
         try createTextFile(at: tempDir.appendingPathComponent("file1.txt"))
@@ -118,7 +127,7 @@ final class CompressDialogUITests: ShichiZipUITestCase {
 
     /// Compresses multiple files as .7z, opens the resulting archive
     /// in the app, and verifies the entries appear in the file list.
-    /// Then extracts via the Extract dialog and checks the files on disk.
+    /// Then extracts from the open archive and checks the files on disk.
     func testCompressAs7zAndVerify() throws {
         let tempDir = try makeTemporaryDirectory(named: "compress7z")
         try createTextFile(at: tempDir.appendingPathComponent("alpha.txt"), content: "alpha content")
@@ -246,13 +255,12 @@ final class CompressDialogUITests: ShichiZipUITestCase {
         }
     }
 
-    /// Triggers Extract from the currently open archive, which follows
-    /// upstream 7-Zip and uses the Copy dialog for archive contents.
+    /// Extracts the currently open archive into its suggested separate folder.
     /// Returns the extraction directory URL.
     private func extractViaApp(archivePath: String) throws -> URL {
         let archiveURL = URL(fileURLWithPath: archivePath)
 
-        // Open the copy dialog used for archive contents.
+        // Open the Copy dialog used for archive contents.
         app.menuBars.menuBarItems["File"].click()
         app.menuBars.menuBarItems["File"].menus.menuItems["Extract…"].click()
 
@@ -260,28 +268,31 @@ final class CompressDialogUITests: ShichiZipUITestCase {
         XCTAssertTrue(destinationField.waitForExistence(timeout: 5))
 
         let archiveStem = archiveURL.deletingPathExtension().lastPathComponent
+        XCTAssertEqual(app.checkBoxes.matching(identifier: "fileOperation.splitDestination").firstMatch.value as? Int, 1)
+        XCTAssertEqual(app.textFields.matching(identifier: "fileOperation.splitName").firstMatch.value as? String, archiveStem)
         let extractDir = archiveURL.deletingLastPathComponent()
             .appendingPathComponent("\(archiveStem)-extracted", isDirectory: true)
+        let outputDir = extractDir.appendingPathComponent(archiveStem, isDirectory: true)
         destinationField.click()
         destinationField.selectAll()
         destinationField.pasteText(extractDir.path)
 
-        let copyButton = app.buttons.matching(identifier: "modal.button.1").firstMatch
-        XCTAssertTrue(copyButton.exists)
-        copyButton.click()
+        let extractButton = app.buttons.matching(identifier: "modal.button.1").firstMatch
+        XCTAssertTrue(extractButton.exists)
+        extractButton.click()
 
         // Wait for extraction to complete
         let deadline = Date().addingTimeInterval(15)
         var found = false
         while Date() < deadline {
-            let contents = (try? FileManager.default.contentsOfDirectory(atPath: extractDir.path)) ?? []
+            let contents = (try? FileManager.default.contentsOfDirectory(atPath: outputDir.path)) ?? []
             if !contents.isEmpty {
                 found = true; break
             }
             usleep(500_000)
         }
-        XCTAssertTrue(found, "Extraction should produce files in \(extractDir.path)")
+        XCTAssertTrue(found, "Extraction should produce files in \(outputDir.path)")
 
-        return extractDir
+        return outputDir
     }
 }

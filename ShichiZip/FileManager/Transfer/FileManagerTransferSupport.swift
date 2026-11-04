@@ -1461,6 +1461,7 @@ final class FileOperationDestinationPrompt {
     private let sourcePane: FileManagerPaneController
     private let defaultPath: String
     private let infoText: String
+    private let suggestedExtractFolderName: String?
     private let validateDestination: (FileOperationDestinationTarget) -> Bool
     private(set) var shouldRevealAfterTransfer = false
 
@@ -1468,12 +1469,14 @@ final class FileOperationDestinationPrompt {
          sourcePane: FileManagerPaneController,
          defaultPath: String,
          infoText: String,
+         suggestedExtractFolderName: String? = nil,
          validateDestination: @escaping (FileOperationDestinationTarget) -> Bool)
     {
         self.move = move
         self.sourcePane = sourcePane
         self.defaultPath = defaultPath
         self.infoText = infoText
+        self.suggestedExtractFolderName = suggestedExtractFolderName
         self.validateDestination = validateDestination
     }
 
@@ -1484,7 +1487,7 @@ final class FileOperationDestinationPrompt {
         let historyEntries = FileOperationDestinationHistory.entries()
         let sourcePane = sourcePane
         let validateDestination = validateDestination
-        var resolvedDestinationTarget: FileOperationDestinationTarget?
+        var resolvedDestination: (base: FileOperationDestinationTarget, target: FileOperationDestinationTarget)?
 
         let pathField = NSComboBox(frame: NSRect(x: 0, y: 0, width: 260, height: 26))
         pathField.isEditable = true
@@ -1518,7 +1521,22 @@ final class FileOperationDestinationPrompt {
         revealAfterTransferCheckbox.state = SZSettings.revealAfterTransfer ? .on : .off
         revealAfterTransferCheckbox.setAccessibilityIdentifier("fileOperation.revealInFinder")
 
-        let stack = NSStackView(views: [label, inputRow, revealAfterTransferCheckbox])
+        let folderControl = suggestedExtractFolderName.map { name in
+            ExtractDestinationFolderControl(value: ExtractDestinationFolder(isEnabled: ExtractDestinationFolder.preferredIsEnabled,
+                                                                            name: name),
+                                            accessibilityPrefix: "fileOperation")
+        }
+        let stack = NSStackView(views: [label, inputRow])
+        if let folderControl {
+            let folderLabel = NSTextField(labelWithString: SZL10n.string("app.extract.separateFolder"))
+            folderLabel.font = label.font
+            let folderRow = NSStackView(views: [folderLabel, folderControl.view])
+            folderRow.orientation = .horizontal
+            folderRow.alignment = .centerY
+            folderRow.spacing = 8
+            stack.addArrangedSubview(folderRow)
+        }
+        stack.addArrangedSubview(revealAfterTransferCheckbox)
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 6
@@ -1552,15 +1570,19 @@ final class FileOperationDestinationPrompt {
             let enteredPath = pathField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
 
             do {
-                let destinationTarget = try FileOperationDestinationResolver.resolveTarget(from: enteredPath,
-                                                                                           relativeTo: sourcePane.currentDirectoryURL,
-                                                                                           createDirectoryIfNeeded: false)
+                let baseTarget = try FileOperationDestinationResolver.resolveTarget(from: enteredPath,
+                                                                                    relativeTo: sourcePane.currentDirectoryURL,
+                                                                                    createDirectoryIfNeeded: false)
+                let destinationTarget: FileOperationDestinationTarget = if let folderControl, case let .directory(baseURL) = baseTarget {
+                    try .directory(folderControl.value.destinationURL(in: baseURL))
+                } else {
+                    baseTarget
+                }
                 guard validateDestination(destinationTarget) else {
                     return false
                 }
                 self.shouldRevealAfterTransfer = revealAfterTransferCheckbox.state == .on
-                SZSettings.revealAfterTransfer = self.shouldRevealAfterTransfer
-                resolvedDestinationTarget = destinationTarget
+                resolvedDestination = (baseTarget, destinationTarget)
                 return true
             } catch {
                 szPresentError(error, for: controller.window)
@@ -1574,12 +1596,16 @@ final class FileOperationDestinationPrompt {
         }
 
         guard await controller.modalResult(for: parentWindow) == 1,
-              let destinationTarget = resolvedDestinationTarget
+              let resolvedDestination
         else {
             return nil
         }
 
-        FileOperationDestinationHistory.record(destinationTarget.displayPath)
-        return destinationTarget
+        SZSettings.revealAfterTransfer = shouldRevealAfterTransfer
+        if let folderControl {
+            ExtractDestinationFolder.preferredIsEnabled = folderControl.value.isEnabled
+        }
+        FileOperationDestinationHistory.record(resolvedDestination.base.displayPath)
+        return resolvedDestination.target
     }
 }
