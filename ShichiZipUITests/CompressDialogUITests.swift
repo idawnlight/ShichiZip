@@ -7,7 +7,7 @@ final class CompressDialogUITests: ShichiZipUITestCase {
             "-LanguageOverride", "en",
             "-FileManager.ExtractSplitDestination", "YES",
             "-MoveArchiveToTrashAfterExtraction", "NO",
-            "-RevealAfterExtractInFileManager", "NO",
+            "-RevealAfterTransfer", "NO",
         ]
     }
 
@@ -127,7 +127,7 @@ final class CompressDialogUITests: ShichiZipUITestCase {
 
     /// Compresses multiple files as .7z, opens the resulting archive
     /// in the app, and verifies the entries appear in the file list.
-    /// Then extracts via the Extract dialog and checks the files on disk.
+    /// Then extracts from the open archive and checks the files on disk.
     func testCompressAs7zAndVerify() throws {
         let tempDir = try makeTemporaryDirectory(named: "compress7z")
         try createTextFile(at: tempDir.appendingPathComponent("alpha.txt"), content: "alpha content")
@@ -260,16 +260,16 @@ final class CompressDialogUITests: ShichiZipUITestCase {
     private func extractViaApp(archivePath: String) throws -> URL {
         let archiveURL = URL(fileURLWithPath: archivePath)
 
-        // Open the shared Extract dialog used for archive contents.
+        // Open the Copy dialog used for archive contents.
         app.menuBars.menuBarItems["File"].click()
         app.menuBars.menuBarItems["File"].menus.menuItems["Extract…"].click()
 
-        let destinationField = app.comboBoxes.matching(identifier: "extract.destinationPath").firstMatch
+        let destinationField = app.comboBoxes.matching(identifier: "fileOperation.destinationPath").firstMatch
         XCTAssertTrue(destinationField.waitForExistence(timeout: 5))
 
         let archiveStem = archiveURL.deletingPathExtension().lastPathComponent
-        XCTAssertEqual(app.checkBoxes.matching(identifier: "extract.splitDestination").firstMatch.value as? Int, 1)
-        XCTAssertEqual(app.textFields.matching(identifier: "extract.splitName").firstMatch.value as? String, archiveStem)
+        XCTAssertEqual(app.checkBoxes.matching(identifier: "fileOperation.splitDestination").firstMatch.value as? Int, 1)
+        XCTAssertEqual(app.textFields.matching(identifier: "fileOperation.splitName").firstMatch.value as? String, archiveStem)
         let extractDir = archiveURL.deletingLastPathComponent()
             .appendingPathComponent("\(archiveStem)-extracted", isDirectory: true)
         let outputDir = extractDir.appendingPathComponent(archiveStem, isDirectory: true)

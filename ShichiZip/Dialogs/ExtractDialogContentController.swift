@@ -12,8 +12,7 @@ struct ExtractDialogState: Equatable {
     var password: String
     var preserveNtSecurityInfo: Bool
     var eliminateDuplicates: Bool
-    var splitDestination: Bool
-    var splitName: String
+    var destinationFolder: ExtractDestinationFolder
     var showPassword: Bool
     var moveArchiveToTrashAfterExtraction: Bool
     var inheritDownloadedFileQuarantine: Bool
@@ -34,9 +33,7 @@ struct ExtractDialogResultBuilder {
 
     func buildResult(from state: ExtractDialogState) throws -> ExtractDialogResolvedResult {
         let baseDestinationURL = try resolveDestinationDirectoryURL(from: state.destinationPath)
-        let destinationURL = try resolveFinalDestinationURL(baseDestinationURL: baseDestinationURL,
-                                                            splitDestination: state.splitDestination,
-                                                            splitName: state.splitName)
+        let destinationURL = try state.destinationFolder.destinationURL(in: baseDestinationURL)
         let result = ExtractDialogResult(destinationURL: destinationURL,
                                          overwriteMode: state.overwriteMode,
                                          pathMode: state.pathMode,
@@ -77,24 +74,6 @@ struct ExtractDialogResultBuilder {
         }
 
         return standardizedURL
-    }
-
-    private func resolveFinalDestinationURL(baseDestinationURL: URL,
-                                            splitDestination: Bool,
-                                            splitName: String) throws -> URL
-    {
-        guard splitDestination else {
-            return baseDestinationURL
-        }
-
-        let trimmedName = splitName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw NSError(domain: NSCocoaErrorDomain,
-                          code: NSFileWriteInvalidFileNameError,
-                          userInfo: [NSLocalizedDescriptionKey: SZL10n.string("app.fileManager.enterFolderName")])
-        }
-
-        return baseDestinationURL.appendingPathComponent(trimmedName, isDirectory: true).standardizedFileURL
     }
 }
 
@@ -161,8 +140,7 @@ final class ExtractDialogContentController: NSObject {
     private let browseButton = NSButton(title: SZL10n.string("compress.browse"), target: nil, action: nil)
     private let pathModePopup = NSPopUpButton(frame: .zero, pullsDown: false)
     private let overwriteModePopup = NSPopUpButton(frame: .zero, pullsDown: false)
-    private let splitDestinationCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
-    private let splitNameField = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+    private let destinationFolderControl: ExtractDestinationFolderControl
     private let passwordField = SZPasswordField(value: "", placeholder: SZL10n.string("app.optional"), accessibilityIdentifier: "extract.password")
     private let showPasswordCheckbox = NSButton(checkboxWithTitle: SZL10n.string("password.showPassword"), target: nil, action: nil)
     private let ntSecurityCheckbox = NSButton(checkboxWithTitle: SZL10n.string("extract.restoreSecurity"), target: nil, action: nil)
@@ -193,12 +171,13 @@ final class ExtractDialogContentController: NSObject {
         self.baseDirectory = baseDirectory.standardizedFileURL
         self.sourceArchiveAvailableForMoveToTrash = sourceArchiveAvailableForMoveToTrash
         self.sourceArchiveAvailableForQuarantineInheritance = sourceArchiveAvailableForQuarantineInheritance
+        destinationFolderControl = ExtractDestinationFolderControl(value: state.destinationFolder,
+                                                                   accessibilityPrefix: "extract")
 
         super.init()
 
         configureControls(destinationHistoryEntries: destinationHistoryEntries)
         view = makeAccessoryView()
-        updateSplitDestinationUI()
         updatePasswordVisibilityUI(moveFocus: false)
     }
 
@@ -213,8 +192,7 @@ final class ExtractDialogContentController: NSObject {
 
     func updateStateFromControls() {
         state.destinationPath = pathField.stringValue
-        state.splitDestination = splitDestinationCheckbox.state == .on
-        state.splitName = splitNameField.stringValue
+        state.destinationFolder = destinationFolderControl.value
         state.password = passwordField.stringValue
         state.showPassword = showPasswordCheckbox.state == .on
         state.pathMode = selectedValue(from: pathModeOptions,
@@ -256,18 +234,6 @@ final class ExtractDialogContentController: NSObject {
         overwriteModePopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 280).isActive = true
         overwriteModePopup.setAccessibilityIdentifier("extract.overwriteMode")
 
-        splitDestinationCheckbox.target = self
-        splitDestinationCheckbox.action = #selector(splitDestinationToggled(_:))
-        splitDestinationCheckbox.state = state.splitDestination ? .on : .off
-        splitDestinationCheckbox.toolTip = SZL10n.string("app.extract.createSeparateFolder")
-        splitDestinationCheckbox.setAccessibilityLabel(SZL10n.string("app.extract.createSeparateFolder"))
-        splitDestinationCheckbox.setAccessibilityIdentifier("extract.splitDestination")
-
-        splitNameField.placeholderString = "Archive"
-        splitNameField.stringValue = state.splitName
-        splitNameField.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
-        splitNameField.setAccessibilityIdentifier("extract.splitName")
-
         passwordField.stringValue = state.password
         passwordField.widthAnchor.constraint(equalToConstant: 300).isActive = true
         passwordField.heightAnchor.constraint(equalToConstant: 24).isActive = true
@@ -304,15 +270,9 @@ final class ExtractDialogContentController: NSObject {
         pathRow.spacing = 8
         pathRow.distribution = .fill
 
-        let splitRow = NSStackView(views: [splitDestinationCheckbox, splitNameField])
-        splitRow.orientation = .horizontal
-        splitRow.alignment = .centerY
-        splitRow.spacing = 8
-        splitRow.distribution = .fill
-
         let formStack = NSStackView(views: [
             makeFormRow(label: SZL10n.string("extract.extractTo"), control: pathRow),
-            makeFormRow(label: SZL10n.string("app.extract.separateFolder"), control: splitRow),
+            makeFormRow(label: SZL10n.string("app.extract.separateFolder"), control: destinationFolderControl.view),
             makeFormRow(label: SZL10n.string("extract.pathMode"), control: pathModePopup),
             makeFormRow(label: SZL10n.string("extract.overwriteMode"), control: overwriteModePopup),
             makeFormRow(label: SZL10n.string("password.password") + ":", control: passwordField),
@@ -403,18 +363,8 @@ final class ExtractDialogContentController: NSObject {
         return options[index].value
     }
 
-    @objc private func splitDestinationToggled(_: Any?) {
-        updateSplitDestinationUI()
-    }
-
     @objc private func showPasswordToggled(_: Any?) {
         updatePasswordVisibilityUI(moveFocus: true)
-    }
-
-    private func updateSplitDestinationUI() {
-        let enabled = splitDestinationCheckbox.state == .on
-        splitNameField.isEnabled = enabled
-        splitNameField.alphaValue = enabled ? 1.0 : 0.55
     }
 
     private func updatePasswordVisibilityUI(moveFocus: Bool) {
