@@ -1,0 +1,117 @@
+targetTemplates:
+  FinderService:
+    type: bundle
+    platform: macOS
+    sources:
+      - path: ../../ShichiZip/FinderServices/ServiceMain.swift
+      - path: ../../ShichiZip/App/AppFileServices.swift
+      - path: ../generated/services
+        buildPhase: resources
+    dependencies:
+      - target: ShichiZipQuickActionCore
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ${hostIdentifier}.FinderService.${action}
+        PRODUCT_NAME: ${target_name}
+        MACH_O_TYPE: mh_execute
+        GENERATE_INFOPLIST_FILE: false
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        CODE_SIGN_ENTITLEMENTS: ShichiZip/Resources/ShichiZip.entitlements
+        SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER: $(DEVELOPMENT_TEAM).${hostName}
+        LD_RUNPATH_SEARCH_PATHS:
+          - $(inherited)
+          - "@executable_path/../Frameworks"
+    info:
+      path: ../generated/plists/${target_name}-Info.plist
+      properties:
+        CFBundlePackageType: APPL
+        LSBackgroundOnly: true
+        NSSupportsAutomaticTermination: true
+        ShichiZipHostAppDisplayName: ${appName}
+        ShichiZipQuickActionAppGroupIdentifier: $(SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER)
+        ShichiZipQuickActionURLScheme: ${scheme}
+        NSServices:
+          - NSMenuItem:
+              default: ${title}
+            NSMessage: performFileAction
+            NSUserData: ${action}
+            NSPortName: $(PRODUCT_BUNDLE_IDENTIFIER)
+            NSSendFileTypes:
+              - public.item
+            NSRequiredContext:
+              NSApplicationIdentifier: com.apple.finder
+
+targets:
+  ShichiZipFinderReveal:
+    templates: [FinderService]
+    templateAttributes:
+      hostIdentifier: ee.dawn.ShichiZip
+      hostName: ShichiZip
+      appName: ShichiZip
+      scheme: shichizip
+      action: show-in-file-manager
+      title: "ShichiZip: Reveal in File Manager"
+  ShichiZipFinderOpen:
+    templates: [FinderService]
+    templateAttributes:
+      hostIdentifier: ee.dawn.ShichiZip
+      hostName: ShichiZip
+      appName: ShichiZip
+      scheme: shichizip
+      action: open-in-shichizip
+      title: "Open in ShichiZip"
+  ShichiZipFinderCompress:
+    templates: [FinderService]
+    templateAttributes:
+      hostIdentifier: ee.dawn.ShichiZip
+      hostName: ShichiZip
+      appName: ShichiZip
+      scheme: shichizip
+      action: compress
+      title: "ShichiZip: Compress"
+  ShichiZipFinderExtract:
+    templates: [FinderService]
+    templateAttributes:
+      hostIdentifier: ee.dawn.ShichiZip
+      hostName: ShichiZip
+      appName: ShichiZip
+      scheme: shichizip
+      action: smart-quick-extract
+      title: "ShichiZip: Smart Quick Extract"
+  ShichiZipZSFinderReveal:
+    templates: [FinderService]
+    templateAttributes:
+      hostIdentifier: ee.dawn.ShichiZipZS
+      hostName: ShichiZipZS
+      appName: ShichiZip ZS
+      scheme: shichizipzs
+      action: show-in-file-manager
+      title: "ShichiZip ZS: Reveal in File Manager"
+  ShichiZipZSFinderOpen:
+    templates: [FinderService]
+    templateAttributes:
+      hostIdentifier: ee.dawn.ShichiZipZS
+      hostName: ShichiZipZS
+      appName: ShichiZip ZS
+      scheme: shichizipzs
+      action: open-in-shichizip
+      title: "Open in ShichiZip ZS"
+  ShichiZipZSFinderCompress:
+    templates: [FinderService]
+    templateAttributes:
+      hostIdentifier: ee.dawn.ShichiZipZS
+      hostName: ShichiZipZS
+      appName: ShichiZip ZS
+      scheme: shichizipzs
+      action: compress
+      title: "ShichiZip ZS: Compress"
+  ShichiZipZSFinderExtract:
+    templates: [FinderService]
+    templateAttributes:
+      hostIdentifier: ee.dawn.ShichiZipZS
+      hostName: ShichiZipZS
+      appName: ShichiZip ZS
+      scheme: shichizipzs
+      action: smart-quick-extract
+      title: "ShichiZip ZS: Smart Quick Extract"

@@ -39,7 +39,7 @@ public enum ShichiZipQuickActionTransport {
         return scheme == urlScheme && host == launchHost && url.path == launchPath
     }
 
-    static func launchURL(for request: ShichiZipQuickActionRequest) throws -> URL {
+    public static func launchURL(for request: ShichiZipQuickActionRequest) throws -> URL {
         cleanupStalePayloads()
         let requestIdentifier = try store(request)
         let launchURL = try makeLaunchURL(forRequestIdentifier: requestIdentifier)
@@ -73,7 +73,7 @@ public enum ShichiZipQuickActionTransport {
         return request
     }
 
-    static func releasePayload(for launchURL: URL) {
+    public static func releasePayload(for launchURL: URL) {
         guard let requestFileURL = try? requestFileURL(from: launchURL) else {
             log("release skipped for invalid launchURL=\(launchURL.absoluteString)")
             return

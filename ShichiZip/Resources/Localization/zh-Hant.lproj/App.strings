@@ -199,6 +199,11 @@
 "app.settings.fileTypes" = "檔案類型";
 "app.settings.finderLike" = "Finder 風格";
 "app.settings.finderQuickActions" = "Finder 快速動作";
+"app.settings.finderService.compress" = "%@: 壓縮";
+"app.settings.finderService.extract" = "%@: 快速解壓縮";
+"app.settings.finderService.open" = "在 %@ 中開啟";
+"app.settings.finderService.reveal" = "%@: 在檔案管理器中顯示";
+"app.settings.finderServices" = "Finder 服務";
 "app.settings.followSystem" = "跟隨系統";
 "app.settings.general" = "一般";
 "app.settings.launchOpen" = "開啟壓縮檔時";
@@ -216,6 +221,7 @@
 "app.settings.noDefaultApp" = "沒有預設 App";
 "app.settings.noMatchingFileTypes" = "沒有符合的檔案類型";
 "app.settings.openFinderQuickActionsSettings" = "開啟 Finder 快速動作設定";
+"app.settings.openKeyboardSettings" = "打開「鍵盤」設定";
 "app.settings.preset" = "預設組合";
 "app.settings.quickActionsDescription" = "開啟「系統設定」中的 Finder 快速動作頁面，並檢查 %@ 的快速動作目前是否已啟用。";
 "app.settings.quickActionsNote" = "Finder 快速動作的啟用狀態由 macOS 在「系統設定」中管理。";
@@ -234,6 +240,9 @@
 "app.settings.resetFileListLayoutNote" = "清除檔案管理器列表已儲存的排序方式、欄位順序與欄寬。";
 "app.settings.resetFileManagerWindowFrame" = "重設已儲存的視窗大小與位置";
 "app.settings.searchFileTypes" = "搜尋檔案類型";
+"app.settings.servicesDescription" = "啟用的服務會顯示在 Finder 右鍵選單底部；項目過多時，會自動且不可控地收合至「服務」子選單。";
+"app.settings.servicesNote" = "若已啟用的服務未出現在 Finder 中或項目過多而出現折疊，請在「鍵盤」>「鍵盤快速鍵」>「服務」中調整啟用項。";
+"app.settings.servicesOpenErrorDetail" = "無法打開「鍵盤」設定。請前往「系統設定」>「鍵盤」>「鍵盤快速鍵」>「服務」。";
 "app.settings.setRecommendedAsDefault" = "將建議類型設為預設";
 "app.settings.shortcuts" = "快速鍵";
 "app.settings.shortcutsCustomNote" = "變更個別綁定會將預設組合切換為自訂。重複使用快速鍵會將它從先前的指令清除。按一下快速鍵欄位並按下任意按鍵組合。按 Escape 可取消錄製。";

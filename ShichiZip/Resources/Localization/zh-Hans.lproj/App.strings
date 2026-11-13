@@ -200,6 +200,11 @@
 "app.settings.fileTypes" = "文件类型";
 "app.settings.finderLike" = "Finder 风格";
 "app.settings.finderQuickActions" = "访达快速操作";
+"app.settings.finderService.compress" = "%@: 压缩";
+"app.settings.finderService.extract" = "%@: 智能快速解压";
+"app.settings.finderService.open" = "在 %@ 中打开";
+"app.settings.finderService.reveal" = "%@: 在文件管理器中显示";
+"app.settings.finderServices" = "访达服务";
 "app.settings.followSystem" = "跟随系统";
 "app.settings.general" = "通用";
 "app.settings.launchOpen" = "打开压缩包时";
@@ -217,6 +222,7 @@
 "app.settings.noDefaultApp" = "没有默认应用";
 "app.settings.noMatchingFileTypes" = "没有匹配的文件类型";
 "app.settings.openFinderQuickActionsSettings" = "打开访达快速操作设置";
+"app.settings.openKeyboardSettings" = "打开“键盘”设置";
 "app.settings.preset" = "预设";
 "app.settings.quickActionsDescription" = "打开系统设置中的「访达快速操作」页面，查看 %@ 的快速操作是否已启用。";
 "app.settings.quickActionsNote" = "访达快速操作的启用状态由 macOS 在系统设置中管理。";
@@ -235,6 +241,9 @@
 "app.settings.resetFileListLayoutNote" = "清除文件管理器列表已保存的排序、列顺序和列宽。";
 "app.settings.resetFileManagerWindowFrame" = "重置已保存的窗口大小和位置";
 "app.settings.searchFileTypes" = "搜索文件类型";
+"app.settings.servicesDescription" = "启用的服务会显示在访达右键菜单底部；项目过多时，会自动且不可控地折叠至“服务”子菜单。";
+"app.settings.servicesNote" = "若已启用的服务未出现在访达中或项目过多而出现折叠，请在“键盘”>“键盘快捷键”>“服务”中调整启用项。";
+"app.settings.servicesOpenErrorDetail" = "无法打开“键盘”设置。请前往“系统设置”>“键盘”>“键盘快捷键”>“服务”。";
 "app.settings.setRecommendedAsDefault" = "将推荐类型设为默认";
 "app.settings.shortcuts" = "快捷键";
 "app.settings.shortcutsCustomNote" = "修改单个快捷键后方案将切换为「自定义」。重复使用的快捷键会从原命令中清除。点击快捷键区域后按下任意组合键。按 Esc 取消录制。";

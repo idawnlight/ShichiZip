@@ -1,12 +1,34 @@
+import ShichiZipQuickActionCore
 import SwiftUI
 
 struct ExtensionSettingsView: View {
     let store: SettingsStore
     @State private var showsQuickActionsError = false
+    @State private var showsServicesError = false
+    @State private var servicesError = ""
 
     var body: some View {
         SettingsPageView {
             VStack(spacing: 20) {
+                SettingsSectionView(SZL10n.string("app.settings.finderServices")) {
+                    SettingsNote(SZL10n.string("app.settings.servicesDescription"))
+
+                    ForEach(FinderServiceInstaller.actions, id: \.rawValue) { action in
+                        Toggle(store.finderServiceTitle(action), isOn: serviceBinding(for: action))
+                            .accessibilityIdentifier("settings.finderService.\(action.rawValue)")
+                    }
+
+                    Button(SZL10n.string("app.settings.openKeyboardSettings")) {
+                        if !store.openKeyboardSettings() {
+                            servicesError = SZL10n.string("app.settings.servicesOpenErrorDetail")
+                            showsServicesError = true
+                        }
+                    }
+                    .accessibilityIdentifier("settings.openKeyboardSettings")
+
+                    SettingsNote(SZL10n.string("app.settings.servicesNote"))
+                }
+
                 SettingsSectionView(SZL10n.string("app.settings.finderQuickActions")) {
                     SettingsNote(
                         SZL10n.string(
@@ -66,6 +88,28 @@ struct ExtensionSettingsView: View {
                 ),
             )
         }
+        .alert(
+            SZL10n.string("app.settings.finderServices"),
+            isPresented: $showsServicesError,
+        ) {
+            Button(SZL10n.string("common.ok")) {}
+        } message: {
+            Text(servicesError)
+        }
+    }
+
+    private func serviceBinding(for action: ShichiZipQuickAction) -> Binding<Bool> {
+        Binding(
+            get: { store.isFinderServiceEnabled(action) },
+            set: { enabled in
+                do {
+                    try store.setFinderServiceEnabled(enabled, for: action)
+                } catch {
+                    servicesError = error.localizedDescription
+                    showsServicesError = true
+                }
+            },
+        )
     }
 
     private var quickLookDepthBinding: Binding<Int> {
