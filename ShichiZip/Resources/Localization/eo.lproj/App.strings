@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Kunpremi";
+"app.settings.finderService.extract" = "%@: Inteligenta rapida elpakado";
+"app.settings.finderService.open" = "Malfermi per %@";
+"app.settings.finderService.reveal" = "%@: Montri en la dosieradministrilo";
+"app.settings.finderServices" = "Servoj de Finder";
+"app.settings.openKeyboardSettings" = "Malfermi klavarajn agordojn";
+"app.settings.servicesDescription" = "Ŝaltitaj servoj aperas ĉe la malsupro de la kunteksta menuo de Finder. Se estas tro multaj eroj, macOS aŭtomate grupigas ilin en la submenuon Servoj; oni ne povas regi ĉi tiun grupigon.";
+"app.settings.servicesNote" = "Se ŝaltitaj servoj ne aperas en Finder aŭ tro multaj eroj estas grupigitaj en submenuon, ĝustigu la ŝaltitajn servojn ĉe Klavaro > Klavkombinoj > Servoj.";
+"app.settings.servicesOpenErrorDetail" = "Ne eblis malfermi la klavarajn agordojn. Iru al Sistemaj agordoj > Klavaro > Klavkombinoj > Servoj.";

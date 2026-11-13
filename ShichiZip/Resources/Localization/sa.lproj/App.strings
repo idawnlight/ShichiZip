@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: संपीडयतु";
+"app.settings.finderService.extract" = "%@: बुद्धिमत् शीघ्रं निष्कर्षणम्";
+"app.settings.finderService.open" = "%@ द्वारा उद्घाटयतु";
+"app.settings.finderService.reveal" = "%@: सञ्चिकाप्रबन्धके दर्शयतु";
+"app.settings.finderServices" = "Finder-सेवाः";
+"app.settings.openKeyboardSettings" = "कुञ्चिकापटलविन्यासान् उद्घाटयतु";
+"app.settings.servicesDescription" = "सक्रियाः सेवाः Finder इत्यस्य प्रसङ्गसूच्याः अधोभागे दृश्यन्ते। यदि अंशाः अतिबहवः भवन्ति, macOS तान् स्वयमेव «सेवाः» उपसूच्यां समूहयति; एतत् समूहनं नियन्त्रयितुं न शक्यते।";
+"app.settings.servicesNote" = "यदि सक्रियाः सेवाः Finder मध्ये न दृश्यन्ते अथवा अतिबहवः अंशाः उपसूच्यां समूहिताः सन्ति, कुञ्चिकापटलम् > कुञ्चिकापटललघुमार्गाः > सेवाः इत्यत्र सक्रियाः सेवाः समायोजयतु।";
+"app.settings.servicesOpenErrorDetail" = "कुञ्चिकापटलविन्यासान् उद्घाटयितुं न शक्यते। प्रणालीविन्यासाः > कुञ्चिकापटलम् > कुञ्चिकापटललघुमार्गाः > सेवाः इत्यत्र गच्छतु।";

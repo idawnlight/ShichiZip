@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: บีบอัด";
+"app.settings.finderService.extract" = "%@: แตกไฟล์ด่วนอัจฉริยะ";
+"app.settings.finderService.open" = "เปิดใน %@";
+"app.settings.finderService.reveal" = "%@: แสดงในตัวจัดการไฟล์";
+"app.settings.finderServices" = "บริการ Finder";
+"app.settings.openKeyboardSettings" = "เปิดการตั้งค่าแป้นพิมพ์";
+"app.settings.servicesDescription" = "บริการที่เปิดใช้งานจะแสดงที่ด้านล่างของเมนูตามบริบทของ Finder หากมีรายการมากเกินไป macOS จะจัดกลุ่มรายการเหล่านั้นไว้ในเมนูย่อย บริการ โดยอัตโนมัติ และไม่สามารถควบคุมการจัดกลุ่มนี้ได้";
+"app.settings.servicesNote" = "หากบริการที่เปิดใช้งานไม่แสดงใน Finder หรือมีรายการมากเกินไปจนถูกรวมไว้ในเมนูย่อย ให้ปรับบริการที่เปิดใช้งานใน แป้นพิมพ์ > ปุ่มลัดแป้นพิมพ์ > บริการ";
+"app.settings.servicesOpenErrorDetail" = "ไม่สามารถเปิดการตั้งค่าแป้นพิมพ์ได้ ไปที่ การตั้งค่าระบบ > แป้นพิมพ์ > ปุ่มลัดแป้นพิมพ์ > บริการ";

@@ -29,6 +29,33 @@ final class FinderServiceInstallerTests: XCTestCase {
         }
     }
 
+    func testServiceStringsResolveInEverySupportedLanguage() throws {
+        let suite = "ShichiZip.ServiceLocalization.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer {
+            SZL10n.reloadBundle()
+            UserDefaults.standard.removePersistentDomain(forName: suite)
+        }
+        SZL10n.reloadBundle(defaults: defaults)
+        let resources = SZL10n.bundle.bundleURL
+        let keys = ["app.settings.finderServices", "app.settings.openKeyboardSettings",
+                    "app.settings.servicesDescription", "app.settings.servicesNote",
+                    "app.settings.servicesOpenErrorDetail", "app.settings.finderService.reveal",
+                    "app.settings.finderService.open", "app.settings.finderService.compress",
+                    "app.settings.finderService.extract"]
+        for language in SZL10n.availableLanguages() {
+            let locale = language.localeCode
+            let source = try XCTUnwrap(Bundle(url: resources.appendingPathComponent("\(locale).lproj")))
+            defaults.set(locale, forKey: "LanguageOverride")
+            SZL10n.reloadBundle(defaults: defaults)
+            for key in keys {
+                let expected = source.localizedString(forKey: key, value: nil, table: "App")
+                XCTAssertNotEqual(expected, key, "Missing translation: \(locale) / \(key)")
+                XCTAssertEqual(SZL10n.string(key), expected, "Wrong language: \(locale) / \(key)")
+            }
+        }
+    }
+
     func testServicesStartOffAndCanBeInstalledIndependently() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

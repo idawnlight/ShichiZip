@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Åpne i {appName}";
+"quickAction.action.reveal" = "Vis i filbehandler";
+"quickAction.action.compress" = "Komprimer";
+"quickAction.action.extract" = "Smart hurtigutpakking";

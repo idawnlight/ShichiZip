@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: 압축";
+"app.settings.finderService.extract" = "%@: 스마트 빠른 압축 해제";
+"app.settings.finderService.open" = "%@에서 열기";
+"app.settings.finderService.reveal" = "%@: 파일 관리자에서 보기";
+"app.settings.finderServices" = "Finder 서비스";
+"app.settings.openKeyboardSettings" = "키보드 설정 열기";
+"app.settings.servicesDescription" = "활성화한 서비스는 Finder 단축 메뉴 하단에 표시됩니다. 항목이 너무 많으면 macOS가 자동으로 ‘서비스’ 하위 메뉴에 묶으며, 이 동작은 제어할 수 없습니다.";
+"app.settings.servicesNote" = "활성화한 서비스가 Finder에 표시되지 않거나 항목이 많아 하위 메뉴에 묶이는 경우, 키보드 > 키보드 단축키 > 서비스에서 활성화할 서비스를 조정하십시오.";
+"app.settings.servicesOpenErrorDetail" = "키보드 설정을 열 수 없습니다. 시스템 설정 > 키보드 > 키보드 단축키 > 서비스(으)로 이동하십시오.";

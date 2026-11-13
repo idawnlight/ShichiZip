@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Cumprime";
+"app.settings.finderService.extract" = "%@: Estrazione rapida intelligente";
+"app.settings.finderService.open" = "Apri in %@";
+"app.settings.finderService.reveal" = "%@: Mustrà in u gestore di schedarii";
+"app.settings.finderServices" = "Servizii di Finder";
+"app.settings.openKeyboardSettings" = "Apri i paràmetri di a tastiera";
+"app.settings.servicesDescription" = "I servizii attivati cumpariscenu in fondu à u menù cuntestuale di Finder. S'ellu ci hè troppi elementi, macOS li ragruppa automaticamente in u sottumenù Servizii; stu ragruppamentu ùn pò esse cuntrullatu.";
+"app.settings.servicesNote" = "S'è i servizii attivati ùn cumpariscenu in Finder o ci hè troppi elementi ragruppati in un sottumenù, aghjustate i servizii attivati in Tastiera > Accurtatoghji di tastiera > Servizii.";
+"app.settings.servicesOpenErrorDetail" = "Ùn si pò apre i paràmetri di a tastiera. Andate à Paràmetri di u sistema > Tastiera > Accurtatoghji di tastiera > Servizii.";

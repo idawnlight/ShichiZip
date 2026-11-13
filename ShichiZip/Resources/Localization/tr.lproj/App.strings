@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Sıkıştır";
+"app.settings.finderService.extract" = "%@: Akıllı Hızlı Çıkar";
+"app.settings.finderService.open" = "%@ ile Aç";
+"app.settings.finderService.reveal" = "%@: Dosya Yöneticisinde Göster";
+"app.settings.finderServices" = "Finder Servisleri";
+"app.settings.openKeyboardSettings" = "Klavye Ayarlarını Aç";
+"app.settings.servicesDescription" = "Etkinleştirilen servisler Finder kestirme menüsünün altında görünür. Çok fazla öğe varsa macOS bunları otomatik olarak Servisler alt menüsünde gruplar; bu gruplama denetlenemez.";
+"app.settings.servicesNote" = "Etkinleştirilen servisler Finder'da görünmüyorsa veya çok fazla öğe bir alt menüde gruplanıyorsa etkin servisleri Klavye > Klavye Kestirmeleri > Servisler bölümünden ayarlayın.";
+"app.settings.servicesOpenErrorDetail" = "Klavye ayarları açılamadı. Sistem Ayarları > Klavye > Klavye Kestirmeleri > Servisler bölümüne gidin.";

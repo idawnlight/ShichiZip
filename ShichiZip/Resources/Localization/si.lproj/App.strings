@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: සම්පීඩනය කරන්න";
+"app.settings.finderService.extract" = "%@: බුද්ධිමත් ඉක්මන් දිගහැරීම";
+"app.settings.finderService.open" = "%@ තුළ විවෘත කරන්න";
+"app.settings.finderService.reveal" = "%@: ගොනු කළමනාකරු තුළ පෙන්වන්න";
+"app.settings.finderServices" = "Finder සේවා";
+"app.settings.openKeyboardSettings" = "යතුරුපුවරු සැකසුම් විවෘත කරන්න";
+"app.settings.servicesDescription" = "සක්‍රිය කළ සේවා Finder සන්දර්භ මෙනුවේ පහළින් දිස්වේ. අයිතම වැඩි නම් macOS ඒවා ස්වයංක්‍රීයව “සේවා” උපමෙනුවේ කාණ්ඩගත කරයි; මෙම කාණ්ඩගත කිරීම පාලනය කළ නොහැක.";
+"app.settings.servicesNote" = "සක්‍රිය කළ සේවා Finder තුළ නොපෙනේ නම් හෝ අයිතම විශාල ගණනක් උපමෙනුවක කාණ්ඩගත වී ඇත්නම්, යතුරුපුවරුව > යතුරුපුවරු කෙටිමං > සේවා තුළ සක්‍රිය සේවා සකසන්න.";
+"app.settings.servicesOpenErrorDetail" = "යතුරුපුවරු සැකසුම් විවෘත කළ නොහැකි විය. පද්ධති සැකසුම් > යතුරුපුවරුව > යතුරුපුවරු කෙටිමං > සේවා වෙත යන්න.";

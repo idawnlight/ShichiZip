@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Komprimuj";
+"app.settings.finderService.extract" = "%@: Pametno brzo raspakivanje";
+"app.settings.finderService.open" = "Otvori u %@";
+"app.settings.finderService.reveal" = "%@: Prikaži u upravniku datoteka";
+"app.settings.finderServices" = "Usluge Finder-a";
+"app.settings.openKeyboardSettings" = "Otvori podešavanja tastature";
+"app.settings.servicesDescription" = "Uključene usluge prikazuju se na dnu kontekstnog menija Finder-a. Ako ima previše stavki, macOS ih automatski grupiše u podmeni „Usluge“. Ovim grupisanjem se ne može upravljati.";
+"app.settings.servicesNote" = "Ako se uključene usluge ne prikazuju u Finder-u ili je previše stavki grupisano u podmeniju, prilagodite uključene usluge u odeljku Tastatura > Prečice na tastaturi > Usluge.";
+"app.settings.servicesOpenErrorDetail" = "Nije moguće otvoriti podešavanja tastature. Idite na Podešavanja sistema > Tastatura > Prečice na tastaturi > Usluge.";

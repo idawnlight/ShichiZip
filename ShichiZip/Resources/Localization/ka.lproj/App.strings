@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: შეკუმშვა";
+"app.settings.finderService.extract" = "%@: ჭკვიანი სწრაფი ამოღება";
+"app.settings.finderService.open" = "გახსნა %@-ში";
+"app.settings.finderService.reveal" = "%@: ფაილების მმართველში ჩვენება";
+"app.settings.finderServices" = "Finder-ის სერვისები";
+"app.settings.openKeyboardSettings" = "კლავიატურის პარამეტრების გახსნა";
+"app.settings.servicesDescription" = "ჩართული სერვისები Finder-ის კონტექსტური მენიუს ბოლოში გამოჩნდება. თუ ელემენტი ზედმეტად ბევრია, macOS მათ ავტომატურად აჯგუფებს ქვემენიუში „სერვისები“; ამ დაჯგუფების მართვა შეუძლებელია.";
+"app.settings.servicesNote" = "თუ ჩართული სერვისები Finder-ში არ ჩანს ან ზედმეტად ბევრი ელემენტი ქვემენიუშია დაჯგუფებული, შეცვალეთ ჩართული სერვისები სექციაში კლავიატურა > კლავიატურის მალსახმობები > სერვისები.";
+"app.settings.servicesOpenErrorDetail" = "კლავიატურის პარამეტრები ვერ გაიხსნა. გადადით სექციაში სისტემის პარამეტრები > კლავიატურა > კლავიატურის მალსახმობები > სერვისები.";

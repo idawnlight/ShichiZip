@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: דחיסה";
+"app.settings.finderService.extract" = "%@: חילוץ מהיר חכם";
+"app.settings.finderService.open" = "פתיחה ב־%@";
+"app.settings.finderService.reveal" = "%@: הצגה במנהל הקבצים";
+"app.settings.finderServices" = "שירותי Finder";
+"app.settings.openKeyboardSettings" = "פתיחת הגדרות ״מקלדת״";
+"app.settings.servicesDescription" = "שירותים פעילים מופיעים בתחתית תפריט ההקשר של Finder. כאשר יש פריטים רבים מדי, macOS מקבצת אותם אוטומטית בתפריט המשנה ״שירותים״. לא ניתן לשלוט בקיבוץ זה.";
+"app.settings.servicesNote" = "אם שירותים פעילים אינם מופיעים ב־Finder או שפריטים רבים מקובצים בתפריט משנה, יש להתאים את השירותים הפעילים בנתיב מקלדת > קיצורי מקלדת > שירותים.";
+"app.settings.servicesOpenErrorDetail" = "לא ניתן לפתוח את הגדרות ״מקלדת״. יש לעבור אל הגדרות המערכת > מקלדת > קיצורי מקלדת > שירותים.";

@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Сціснуць";
+"app.settings.finderService.extract" = "%@: Разумнае хуткае распакаванне";
+"app.settings.finderService.open" = "Адкрыць у %@";
+"app.settings.finderService.reveal" = "%@: Паказаць у кіраўніку файлаў";
+"app.settings.finderServices" = "Службы Finder";
+"app.settings.openKeyboardSettings" = "Адкрыць налады клавіятуры";
+"app.settings.servicesDescription" = "Уключаныя службы паказваюцца ўнізе кантэкстнага меню Finder. Калі пунктаў занадта шмат, macOS аўтаматычна групуе іх у падменю «Службы». Кіраваць гэтай групоўкай нельга.";
+"app.settings.servicesNote" = "Калі ўключаныя службы не паказваюцца ў Finder або занадта шмат пунктаў згрупавана ў падменю, змяніце ўключаныя службы ў раздзеле Клавіятура > Спалучэнні клавіш > Службы.";
+"app.settings.servicesOpenErrorDetail" = "Не ўдалося адкрыць налады клавіятуры. Перайдзіце ў раздзел Налады сістэмы > Клавіятура > Спалучэнні клавіш > Службы.";

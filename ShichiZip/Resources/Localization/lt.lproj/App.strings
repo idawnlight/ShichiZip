@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Suglaudinti";
+"app.settings.finderService.extract" = "%@: Išmanusis spartus išskleidimas";
+"app.settings.finderService.open" = "Atverti su %@";
+"app.settings.finderService.reveal" = "%@: Rodyti failų tvarkytuvėje";
+"app.settings.finderServices" = "„Finder“ paslaugos";
+"app.settings.openKeyboardSettings" = "Atverti klaviatūros nustatymus";
+"app.settings.servicesDescription" = "Įjungtos paslaugos rodomos „Finder“ kontekstinio meniu apačioje. Jei elementų per daug, „macOS“ juos automatiškai sugrupuoja į pomeniu „Paslaugos“. Šio grupavimo valdyti negalima.";
+"app.settings.servicesNote" = "Jei įjungtos paslaugos nerodomos „Finder“ arba per daug elementų sugrupuota į pomeniu, pakeiskite įjungtas paslaugas skiltyje Klaviatūra > Klavišų kombinacijos > Paslaugos.";
+"app.settings.servicesOpenErrorDetail" = "Nepavyko atverti klaviatūros nustatymų. Eikite į Sistemos nustatymai > Klaviatūra > Klavišų kombinacijos > Paslaugos.";

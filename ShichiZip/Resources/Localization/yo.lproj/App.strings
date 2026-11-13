@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Fúnpọ̀";
+"app.settings.finderService.extract" = "%@: Túsilẹ kíákíá lọ́nà ọlọ́gbọ́n";
+"app.settings.finderService.open" = "Ṣí nínú %@";
+"app.settings.finderService.reveal" = "%@: Fi hàn nínú olùṣàkóso fáìlì";
+"app.settings.finderServices" = "Àwọn iṣẹ́ Finder";
+"app.settings.openKeyboardSettings" = "Ṣí ètò àtẹ bọ́tìnì";
+"app.settings.servicesDescription" = "Àwọn iṣẹ́ tí a mú ṣiṣẹ́ máa ń hàn ní ìsàlẹ̀ àkójọ àyíká Finder. Bí àwọn ohun bá pọ̀ jù, macOS máa ń kó wọn jọ láìfọwọ́yí sínú àkójọ kékeré Àwọn iṣẹ́; a kò lè ṣàkóso ìṣàkójọpọ̀ yìí.";
+"app.settings.servicesNote" = "Bí àwọn iṣẹ́ tí a mú ṣiṣẹ́ kò bá hàn nínú Finder tàbí tí ọ̀pọ̀ ohun bá wà nínú àkójọ kékeré, ṣàtúnṣe àwọn iṣẹ́ tí a mú ṣiṣẹ́ ní Àtẹ bọ́tìnì > Ọ̀nà abuja àtẹ bọ́tìnì > Àwọn iṣẹ́.";
+"app.settings.servicesOpenErrorDetail" = "A kò lè ṣí ètò àtẹ bọ́tìnì. Lọ sí Ètò ẹ̀rọ > Àtẹ bọ́tìnì > Ọ̀nà abuja àtẹ bọ́tìnì > Àwọn iṣẹ́.";

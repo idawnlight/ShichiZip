@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Komprimera";
+"app.settings.finderService.extract" = "%@: Smart snabbuppackning";
+"app.settings.finderService.open" = "Öppna i %@";
+"app.settings.finderService.reveal" = "%@: Visa i filhanteraren";
+"app.settings.finderServices" = "Finder-tjänster";
+"app.settings.openKeyboardSettings" = "Öppna tangentbordsinställningar";
+"app.settings.servicesDescription" = "Aktiverade tjänster visas längst ned i Finders kontextmeny. Om det finns för många objekt grupperar macOS dem automatiskt i undermenyn Tjänster. Den här grupperingen går inte att styra.";
+"app.settings.servicesNote" = "Om aktiverade tjänster inte visas i Finder eller för många objekt grupperas i en undermeny kan du justera aktiverade tjänster i Tangentbord > Kortkommandon > Tjänster.";
+"app.settings.servicesOpenErrorDetail" = "Kunde inte öppna tangentbordsinställningarna. Gå till Systeminställningar > Tangentbord > Kortkommandon > Tjänster.";

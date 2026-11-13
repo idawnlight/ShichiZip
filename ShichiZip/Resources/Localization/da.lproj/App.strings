@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Komprimer";
+"app.settings.finderService.extract" = "%@: Intelligent hurtig udpakning";
+"app.settings.finderService.open" = "Åbn i %@";
+"app.settings.finderService.reveal" = "%@: Vis i filhåndtering";
+"app.settings.finderServices" = "Finder-tjenester";
+"app.settings.openKeyboardSettings" = "Åbn indstillinger til Tastatur";
+"app.settings.servicesDescription" = "Aktiverede tjenester vises nederst i Finders genvejsmenu. Hvis der er for mange emner, samler macOS dem automatisk i undermenuen Tjenester. Denne gruppering kan ikke styres.";
+"app.settings.servicesNote" = "Hvis aktiverede tjenester mangler i Finder, eller for mange emner samles i en undermenu, kan du justere de aktiverede tjenester under Tastatur > Tastaturgenveje > Tjenester.";
+"app.settings.servicesOpenErrorDetail" = "Kunne ikke åbne indstillinger til Tastatur. Gå til System­indstillinger > Tastatur > Tastaturgenveje > Tjenester.";

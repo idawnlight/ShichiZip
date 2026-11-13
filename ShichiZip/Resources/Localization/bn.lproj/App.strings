@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: সংকুচিত করুন";
+"app.settings.finderService.extract" = "%@: স্মার্ট দ্রুত নিষ্কাশন";
+"app.settings.finderService.open" = "%@-এ খুলুন";
+"app.settings.finderService.reveal" = "%@: ফাইল ম্যানেজারে দেখান";
+"app.settings.finderServices" = "Finder পরিষেবা";
+"app.settings.openKeyboardSettings" = "কীবোর্ড সেটিংস খুলুন";
+"app.settings.servicesDescription" = "সক্রিয় পরিষেবাগুলো Finder-এর প্রসঙ্গ মেনুর নিচে দেখা যায়। আইটেম বেশি হলে macOS সেগুলো স্বয়ংক্রিয়ভাবে “পরিষেবা” সাবমেনুতে একত্র করে; এই বিন্যাস নিয়ন্ত্রণ করা যায় না।";
+"app.settings.servicesNote" = "সক্রিয় পরিষেবা Finder-এ দেখা না গেলে বা অনেক আইটেম সাবমেনুতে একত্র হলে, কীবোর্ড > কীবোর্ড শর্টকাট > পরিষেবা-এ সক্রিয় পরিষেবাগুলো সমন্বয় করুন।";
+"app.settings.servicesOpenErrorDetail" = "কীবোর্ড সেটিংস খোলা যায়নি। সিস্টেম সেটিংস > কীবোর্ড > কীবোর্ড শর্টকাট > পরিষেবা-এ যান।";

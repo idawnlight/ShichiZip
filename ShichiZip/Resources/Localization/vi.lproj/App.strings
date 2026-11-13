@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Nén";
+"app.settings.finderService.extract" = "%@: Giải nén nhanh thông minh";
+"app.settings.finderService.open" = "Mở trong %@";
+"app.settings.finderService.reveal" = "%@: Hiển thị trong trình quản lý tệp";
+"app.settings.finderServices" = "Dịch vụ Finder";
+"app.settings.openKeyboardSettings" = "Mở cài đặt Bàn phím";
+"app.settings.servicesDescription" = "Các dịch vụ được bật xuất hiện ở cuối menu ngữ cảnh của Finder. Nếu có quá nhiều mục, macOS tự động nhóm chúng vào menu con Dịch vụ; không thể kiểm soát cách nhóm này.";
+"app.settings.servicesNote" = "Nếu các dịch vụ được bật không xuất hiện trong Finder hoặc có quá nhiều mục được nhóm vào menu con, hãy điều chỉnh các dịch vụ được bật trong Bàn phím > Phím tắt > Dịch vụ.";
+"app.settings.servicesOpenErrorDetail" = "Không thể mở cài đặt Bàn phím. Đi tới Cài đặt hệ thống > Bàn phím > Phím tắt > Dịch vụ.";

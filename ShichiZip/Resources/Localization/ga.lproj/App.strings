@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Comhbhrúigh";
+"app.settings.finderService.extract" = "%@: Díphacáil thapa chliste";
+"app.settings.finderService.open" = "Oscail in %@";
+"app.settings.finderService.reveal" = "%@: Taispeáin sa bhainisteoir comhad";
+"app.settings.finderServices" = "Seirbhísí Finder";
+"app.settings.openKeyboardSettings" = "Oscail socruithe an mhéarchláir";
+"app.settings.servicesDescription" = "Taispeántar seirbhísí cumasaithe ag bun roghchlár comhthéacs Finder. Má tá an iomarca míreanna ann, grúpálann macOS go huathoibríoch iad san fho-roghchlár Seirbhísí; ní féidir an grúpáil seo a rialú.";
+"app.settings.servicesNote" = "Mura bhfuil seirbhísí cumasaithe le feiceáil in Finder nó má tá an iomarca míreanna grúpáilte i bhfo-roghchlár, coigeartaigh na seirbhísí cumasaithe in Méarchlár > Aicearraí Méarchláir > Seirbhísí.";
+"app.settings.servicesOpenErrorDetail" = "Níorbh fhéidir socruithe an mhéarchláir a oscailt. Téigh go Socruithe an Chórais > Méarchlár > Aicearraí Méarchláir > Seirbhísí.";

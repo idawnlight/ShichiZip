@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "გახსნა {appName}-ში";
+"quickAction.action.reveal" = "ფაილების მმართველში ჩვენება";
+"quickAction.action.compress" = "შეკუმშვა";
+"quickAction.action.extract" = "ჭკვიანი სწრაფი ამოღება";

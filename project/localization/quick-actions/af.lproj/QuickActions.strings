@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Maak oop in {appName}";
+"quickAction.action.reveal" = "Wys in lêerbestuurder";
+"quickAction.action.compress" = "Komprimeer";
+"quickAction.action.extract" = "Slim vinnige uitpak";

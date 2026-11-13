@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Bana";
+"app.settings.finderService.extract" = "%@: Udondoaji wa haraka mahiri";
+"app.settings.finderService.open" = "Fungua kwa %@";
+"app.settings.finderService.reveal" = "%@: Onyesha katika kidhibiti faili";
+"app.settings.finderServices" = "Huduma za Finder";
+"app.settings.openKeyboardSettings" = "Fungua mipangilio ya kibodi";
+"app.settings.servicesDescription" = "Huduma zilizowezeshwa huonekana chini ya menyu ya muktadha ya Finder. Vipengee vikiwa vingi, macOS huvipanga kiotomatiki kwenye menyu ndogo ya Huduma; upangaji huu hauwezi kudhibitiwa.";
+"app.settings.servicesNote" = "Ikiwa huduma zilizowezeshwa hazionekani katika Finder au vipengee vingi vimepangwa katika menyu ndogo, rekebisha huduma zilizowezeshwa katika Kibodi > Njia za mkato za kibodi > Huduma.";
+"app.settings.servicesOpenErrorDetail" = "Imeshindwa kufungua mipangilio ya kibodi. Nenda kwenye Mipangilio ya Mfumo > Kibodi > Njia za mkato za kibodi > Huduma.";

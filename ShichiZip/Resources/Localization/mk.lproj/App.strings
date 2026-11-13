@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Компресирај";
+"app.settings.finderService.extract" = "%@: Паметно брзо извлекување";
+"app.settings.finderService.open" = "Отвори во %@";
+"app.settings.finderService.reveal" = "%@: Прикажи во управувачот со датотеки";
+"app.settings.finderServices" = "Услуги на Finder";
+"app.settings.openKeyboardSettings" = "Отвори поставки за тастатура";
+"app.settings.servicesDescription" = "Вклучените услуги се прикажуваат на дното на контекстното мени на Finder. Ако има премногу ставки, macOS автоматски ги групира во подменито „Услуги“. Ова групирање не може да се контролира.";
+"app.settings.servicesNote" = "Ако вклучените услуги не се прикажуваат во Finder или премногу ставки се групирани во подмени, приспособете ги вклучените услуги во Тастатура > Кратенки на тастатурата > Услуги.";
+"app.settings.servicesOpenErrorDetail" = "Не може да се отворат поставките за тастатура. Одете во Системски поставки > Тастатура > Кратенки на тастатурата > Услуги.";

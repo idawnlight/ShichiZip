@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: ਸੰਕੁਚਿਤ ਕਰੋ";
+"app.settings.finderService.extract" = "%@: ਸਮਾਰਟ ਤੁਰੰਤ ਐਕਸਟ੍ਰੈਕਟ";
+"app.settings.finderService.open" = "%@ ਵਿੱਚ ਖੋਲ੍ਹੋ";
+"app.settings.finderService.reveal" = "%@: ਫਾਈਲ ਮੈਨੇਜਰ ਵਿੱਚ ਦਿਖਾਓ";
+"app.settings.finderServices" = "Finder ਸੇਵਾਵਾਂ";
+"app.settings.openKeyboardSettings" = "ਕੀਬੋਰਡ ਸੈਟਿੰਗਾਂ ਖੋਲ੍ਹੋ";
+"app.settings.servicesDescription" = "ਸਮਰੱਥ ਕੀਤੀਆਂ ਸੇਵਾਵਾਂ Finder ਦੇ ਸੰਦਰਭ ਮੀਨੂ ਦੇ ਹੇਠਾਂ ਦਿਖਾਈ ਦਿੰਦੀਆਂ ਹਨ। ਜੇ ਆਈਟਮਾਂ ਬਹੁਤ ਜ਼ਿਆਦਾ ਹੋਣ, ਤਾਂ macOS ਉਹਨਾਂ ਨੂੰ ਆਪਣੇ ਆਪ “ਸੇਵਾਵਾਂ” ਸਬਮੀਨੂ ਵਿੱਚ ਸਮੂਹਬੱਧ ਕਰ ਦਿੰਦਾ ਹੈ; ਇਸ ਸਮੂਹਬੰਦੀ ਨੂੰ ਨਿਯੰਤਰਿਤ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ।";
+"app.settings.servicesNote" = "ਜੇ ਸਮਰੱਥ ਸੇਵਾਵਾਂ Finder ਵਿੱਚ ਨਹੀਂ ਦਿਖਦੀਆਂ ਜਾਂ ਬਹੁਤ ਸਾਰੀਆਂ ਆਈਟਮਾਂ ਸਬਮੀਨੂ ਵਿੱਚ ਸਮੂਹਬੱਧ ਹਨ, ਤਾਂ ਕੀਬੋਰਡ > ਕੀਬੋਰਡ ਸ਼ਾਰਟਕੱਟ > ਸੇਵਾਵਾਂ ਵਿੱਚ ਸਮਰੱਥ ਸੇਵਾਵਾਂ ਵਿਵਸਥਿਤ ਕਰੋ।";
+"app.settings.servicesOpenErrorDetail" = "ਕੀਬੋਰਡ ਸੈਟਿੰਗਾਂ ਨਹੀਂ ਖੋਲ੍ਹੀਆਂ ਜਾ ਸਕੀਆਂ। ਸਿਸਟਮ ਸੈਟਿੰਗਾਂ > ਕੀਬੋਰਡ > ਕੀਬੋਰਡ ਸ਼ਾਰਟਕੱਟ > ਸੇਵਾਵਾਂ 'ਤੇ ਜਾਓ।";

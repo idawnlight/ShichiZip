@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: کمپرس کول";
+"app.settings.finderService.extract" = "%@: ځیرک چټک راایستل";
+"app.settings.finderService.open" = "په %@ کې پرانیزئ";
+"app.settings.finderService.reveal" = "%@: د دوتنو په سمبالګر کې یې وښایئ";
+"app.settings.finderServices" = "د Finder خدمتونه";
+"app.settings.openKeyboardSettings" = "د کیبورډ امستنې پرانیزئ";
+"app.settings.servicesDescription" = "فعال شوي خدمتونه د Finder د تړاو غورنۍ په ښکته برخه کې ښکاري. که توکي ډېر وي، macOS یې په اوتومات ډول د «خدمتونه» په فرعي غورنۍ کې راټولوي؛ دا راټولول نه شي کنټرولېدلی.";
+"app.settings.servicesNote" = "که فعال شوي خدمتونه په Finder کې نه ښکاري یا ډېر توکي په فرعي غورنۍ کې راټول شوي وي، په کیبورډ > د کیبورډ لنډلارې > خدمتونه کې فعال خدمتونه برابر کړئ.";
+"app.settings.servicesOpenErrorDetail" = "د کیبورډ امستنې پرانیستل نه شوې. د سیسټم امستنې > کیبورډ > د کیبورډ لنډلارې > خدمتونه ته لاړ شئ.";

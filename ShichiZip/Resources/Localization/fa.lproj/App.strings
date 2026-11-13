@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: فشرده‌سازی";
+"app.settings.finderService.extract" = "%@: استخراج سریع هوشمند";
+"app.settings.finderService.open" = "باز کردن در %@";
+"app.settings.finderService.reveal" = "%@: نمایش در مدیر پرونده";
+"app.settings.finderServices" = "خدمات Finder";
+"app.settings.openKeyboardSettings" = "باز کردن تنظیمات صفحه‌کلید";
+"app.settings.servicesDescription" = "خدمات فعال در پایین منوی زمینه‌ای Finder نمایش داده می‌شوند. اگر تعداد موارد زیاد باشد، macOS آن‌ها را خودکار در زیرمنوی «خدمات» گروه‌بندی می‌کند؛ این گروه‌بندی قابل کنترل نیست.";
+"app.settings.servicesNote" = "اگر خدمات فعال در Finder دیده نمی‌شوند یا موارد زیادی در یک زیرمنو گروه‌بندی شده‌اند، خدمات فعال را در صفحه‌کلید > میانبرهای صفحه‌کلید > خدمات تنظیم کنید.";
+"app.settings.servicesOpenErrorDetail" = "تنظیمات صفحه‌کلید باز نشد. به تنظیمات سیستم > صفحه‌کلید > میانبرهای صفحه‌کلید > خدمات بروید.";

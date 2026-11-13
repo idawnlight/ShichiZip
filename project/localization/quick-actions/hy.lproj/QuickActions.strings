@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Բացել {appName}-ում";
+"quickAction.action.reveal" = "Ցույց տալ նիշքերի կառավարչում";
+"quickAction.action.compress" = "Սեղմել";
+"quickAction.action.extract" = "Խելացի արագ ապափաթեթավորում";

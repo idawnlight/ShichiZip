@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Iepenje yn {appName}";
+"quickAction.action.reveal" = "Toane yn bestânsbehearder";
+"quickAction.action.compress" = "Komprimearje";
+"quickAction.action.extract" = "Tûk fluch útpakke";

@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Digeriñ e {appName}";
+"quickAction.action.reveal" = "Diskouez e merour ar restroù";
+"quickAction.action.compress" = "Koazhañ";
+"quickAction.action.extract" = "Diwaskañ buan speredek";

@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Komprimeer";
+"app.settings.finderService.extract" = "%@: Slim vinnige uitpak";
+"app.settings.finderService.open" = "Maak oop in %@";
+"app.settings.finderService.reveal" = "%@: Wys in lêerbestuurder";
+"app.settings.finderServices" = "Finder-dienste";
+"app.settings.openKeyboardSettings" = "Maak Sleutelbord-instellings oop";
+"app.settings.servicesDescription" = "Geaktiveerde dienste verskyn onderaan Finder se kontekskieslys. As daar te veel items is, groepeer macOS dit outomaties in die Dienste-subkieslys; hierdie groepering kan nie beheer word nie.";
+"app.settings.servicesNote" = "As geaktiveerde dienste nie in Finder verskyn nie, of te veel items in ’n subkieslys gegroepeer word, pas die geaktiveerde dienste aan onder Sleutelbord > Sleutelbordkortpaaie > Dienste.";
+"app.settings.servicesOpenErrorDetail" = "Kon nie die Sleutelbord-instellings oopmaak nie. Gaan na Stelselinstellings > Sleutelbord > Sleutelbordkortpaaie > Dienste.";

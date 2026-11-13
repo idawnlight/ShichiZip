@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Mở trong {appName}";
+"quickAction.action.reveal" = "Hiển thị trong trình quản lý tệp";
+"quickAction.action.compress" = "Nén";
+"quickAction.action.extract" = "Giải nén nhanh thông minh";

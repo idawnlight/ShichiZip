@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Comprimeer";
+"app.settings.finderService.extract" = "%@: Slim snel uitpakken";
+"app.settings.finderService.open" = "Open in %@";
+"app.settings.finderService.reveal" = "%@: Toon in bestandsbeheer";
+"app.settings.finderServices" = "Finder-voorzieningen";
+"app.settings.openKeyboardSettings" = "Open toetsenbordinstellingen";
+"app.settings.servicesDescription" = "Ingeschakelde voorzieningen verschijnen onderaan het contextuele menu van de Finder. Als er te veel onderdelen zijn, groepeert macOS ze automatisch in het submenu 'Voorzieningen'; deze groepering kan niet worden ingesteld.";
+"app.settings.servicesNote" = "Als ingeschakelde voorzieningen niet in de Finder verschijnen of te veel onderdelen in een submenu worden gegroepeerd, pas je de ingeschakelde voorzieningen aan in Toetsenbord > Toetscombinaties > Voorzieningen.";
+"app.settings.servicesOpenErrorDetail" = "De toetsenbordinstellingen kunnen niet worden geopend. Ga naar Systeeminstellingen > Toetsenbord > Toetscombinaties > Voorzieningen.";

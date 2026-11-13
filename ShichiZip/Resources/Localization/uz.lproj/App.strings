@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Siqish";
+"app.settings.finderService.extract" = "%@: Aqlli tez ochish";
+"app.settings.finderService.open" = "%@ dasturida ochish";
+"app.settings.finderService.reveal" = "%@: Fayl menejerida ko‘rsatish";
+"app.settings.finderServices" = "Finder xizmatlari";
+"app.settings.openKeyboardSettings" = "Klaviatura sozlamalarini ochish";
+"app.settings.servicesDescription" = "Yoqilgan xizmatlar Finder kontekst menyusining pastki qismida ko‘rinadi. Elementlar juda ko‘p bo‘lsa, macOS ularni avtomatik ravishda Xizmatlar quyi menyusiga guruhlaydi; bu guruhlashni boshqarib bo‘lmaydi.";
+"app.settings.servicesNote" = "Yoqilgan xizmatlar Finder ichida ko‘rinmasa yoki ko‘p element quyi menyuga guruhlangan bo‘lsa, Klaviatura > Klaviatura yorliqlari > Xizmatlar bo‘limida yoqilgan xizmatlarni sozlang.";
+"app.settings.servicesOpenErrorDetail" = "Klaviatura sozlamalarini ochib bo‘lmadi. Tizim sozlamalari > Klaviatura > Klaviatura yorliqlari > Xizmatlar bo‘limiga o‘ting.";

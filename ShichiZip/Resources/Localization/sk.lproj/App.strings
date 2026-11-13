@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Komprimovať";
+"app.settings.finderService.extract" = "%@: Inteligentné rýchle rozbalenie";
+"app.settings.finderService.open" = "Otvoriť v %@";
+"app.settings.finderService.reveal" = "%@: Zobraziť v správcovi súborov";
+"app.settings.finderServices" = "Služby Findera";
+"app.settings.openKeyboardSettings" = "Otvoriť nastavenia klávesnice";
+"app.settings.servicesDescription" = "Zapnuté služby sa zobrazujú v spodnej časti kontextového menu Findera. Ak je položiek priveľa, macOS ich automaticky zoskupí do podmenu „Služby“. Toto zoskupovanie sa nedá ovládať.";
+"app.settings.servicesNote" = "Ak sa zapnuté služby vo Finderi nezobrazujú alebo je priveľa položiek zoskupených v podmenu, upravte zapnuté služby v časti Klávesnica > Klávesové skratky > Služby.";
+"app.settings.servicesOpenErrorDetail" = "Nepodarilo sa otvoriť nastavenia klávesnice. Prejdite do časti Systémové nastavenia > Klávesnica > Klávesové skratky > Služby.";

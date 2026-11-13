@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "{appName} में खोलें";
+"quickAction.action.reveal" = "फ़ाइल प्रबंधक में दिखाएँ";
+"quickAction.action.compress" = "संपीड़ित करें";
+"quickAction.action.extract" = "स्मार्ट त्वरित एक्सट्रैक्ट";

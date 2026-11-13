@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Дар {appName} кушодан";
+"quickAction.action.reveal" = "Дар мудири файлҳо нишон додан";
+"quickAction.action.compress" = "Фишурдан";
+"quickAction.action.extract" = "Баровардани зуди ҳушманд";

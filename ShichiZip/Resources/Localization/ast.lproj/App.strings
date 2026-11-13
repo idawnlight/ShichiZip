@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Comprimir";
+"app.settings.finderService.extract" = "%@: Estracción rápida intelixente";
+"app.settings.finderService.open" = "Abrir en %@";
+"app.settings.finderService.reveal" = "%@: Amosar nel xestor de ficheros";
+"app.settings.finderServices" = "Servicios de Finder";
+"app.settings.openKeyboardSettings" = "Abrir los axustes de Tecláu";
+"app.settings.servicesDescription" = "Los servicios activaos apaecen na parte inferior del menú contestual de Finder. Si hai demasiados elementos, macOS agrúpalos automáticamente nel submenú Servicios; nun se pue controlar esta agrupación.";
+"app.settings.servicesNote" = "Si los servicios activaos nun apaecen en Finder o hai demasiados elementos agrupaos nun submenú, axusta los servicios activaos en Tecláu > Atayos de tecláu > Servicios.";
+"app.settings.servicesOpenErrorDetail" = "Nun se pudieron abrir los axustes de Tecláu. Vete a Axustes del sistema > Tecláu > Atayos de tecláu > Servicios.";

@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Отвори у {appName}";
+"quickAction.action.reveal" = "Прикажи у управнику датотека";
+"quickAction.action.compress" = "Компримуј";
+"quickAction.action.extract" = "Паметно брзо распакивање";

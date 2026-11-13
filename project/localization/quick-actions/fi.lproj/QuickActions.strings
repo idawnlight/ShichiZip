@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Avaa apissa {appName}";
+"quickAction.action.reveal" = "Näytä tiedostonhallinnassa";
+"quickAction.action.compress" = "Pakkaa";
+"quickAction.action.extract" = "Älykäs pikapurku";

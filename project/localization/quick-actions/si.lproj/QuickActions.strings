@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "{appName} තුළ විවෘත කරන්න";
+"quickAction.action.reveal" = "ගොනු කළමනාකරු තුළ පෙන්වන්න";
+"quickAction.action.compress" = "සම්පීඩනය කරන්න";
+"quickAction.action.extract" = "බුද්ධිමත් ඉක්මන් දිගහැරීම";

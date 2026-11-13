@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "{appName}-д нээх";
+"quickAction.action.reveal" = "Файлын менежерт харуулах";
+"quickAction.action.compress" = "Шахах";
+"quickAction.action.extract" = "Ухаалаг хурдан задлах";

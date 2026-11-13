@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: ضغط";
+"app.settings.finderService.extract" = "%@: استخراج سريع ذكي";
+"app.settings.finderService.open" = "فتح في %@";
+"app.settings.finderService.reveal" = "%@: إظهار في مدير الملفات";
+"app.settings.finderServices" = "خدمات Finder";
+"app.settings.openKeyboardSettings" = "فتح إعدادات «لوحة المفاتيح»";
+"app.settings.servicesDescription" = "تظهر الخدمات المفعّلة أسفل قائمة Finder السياقية. إذا كثرت العناصر، يجمعها macOS تلقائيًا في القائمة الفرعية «الخدمات»؛ ولا يمكن التحكم في هذا التجميع.";
+"app.settings.servicesNote" = "إذا لم تظهر الخدمات المفعّلة في Finder أو جُمعت عناصر كثيرة في قائمة فرعية، فعدّل الخدمات المفعّلة في لوحة المفاتيح > اختصارات لوحة المفاتيح > الخدمات.";
+"app.settings.servicesOpenErrorDetail" = "تعذر فتح إعدادات «لوحة المفاتيح». انتقل إلى إعدادات النظام > لوحة المفاتيح > اختصارات لوحة المفاتيح > الخدمات.";

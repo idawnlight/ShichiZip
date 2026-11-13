@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Compresser";
+"app.settings.finderService.extract" = "%@: Extraction rapide intelligente";
+"app.settings.finderService.open" = "Ouvrir dans %@";
+"app.settings.finderService.reveal" = "%@: Afficher dans le gestionnaire de fichiers";
+"app.settings.finderServices" = "Services du Finder";
+"app.settings.openKeyboardSettings" = "Ouvrir les réglages Clavier";
+"app.settings.servicesDescription" = "Les services activés apparaissent en bas du menu contextuel du Finder. Si les éléments sont trop nombreux, macOS les regroupe automatiquement dans le sous-menu « Services » ; ce regroupement ne peut pas être contrôlé.";
+"app.settings.servicesNote" = "Si les services activés n’apparaissent pas dans le Finder ou si trop d’éléments sont regroupés dans un sous-menu, modifiez les services activés dans Clavier > Raccourcis clavier > Services.";
+"app.settings.servicesOpenErrorDetail" = "Impossible d’ouvrir les réglages Clavier. Accédez à Réglages Système > Clavier > Raccourcis clavier > Services.";

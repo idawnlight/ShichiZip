@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "{appName} द्वारा उद्घाटयतु";
+"quickAction.action.reveal" = "सञ्चिकाप्रबन्धके दर्शयतु";
+"quickAction.action.compress" = "संपीडयतु";
+"quickAction.action.extract" = "बुद्धिमत् शीघ्रं निष्कर्षणम्";

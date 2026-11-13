@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: 圧縮";
+"app.settings.finderService.extract" = "%@: スマートクイック展開";
+"app.settings.finderService.open" = "%@で開く";
+"app.settings.finderService.reveal" = "%@: ファイルマネージャで表示";
+"app.settings.finderServices" = "Finderのサービス";
+"app.settings.openKeyboardSettings" = "「キーボード」設定を開く";
+"app.settings.servicesDescription" = "有効にしたサービスはFinderのコンテキストメニューの下部に表示されます。項目が多い場合、macOSによって「サービス」サブメニューに自動的にまとめられます。この動作は制御できません。";
+"app.settings.servicesNote" = "有効にしたサービスがFinderに表示されない場合や、項目が多くサブメニューにまとめられる場合は、「キーボード > キーボードショートカット > サービス」で有効にするサービスを調整してください。";
+"app.settings.servicesOpenErrorDetail" = "「キーボード」設定を開けませんでした。「システム設定 > キーボード > キーボードショートカット > サービス」に移動してください。";
