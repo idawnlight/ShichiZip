@@ -56,6 +56,33 @@ final class FinderServiceInstallerTests: XCTestCase {
         }
     }
 
+    func testBundledServicesKeepExecutableAndSignatureAfterInstallation() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let host = Bundle.main
+        let hostIdentifier = try XCTUnwrap(host.bundleIdentifier)
+        let installer = FinderServiceInstaller(hostBundle: host, servicesDirectory: root, updateServices: {})
+        for action in FinderServiceInstaller.actions {
+            try installer.setEnabled(true, for: action)
+            let installed = root.appendingPathComponent("\(hostIdentifier).FinderService.\(action.rawValue).service")
+            let service = try XCTUnwrap(Bundle(url: installed))
+            let name = try XCTUnwrap(service.object(forInfoDictionaryKey: "CFBundleExecutable") as? String)
+            let executable = try XCTUnwrap(service.executableURL)
+            XCTAssertEqual(executable, installed.appendingPathComponent("Contents/MacOS/\(name)"))
+            XCTAssertTrue(FileManager.default.isExecutableFile(atPath: executable.path))
+
+            let process = Process()
+            let errors = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+            process.arguments = ["--verify", "--deep", "--strict", installed.path]
+            process.standardError = errors
+            try process.run()
+            process.waitUntilExit()
+            let message = String(data: errors.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            XCTAssertEqual(process.terminationStatus, 0, message)
+        }
+    }
+
     func testServicesStartOffAndCanBeInstalledIndependently() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

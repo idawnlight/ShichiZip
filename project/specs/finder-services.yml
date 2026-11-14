@@ -25,6 +25,7 @@ targetTemplates:
     info:
       path: ../generated/plists/${target_name}-Info.plist
       properties:
+        CFBundleExecutable: $(EXECUTABLE_NAME)
         CFBundlePackageType: APPL
         LSBackgroundOnly: true
         NSSupportsAutomaticTermination: true
