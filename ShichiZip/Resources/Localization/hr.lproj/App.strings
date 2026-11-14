@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Komprimiraj";
+"app.settings.finderService.extract" = "%@: Pametno brzo raspakiravanje";
+"app.settings.finderService.open" = "Otvori u aplikaciji %@";
+"app.settings.finderService.reveal" = "%@: Prikaži u upravitelju datoteka";
+"app.settings.finderServices" = "Usluge Findera";
+"app.settings.openKeyboardSettings" = "Otvori postavke tipkovnice";
+"app.settings.servicesDescription" = "Uključene usluge prikazuju se na dnu kontekstnog izbornika Findera. Ako ima previše stavki, macOS ih automatski grupira u podizbornik „Usluge”; tim se grupiranjem ne može upravljati.";
+"app.settings.servicesNote" = "Ako se uključene usluge ne prikazuju u Finderu ili je previše stavki grupirano u podizborniku, prilagodite uključene usluge u odjeljku Tipkovnica > Prečaci tipkovnice > Usluge.";
+"app.settings.servicesOpenErrorDetail" = "Nije moguće otvoriti postavke tipkovnice. Idite na Postavke sustava > Tipkovnica > Prečaci tipkovnice > Usluge.";

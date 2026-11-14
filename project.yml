@@ -6,6 +6,7 @@ include:
   - project/specs/localization.yml
   - project/specs/apps.yml
   - project/specs/quick-actions.yml
+  - project/specs/finder-services.yml
   - project/specs/quicklook-preview.yml
   - project/specs/schemes.yml
   - path: project/specs/unsigned.yml

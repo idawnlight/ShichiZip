@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Komprimer";
+"app.settings.finderService.extract" = "%@: Smart hurtigutpakking";
+"app.settings.finderService.open" = "Opne i %@";
+"app.settings.finderService.reveal" = "%@: Vis i filhandsamar";
+"app.settings.finderServices" = "Finder-tenester";
+"app.settings.openKeyboardSettings" = "Opne tastaturinnstillingar";
+"app.settings.servicesDescription" = "Aktiverte tenester vert viste nedst i kontekstmenyen til Finder. Dersom det er for mange objekt, grupperer macOS dei automatisk i undermenyen Tenester. Denne grupperinga kan ikkje styrast.";
+"app.settings.servicesNote" = "Dersom aktiverte tenester manglar i Finder, eller for mange objekt vert grupperte i ein undermeny, kan du justere dei aktiverte tenestene under Tastatur > Tastatursnarvegar > Tenester.";
+"app.settings.servicesOpenErrorDetail" = "Kunne ikkje opne tastaturinnstillingane. Gå til Systeminnstillingar > Tastatur > Tastatursnarvegar > Tenester.";

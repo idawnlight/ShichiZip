@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Agor yn {appName}";
+"quickAction.action.reveal" = "Dangos yn y rheolwr ffeiliau";
+"quickAction.action.compress" = "Cywasgu";
+"quickAction.action.extract" = "Echdynnu cyflym deallus";

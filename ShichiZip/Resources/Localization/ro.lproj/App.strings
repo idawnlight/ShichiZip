@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Comprimă";
+"app.settings.finderService.extract" = "%@: Extragere rapidă inteligentă";
+"app.settings.finderService.open" = "Deschide în %@";
+"app.settings.finderService.reveal" = "%@: Afișează în managerul de fișiere";
+"app.settings.finderServices" = "Servicii Finder";
+"app.settings.openKeyboardSettings" = "Deschide configurările pentru tastatură";
+"app.settings.servicesDescription" = "Serviciile activate apar în partea de jos a meniului contextual Finder. Dacă există prea multe articole, macOS le grupează automat în submeniul Servicii; această grupare nu poate fi controlată.";
+"app.settings.servicesNote" = "Dacă serviciile activate nu apar în Finder sau prea multe articole sunt grupate într-un submeniu, ajustați serviciile activate în Tastatură > Scurtături din tastatură > Servicii.";
+"app.settings.servicesOpenErrorDetail" = "Nu s-au putut deschide configurările pentru tastatură. Accesați Configurări sistem > Tastatură > Scurtături din tastatură > Servicii.";

@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Кысу";
+"app.settings.finderService.extract" = "%@: Акыллы тиз чыгару";
+"app.settings.finderService.open" = "%@ программасында ачу";
+"app.settings.finderService.reveal" = "%@: Файллар идарәчесендә күрсәтү";
+"app.settings.finderServices" = "Finder хезмәтләре";
+"app.settings.openKeyboardSettings" = "Төймәсар көйләүләрен ачу";
+"app.settings.servicesDescription" = "Кабызылган хезмәтләр Finder контекст менюсының аскы өлешендә күренә. Элементлар артык күп булса, macOS аларны «Хезмәтләр» асменюсына автоматик рәвештә төркемли; бу төркемләү белән идарә итеп булмый.";
+"app.settings.servicesNote" = "Кабызылган хезмәтләр Finder-да күренмәсә яки артык күп элемент асменюга төркемләнсә, Төймәсар > Төймәсар кыска юллары > Хезмәтләр бүлегендә кабызылган хезмәтләрне көйләгез.";
+"app.settings.servicesOpenErrorDetail" = "Төймәсар көйләүләрен ачып булмады. Система көйләүләре > Төймәсар > Төймәсар кыска юллары > Хезмәтләр бүлегенә күчегез.";

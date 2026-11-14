@@ -41,6 +41,17 @@
 	<string>14.0</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>ShichiZipFinderServices</key>
+	<dict>
+		<key>show-in-file-manager</key>
+		<string>$(SHICHIZIP_FINDER_SERVICE_PREFIX)Reveal</string>
+		<key>open-in-shichizip</key>
+		<string>$(SHICHIZIP_FINDER_SERVICE_PREFIX)Open</string>
+		<key>compress</key>
+		<string>$(SHICHIZIP_FINDER_SERVICE_PREFIX)Compress</string>
+		<key>smart-quick-extract</key>
+		<string>$(SHICHIZIP_FINDER_SERVICE_PREFIX)Extract</string>
+	</dict>
 	<key>NSHumanReadableCopyright</key>
 	<string>$(SHICHIZIP_COPYRIGHT_LINE)</string>
 	<key>ShichiZipArchiveCoreName</key>

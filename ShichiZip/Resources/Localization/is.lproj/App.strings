@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Þjappa";
+"app.settings.finderService.extract" = "%@: Snjöll hröð afþjöppun";
+"app.settings.finderService.open" = "Opna í %@";
+"app.settings.finderService.reveal" = "%@: Sýna í skráastjóra";
+"app.settings.finderServices" = "Finder-þjónustur";
+"app.settings.openKeyboardSettings" = "Opna lyklaborðsstillingar";
+"app.settings.servicesDescription" = "Virkar þjónustur birtast neðst í samhengisvalmynd Finder. Ef atriðin eru of mörg flokkar macOS þau sjálfkrafa í undirvalmyndina Þjónustur; ekki er hægt að stjórna þessari flokkun.";
+"app.settings.servicesNote" = "Ef virkar þjónustur birtast ekki í Finder eða of mörg atriði eru flokkuð í undirvalmynd skaltu breyta virkum þjónustum í Lyklaborð > Flýtilyklar > Þjónustur.";
+"app.settings.servicesOpenErrorDetail" = "Ekki tókst að opna lyklaborðsstillingar. Farðu í Kerfisstillingar > Lyklaborð > Flýtilyklar > Þjónustur.";

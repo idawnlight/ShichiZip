@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "{appName} dasturida ochish";
+"quickAction.action.reveal" = "Fayl menejerida ko‘rsatish";
+"quickAction.action.compress" = "Siqish";
+"quickAction.action.extract" = "Aqlli tez ochish";

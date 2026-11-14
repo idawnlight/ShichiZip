@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Cywasgu";
+"app.settings.finderService.extract" = "%@: Echdynnu cyflym deallus";
+"app.settings.finderService.open" = "Agor yn %@";
+"app.settings.finderService.reveal" = "%@: Dangos yn y rheolwr ffeiliau";
+"app.settings.finderServices" = "Gwasanaethau Finder";
+"app.settings.openKeyboardSettings" = "Agor gosodiadau'r bysellfwrdd";
+"app.settings.servicesDescription" = "Mae gwasanaethau sydd wedi'u galluogi yn ymddangos ar waelod dewislen cyd-destun Finder. Os oes gormod o eitemau, mae macOS yn eu grwpio'n awtomatig yn yr is-ddewislen Gwasanaethau; ni ellir rheoli'r grwpio hwn.";
+"app.settings.servicesNote" = "Os nad yw gwasanaethau sydd wedi'u galluogi'n ymddangos yn Finder neu os yw gormod o eitemau wedi'u grwpio mewn is-ddewislen, addaswch y gwasanaethau sydd wedi'u galluogi yn Bysellfwrdd > Llwybrau byr bysellfwrdd > Gwasanaethau.";
+"app.settings.servicesOpenErrorDetail" = "Methu agor gosodiadau'r bysellfwrdd. Ewch i Gosodiadau System > Bysellfwrdd > Llwybrau byr bysellfwrdd > Gwasanaethau.";

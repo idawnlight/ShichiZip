@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "باز کردن در {appName}";
+"quickAction.action.reveal" = "نمایش در مدیر پرونده";
+"quickAction.action.compress" = "فشرده‌سازی";
+"quickAction.action.extract" = "استخراج سریع هوشمند";

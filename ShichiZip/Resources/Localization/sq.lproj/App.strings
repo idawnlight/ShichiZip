@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Ngjesh";
+"app.settings.finderService.extract" = "%@: Nxjerrje e shpejtë inteligjente";
+"app.settings.finderService.open" = "Hap në %@";
+"app.settings.finderService.reveal" = "%@: Shfaq në menaxherin e skedarëve";
+"app.settings.finderServices" = "Shërbimet e Finder";
+"app.settings.openKeyboardSettings" = "Hap cilësimet e tastierës";
+"app.settings.servicesDescription" = "Shërbimet e aktivizuara shfaqen në fund të menysë së kontekstit të Finder. Nëse ka shumë artikuj, macOS i grupon automatikisht në nënmenynë Shërbimet; ky grupim nuk mund të kontrollohet.";
+"app.settings.servicesNote" = "Nëse shërbimet e aktivizuara nuk shfaqen në Finder ose shumë artikuj grupohen në një nënmeny, rregulloni shërbimet e aktivizuara te Tastiera > Shkurtoret e tastierës > Shërbimet.";
+"app.settings.servicesOpenErrorDetail" = "Cilësimet e tastierës nuk mund të hapeshin. Shkoni te Cilësimet e sistemit > Tastiera > Shkurtoret e tastierës > Shërbimet.";

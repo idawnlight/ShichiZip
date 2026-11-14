@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Стиснути";
+"app.settings.finderService.extract" = "%@: Швидке інтелектуальне розпакування";
+"app.settings.finderService.open" = "Відкрити в %@";
+"app.settings.finderService.reveal" = "%@: Показати у файловому менеджері";
+"app.settings.finderServices" = "Сервіси Finder";
+"app.settings.openKeyboardSettings" = "Відкрити параметри клавіатури";
+"app.settings.servicesDescription" = "Увімкнені сервіси відображаються внизу контекстного меню Finder. Якщо пунктів забагато, macOS автоматично групує їх у підменю «Сервіси». Керувати цим групуванням неможливо.";
+"app.settings.servicesNote" = "Якщо ввімкнені сервіси не відображаються у Finder або забагато пунктів згруповано в підменю, налаштуйте ввімкнені сервіси в розділі Клавіатура > Клавіатурні скорочення > Сервіси.";
+"app.settings.servicesOpenErrorDetail" = "Не вдалося відкрити параметри клавіатури. Перейдіть до розділу Системні параметри > Клавіатура > Клавіатурні скорочення > Сервіси.";

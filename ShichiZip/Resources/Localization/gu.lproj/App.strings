@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: સંકુચિત કરો";
+"app.settings.finderService.extract" = "%@: સ્માર્ટ ઝડપી નિષ્કર્ષણ";
+"app.settings.finderService.open" = "%@માં ખોલો";
+"app.settings.finderService.reveal" = "%@: ફાઇલ સંચાલકમાં બતાવો";
+"app.settings.finderServices" = "Finder સેવાઓ";
+"app.settings.openKeyboardSettings" = "કીબોર્ડ સેટિંગ્સ ખોલો";
+"app.settings.servicesDescription" = "સક્રિય સેવાઓ Finderના સંદર્ભ મેનૂના તળિયે દેખાય છે. આઇટમ વધુ હોય તો macOS તેમને આપમેળે “સેવાઓ” ઉપમેનૂમાં જૂથબદ્ધ કરે છે; આ જૂથીકરણને નિયંત્રિત કરી શકાતું નથી.";
+"app.settings.servicesNote" = "જો સક્રિય સેવાઓ Finderમાં ન દેખાય અથવા ઘણી આઇટમ ઉપમેનૂમાં જૂથબદ્ધ હોય, તો કીબોર્ડ > કીબોર્ડ શૉર્ટકટ્સ > સેવાઓમાં સક્રિય સેવાઓ ગોઠવો.";
+"app.settings.servicesOpenErrorDetail" = "કીબોર્ડ સેટિંગ્સ ખોલી શકાઈ નથી. સિસ્ટમ સેટિંગ્સ > કીબોર્ડ > કીબોર્ડ શૉર્ટકટ્સ > સેવાઓ પર જાઓ.";

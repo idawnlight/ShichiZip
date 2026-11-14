@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Сжать";
+"app.settings.finderService.extract" = "%@: Быстрая интеллектуальная распаковка";
+"app.settings.finderService.open" = "Открыть в %@";
+"app.settings.finderService.reveal" = "%@: Показать в файловом менеджере";
+"app.settings.finderServices" = "Службы Finder";
+"app.settings.openKeyboardSettings" = "Открыть настройки клавиатуры";
+"app.settings.servicesDescription" = "Включённые службы отображаются внизу контекстного меню Finder. Если пунктов слишком много, macOS автоматически объединяет их в подменю «Службы». Управлять этой группировкой нельзя.";
+"app.settings.servicesNote" = "Если включённые службы не отображаются в Finder или слишком много пунктов сгруппировано в подменю, измените набор включённых служб в разделе Клавиатура > Сочетания клавиш > Службы.";
+"app.settings.servicesOpenErrorDetail" = "Не удалось открыть настройки клавиатуры. Перейдите в раздел Системные настройки > Клавиатура > Сочетания клавиш > Службы.";

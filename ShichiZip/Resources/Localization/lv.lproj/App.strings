@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Saspiest";
+"app.settings.finderService.extract" = "%@: Viedā ātrā izpakošana";
+"app.settings.finderService.open" = "Atvērt lietotnē %@";
+"app.settings.finderService.reveal" = "%@: Rādīt failu pārvaldniekā";
+"app.settings.finderServices" = "Finder pakalpojumi";
+"app.settings.openKeyboardSettings" = "Atvērt tastatūras iestatījumus";
+"app.settings.servicesDescription" = "Ieslēgtie pakalpojumi tiek rādīti Finder kontekstizvēlnes apakšā. Ja vienumu ir pārāk daudz, macOS tos automātiski grupē apakšizvēlnē “Pakalpojumi”; šo grupēšanu nevar vadīt.";
+"app.settings.servicesNote" = "Ja ieslēgtie pakalpojumi nav redzami Finder vai pārāk daudz vienumu ir grupēti apakšizvēlnē, pielāgojiet ieslēgtos pakalpojumus sadaļā Tastatūra > Tastatūras saīsnes > Pakalpojumi.";
+"app.settings.servicesOpenErrorDetail" = "Neizdevās atvērt tastatūras iestatījumus. Dodieties uz Sistēmas iestatījumi > Tastatūra > Tastatūras saīsnes > Pakalpojumi.";

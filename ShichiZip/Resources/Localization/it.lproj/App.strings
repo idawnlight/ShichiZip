@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Comprimi";
+"app.settings.finderService.extract" = "%@: Estrazione rapida intelligente";
+"app.settings.finderService.open" = "Apri in %@";
+"app.settings.finderService.reveal" = "%@: Mostra nel gestore file";
+"app.settings.finderServices" = "Servizi del Finder";
+"app.settings.openKeyboardSettings" = "Apri impostazioni Tastiera";
+"app.settings.servicesDescription" = "I servizi abilitati compaiono in fondo al menu contestuale del Finder. Se gli elementi sono troppi, macOS li raggruppa automaticamente nel sottomenu Servizi; questo raggruppamento non può essere controllato.";
+"app.settings.servicesNote" = "Se i servizi abilitati non compaiono nel Finder o troppi elementi sono raggruppati in un sottomenu, modifica i servizi abilitati in Tastiera > Abbreviazioni da tastiera > Servizi.";
+"app.settings.servicesOpenErrorDetail" = "Impossibile aprire le impostazioni Tastiera. Vai in Impostazioni di Sistema > Tastiera > Abbreviazioni da tastiera > Servizi.";

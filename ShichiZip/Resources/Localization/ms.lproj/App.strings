@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Mampatkan";
+"app.settings.finderService.extract" = "%@: Ekstrak Pantas Pintar";
+"app.settings.finderService.open" = "Buka dalam %@";
+"app.settings.finderService.reveal" = "%@: Tunjukkan dalam Pengurus Fail";
+"app.settings.finderServices" = "Perkhidmatan Finder";
+"app.settings.openKeyboardSettings" = "Buka Seting Papan Kekunci";
+"app.settings.servicesDescription" = "Perkhidmatan yang didayakan dipaparkan di bahagian bawah menu konteks Finder. Jika terdapat terlalu banyak item, macOS mengumpulkannya secara automatik dalam submenu Perkhidmatan; pengumpulan ini tidak boleh dikawal.";
+"app.settings.servicesNote" = "Jika perkhidmatan yang didayakan tidak muncul dalam Finder atau terlalu banyak item dikumpulkan dalam submenu, laraskan perkhidmatan yang didayakan dalam Papan Kekunci > Pintasan Papan Kekunci > Perkhidmatan.";
+"app.settings.servicesOpenErrorDetail" = "Tidak dapat membuka seting Papan Kekunci. Pergi ke Seting Sistem > Papan Kekunci > Pintasan Papan Kekunci > Perkhidmatan.";

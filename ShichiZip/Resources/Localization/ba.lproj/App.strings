@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Ҡыҫыу";
+"app.settings.finderService.extract" = "%@: Аҡыллы тиҙ сығарыу";
+"app.settings.finderService.open" = "%@ программаһында асыу";
+"app.settings.finderService.reveal" = "%@: Файлдар менеджерында күрһәтеү";
+"app.settings.finderServices" = "Finder хеҙмәттәре";
+"app.settings.openKeyboardSettings" = "«Клавиатура» көйләүҙәрен асыу";
+"app.settings.servicesDescription" = "Ҡабыҙылған хеҙмәттәр Finder контекст менюһының аҫтында күренә. Элементтар артыҡ күп булһа, macOS уларҙы «Хеҙмәттәр» аҫҡы менюһына автоматик рәүештә туплай; был төркөмләүҙе идара итеп булмай.";
+"app.settings.servicesNote" = "Ҡабыҙылған хеҙмәттәр Finder-ҙа күренмәһә йәки артыҡ күп элемент аҫҡы менюға тупланһа, Клавиатура > Клавиатура ҡыҫҡартмалары > Хеҙмәттәр бүлегендә ҡабыҙылған хеҙмәттәрҙе көйләгеҙ.";
+"app.settings.servicesOpenErrorDetail" = "«Клавиатура» көйләүҙәрен асып булманы. Система көйләүҙәре > Клавиатура > Клавиатура ҡыҫҡартмалары > Хеҙмәттәр бүлегенә күсегеҙ.";

@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Komprimearje";
+"app.settings.finderService.extract" = "%@: Tûk fluch útpakke";
+"app.settings.finderService.open" = "Iepenje yn %@";
+"app.settings.finderService.reveal" = "%@: Toane yn bestânsbehearder";
+"app.settings.finderServices" = "Finder-tsjinsten";
+"app.settings.openKeyboardSettings" = "Toetseboerdynstellingen iepenje";
+"app.settings.servicesDescription" = "Ynskeakele tsjinsten ferskine ûnderoan it kontekstmenu fan Finder. As der te folle ûnderdielen binne, groepearret macOS se automatysk yn it submenu Tsjinsten; dy groepearring kin net bestjoerd wurde.";
+"app.settings.servicesNote" = "As ynskeakele tsjinsten net yn Finder ferskine of te folle ûnderdielen yn in submenu groepearre wurde, pas dan de ynskeakele tsjinsten oan by Toetseboerd > Toetseboerdfluchtoetsen > Tsjinsten.";
+"app.settings.servicesOpenErrorDetail" = "De toetseboerdynstellingen koene net iepene wurde. Gean nei Systeemynstellingen > Toetseboerd > Toetseboerdfluchtoetsen > Tsjinsten.";

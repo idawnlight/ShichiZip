@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Atvērt lietotnē {appName}";
+"quickAction.action.reveal" = "Rādīt failu pārvaldniekā";
+"quickAction.action.compress" = "Saspiest";
+"quickAction.action.extract" = "Viedā ātrā izpakošana";

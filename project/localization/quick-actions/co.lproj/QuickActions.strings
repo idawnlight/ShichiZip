@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Apri in {appName}";
+"quickAction.action.reveal" = "Mustrà in u gestore di schedarii";
+"quickAction.action.compress" = "Cumprime";
+"quickAction.action.extract" = "Estrazione rapida intelligente";

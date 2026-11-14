@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Kompresuj";
+"app.settings.finderService.extract" = "%@: Inteligentne szybkie rozpakowywanie";
+"app.settings.finderService.open" = "Otwórz w %@";
+"app.settings.finderService.reveal" = "%@: Pokaż w menedżerze plików";
+"app.settings.finderServices" = "Usługi Findera";
+"app.settings.openKeyboardSettings" = "Otwórz ustawienia klawiatury";
+"app.settings.servicesDescription" = "Włączone usługi są wyświetlane na dole menu podręcznego Findera. Gdy pozycji jest zbyt wiele, macOS automatycznie grupuje je w podmenu „Usługi”. Nie można sterować tym grupowaniem.";
+"app.settings.servicesNote" = "Jeśli włączone usługi nie pojawiają się w Finderze lub zbyt wiele pozycji jest zgrupowanych w podmenu, dostosuj włączone usługi w sekcji Klawiatura > Skróty klawiszowe > Usługi.";
+"app.settings.servicesOpenErrorDetail" = "Nie można otworzyć ustawień klawiatury. Przejdź do Ustawienia systemowe > Klawiatura > Skróty klawiszowe > Usługi.";

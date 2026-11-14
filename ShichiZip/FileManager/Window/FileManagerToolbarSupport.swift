@@ -268,15 +268,84 @@ final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
     private var isFinished = false
     private var isSubmitting = false
     private var isRestoringSheetFocus = false
+    private weak var insetEditor: NSTextView?
+    private var originalEditorInset: NSSize?
+
     convenience init(path: String) {
         self.init(string: path)
         lineBreakMode = .byTruncatingHead
         isAutomaticTextCompletionEnabled = false
-        controlSize = .large
+        if #available(macOS 26.0, *) {
+            controlSize = .extraLarge
+        } else {
+            controlSize = .large
+        }
         bezelStyle = .roundedBezel
         isBezeled = true
         delegate = self
         setAccessibilityIdentifier("fileManager.titlePathField")
+    }
+
+    // Target 9pt text margins without replacing the native cell or changing control height.
+    private var extraTextInset: CGFloat {
+        9 - ((cell?.drawingRect(forBounds: bounds).minX ?? bounds.minX) - bounds.minX)
+    }
+
+    override func layout() {
+        super.layout()
+        updateDisplayInsets()
+    }
+
+    private func updateDisplayInsets() {
+        guard currentEditor() == nil, !stringValue.isEmpty else { return }
+        let paragraph = (attributedStringValue.attribute(.paragraphStyle, at: 0, effectiveRange: nil)
+                         as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+        let delta = extraTextInset
+        guard paragraph.headIndent != delta || paragraph.firstLineHeadIndent != delta ||
+            paragraph.tailIndent != -delta else { return }
+        paragraph.headIndent = delta
+        paragraph.firstLineHeadIndent = delta
+        paragraph.tailIndent = -delta
+        paragraph.lineBreakMode = lineBreakMode
+        let text = NSMutableAttributedString(attributedString: attributedStringValue)
+        text.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: text.length))
+        attributedStringValue = text
+    }
+
+    private func updateEditorInsets() {
+        guard let editor = currentEditor() as? NSTextView else { return }
+        if insetEditor !== editor {
+            insetEditor = editor
+            originalEditorInset = editor.textContainerInset
+        }
+        editor.textStorage?.removeAttribute(.paragraphStyle,
+                                           range: NSRange(location: 0, length: (editor.string as NSString).length))
+        var attributes = editor.typingAttributes
+        attributes.removeValue(forKey: .paragraphStyle)
+        editor.typingAttributes = attributes
+        editor.defaultParagraphStyle = nil
+        var inset = editor.textContainerInset
+        inset.width = extraTextInset
+        editor.textContainerInset = inset
+    }
+
+    func controlTextDidChange(_: Notification) {
+        updateEditorInsets()
+    }
+
+    private func restoreEditorInsets() {
+        // AppKit shares this editor with the other text fields in the window.
+        if let editor = insetEditor, let originalEditorInset {
+            editor.textContainerInset = originalEditorInset
+        }
+        insetEditor = nil
+        originalEditorInset = nil
+    }
+
+    override func textDidEndEditing(_ notification: Notification) {
+        restoreEditorInsets()
+        super.textDidEndEditing(notification)
+        updateDisplayInsets()
     }
 
     func install() {
@@ -285,12 +354,14 @@ final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
     }
 
     func uninstall() {
+        restoreEditorInsets()
         NotificationCenter.default.removeObserver(self, name: NSWindow.didEndSheetNotification, object: window)
     }
 
     func beginPathEditing() {
         guard !isFinished else { return }
         selectText(nil)
+        updateEditorInsets()
     }
 
     @objc private func sheetDidEnd(_: Notification) {
@@ -356,16 +427,13 @@ final class FileManagerPathToolbar: NSObject, NSToolbarDelegate {
         originalToolbar = window.toolbar
         originalTitleVisibility = window.titleVisibility
         // AppKit allocates the available toolbar width and owns all item geometry.
-        let content = NSStackView(views: [field])
-        content.orientation = .horizontal
-        content.distribution = .fill
-        content.edgeInsets = NSEdgeInsetsZero
-        content.widthAnchor.constraint(greaterThanOrEqualToConstant: 100).isActive = true
-        widthLimit = content.widthAnchor.constraint(lessThanOrEqualToConstant: window.frame.width)
+        field.widthAnchor.constraint(greaterThanOrEqualToConstant: 100).isActive = true
+        widthLimit = field.widthAnchor.constraint(lessThanOrEqualToConstant: window.frame.width)
         widthLimit.isActive = true
-        item.view = content
+        item.view = field
         item.label = SZL10n.string("column.path")
-        item.isBordered = true
+        // The text field supplies its own bezel and focus ring.
+        item.isBordered = false
         super.init()
         toolbar.delegate = self
         // Text-only mode must still show the editor. Modern toolbars keep their

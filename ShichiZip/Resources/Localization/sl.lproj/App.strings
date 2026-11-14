@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Stisni";
+"app.settings.finderService.extract" = "%@: Pametno hitro razširjanje";
+"app.settings.finderService.open" = "Odpri v %@";
+"app.settings.finderService.reveal" = "%@: Pokaži v upravitelju datotek";
+"app.settings.finderServices" = "Storitve Finderja";
+"app.settings.openKeyboardSettings" = "Odpri nastavitve tipkovnice";
+"app.settings.servicesDescription" = "Vklopljene storitve so prikazane na dnu priročnega menija Finderja. Če je elementov preveč, jih macOS samodejno združi v podmeni »Storitve«. Tega združevanja ni mogoče nadzorovati.";
+"app.settings.servicesNote" = "Če vklopljene storitve niso prikazane v Finderju ali je preveč elementov združenih v podmeniju, prilagodite vklopljene storitve v razdelku Tipkovnica > Bližnjice na tipkovnici > Storitve.";
+"app.settings.servicesOpenErrorDetail" = "Nastavitev tipkovnice ni bilo mogoče odpreti. Pojdite v Sistemske nastavitve > Tipkovnica > Bližnjice na tipkovnici > Storitve.";

@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Comprimir";
+"app.settings.finderService.extract" = "%@: Extração Rápida Inteligente";
+"app.settings.finderService.open" = "Abrir no %@";
+"app.settings.finderService.reveal" = "%@: Mostrar no gerenciador de arquivos";
+"app.settings.finderServices" = "Serviços do Finder";
+"app.settings.openKeyboardSettings" = "Abrir Ajustes de Teclado";
+"app.settings.servicesDescription" = "Os serviços ativados aparecem na parte inferior do menu de contexto do Finder. Se houver itens demais, o macOS os agrupa automaticamente no submenu Serviços; não é possível controlar esse agrupamento.";
+"app.settings.servicesNote" = "Se os serviços ativados não aparecerem no Finder ou houver muitos itens agrupados em um submenu, ajuste os serviços ativados em Teclado > Atalhos de Teclado > Serviços.";
+"app.settings.servicesOpenErrorDetail" = "Não foi possível abrir os ajustes de Teclado. Acesse Ajustes do Sistema > Teclado > Atalhos de Teclado > Serviços.";

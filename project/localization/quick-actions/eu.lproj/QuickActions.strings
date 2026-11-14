@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Ireki {appName} aplikazioan";
+"quickAction.action.reveal" = "Erakutsi fitxategi-kudeatzailean";
+"quickAction.action.compress" = "Konprimitu";
+"quickAction.action.extract" = "Erauzketa azkar adimenduna";

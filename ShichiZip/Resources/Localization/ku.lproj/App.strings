@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Bipestîne";
+"app.settings.finderService.extract" = "%@: Derxistina bilez a jîr";
+"app.settings.finderService.open" = "Bi %@ veke";
+"app.settings.finderService.reveal" = "%@: Di rêveberê pelan de nîşan bide";
+"app.settings.finderServices" = "Xizmetên Finder";
+"app.settings.openKeyboardSettings" = "Mîhengên klavyeyê veke";
+"app.settings.servicesDescription" = "Xizmetên çalakkirî li jêra pêşeka naverokê ya Finder xuya dibin. Ger hêman pir bin, macOS wan bixweber di binpêşeka Xizmet de kom dike; ev komkirin nayê kontrolkirin.";
+"app.settings.servicesNote" = "Ger xizmetên çalakkirî di Finder de xuya nebin an hêmanên pir di binpêşekê de kom bibin, xizmetên çalakkirî li Klavye > Kurteriyên klavyeyê > Xizmet sererast bikin.";
+"app.settings.servicesOpenErrorDetail" = "Mîhengên klavyeyê nehatin vekirin. Biçin Mîhengên pergalê > Klavye > Kurteriyên klavyeyê > Xizmet.";

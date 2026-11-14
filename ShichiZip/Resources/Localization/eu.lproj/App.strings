@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Konprimitu";
+"app.settings.finderService.extract" = "%@: Erauzketa azkar adimenduna";
+"app.settings.finderService.open" = "Ireki %@ aplikazioan";
+"app.settings.finderService.reveal" = "%@: Erakutsi fitxategi-kudeatzailean";
+"app.settings.finderServices" = "Finder zerbitzuak";
+"app.settings.openKeyboardSettings" = "Ireki teklatuaren ezarpenak";
+"app.settings.servicesDescription" = "Gaitutako zerbitzuak Finder-en testuinguru-menuaren behealdean agertzen dira. Elementu gehiegi badaude, macOS-ek automatikoki Zerbitzuak azpimenuan biltzen ditu; ezin da taldekatze hori kontrolatu.";
+"app.settings.servicesNote" = "Gaitutako zerbitzuak Finder-en agertzen ez badira edo elementu gehiegi azpimenu batean biltzen badira, doitu gaitutako zerbitzuak hemen: Teklatua > Teklatuko lasterbideak > Zerbitzuak.";
+"app.settings.servicesOpenErrorDetail" = "Ezin izan dira teklatuaren ezarpenak ireki. Joan hona: Sistemaren ezarpenak > Teklatua > Teklatuko lasterbideak > Zerbitzuak.";

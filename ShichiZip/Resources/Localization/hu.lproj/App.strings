@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Tömörítés";
+"app.settings.finderService.extract" = "%@: Intelligens gyors kicsomagolás";
+"app.settings.finderService.open" = "Megnyitás ezzel: %@";
+"app.settings.finderService.reveal" = "%@: Megjelenítés a fájlkezelőben";
+"app.settings.finderServices" = "Finder-szolgáltatások";
+"app.settings.openKeyboardSettings" = "Billentyűzetbeállítások megnyitása";
+"app.settings.servicesDescription" = "A bekapcsolt szolgáltatások a Finder helyi menüjének alján jelennek meg. Ha túl sok elem van, a macOS automatikusan a(z) „Szolgáltatások” almenübe csoportosítja őket; ez a csoportosítás nem szabályozható.";
+"app.settings.servicesNote" = "Ha a bekapcsolt szolgáltatások nem jelennek meg a Finderben, vagy túl sok elem kerül egy almenübe, módosítsa a bekapcsolt szolgáltatásokat itt: Billentyűzet > Billentyűparancsok > Szolgáltatások.";
+"app.settings.servicesOpenErrorDetail" = "Nem sikerült megnyitni a billentyűzetbeállításokat. Nyissa meg a következőt: Rendszerbeállítások > Billentyűzet > Billentyűparancsok > Szolgáltatások.";

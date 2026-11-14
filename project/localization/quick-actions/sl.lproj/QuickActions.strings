@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Odpri v {appName}";
+"quickAction.action.reveal" = "Pokaži v upravitelju datotek";
+"quickAction.action.compress" = "Stisni";
+"quickAction.action.extract" = "Pametno hitro razširjanje";

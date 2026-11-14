@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Comprimir";
+"app.settings.finderService.extract" = "%@: Extracción rápida intelixente";
+"app.settings.finderService.open" = "Abrir en %@";
+"app.settings.finderService.reveal" = "%@: Amosar no xestor de ficheiros";
+"app.settings.finderServices" = "Servizos do Finder";
+"app.settings.openKeyboardSettings" = "Abrir os axustes do teclado";
+"app.settings.servicesDescription" = "Os servizos activados aparecen na parte inferior do menú contextual do Finder. Se hai demasiados elementos, macOS agrúpaos automaticamente no submenú Servizos; non se pode controlar esta agrupación.";
+"app.settings.servicesNote" = "Se os servizos activados non aparecen no Finder ou hai demasiados elementos agrupados nun submenú, axuste os servizos activados en Teclado > Atallos de teclado > Servizos.";
+"app.settings.servicesOpenErrorDetail" = "Non se puideron abrir os axustes do teclado. Vaia a Axustes do sistema > Teclado > Atallos de teclado > Servizos.";

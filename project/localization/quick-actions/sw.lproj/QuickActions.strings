@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Fungua kwa {appName}";
+"quickAction.action.reveal" = "Onyesha katika kidhibiti faili";
+"quickAction.action.compress" = "Bana";
+"quickAction.action.extract" = "Udondoaji wa haraka mahiri";

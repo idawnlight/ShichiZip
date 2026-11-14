@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Hap në {appName}";
+"quickAction.action.reveal" = "Shfaq në menaxherin e skedarëve";
+"quickAction.action.compress" = "Ngjesh";
+"quickAction.action.extract" = "Nxjerrje e shpejtë inteligjente";

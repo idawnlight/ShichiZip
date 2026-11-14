@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate per-target Quick Action InfoPlist.strings from a shared source table."""
+"""Generate Finder Quick Action and Services labels from a shared source table."""
 
 from __future__ import annotations
 
@@ -101,10 +101,20 @@ def resolve_quick_action_title(locale_values: dict[str, str], english_values: di
     return render_template(full_template, prefix=prefix, action=action_text)
 
 
+def resolve_service_title(locale_values: dict[str, str], english_values: dict[str, str], variant: str, action: str) -> str:
+    action_text = resolve_action_text(locale_values, english_values, variant, action)
+    if action == "open":
+        return action_text
+    template = resolve_value(locale_values, english_values, "quickAction.template.full")
+    app_name = resolve_value(locale_values, english_values, f"quickAction.app.{variant}")
+    return render_template(template, prefix=app_name, action=action_text)
+
+
 def main() -> int:
     project_root = Path(__file__).resolve().parents[2]
     source_root = project_root / "project" / "localization" / "quick-actions"
     output_root = project_root / "project" / "generated" / "quick-actions"
+    services_root = project_root / "project" / "generated" / "services"
 
     english_source = source_root / "en.lproj" / "QuickActions.strings"
     if not english_source.exists():
@@ -116,11 +126,24 @@ def main() -> int:
     if output_root.exists():
         shutil.rmtree(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
+    if services_root.exists():
+        shutil.rmtree(services_root)
+    services_root.mkdir(parents=True, exist_ok=True)
 
     for locale_dir in locale_dirs:
         locale = locale_dir.stem
         locale_source = locale_dir / "QuickActions.strings"
         locale_values = parse_strings_file(locale_source)
+
+        services = []
+        for variant in ("shichizip", "shichizipzs"):
+            for action in ("reveal", "open", "compress", "extract"):
+                name = resolve_service_title(english_values, english_values, variant, action)
+                title = resolve_service_title(locale_values, english_values, variant, action)
+                services.append(f'"{escape(name)}" = "{escape(title)}";')
+        services_dir = services_root / f"{locale}.lproj"
+        services_dir.mkdir(parents=True, exist_ok=True)
+        (services_dir / "ServicesMenu.strings").write_text("\n".join(services) + "\n", encoding="utf-8")
 
         for target_name, target_info in TARGETS.items():
             title = resolve_quick_action_title(
@@ -135,7 +158,7 @@ def main() -> int:
             output_path = target_dir / "InfoPlist.strings"
             output_path.write_text(build_infoplist_content(title), encoding="utf-8")
 
-    print(f"Generated Quick Action InfoPlist.strings for {len(locale_dirs)} locale(s)")
+    print(f"Generated Quick Action InfoPlist.strings and ServicesMenu.strings for {len(locale_dirs)} locale(s)")
     return 0
 
 

@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "{appName} ilə aç";
+"quickAction.action.reveal" = "Fayl menecerində göstər";
+"quickAction.action.compress" = "Sıxışdır";
+"quickAction.action.extract" = "Ağıllı sürətli çıxarış";

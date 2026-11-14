@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: संपीडित करा";
+"app.settings.finderService.extract" = "%@: स्मार्ट जलद निष्कर्षण";
+"app.settings.finderService.open" = "%@ मध्ये उघडा";
+"app.settings.finderService.reveal" = "%@: फाइल व्यवस्थापकात दाखवा";
+"app.settings.finderServices" = "Finder सेवा";
+"app.settings.openKeyboardSettings" = "कीबोर्ड सेटिंग्ज उघडा";
+"app.settings.servicesDescription" = "सक्षम केलेल्या सेवा Finder च्या संदर्भ मेनूच्या तळाशी दिसतात. आयटम जास्त असल्यास macOS त्यांना आपोआप “सेवा” उपमेनूमध्ये एकत्र करते; हे गटीकरण नियंत्रित करता येत नाही.";
+"app.settings.servicesNote" = "सक्षम सेवा Finder मध्ये दिसत नसतील किंवा बरेच आयटम उपमेनूमध्ये एकत्र झाले असतील, तर कीबोर्ड > कीबोर्ड शॉर्टकट > सेवा मध्ये सक्षम सेवा समायोजित करा.";
+"app.settings.servicesOpenErrorDetail" = "कीबोर्ड सेटिंग्ज उघडता आल्या नाहीत. सिस्टम सेटिंग्ज > कीबोर्ड > कीबोर्ड शॉर्टकट > सेवा वर जा.";

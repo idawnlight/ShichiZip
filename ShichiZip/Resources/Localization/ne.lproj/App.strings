@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: सङ्कुचन गर्नुहोस्";
+"app.settings.finderService.extract" = "%@: स्मार्ट द्रुत निष्कर्षण";
+"app.settings.finderService.open" = "%@ मा खोल्नुहोस्";
+"app.settings.finderService.reveal" = "%@: फाइल व्यवस्थापकमा देखाउनुहोस्";
+"app.settings.finderServices" = "Finder सेवाहरू";
+"app.settings.openKeyboardSettings" = "किबोर्ड सेटिङहरू खोल्नुहोस्";
+"app.settings.servicesDescription" = "सक्षम सेवाहरू Finder को सन्दर्भ मेनुको तल देखिन्छन्। वस्तुहरू धेरै भएमा macOS ले तिनलाई स्वतः “सेवाहरू” उपमेनुमा समूह बनाउँछ; यो समूहीकरण नियन्त्रण गर्न सकिँदैन।";
+"app.settings.servicesNote" = "सक्षम सेवाहरू Finder मा नदेखिएमा वा धेरै वस्तु उपमेनुमा समूहबद्ध भएमा, किबोर्ड > किबोर्ड सर्टकटहरू > सेवाहरू मा सक्षम सेवाहरू मिलाउनुहोस्।";
+"app.settings.servicesOpenErrorDetail" = "किबोर्ड सेटिङहरू खोल्न सकिएन। प्रणाली सेटिङहरू > किबोर्ड > किबोर्ड सर्टकटहरू > सेवाहरू मा जानुहोस्।";

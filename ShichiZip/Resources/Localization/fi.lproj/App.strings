@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Pakkaa";
+"app.settings.finderService.extract" = "%@: Älykäs pikapurku";
+"app.settings.finderService.open" = "Avaa apissa %@";
+"app.settings.finderService.reveal" = "%@: Näytä tiedostonhallinnassa";
+"app.settings.finderServices" = "Finderin palvelut";
+"app.settings.openKeyboardSettings" = "Avaa näppäimistöasetukset";
+"app.settings.servicesDescription" = "Käytössä olevat palvelut näkyvät Finderin oikotievalikon lopussa. Jos kohteita on liikaa, macOS ryhmittelee ne automaattisesti Palvelut-alivalikkoon. Ryhmittelyä ei voi hallita.";
+"app.settings.servicesNote" = "Jos käytössä olevat palvelut eivät näy Finderissa tai liian monta kohdetta on ryhmitelty alivalikkoon, muuta käytössä olevia palveluja kohdassa Näppäimistö > Näppäinoikotiet > Palvelut.";
+"app.settings.servicesOpenErrorDetail" = "Näppäimistöasetuksia ei voitu avata. Avaa Järjestelmäasetukset > Näppäimistö > Näppäinoikotiet > Palvelut.";

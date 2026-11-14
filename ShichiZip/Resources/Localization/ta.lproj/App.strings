@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: சுருக்கு";
+"app.settings.finderService.extract" = "%@: அறிவார்ந்த விரைவான பிரித்தெடுத்தல்";
+"app.settings.finderService.open" = "%@-இல் திற";
+"app.settings.finderService.reveal" = "%@: கோப்பு மேலாளரில் காட்டு";
+"app.settings.finderServices" = "Finder சேவைகள்";
+"app.settings.openKeyboardSettings" = "விசைப்பலகை அமைப்புகளைத் திற";
+"app.settings.servicesDescription" = "இயக்கப்பட்ட சேவைகள் Finder சூழல் மெனுவின் கீழே தோன்றும். உருப்படிகள் அதிகமாக இருந்தால், macOS அவற்றைத் தானாக “சேவைகள்” துணைமெனுவில் குழுவாக்கும்; இந்தக் குழுவாக்கத்தைக் கட்டுப்படுத்த முடியாது.";
+"app.settings.servicesNote" = "இயக்கப்பட்ட சேவைகள் Finder-இல் தோன்றாவிட்டால் அல்லது பல உருப்படிகள் துணைமெனுவில் குழுவாக்கப்பட்டிருந்தால், விசைப்பலகை > விசைப்பலகைக் குறுக்குவழிகள் > சேவைகள்-இல் இயக்கப்பட்ட சேவைகளைச் சரிசெய்யவும்.";
+"app.settings.servicesOpenErrorDetail" = "விசைப்பலகை அமைப்புகளைத் திறக்க முடியவில்லை. கணினி அமைப்புகள் > விசைப்பலகை > விசைப்பலகைக் குறுக்குவழிகள் > சேவைகள்-க்குச் செல்லவும்.";

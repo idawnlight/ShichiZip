@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Comprimir";
+"app.settings.finderService.extract" = "%@: Extracción rapida intelichent";
+"app.settings.finderService.open" = "Ubrir en %@";
+"app.settings.finderService.reveal" = "%@: Amostrar en o chestor de fichers";
+"app.settings.finderServices" = "Servicios de Finder";
+"app.settings.openKeyboardSettings" = "Ubrir os achustes de Teclau";
+"app.settings.servicesDescription" = "Os servicios activaus amaneixen en a parte inferior d'o menú contextual de Finder. Si bi ha masiaus elementos, macOS los agrupa automaticament en o submenú Servicios; no se puede controlar esta agrupación.";
+"app.settings.servicesNote" = "Si os servicios activaus no amaneixen en Finder u bi ha masiaus elementos agrupaus en un submenú, achusta os servicios activaus en Teclau > Alcorces de teclau > Servicios.";
+"app.settings.servicesOpenErrorDetail" = "No s'han puesto ubrir os achustes de Teclau. Ves ta Achustes d'o sistema > Teclau > Alcorces de teclau > Servicios.";

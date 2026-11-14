@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Paki";
+"app.settings.finderService.extract" = "%@: Nutikas kiire lahtipakkimine";
+"app.settings.finderService.open" = "Ava rakenduses %@";
+"app.settings.finderService.reveal" = "%@: Näita failihalduris";
+"app.settings.finderServices" = "Finderi teenused";
+"app.settings.openKeyboardSettings" = "Ava klaviatuuri seaded";
+"app.settings.servicesDescription" = "Lubatud teenused kuvatakse Finderi kontekstimenüü allosas. Kui üksusi on liiga palju, rühmitab macOS need automaatselt alammenüüsse „Teenused”. Seda rühmitamist ei saa juhtida.";
+"app.settings.servicesNote" = "Kui lubatud teenuseid Finderis ei kuvata või liiga palju üksusi on rühmitatud alammenüüsse, kohanda lubatud teenuseid jaotises Klaviatuur > Klaviatuuri otseteed > Teenused.";
+"app.settings.servicesOpenErrorDetail" = "Klaviatuuri seadeid ei saanud avada. Ava Süsteemiseaded > Klaviatuur > Klaviatuuri otseteed > Teenused.";

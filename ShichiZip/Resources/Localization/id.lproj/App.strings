@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Kompres";
+"app.settings.finderService.extract" = "%@: Ekstrak Cepat Cerdas";
+"app.settings.finderService.open" = "Buka di %@";
+"app.settings.finderService.reveal" = "%@: Tampilkan di Pengelola File";
+"app.settings.finderServices" = "Layanan Finder";
+"app.settings.openKeyboardSettings" = "Buka Pengaturan Papan Ketik";
+"app.settings.servicesDescription" = "Layanan yang diaktifkan muncul di bagian bawah menu konteks Finder. Jika item terlalu banyak, macOS otomatis mengelompokkannya ke submenu Layanan; pengelompokan ini tidak dapat dikontrol.";
+"app.settings.servicesNote" = "Jika layanan yang diaktifkan tidak muncul di Finder atau terlalu banyak item dikelompokkan dalam submenu, sesuaikan layanan yang diaktifkan di Papan Ketik > Pintasan Papan Ketik > Layanan.";
+"app.settings.servicesOpenErrorDetail" = "Tidak dapat membuka pengaturan Papan Ketik. Buka Pengaturan Sistem > Papan Ketik > Pintasan Papan Ketik > Layanan.";

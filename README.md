@@ -51,7 +51,7 @@ The project currently keeps localization in three places:
 
 - `project/localization/Lang` holds the original 7-Zip language files we import from upstream. Treat those files as upstream input; do not edit them for ShichiZip wording. `Upstream.strings` is generated from them, and the generated files are ignored by Git. Use `xcodegen generate`, or run `python3 project/scripts/generate_strings.py` when you only need to refresh that output.
 - `App.strings` is the manual app layer. It contains ShichiZip-specific text and overrides for upstream text that needs different wording here. After changing these files, run `python3 project/scripts/format_app_strings.py` to keep the keys sorted and grouped.
-- Quick Action text lives under `project/localization/quick-actions` and is expanded into generated `InfoPlist.strings` files during `xcodegen generate`.
+- Quick Action and Finder service menu text lives under `project/localization/quick-actions` and is expanded into generated `InfoPlist.strings` and `ServicesMenu.strings` files during `xcodegen generate`. Finder service labels inside Settings belong to `App.strings`, so they follow the app's selected language.
 
 When working on a single locale, you can pass just that file to the formatter, for example:
 

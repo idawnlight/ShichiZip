@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Сығу";
+"app.settings.finderService.extract" = "%@: Ақылды жылдам шығару";
+"app.settings.finderService.open" = "%@ ішінде ашу";
+"app.settings.finderService.reveal" = "%@: Файл менеджерінде көрсету";
+"app.settings.finderServices" = "Finder қызметтері";
+"app.settings.openKeyboardSettings" = "Пернетақта параметрлерін ашу";
+"app.settings.servicesDescription" = "Қосылған қызметтер Finder контекстік мәзірінің төменгі жағында көрсетіледі. Элементтер тым көп болса, macOS оларды «Қызметтер» ішкі мәзіріне автоматты түрде топтайды; бұл топтауды басқару мүмкін емес.";
+"app.settings.servicesNote" = "Қосылған қызметтер Finder ішінде көрсетілмесе немесе тым көп элемент ішкі мәзірге топталса, Пернетақта > Пернетақта тіркесімдері > Қызметтер бөлімінде қосылған қызметтерді реттеңіз.";
+"app.settings.servicesOpenErrorDetail" = "Пернетақта параметрлерін ашу мүмкін болмады. Жүйе параметрлері > Пернетақта > Пернетақта тіркесімдері > Қызметтер бөліміне өтіңіз.";

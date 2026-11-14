@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Шахах";
+"app.settings.finderService.extract" = "%@: Ухаалаг хурдан задлах";
+"app.settings.finderService.open" = "%@-д нээх";
+"app.settings.finderService.reveal" = "%@: Файлын менежерт харуулах";
+"app.settings.finderServices" = "Finder-ийн үйлчилгээнүүд";
+"app.settings.openKeyboardSettings" = "Гарын тохиргоог нээх";
+"app.settings.servicesDescription" = "Идэвхжүүлсэн үйлчилгээнүүд Finder-ийн контекст цэсний доод хэсэгт харагдана. Хэт олон зүйл байвал macOS тэдгээрийг Үйлчилгээ дэд цэсэнд автоматаар бүлэглэнэ; энэ бүлэглэлтийг удирдах боломжгүй.";
+"app.settings.servicesNote" = "Идэвхжүүлсэн үйлчилгээнүүд Finder-т харагдахгүй эсвэл хэт олон зүйл дэд цэсэнд бүлэглэгдсэн байвал Гар > Гарын товчлол > Үйлчилгээ хэсэгт идэвхжүүлсэн үйлчилгээнүүдийг тохируулна уу.";
+"app.settings.servicesOpenErrorDetail" = "Гарын тохиргоог нээж чадсангүй. Системийн тохиргоо > Гар > Гарын товчлол > Үйлчилгээ хэсэгт очно уу.";

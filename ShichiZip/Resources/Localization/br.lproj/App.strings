@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Koazhañ";
+"app.settings.finderService.extract" = "%@: Diwaskañ buan speredek";
+"app.settings.finderService.open" = "Digeriñ e %@";
+"app.settings.finderService.reveal" = "%@: Diskouez e merour ar restroù";
+"app.settings.finderServices" = "Servijoù Finder";
+"app.settings.openKeyboardSettings" = "Digeriñ arventennoù ar c'hlavier";
+"app.settings.servicesDescription" = "Ar servijoù gweredekaet a vez diskouezet e traoñ lañser kemperzhel Finder. Ma vez re a elfennoù, e stroll macOS anezho ent emgefre el islañser Servijoù; ne c'haller ket reoliñ ar strollañ-mañ.";
+"app.settings.servicesNote" = "Ma ne weler ket ar servijoù gweredekaet e Finder pe ma vez re a elfennoù strollet en un islañser, kemmit ar servijoù gweredekaet e Klavier > Berradennoù klavier > Servijoù.";
+"app.settings.servicesOpenErrorDetail" = "N'eus ket bet gallet digeriñ arventennoù ar c'hlavier. Kit da Arventennoù ar reizhiad > Klavier > Berradennoù klavier > Servijoù.";

@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Bi {appName} veke";
+"quickAction.action.reveal" = "Di rêveberê pelan de nîşan bide";
+"quickAction.action.compress" = "Bipestîne";
+"quickAction.action.extract" = "Derxistina bilez a jîr";

@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Abrir em {appName}";
+"quickAction.action.reveal" = "Mostrar no gestor de ficheiros";
+"quickAction.action.compress" = "Comprimir";
+"quickAction.action.extract" = "Extração rápida inteligente";

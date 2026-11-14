@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Кысуу";
+"app.settings.finderService.extract" = "%@: Акылдуу тез чыгаруу";
+"app.settings.finderService.open" = "%@ ичинде ачуу";
+"app.settings.finderService.reveal" = "%@: Файл башкаргычта көрсөтүү";
+"app.settings.finderServices" = "Finder кызматтары";
+"app.settings.openKeyboardSettings" = "Баскычтоп жөндөөлөрүн ачуу";
+"app.settings.servicesDescription" = "Иштетилген кызматтар Finder контексттик менюсунун ылдый жагында көрүнөт. Элементтер өтө көп болсо, macOS аларды «Кызматтар» ички менюсуна автоматтык түрдө топтойт; бул топтоону башкаруу мүмкүн эмес.";
+"app.settings.servicesNote" = "Иштетилген кызматтар Finder ичинде көрүнбөсө же өтө көп элемент ички менюга топтолсо, Баскычтоп > Баскычтоптун жарлыктары > Кызматтар бөлүмүндө иштетилген кызматтарды тууралаңыз.";
+"app.settings.servicesOpenErrorDetail" = "Баскычтоп жөндөөлөрүн ачуу мүмкүн болгон жок. Тутум жөндөөлөрү > Баскычтоп > Баскычтоптун жарлыктары > Кызматтар бөлүмүнө өтүңүз.";

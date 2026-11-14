@@ -15,6 +15,7 @@ targets:
           - "**/*.entitlements"
           - "Resources/Localization/**"
           - "QuickActions/**"
+          - "FinderServices/**"
           - "QuickLookPreview/Extension/**"
     dependencies:
       - sdk: AppIntents.framework
@@ -34,6 +35,30 @@ targets:
         embed: true
       - target: ShichiZipArchivePreviewExtension
         embed: true
+      - target: ShichiZipFinderReveal
+        embed: true
+        link: false
+        copy:
+          destination: resources
+          subpath: FinderServices
+      - target: ShichiZipFinderOpen
+        embed: true
+        link: false
+        copy:
+          destination: resources
+          subpath: FinderServices
+      - target: ShichiZipFinderCompress
+        embed: true
+        link: false
+        copy:
+          destination: resources
+          subpath: FinderServices
+      - target: ShichiZipFinderExtract
+        embed: true
+        link: false
+        copy:
+          destination: resources
+          subpath: FinderServices
     settings:
       base:
         <<: &common_app_settings
@@ -60,6 +85,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZip
         PRODUCT_NAME: ShichiZip
         SHICHIZIP_APP_DISPLAY_NAME: ShichiZip
+        SHICHIZIP_FINDER_SERVICE_PREFIX: ShichiZipFinder
         SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip
         SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip based."
         SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip/DOC/License.txt
@@ -182,12 +208,37 @@ targets:
         embed: true
       - target: ShichiZipZSArchivePreviewExtension
         embed: true
+      - target: ShichiZipZSFinderReveal
+        embed: true
+        link: false
+        copy:
+          destination: resources
+          subpath: FinderServices
+      - target: ShichiZipZSFinderOpen
+        embed: true
+        link: false
+        copy:
+          destination: resources
+          subpath: FinderServices
+      - target: ShichiZipZSFinderCompress
+        embed: true
+        link: false
+        copy:
+          destination: resources
+          subpath: FinderServices
+      - target: ShichiZipZSFinderExtract
+        embed: true
+        link: false
+        copy:
+          destination: resources
+          subpath: FinderServices
     settings:
       base:
         <<: *common_app_settings
         PRODUCT_BUNDLE_IDENTIFIER: ee.dawn.ShichiZipZS
         PRODUCT_NAME: ShichiZip ZS
         SHICHIZIP_APP_DISPLAY_NAME: ShichiZip ZS
+        SHICHIZIP_FINDER_SERVICE_PREFIX: ShichiZipZSFinder
         SHICHIZIP_ARCHIVE_CORE_NAME: 7-Zip-zstd
         SHICHIZIP_COPYRIGHT_LINE: "GitHub: idawnlight/ShichiZip, 7-Zip ZS (mcmilk/7-Zip-zstd) based."
         SHICHIZIP_LICENSE_SOURCE_PATH: vendor/7zip-zstd/COPYING

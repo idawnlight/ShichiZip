@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "{appName}-இல் திற";
+"quickAction.action.reveal" = "கோப்பு மேலாளரில் காட்டு";
+"quickAction.action.compress" = "சுருக்கு";
+"quickAction.action.extract" = "அறிவார்ந்த விரைவான பிரித்தெடுத்தல்";

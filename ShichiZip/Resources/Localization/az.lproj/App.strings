@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Sıxışdır";
+"app.settings.finderService.extract" = "%@: Ağıllı sürətli çıxarış";
+"app.settings.finderService.open" = "%@ ilə aç";
+"app.settings.finderService.reveal" = "%@: Fayl menecerində göstər";
+"app.settings.finderServices" = "Finder xidmətləri";
+"app.settings.openKeyboardSettings" = "Klaviatura parametrlərini aç";
+"app.settings.servicesDescription" = "Aktiv xidmətlər Finder kontekst menyusunun aşağısında görünür. Elementlər çox olduqda macOS onları avtomatik olaraq Xidmətlər alt menyusunda qruplaşdırır; bu qruplaşdırmanı idarə etmək olmur.";
+"app.settings.servicesNote" = "Aktiv xidmətlər Finder-də görünmürsə və ya çoxlu element alt menyuda qruplaşdırılıbsa, Klaviatura > Klaviatura qısayolları > Xidmətlər bölməsində aktiv xidmətləri tənzimləyin.";
+"app.settings.servicesOpenErrorDetail" = "Klaviatura parametrlərini açmaq mümkün olmadı. Sistem parametrləri > Klaviatura > Klaviatura qısayolları > Xidmətlər bölməsinə keçin.";

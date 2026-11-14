@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Comprimeix";
+"app.settings.finderService.extract" = "%@: Extracció ràpida intel·ligent";
+"app.settings.finderService.open" = "Obre amb %@";
+"app.settings.finderService.reveal" = "%@: Mostra al gestor de fitxers";
+"app.settings.finderServices" = "Serveis del Finder";
+"app.settings.openKeyboardSettings" = "Obre la configuració del Teclat";
+"app.settings.servicesDescription" = "Els serveis activats apareixen al final del menú contextual del Finder. Si hi ha massa ítems, el macOS els agrupa automàticament al submenú «Serveis»; aquesta agrupació no es pot controlar.";
+"app.settings.servicesNote" = "Si els serveis activats no apareixen al Finder o hi ha massa ítems agrupats en un submenú, ajusta els serveis activats a Teclat > Dreceres de teclat > Serveis.";
+"app.settings.servicesOpenErrorDetail" = "No s'ha pogut obrir la configuració del Teclat. Ves a Configuració del Sistema > Teclat > Dreceres de teclat > Serveis.";

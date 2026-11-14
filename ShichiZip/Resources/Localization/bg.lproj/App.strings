@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Компресиране";
+"app.settings.finderService.extract" = "%@: Интелигентно бързо извличане";
+"app.settings.finderService.open" = "Отваряне в %@";
+"app.settings.finderService.reveal" = "%@: Показване във файловия мениджър";
+"app.settings.finderServices" = "Услуги на Finder";
+"app.settings.openKeyboardSettings" = "Отваряне на настройките на клавиатурата";
+"app.settings.servicesDescription" = "Включените услуги се показват в долната част на контекстното меню на Finder. Ако елементите са твърде много, macOS автоматично ги групира в подменюто „Услуги“. Това групиране не може да се управлява.";
+"app.settings.servicesNote" = "Ако включените услуги не се показват във Finder или твърде много елементи са групирани в подменю, настройте включените услуги в Клавиатура > Клавишни комбинации > Услуги.";
+"app.settings.servicesOpenErrorDetail" = "Настройките на клавиатурата не могат да бъдат отворени. Отидете на Системни настройки > Клавиатура > Клавишни комбинации > Услуги.";

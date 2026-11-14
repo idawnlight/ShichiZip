@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Komprimieren";
+"app.settings.finderService.extract" = "%@: Intelligent schnell entpacken";
+"app.settings.finderService.open" = "In %@ öffnen";
+"app.settings.finderService.reveal" = "%@: Im Dateimanager anzeigen";
+"app.settings.finderServices" = "Finder-Dienste";
+"app.settings.openKeyboardSettings" = "Einstellungen für „Tastatur“ öffnen";
+"app.settings.servicesDescription" = "Aktivierte Dienste erscheinen unten im Kontextmenü des Finders. Bei zu vielen Einträgen fasst macOS sie automatisch im Untermenü „Dienste“ zusammen. Diese Gruppierung lässt sich nicht steuern.";
+"app.settings.servicesNote" = "Wenn aktivierte Dienste im Finder fehlen oder zu viele Einträge in einem Untermenü zusammengefasst werden, passe die aktivierten Dienste unter Tastatur > Tastaturkurzbefehle > Dienste an.";
+"app.settings.servicesOpenErrorDetail" = "Die Einstellungen für „Tastatur“ konnten nicht geöffnet werden. Wähle Systemeinstellungen > Tastatur > Tastaturkurzbefehle > Dienste.";

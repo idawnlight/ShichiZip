@@ -1,0 +1,9 @@
+"app.settings.finderService.compress" = "%@: Gys";
+"app.settings.finderService.extract" = "%@: Akylly çalt çykarmak";
+"app.settings.finderService.open" = "%@ bilen aç";
+"app.settings.finderService.reveal" = "%@: Faýl dolandyryjysynda görkez";
+"app.settings.finderServices" = "Finder hyzmatlary";
+"app.settings.openKeyboardSettings" = "Klawiatura sazlamalaryny aç";
+"app.settings.servicesDescription" = "Işledilen hyzmatlar Finder kontekst menýusynyň aşagynda görkezilýär. Elementler aşa köp bolsa, macOS olary awtomatik ýagdaýda Hyzmatlar aşaky menýusynda toparlaýar; bu toparlamany dolandyryp bolmaýar.";
+"app.settings.servicesNote" = "Işledilen hyzmatlar Finder-de görünmeýän bolsa ýa-da köp element aşaky menýuda toparlanan bolsa, Klawiatura > Klawiatura gysga ýollary > Hyzmatlar bölüminde işledilen hyzmatlary sazlaň.";
+"app.settings.servicesOpenErrorDetail" = "Klawiatura sazlamalaryny açyp bolmady. Ulgam sazlamalary > Klawiatura > Klawiatura gysga ýollary > Hyzmatlar bölümine geçiň.";

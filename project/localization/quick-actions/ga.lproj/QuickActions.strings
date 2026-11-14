@@ -1,0 +1,6 @@
+/* Shared Quick Action and Finder service localization source. */
+
+"quickAction.template.openAction" = "Oscail in {appName}";
+"quickAction.action.reveal" = "Taispeáin sa bhainisteoir comhad";
+"quickAction.action.compress" = "Comhbhrúigh";
+"quickAction.action.extract" = "Díphacáil thapa chliste";
