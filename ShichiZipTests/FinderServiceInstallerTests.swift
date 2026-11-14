@@ -37,7 +37,7 @@ final class FinderServiceInstallerTests: XCTestCase {
             UserDefaults.standard.removePersistentDomain(forName: suite)
         }
         SZL10n.reloadBundle(defaults: defaults)
-        let resources = SZL10n.bundle.bundleURL
+        let resources = try XCTUnwrap(SZL10n.bundle.resourceURL)
         let keys = ["app.settings.finderServices", "app.settings.openKeyboardSettings",
                     "app.settings.servicesDescription", "app.settings.servicesNote",
                     "app.settings.servicesOpenErrorDetail", "app.settings.finderService.reveal",
