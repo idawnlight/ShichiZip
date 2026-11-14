@@ -8,11 +8,12 @@ import XCTest
 
 @MainActor
 final class FileManagerTitlePathFieldTests: XCTestCase {
-    func testTextMarginsSurviveEditingAndDoNotLeakToAnotherField() throws {
+    func testTextMarginsSurviveEditingAndResizingWithoutChangingOtherFields() throws {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 700, height: 200),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         defer { window.close() }
+        let nativeCellClass: AnyClass? = NSTextField.cellClass
         let field = FileManagerTitlePathField(path: "/Users/資料")
         field.frame = NSRect(x: 20, y: 100, width: 600, height: field.fittingSize.height)
         let other = NSTextField(string: "Another field")
@@ -20,6 +21,11 @@ final class FileManagerTitlePathFieldTests: XCTestCase {
         window.contentView?.addSubview(field)
         window.contentView?.addSubview(other)
         window.contentView?.layoutSubtreeIfNeeded()
+        XCTAssertTrue(NSTextField.cellClass === nativeCellClass)
+        let cell = try XCTUnwrap(field.cell)
+        let titleRect = cell.titleRect(forBounds: field.bounds)
+        XCTAssertEqual(titleRect.minX - field.bounds.minX, 9, accuracy: 0.1)
+        XCTAssertEqual(field.bounds.maxX - titleRect.maxX, 9, accuracy: 0.1)
         let editor = try XCTUnwrap(window.fieldEditor(true, for: field) as? NSTextView)
         let originalInset = editor.textContainerInset
         field.beginPathEditing()

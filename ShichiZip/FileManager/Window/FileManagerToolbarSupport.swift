@@ -261,6 +261,24 @@ extension FileManagerWindowController: NSToolbarDelegate {
     }
 }
 
+/// Keep the system's vertical geometry and use 9pt horizontal text margins.
+private final class FileManagerTitlePathCell: NSTextFieldCell {
+    private func textRect(_ rect: NSRect, in bounds: NSRect) -> NSRect {
+        var rect = rect
+        rect.origin.x = bounds.minX + 9
+        rect.size.width = max(0, bounds.width - 18)
+        return rect
+    }
+
+    override func titleRect(forBounds bounds: NSRect) -> NSRect {
+        textRect(super.titleRect(forBounds: bounds), in: bounds)
+    }
+
+    override func drawingRect(forBounds bounds: NSRect) -> NSRect {
+        textRect(super.drawingRect(forBounds: bounds), in: bounds)
+    }
+}
+
 /// A native toolbar-sized path editor, with the pane address field's navigation behavior.
 final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
     var onSubmit: ((String) -> Bool)?
@@ -268,10 +286,9 @@ final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
     private var isFinished = false
     private var isSubmitting = false
     private var isRestoringSheetFocus = false
-    private weak var insetEditor: NSTextView?
-    private var originalEditorInset: NSSize?
 
     convenience init(path: String) {
+        Self.cellClass = FileManagerTitlePathCell.self
         self.init(string: path)
         lineBreakMode = .byTruncatingHead
         isAutomaticTextCompletionEnabled = false
@@ -286,82 +303,18 @@ final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
         setAccessibilityIdentifier("fileManager.titlePathField")
     }
 
-    // Target 9pt text margins without replacing the native cell or changing control height.
-    private var extraTextInset: CGFloat {
-        9 - ((cell?.drawingRect(forBounds: bounds).minX ?? bounds.minX) - bounds.minX)
-    }
-
-    override func layout() {
-        super.layout()
-        updateDisplayInsets()
-    }
-
-    private func updateDisplayInsets() {
-        guard currentEditor() == nil, !stringValue.isEmpty else { return }
-        let paragraph = (attributedStringValue.attribute(.paragraphStyle, at: 0, effectiveRange: nil)
-                         as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
-        let delta = extraTextInset
-        guard paragraph.headIndent != delta || paragraph.firstLineHeadIndent != delta ||
-            paragraph.tailIndent != -delta else { return }
-        paragraph.headIndent = delta
-        paragraph.firstLineHeadIndent = delta
-        paragraph.tailIndent = -delta
-        paragraph.lineBreakMode = lineBreakMode
-        let text = NSMutableAttributedString(attributedString: attributedStringValue)
-        text.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: text.length))
-        attributedStringValue = text
-    }
-
-    private func updateEditorInsets() {
-        guard let editor = currentEditor() as? NSTextView else { return }
-        if insetEditor !== editor {
-            insetEditor = editor
-            originalEditorInset = editor.textContainerInset
-        }
-        editor.textStorage?.removeAttribute(.paragraphStyle,
-                                           range: NSRange(location: 0, length: (editor.string as NSString).length))
-        var attributes = editor.typingAttributes
-        attributes.removeValue(forKey: .paragraphStyle)
-        editor.typingAttributes = attributes
-        editor.defaultParagraphStyle = nil
-        var inset = editor.textContainerInset
-        inset.width = extraTextInset
-        editor.textContainerInset = inset
-    }
-
-    func controlTextDidChange(_: Notification) {
-        updateEditorInsets()
-    }
-
-    private func restoreEditorInsets() {
-        // AppKit shares this editor with the other text fields in the window.
-        if let editor = insetEditor, let originalEditorInset {
-            editor.textContainerInset = originalEditorInset
-        }
-        insetEditor = nil
-        originalEditorInset = nil
-    }
-
-    override func textDidEndEditing(_ notification: Notification) {
-        restoreEditorInsets()
-        super.textDidEndEditing(notification)
-        updateDisplayInsets()
-    }
-
     func install() {
         NotificationCenter.default.addObserver(self, selector: #selector(sheetDidEnd(_:)),
                                                name: NSWindow.didEndSheetNotification, object: window)
     }
 
     func uninstall() {
-        restoreEditorInsets()
         NotificationCenter.default.removeObserver(self, name: NSWindow.didEndSheetNotification, object: window)
     }
 
     func beginPathEditing() {
         guard !isFinished else { return }
         selectText(nil)
-        updateEditorInsets()
     }
 
     @objc private func sheetDidEnd(_: Notification) {
