@@ -13,7 +13,7 @@ final class FileManagerTitlePathFieldTests: XCTestCase {
         let frameInitialized = FileManagerTitlePathField(frame: NSRect(x: 0, y: 0, width: 200, height: 36))
         let frameCell = try XCTUnwrap(frameInitialized.cell)
         XCTAssertFalse(type(of: frameCell) === NSTextFieldCell.self)
-        XCTAssertEqual(frameCell.drawingRect(forBounds: frameInitialized.bounds).minX, 7, accuracy: 0.1)
+        XCTAssertEqual(frameCell.drawingRect(forBounds: frameInitialized.bounds).minX, 9, accuracy: 0.1)
         XCTAssertTrue(NSTextField.cellClass === nativeCellClass)
     }
 
@@ -38,10 +38,12 @@ final class FileManagerTitlePathFieldTests: XCTestCase {
         let otherCell = try XCTUnwrap(other.cell)
         let titleRect = cell.titleRect(forBounds: field.bounds)
         let drawingRect = cell.drawingRect(forBounds: field.bounds)
-        XCTAssertEqual(titleRect.minX - field.bounds.minX, 7, accuracy: 0.1)
-        XCTAssertEqual(field.bounds.maxX - titleRect.maxX, 7, accuracy: 0.1)
+        let expectedExtraWidth = max(0, otherCell.drawingRect(forBounds: field.bounds).width - drawingRect.width)
+        XCTAssertEqual(titleRect.minX - field.bounds.minX, 9, accuracy: 0.1)
+        XCTAssertEqual(field.bounds.maxX - titleRect.maxX, 9, accuracy: 0.1)
         XCTAssertEqual(drawingRect, titleRect)
-        XCTAssertEqual(cell.cellSize.width - otherCell.cellSize.width, 6, accuracy: 0.1)
+        XCTAssertGreaterThan(expectedExtraWidth, 0)
+        XCTAssertEqual(cell.cellSize.width - otherCell.cellSize.width, expectedExtraWidth, accuracy: 0.1)
 
         let editor = try XCTUnwrap(window.fieldEditor(true, for: field) as? NSTextView)
         let originalInset = editor.textContainerInset
@@ -55,13 +57,13 @@ final class FileManagerTitlePathFieldTests: XCTestCase {
             let padding = try XCTUnwrap(editor.textContainer?.lineFragmentPadding)
             let leftMargin = editorFrame.minX + editor.textContainerOrigin.x + padding
             let rightMargin = field.bounds.maxX - (editorFrame.maxX - editor.textContainerOrigin.x - padding)
-            XCTAssertEqual(leftMargin, 9, accuracy: 0.1)
-            XCTAssertEqual(rightMargin, 9, accuracy: 0.1)
+            XCTAssertEqual(leftMargin, 11, accuracy: 0.1)
+            XCTAssertEqual(rightMargin, 11, accuracy: 0.1)
             let layoutManager = try XCTUnwrap(editor.layoutManager)
             let textContainer = try XCTUnwrap(editor.textContainer)
             let firstGlyph = layoutManager.boundingRect(forGlyphRange: NSRange(location: 0, length: 1),
                                                         in: textContainer)
-            XCTAssertEqual(editorFrame.minX + editor.textContainerOrigin.x + firstGlyph.minX, 9, accuracy: 0.1)
+            XCTAssertEqual(editorFrame.minX + editor.textContainerOrigin.x + firstGlyph.minX, 11, accuracy: 0.1)
         }
 
         try assertVisualTextMargins()

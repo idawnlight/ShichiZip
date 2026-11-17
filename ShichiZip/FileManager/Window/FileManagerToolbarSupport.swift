@@ -261,10 +261,10 @@ extension FileManagerWindowController: NSToolbarDelegate {
     }
 }
 
-/// Keep the system's vertical geometry and use 9pt visual horizontal text margins.
+/// Keep the system's vertical geometry and use 11pt visual horizontal text margins.
 private final class FileManagerTitlePathCell: NSTextFieldCell {
     // AppKit renders text and positions the field editor with 2pt lineFragmentPadding inside drawingRect.
-    private static let horizontalDrawingInset: CGFloat = 7
+    private static let horizontalDrawingInset: CGFloat = 9
 
     private func textRect(_ rect: NSRect, in bounds: NSRect) -> NSRect {
         var rect = rect
