@@ -261,12 +261,15 @@ extension FileManagerWindowController: NSToolbarDelegate {
     }
 }
 
-/// Keep the system's vertical geometry and use 9pt horizontal text margins.
+/// Keep the system's vertical geometry and use 9pt visual horizontal text margins.
 private final class FileManagerTitlePathCell: NSTextFieldCell {
+    // AppKit renders text and positions the field editor with 2pt lineFragmentPadding inside drawingRect.
+    private static let horizontalDrawingInset: CGFloat = 7
+
     private func textRect(_ rect: NSRect, in bounds: NSRect) -> NSRect {
         var rect = rect
-        rect.origin.x = bounds.minX + 9
-        rect.size.width = max(0, bounds.width - 18)
+        rect.origin.x = bounds.minX + Self.horizontalDrawingInset
+        rect.size.width = max(0, bounds.width - Self.horizontalDrawingInset * 2)
         return rect
     }
 
@@ -277,10 +280,25 @@ private final class FileManagerTitlePathCell: NSTextFieldCell {
     override func drawingRect(forBounds bounds: NSRect) -> NSRect {
         textRect(super.drawingRect(forBounds: bounds), in: bounds)
     }
+
+    override func cellSize(forBounds rect: NSRect) -> NSSize {
+        let probe = NSRect(x: 0, y: 0, width: 100, height: 100)
+        let extraInset = super.drawingRect(forBounds: probe).width - drawingRect(forBounds: probe).width
+        var size = super.cellSize(forBounds: rect)
+        if size.width.isFinite {
+            size.width = min(rect.width, size.width + max(0, extraInset))
+        }
+        return size
+    }
 }
 
 /// A native toolbar-sized path editor, with the pane address field's navigation behavior.
 final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
+    override class var cellClass: AnyClass? {
+        get { FileManagerTitlePathCell.self }
+        set {}
+    }
+
     var onSubmit: ((String) -> Bool)?
     var onFinish: (() -> Void)?
     private var isFinished = false
@@ -288,7 +306,6 @@ final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
     private var isRestoringSheetFocus = false
 
     convenience init(path: String) {
-        Self.cellClass = FileManagerTitlePathCell.self
         self.init(string: path)
         lineBreakMode = .byTruncatingHead
         isAutomaticTextCompletionEnabled = false
