@@ -261,18 +261,59 @@ extension FileManagerWindowController: NSToolbarDelegate {
     }
 }
 
+/// Keep the system's vertical geometry and use 11pt visual horizontal text margins.
+private final class FileManagerTitlePathCell: NSTextFieldCell {
+    // AppKit renders text and positions the field editor with 2pt lineFragmentPadding inside drawingRect.
+    private static let horizontalDrawingInset: CGFloat = 9
+
+    private func textRect(_ rect: NSRect, in bounds: NSRect) -> NSRect {
+        var rect = rect
+        rect.origin.x = bounds.minX + Self.horizontalDrawingInset
+        rect.size.width = max(0, bounds.width - Self.horizontalDrawingInset * 2)
+        return rect
+    }
+
+    override func titleRect(forBounds bounds: NSRect) -> NSRect {
+        textRect(super.titleRect(forBounds: bounds), in: bounds)
+    }
+
+    override func drawingRect(forBounds bounds: NSRect) -> NSRect {
+        textRect(super.drawingRect(forBounds: bounds), in: bounds)
+    }
+
+    override func cellSize(forBounds rect: NSRect) -> NSSize {
+        let probe = NSRect(x: 0, y: 0, width: 100, height: 100)
+        let extraInset = super.drawingRect(forBounds: probe).width - drawingRect(forBounds: probe).width
+        var size = super.cellSize(forBounds: rect)
+        if size.width.isFinite {
+            size.width = min(rect.width, size.width + max(0, extraInset))
+        }
+        return size
+    }
+}
+
 /// A native toolbar-sized path editor, with the pane address field's navigation behavior.
 final class FileManagerTitlePathField: NSTextField, NSTextFieldDelegate {
+    override class var cellClass: AnyClass? {
+        get { FileManagerTitlePathCell.self }
+        set {}
+    }
+
     var onSubmit: ((String) -> Bool)?
     var onFinish: (() -> Void)?
     private var isFinished = false
     private var isSubmitting = false
     private var isRestoringSheetFocus = false
+
     convenience init(path: String) {
         self.init(string: path)
         lineBreakMode = .byTruncatingHead
         isAutomaticTextCompletionEnabled = false
-        controlSize = .large
+        if #available(macOS 26.0, *) {
+            controlSize = .extraLarge
+        } else {
+            controlSize = .large
+        }
         bezelStyle = .roundedBezel
         isBezeled = true
         delegate = self
@@ -356,16 +397,17 @@ final class FileManagerPathToolbar: NSObject, NSToolbarDelegate {
         originalToolbar = window.toolbar
         originalTitleVisibility = window.titleVisibility
         // AppKit allocates the available toolbar width and owns all item geometry.
-        let content = NSStackView(views: [field])
-        content.orientation = .horizontal
-        content.distribution = .fill
-        content.edgeInsets = NSEdgeInsetsZero
-        content.widthAnchor.constraint(greaterThanOrEqualToConstant: 100).isActive = true
-        widthLimit = content.widthAnchor.constraint(lessThanOrEqualToConstant: window.frame.width)
+        field.widthAnchor.constraint(greaterThanOrEqualToConstant: 100).isActive = true
+        widthLimit = field.widthAnchor.constraint(lessThanOrEqualToConstant: window.frame.width)
         widthLimit.isActive = true
-        item.view = content
+        item.view = field
         item.label = SZL10n.string("column.path")
-        item.isBordered = true
+        // Modern toolbars supply the field's native background through the item border.
+        if #available(macOS 26.0, *) {
+            item.isBordered = true
+        } else {
+            item.isBordered = false
+        }
         super.init()
         toolbar.delegate = self
         // Text-only mode must still show the editor. Modern toolbars keep their

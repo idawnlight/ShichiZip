@@ -99,10 +99,17 @@ final class UnifiedToolbarUITests: ShichiZipUITestCase {
         let toolbar = window.toolbars.firstMatch
         let copy = toolbar.buttons["Copy"]
         let add = toolbar.buttons["Add"]
+        // Drop before the glass group's boundary and let AppKit finish its insertion preview.
+        let destination = add.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+            .withOffset(CGVector(dx: -12, dy: 0))
         copy.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click(
-            forDuration: 0.3,
-            thenDragTo: add.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)),
+            forDuration: 0.5,
+            thenDragTo: destination,
+            withVelocity: .slow,
+            thenHoldForDuration: 0.5,
         )
+        expectation(for: NSPredicate { _, _ in copy.frame.minX < add.frame.minX }, evaluatedWith: toolbar)
+        waitForExpectations(timeout: 5)
         XCTAssertLessThan(copy.frame.minX, add.frame.minX)
         let info = toolbar.buttons["Info"]
         info.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click(

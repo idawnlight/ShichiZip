@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import XCTest
 #if SHICHIZIP_ZS_VARIANT
     @testable import ShichiZip_ZS
@@ -43,6 +44,67 @@ final class SharedUserDefaultsTests: XCTestCase {
         }
 
         XCTAssertNotNil(SZSharedUserDefaults.sharedDefaults)
+    }
+
+    func testEntitledAppGroupResolutionRequiresNonAdHocSignatureAndEntitlement() {
+        XCTAssertEqual(
+            SZSharedUserDefaults.resolveEntitledAppGroupIdentifier(configuredIdentifier: " VNM753Y3JX.ShichiZip ",
+                                                                   signingIdentifier: "ee.dawn.ShichiZip",
+                                                                   signatureFlags: 0,
+                                                                   entitledGroups: ["VNM753Y3JX.ShichiZip"]),
+            "VNM753Y3JX.ShichiZip",
+        )
+
+        // Empty DEVELOPMENT_TEAM expands to ".ShichiZip" / ".ShichiZipZS" in Info.plist and entitlements.
+        XCTAssertNil(SZSharedUserDefaults.resolveEntitledAppGroupIdentifier(configuredIdentifier: ".ShichiZip",
+                                                                            signingIdentifier: "ee.dawn.ShichiZip",
+                                                                            signatureFlags: 0,
+                                                                            entitledGroups: [".ShichiZip"]))
+        XCTAssertNil(SZSharedUserDefaults.resolveEntitledAppGroupIdentifier(configuredIdentifier: ".ShichiZipZS",
+                                                                            signingIdentifier: "ee.dawn.ShichiZipZS",
+                                                                            signatureFlags: 0,
+                                                                            entitledGroups: [".ShichiZipZS"]))
+
+        // Ad-hoc and linker-signed builds set .adhoc even when entitlements are embedded.
+        XCTAssertNil(SZSharedUserDefaults.resolveEntitledAppGroupIdentifier(configuredIdentifier: "VNM753Y3JX.ShichiZip",
+                                                                            signingIdentifier: "ee.dawn.ShichiZip",
+                                                                            signatureFlags: SecCodeSignatureFlags.adhoc.rawValue,
+                                                                            entitledGroups: ["VNM753Y3JX.ShichiZip"]))
+
+        // Unsigned, missing suffix, missing entitlement, or empty configuration must fall back.
+        XCTAssertNil(SZSharedUserDefaults.resolveEntitledAppGroupIdentifier(configuredIdentifier: "VNM753Y3JX.ShichiZip",
+                                                                            signingIdentifier: nil,
+                                                                            signatureFlags: 0,
+                                                                            entitledGroups: ["VNM753Y3JX.ShichiZip"]))
+        XCTAssertNil(SZSharedUserDefaults.resolveEntitledAppGroupIdentifier(configuredIdentifier: "VNM753Y3JX.",
+                                                                            signingIdentifier: "ee.dawn.ShichiZip",
+                                                                            signatureFlags: 0,
+                                                                            entitledGroups: ["VNM753Y3JX."]))
+        XCTAssertNil(SZSharedUserDefaults.resolveEntitledAppGroupIdentifier(configuredIdentifier: "VNM753Y3JX.ShichiZip",
+                                                                            signingIdentifier: "ee.dawn.ShichiZip",
+                                                                            signatureFlags: 0,
+                                                                            entitledGroups: []))
+        XCTAssertNil(SZSharedUserDefaults.resolveEntitledAppGroupIdentifier(configuredIdentifier: nil,
+                                                                            signingIdentifier: "ee.dawn.ShichiZip",
+                                                                            signatureFlags: 0,
+                                                                            entitledGroups: ["VNM753Y3JX.ShichiZip"]))
+    }
+
+    func testFallbackSkipsStandardDefaultsMigrationAndPreservesSourceDomain() throws {
+        let source = try makeIsolatedDefaults()
+        source.defaults.set("unified", forKey: "FileManager.ToolbarStyle")
+        source.defaults.set(true, forKey: "ShowHiddenFiles")
+
+        let didMigrate = SZSharedUserDefaults.migrateStandardDefaultsIfNeeded(
+            appGroupIdentifier: nil,
+            sharedDefaults: nil,
+            standardDefaults: source.defaults,
+            appDefaultsDomainName: source.suiteName,
+        )
+
+        XCTAssertFalse(didMigrate)
+        XCTAssertEqual(source.defaults.string(forKey: "FileManager.ToolbarStyle"), "unified")
+        XCTAssertTrue(source.defaults.bool(forKey: "ShowHiddenFiles"))
     }
 
     func testMigrationCopiesAppDomainWithoutOverwritingSharedValuesAndRemovesSource() throws {

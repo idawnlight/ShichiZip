@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
-#import <dispatch/dispatch.h>
 
+#include <atomic>
 #include "SZStringConversion.h"
 
 #define BOOL BOOL_7Z_COMPAT
@@ -42,22 +42,22 @@ SZ_DEFINE_7ZIP_GUID(IID_IFolderArchiveUpdateCallback_MoveArc, 0x01, 0x14);
 static NSString* const kSZWorkDirModePreferenceKey = @"WorkDirMode";
 static NSString* const kSZWorkDirPathPreferenceKey = @"WorkDirPath";
 static NSString* const kSZWorkDirRemovableOnlyPreferenceKey = @"WorkDirForRemovableOnly";
-static NSString* const kSZAppGroupIdentifierInfoKey = @"ShichiZipQuickActionAppGroupIdentifier";
+
+using SZWorkDirUserDefaultsProvider = NSUserDefaults* (*)(void);
+static std::atomic<SZWorkDirUserDefaultsProvider> gWorkDirUserDefaultsProvider{nullptr};
+
+extern "C" void SZSetWorkDirUserDefaultsProvider(SZWorkDirUserDefaultsProvider provider) {
+    SZWorkDirUserDefaultsProvider expected = nullptr;
+    gWorkDirUserDefaultsProvider.compare_exchange_strong(expected, provider, std::memory_order_acq_rel);
+}
 
 static NSUserDefaults* SZSharedNSUserDefaults(void) {
-    static NSUserDefaults* defaults;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSString* appGroupIdentifier =
-            [[NSBundle mainBundle] objectForInfoDictionaryKey:kSZAppGroupIdentifierInfoKey];
-        if (appGroupIdentifier.length > 0) {
-            defaults = [[NSUserDefaults alloc] initWithSuiteName:appGroupIdentifier];
+    if (SZWorkDirUserDefaultsProvider provider = gWorkDirUserDefaultsProvider.load(std::memory_order_acquire)) {
+        if (NSUserDefaults* defaults = provider()) {
+            return defaults;
         }
-        if (!defaults) {
-            defaults = [NSUserDefaults standardUserDefaults];
-        }
-    });
-    return defaults;
+    }
+    return [NSUserDefaults standardUserDefaults];
 }
 
 bool SZWorkDirShouldUseConfiguredMode(const FString& path) {

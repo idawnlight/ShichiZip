@@ -1,7 +1,9 @@
 import Foundation
+import Security
 
 enum SZSharedUserDefaults {
     static let appGroupIdentifierInfoKey = "ShichiZipQuickActionAppGroupIdentifier"
+    private static let applicationGroupsEntitlementKey = "com.apple.security.application-groups"
 
     private static let migrationVersionKey = "ShichiZip.SharedUserDefaultsMigrationVersion"
     private static let currentMigrationVersion = 1
@@ -10,14 +12,9 @@ enum SZSharedUserDefaults {
         sharedDefaults ?? .standard
     }
 
-    static let appGroupIdentifier: String? = {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: appGroupIdentifierInfoKey) as? String else {
-            return nil
-        }
-
-        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedValue.isEmpty ? nil : trimmedValue
-    }()
+    /// macOS only persists App Group preference suites and containers when the
+    /// binary is signed with a real Team Identifier matching `<TeamID>.<GroupName>`.
+    static let appGroupIdentifier: String? = resolveCurrentProcessAppGroupIdentifier()
 
     /// Foundation documents UserDefaults as thread-safe, but does not declare it Sendable.
     nonisolated(unsafe) static let sharedDefaults: UserDefaults? = {
@@ -28,21 +25,91 @@ enum SZSharedUserDefaults {
         return UserDefaults(suiteName: appGroupIdentifier)
     }()
 
+    static func resolveEntitledAppGroupIdentifier(configuredIdentifier: String?,
+                                                  signingIdentifier: String?,
+                                                  signatureFlags: UInt32,
+                                                  entitledGroups: [Any]?) -> String?
+    {
+        guard let identifier = configuredIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+              let dotIndex = identifier.firstIndex(of: "."),
+              dotIndex > identifier.startIndex,
+              identifier.index(after: dotIndex) < identifier.endIndex,
+              let signingIdentifier,
+              !signingIdentifier.isEmpty,
+              !SecCodeSignatureFlags(rawValue: signatureFlags).contains(.adhoc)
+        else {
+            return nil
+        }
+
+        let groups = entitledGroups?.compactMap { $0 as? String } ?? []
+        return groups.contains(identifier) ? identifier : nil
+    }
+
+    private static func resolveCurrentProcessAppGroupIdentifier() -> String? {
+        guard let rawIdentifier = Bundle.main.object(forInfoDictionaryKey: appGroupIdentifierInfoKey) as? String else {
+            return nil
+        }
+
+        let configuredIdentifier = rawIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !configuredIdentifier.isEmpty, !configuredIdentifier.hasPrefix(".") else {
+            return nil
+        }
+
+        var code: SecCode?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else {
+            return nil
+        }
+
+        var staticCode: SecStaticCode?
+        guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode else {
+            return nil
+        }
+
+        var signingInfoRef: CFDictionary?
+        guard SecCodeCopySigningInformation(staticCode, [], &signingInfoRef) == errSecSuccess,
+              let signingInfo = signingInfoRef as? [String: Any],
+              let signatureFlags = (signingInfo[kSecCodeInfoFlags as String] as? NSNumber)?.uint32Value
+        else {
+            return nil
+        }
+
+        let signingIdentifier = signingInfo[kSecCodeInfoIdentifier as String] as? String
+        let entitlements = signingInfo[kSecCodeInfoEntitlementsDict as String] as? [String: Any]
+        let entitledGroups = entitlements?[applicationGroupsEntitlementKey] as? [Any]
+        return resolveEntitledAppGroupIdentifier(configuredIdentifier: configuredIdentifier,
+                                                 signingIdentifier: signingIdentifier,
+                                                 signatureFlags: signatureFlags,
+                                                 entitledGroups: entitledGroups)
+    }
+
     static func migrateStandardDefaultsIfNeeded() {
+        _ = migrateStandardDefaultsIfNeeded(appGroupIdentifier: appGroupIdentifier,
+                                            sharedDefaults: sharedDefaults,
+                                            standardDefaults: .standard,
+                                            appDefaultsDomainName: Bundle.main.bundleIdentifier)
+    }
+
+    @discardableResult
+    static func migrateStandardDefaultsIfNeeded(appGroupIdentifier: String?,
+                                                sharedDefaults: UserDefaults?,
+                                                standardDefaults: UserDefaults,
+                                                appDefaultsDomainName: String?) -> Bool
+    {
         guard let appGroupIdentifier,
               let sharedDefaults,
-              let appDefaultsDomainName = Bundle.main.bundleIdentifier,
+              let appDefaultsDomainName,
               sharedDefaults.integer(forKey: migrationVersionKey) < currentMigrationVersion
         else {
-            return
+            return false
         }
 
         migrateDefaultsDomain(named: appDefaultsDomainName,
-                              from: .standard,
+                              from: standardDefaults,
                               to: sharedDefaults,
                               destinationDomainName: appGroupIdentifier,
                               removesSourceDomain: true)
         sharedDefaults.set(currentMigrationVersion, forKey: migrationVersionKey)
+        return true
     }
 
     @discardableResult
