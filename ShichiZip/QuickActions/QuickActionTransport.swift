@@ -1,14 +1,11 @@
 import Foundation
 import os
-import Security
 
 public enum ShichiZipQuickActionTransport {
     private static let launchHost = "quick-action"
     private static let launchPath = "/finder"
     private static let requestQueryItemName = "request"
     private static let defaultURLScheme = "shichizip"
-    private static let applicationGroupsEntitlementKey = "com.apple.security.application-groups"
-    private static let appGroupIdentifierInfoKey = "ShichiZipQuickActionAppGroupIdentifier"
     private static let urlSchemeInfoKey = "ShichiZipQuickActionURLScheme"
     private static let requestDirectoryName = "QuickActionRequests"
     private static let staleRequestLifetime: TimeInterval = 24 * 60 * 60
@@ -26,7 +23,7 @@ public enum ShichiZipQuickActionTransport {
     }
 
     private static var appGroupIdentifier: String? {
-        infoString(forKey: appGroupIdentifierInfoKey)
+        SZSharedUserDefaults.appGroupIdentifier
     }
 
     public static func canHandle(_ url: URL) -> Bool {
@@ -184,12 +181,8 @@ public enum ShichiZipQuickActionTransport {
         #endif
 
         guard let appGroupIdentifier else {
-            log("transport unavailable missing app group identifier bundle=\(bundleIdentifier) infoKey=\(appGroupIdentifierInfoKey)")
-            throw ShichiZipQuickActionError.transportUnavailable
-        }
-
-        guard hasRuntimeAppGroupEntitlement(appGroupIdentifier) else {
-            log("transport unavailable missing runtime app group entitlement bundle=\(bundleIdentifier) appGroupIdentifier=\(appGroupIdentifier)")
+            let configuredIdentifier = infoString(forKey: SZSharedUserDefaults.appGroupIdentifierInfoKey) ?? "<missing>"
+            log("transport unavailable missing entitled app group bundle=\(bundleIdentifier) configuredGroupIdentifier=\(configuredIdentifier)")
             throw ShichiZipQuickActionError.transportUnavailable
         }
 
@@ -229,20 +222,6 @@ public enum ShichiZipQuickActionTransport {
     private static func infoString(forKey key: String) -> String? {
         (Bundle.main.object(forInfoDictionaryKey: key) as? String)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private static func hasRuntimeAppGroupEntitlement(_ appGroupIdentifier: String) -> Bool {
-        guard let task = SecTaskCreateFromSelf(nil),
-              let entitlementsValue = SecTaskCopyValueForEntitlement(task,
-                                                                     applicationGroupsEntitlementKey as CFString,
-                                                                     nil) as? [Any]
-        else {
-            return false
-        }
-
-        return entitlementsValue
-            .compactMap { $0 as? String }
-            .contains(appGroupIdentifier)
     }
 
     private static func isTransportAccessDenied(_ error: Error) -> Bool {

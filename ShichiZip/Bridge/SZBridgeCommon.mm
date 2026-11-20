@@ -4,7 +4,15 @@
 #define INITGUID
 
 #include "SZBridgeCommon.h"
+#import <Security/Security.h>
 #include <os/lock.h>
+
+extern "C" void SZSetWorkDirUserDefaultsProvider(NSUserDefaults* _Nonnull (* _Nullable provider)(void));
+
+__attribute__((constructor))
+static void SZRegisterWorkDirUserDefaultsProvider(void) {
+    SZSetWorkDirUserDefaultsProvider(SZSharedNSUserDefaults);
+}
 
 NSString* const SZArchiveErrorDomain = @"SZArchiveErrorDomain";
 NSString* const SZArchiveMutationCommittedErrorKey = @"SZArchiveMutationCommitted";
@@ -14,15 +22,49 @@ NSString* const SZArchiveMutationReopenFailedErrorKey = @"SZArchiveMutationReope
 // Shared preferences and localization
 // ============================================================
 
+static NSString* _Nullable SZResolvedEntitledAppGroupIdentifier(void) {
+    id rawIdentifier = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"ShichiZipQuickActionAppGroupIdentifier"];
+    NSString* identifier = [rawIdentifier isKindOfClass:NSString.class]
+        ? [rawIdentifier stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]
+        : nil;
+    const NSRange dotRange = identifier ? [identifier rangeOfString:@"."] : NSMakeRange(NSNotFound, 0);
+    if (dotRange.location == NSNotFound || dotRange.location == 0 || NSMaxRange(dotRange) >= identifier.length) {
+        return nil;
+    }
+
+    SecCodeRef code = NULL;
+    if (SecCodeCopySelf(kSecCSDefaultFlags, &code) != errSecSuccess || !code) {
+        return nil;
+    }
+    CFDictionaryRef signingInfoRef = NULL;
+    const OSStatus status = SecCodeCopySigningInformation(code, kSecCSDefaultFlags, &signingInfoRef);
+    CFRelease(code);
+    if (status != errSecSuccess || !signingInfoRef) {
+        return nil;
+    }
+
+    NSDictionary* signingInfo = CFBridgingRelease(signingInfoRef);
+    id rawSigningID = signingInfo[(__bridge NSString*)kSecCodeInfoIdentifier];
+    id rawFlags = signingInfo[(__bridge NSString*)kSecCodeInfoFlags];
+    if (![rawSigningID isKindOfClass:NSString.class] || [(NSString*)rawSigningID length] == 0 ||
+        ![rawFlags isKindOfClass:NSNumber.class] ||
+        ([(NSNumber*)rawFlags unsignedIntValue] & kSecCodeSignatureAdhoc) != 0) {
+        return nil;
+    }
+
+    id rawEntitlements = signingInfo[(__bridge NSString*)kSecCodeInfoEntitlementsDict];
+    id rawGroups = [rawEntitlements isKindOfClass:NSDictionary.class]
+        ? rawEntitlements[@"com.apple.security.application-groups"]
+        : nil;
+    return ([rawGroups isKindOfClass:NSArray.class] && [rawGroups containsObject:identifier]) ? identifier : nil;
+}
+
 NSUserDefaults* SZSharedNSUserDefaults(void) {
     static NSUserDefaults* defaults;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        NSString* appGroupIdentifier =
-            [[NSBundle mainBundle] objectForInfoDictionaryKey:@"ShichiZipQuickActionAppGroupIdentifier"];
-        if (appGroupIdentifier.length > 0) {
-            defaults = [[NSUserDefaults alloc] initWithSuiteName:appGroupIdentifier];
-        }
+        NSString* appGroupIdentifier = SZResolvedEntitledAppGroupIdentifier();
+        defaults = appGroupIdentifier ? [[NSUserDefaults alloc] initWithSuiteName:appGroupIdentifier] : nil;
         if (!defaults) {
             defaults = [NSUserDefaults standardUserDefaults];
         }

@@ -16,6 +16,8 @@ targets:
           - "Resources/**"
       - &shared_swift_log_source
         path: ../../ShichiZip/Utilities/SZLog.swift
+      - &shared_swift_defaults_source
+        path: ../../ShichiZip/Utilities/SZSharedUserDefaults.swift
     dependencies:
       - sdk: AppKit.framework
       - sdk: Security.framework
