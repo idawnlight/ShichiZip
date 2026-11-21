@@ -79,17 +79,29 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
 
     private static let knownArchiveExtensions: Set<String> = ["7z", "zip", "tar", "gz", "gzip", "bz2", "bzip2", "xz", "wim", "zst", "zstd", "br", "brotli", "liz", "lz4", "lz5", "exe"]
 
+    private struct ResolvedFormatConfiguration {
+        let method: MethodOption?
+        let level: Int
+        let dictionarySize: UInt64
+        let wordSize: UInt32
+        let solidMode: Bool
+        let threadText: String
+        let parameters: String
+        let encryption: SZEncryptionMethod
+    }
+
     private let sourceURLs: [URL]
     private let baseDirectory: URL
     private let messageText: String?
     private let suggestedBaseName: String
+    private let preferenceDefaults: UserDefaults
     let supportedFormatInfoByName: [String: SZFormatInfo]
     private let availableFormats: [FormatOption]
     private let hasStoredAdvancedPreferences: Bool
 
     private var archivePathPicker: ArchivePathPicker?
     private weak var currentDialogWindow: NSWindow?
-    private var contentController: CompressDialogContentController?
+    private(set) var contentController: CompressDialogContentController?
 
     private var advancedOptionsState = AdvancedOptionsState(storeSymbolicLinks: false,
                                                             storeHardLinks: false,
@@ -111,7 +123,8 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
 
     init(sourceURLs: [URL],
          baseDirectory: URL? = nil,
-         message: String? = nil)
+         message: String? = nil,
+         preferenceDefaults: UserDefaults = SZSharedUserDefaults.defaults)
     {
         let normalizedSourceURLs = sourceURLs.map(\.standardizedFileURL)
         let resolvedBaseDirectory = (baseDirectory ?? Self.suggestedBaseDirectory(for: normalizedSourceURLs)).standardizedFileURL
@@ -119,16 +132,80 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
 
         self.sourceURLs = normalizedSourceURLs
         self.baseDirectory = resolvedBaseDirectory
+        self.preferenceDefaults = preferenceDefaults
         suggestedBaseName = Self.suggestedArchiveBaseName(for: normalizedSourceURLs,
                                                           baseDirectory: resolvedBaseDirectory)
         self.supportedFormatInfoByName = supportedFormatInfoByName
         availableFormats = Self.makeAvailableFormats(supportedFormatInfoByName: supportedFormatInfoByName,
                                                      sourceURLs: normalizedSourceURLs)
-        hasStoredAdvancedPreferences = DialogPreferences.hasStoredAdvancedOptions()
+        hasStoredAdvancedPreferences = DialogPreferences.hasStoredAdvancedOptions(defaults: preferenceDefaults)
         messageText = message ?? Self.defaultMessage(for: normalizedSourceURLs,
                                                      baseDirectory: resolvedBaseDirectory)
 
         super.init()
+    }
+
+    @discardableResult
+    func prepareContentController() -> CompressDialogContentController {
+        let initialState = makeInitialDialogState()
+        let contentController = CompressDialogContentController(owner: self,
+                                                                initialState: initialState,
+                                                                availableFormats: availableFormats)
+        { [weak self] in
+            self?.refreshOptionAvailability()
+        }
+
+        self.contentController = contentController
+        advancedOptionsState = initialState.advancedOptions
+        advancedOptionsWereCustomized = hasStoredAdvancedPreferences
+
+        contentController.setThreadText(initialState.threadText)
+        contentController.selectSolidMode(initialState.solidMode)
+        reloadFormatDependentControls(preferredLevel: initialState.level,
+                                      preferredMethodName: initialState.method?.methodName,
+                                      preferredDictionarySize: initialState.dictionarySize,
+                                      preferredWordSize: initialState.wordSize,
+                                      preferredEncryption: initialState.encryption)
+        updatePasswordVisibilityUI()
+        refreshOptionAvailability()
+        return contentController
+    }
+
+    func commitCurrentSelectionForTesting() throws -> CompressDialogResult {
+        guard let contentController else {
+            preconditionFailure("prepareContentController() must be called before committing selection.")
+        }
+        contentController.updateStateFromControls(advancedOptions: advancedOptionsState)
+        let state = contentController.state
+        let result = try makeResultBuilder().build(from: state)
+        recordPreferences(from: state)
+        return result
+    }
+
+    private func recordPreferences(from state: CompressDialogState) {
+        DialogPreferences.record(format: state.formatName,
+                                 updateMode: state.updateMode,
+                                 pathMode: state.pathMode,
+                                 openSharedFiles: state.openSharedFiles,
+                                 deleteAfterCompression: state.deleteAfterCompression,
+                                 encryptNames: state.encryptNames,
+                                 showPassword: state.showPassword,
+                                 memoryUsage: state.memoryUsageSpec,
+                                 defaults: preferenceDefaults)
+        DialogPreferences.recordFormatPreferences(
+            DialogPreferences.FormatPreferences(level: state.level,
+                                                methodName: state.method?.methodName,
+                                                dictionarySize: state.dictionarySize,
+                                                wordSize: state.wordSize,
+                                                solidMode: state.solidMode,
+                                                threadText: Self.normalizedThreadText(state.threadText),
+                                                parameters: state.parameters.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                encryption: state.encryption),
+            forFormatName: state.formatName,
+            defaults: preferenceDefaults,
+        )
+        DialogPreferences.recordAdvancedOptions(state.advancedOptions,
+                                                defaults: preferenceDefaults)
     }
 
     func runModal(for parentWindow: NSWindow?) async -> CompressDialogResult? {
@@ -140,19 +217,11 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
             return nil
         }
 
-        let initialState = makeInitialDialogState()
-        let initialMethodName = initialState.method?.methodName ?? ""
-        let advancedOptionsCustomized = hasStoredAdvancedPreferences
         let resultBuilder = makeResultBuilder()
         let validationContext = CompressDialogValidationContext()
 
         do {
-            let contentController = CompressDialogContentController(owner: self,
-                                                                    initialState: initialState,
-                                                                    availableFormats: availableFormats)
-            { [weak self] in
-                self?.refreshOptionAvailability()
-            }
+            let contentController = prepareContentController()
 
             let controller = SZModalDialogController(style: .informational,
                                                      title: SZL10n.string("compress.title"),
@@ -166,18 +235,6 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                                      accessoryView: contentController.accessoryView,
                                                      preferredFirstResponder: contentController.preferredFirstResponder)
             currentDialogWindow = controller.window
-            self.contentController = contentController
-            advancedOptionsState = initialState.advancedOptions
-            advancedOptionsWereCustomized = advancedOptionsCustomized
-
-            reloadFormatDependentControls(preferredLevel: initialState.level,
-                                          preferredMethodName: initialMethodName,
-                                          preferredDictionarySize: initialState.dictionarySize,
-                                          preferredWordSize: initialState.wordSize,
-                                          preferredEncryption: initialState.encryption)
-            contentController.selectSolidMode(initialState.solidMode)
-            updatePasswordVisibilityUI()
-            refreshOptionAvailability()
 
             let picker = ArchivePathPicker(ownerWindow: controller.window,
                                            pathField: contentController.archivePathField,
@@ -204,15 +261,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                 do {
                     let result = try resultBuilder.build(from: state)
                     ArchivePathHistory.record(result.archiveURL.path)
-                    DialogPreferences.record(format: state.formatName,
-                                             updateMode: state.updateMode,
-                                             pathMode: state.pathMode,
-                                             openSharedFiles: state.openSharedFiles,
-                                             deleteAfterCompression: state.deleteAfterCompression,
-                                             encryptNames: state.encryptNames,
-                                             showPassword: state.showPassword,
-                                             memoryUsage: state.memoryUsageSpec)
-                    DialogPreferences.recordAdvancedOptions(state.advancedOptions)
+                    recordPreferences(from: state)
                     validationContext.result = result
                     return true
                 } catch {
@@ -288,17 +337,21 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
     }
 
     @objc func formatChanged(_: Any?) {
+        let format = selectedFormatOption()
+        let configuration = format.map(resolvedFormatConfiguration(for:))
+        contentController?.setThreadText(configuration?.threadText ?? "Auto")
+        contentController?.selectSolidMode(configuration?.solidMode ?? false)
+        contentController?.setParameters(configuration?.parameters ?? defaultParameters(for: format))
         updateArchivePathExtension()
-        reloadFormatDependentControls(preferredLevel: nil,
-                                      preferredMethodName: nil,
-                                      preferredDictionarySize: nil,
-                                      preferredWordSize: nil,
-                                      preferredEncryption: nil)
-        contentController?.setParameters(defaultParameters(for: selectedFormatOption()))
+        reloadFormatDependentControls(preferredLevel: configuration?.level,
+                                      preferredMethodName: configuration?.method?.methodName,
+                                      preferredDictionarySize: configuration?.dictionarySize,
+                                      preferredWordSize: configuration?.wordSize,
+                                      preferredEncryption: configuration?.encryption)
 
         if !advancedOptionsWereCustomized,
            !hasStoredAdvancedPreferences,
-           let format = selectedFormatOption()
+           let format
         {
             advancedOptionsState = defaultAdvancedOptionsState(for: format,
                                                                methodName: selectedMethodOption()?.methodName)
@@ -448,43 +501,119 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         contentController?.refreshCompressionEstimateSummary(dependencies: makeContentRefreshDependencies())
     }
 
+    private func resolvedFormatConfiguration(for format: FormatOption) -> ResolvedFormatConfiguration {
+        let saved = DialogPreferences.formatPreferences(forFormatName: format.codecName,
+                                                        defaults: preferenceDefaults)
+        let method: MethodOption? = if format.methods.isEmpty {
+            nil
+        } else if let savedMethodName = saved?.methodName,
+                  let matchedMethod = format.methods.first(where: { $0.methodName == savedMethodName })
+        {
+            matchedMethod
+        } else {
+            format.methods.first
+        }
+
+        let availableLevels = levelOptions(for: format, method: method)
+        let level: Int = if let savedLevel = saved?.level,
+                            availableLevels.contains(where: { $0.levelValue == savedLevel })
+        {
+            savedLevel
+        } else {
+            defaultLevel(for: format.codecName, methodName: method?.methodName)
+        }
+
+        let availableDictionaries = method?.dictionaryOptions ?? []
+        let dictionarySize: UInt64 = if let savedDictionary = saved?.dictionarySize,
+                                        availableDictionaries.contains(where: { $0.value == savedDictionary })
+        {
+            savedDictionary
+        } else {
+            0
+        }
+
+        let availableWords = method?.wordOptions ?? []
+        let wordSize: UInt32 = if let savedWord = saved?.wordSize,
+                                  availableWords.contains(where: { $0.value == savedWord })
+        {
+            savedWord
+        } else {
+            0
+        }
+
+        let solidMode = format.supportsSolid ? (saved?.solidMode ?? true) : false
+
+        let threadText: String = if format.supportsThreads, let savedThread = saved?.threadText {
+            {
+                let normalized = Self.normalizedThreadText(savedThread)
+                return ((try? parseThreadCount(normalized)) != nil) ? normalized : "Auto"
+            }()
+        } else {
+            "Auto"
+        }
+
+        let parameters = saved?.parameters.trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? defaultParameters(for: format)
+
+        let encryption: SZEncryptionMethod = if format.encryptionOptions.isEmpty {
+            .none
+        } else if let savedEncryption = saved?.encryption,
+                  format.encryptionOptions.contains(where: { $0.value == savedEncryption })
+        {
+            savedEncryption
+        } else {
+            format.encryptionOptions[0].value
+        }
+
+        return ResolvedFormatConfiguration(method: method,
+                                           level: level,
+                                           dictionarySize: dictionarySize,
+                                           wordSize: wordSize,
+                                           solidMode: solidMode,
+                                           threadText: threadText,
+                                           parameters: parameters,
+                                           encryption: encryption)
+    }
+
     private func makeInitialDialogState() -> CompressDialogState {
         let allowedFormats = availableFormats.map(\.codecName)
         let selectedFormatName = DialogPreferences.format(defaultValue: availableFormats[0].codecName,
-                                                          allowedValues: allowedFormats)
+                                                          allowedValues: allowedFormats,
+                                                          defaults: preferenceDefaults)
         let format = formatOption(named: selectedFormatName) ?? availableFormats[0]
-        let selectedMethodName = defaultMethodName(for: selectedFormatName)
-        let method = format.methods.first { $0.methodName == selectedMethodName }
+        let configuration = resolvedFormatConfiguration(for: format)
         let advancedOptions = DialogPreferences.advancedOptions(
             defaults: defaultAdvancedOptionsState(for: format,
-                                                  methodName: selectedMethodName),
+                                                  methodName: configuration.method?.methodName),
+            store: preferenceDefaults,
         )
 
         return CompressDialogState(archivePath: defaultArchiveURL(for: selectedFormatName).path,
                                    format: format,
-                                   level: defaultLevel(for: selectedFormatName,
-                                                       methodName: selectedMethodName),
-                                   method: method,
-                                   dictionarySize: 0,
-                                   wordSize: 0,
-                                   solidMode: true,
-                                   threadText: "Auto",
+                                   level: configuration.level,
+                                   method: configuration.method,
+                                   dictionarySize: configuration.dictionarySize,
+                                   wordSize: configuration.wordSize,
+                                   solidMode: configuration.solidMode,
+                                   threadText: configuration.threadText,
                                    splitVolumes: "",
-                                   parameters: "",
-                                   updateMode: DialogPreferences.updateMode(defaultValue: .add),
-                                   pathMode: DialogPreferences.pathMode(defaultValue: .relativePaths),
-                                   encryption: defaultEncryption(for: selectedFormatName),
+                                   parameters: configuration.parameters,
+                                   updateMode: DialogPreferences.updateMode(defaultValue: .add,
+                                                                            defaults: preferenceDefaults),
+                                   pathMode: DialogPreferences.pathMode(defaultValue: .relativePaths,
+                                                                        defaults: preferenceDefaults),
+                                   encryption: configuration.encryption,
                                    password: "",
                                    confirmation: "",
-                                   encryptNames: DialogPreferences.encryptNames(),
+                                   encryptNames: DialogPreferences.encryptNames(defaults: preferenceDefaults),
                                    createSFX: false,
                                    excludeMacResourceFiles: SZSettings.bool(.excludeMacResourceFilesByDefault),
                                    excludeOfficeLockFiles: SZSettings.bool(.excludeOfficeLockFilesByDefault),
-                                   memoryUsageSpec: DialogPreferences.memoryUsage(),
-                                   openSharedFiles: DialogPreferences.openSharedFiles(),
-                                   deleteAfterCompression: DialogPreferences.deleteAfterCompression(),
+                                   memoryUsageSpec: DialogPreferences.memoryUsage(defaults: preferenceDefaults),
+                                   openSharedFiles: DialogPreferences.openSharedFiles(defaults: preferenceDefaults),
+                                   deleteAfterCompression: DialogPreferences.deleteAfterCompression(defaults: preferenceDefaults),
                                    advancedOptions: advancedOptions,
-                                   showPassword: DialogPreferences.showPassword())
+                                   showPassword: DialogPreferences.showPassword(defaults: preferenceDefaults))
     }
 
     private func validatePassword(_ password: String,
@@ -722,17 +851,9 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
         return min(levelOptions.count / 2, levelOptions.count - 1)
     }
 
-    private func defaultMethodName(for formatName: String) -> String {
-        (formatOption(named: formatName) ?? availableFormats[0]).methods.first?.methodName ?? ""
-    }
-
     private func defaultParameters(for format: FormatOption?) -> String {
         _ = format
         return ""
-    }
-
-    private func defaultEncryption(for formatName: String) -> SZEncryptionMethod {
-        (formatOption(named: formatName) ?? availableFormats[0]).encryptionOptions.first?.value ?? .none
     }
 
     private static func hasBundledWindowsSfxModule() -> Bool {

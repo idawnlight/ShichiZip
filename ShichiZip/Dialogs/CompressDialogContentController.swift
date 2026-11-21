@@ -497,6 +497,70 @@ extension CompressDialogController {
             controls.parametersField.stringValue = parameters
         }
 
+        var parametersValue: String {
+            controls.parametersField.stringValue
+        }
+
+        func setThreadText(_ threadText: String) {
+            let normalized = CompressDialogController.normalizedThreadText(threadText)
+            let items = Self.comboBoxItems(from: controls.threadField)
+            if normalized == "Auto", !items.isEmpty {
+                controls.threadField.selectItem(at: 0)
+            } else if let itemIndex = items.firstIndex(of: normalized) {
+                controls.threadField.selectItem(at: itemIndex)
+            } else {
+                let selectedIndex = controls.threadField.indexOfSelectedItem
+                if selectedIndex >= 0 {
+                    controls.threadField.deselectItem(at: selectedIndex)
+                }
+                controls.threadField.stringValue = normalized
+            }
+        }
+
+        func selectFormat(named codecName: String) {
+            if let index = availableFormats.firstIndex(where: { $0.codecName == codecName }) {
+                controls.formatPopup.selectItem(at: index)
+            }
+        }
+
+        func selectMethod(named methodName: String) {
+            guard let format = selectedFormatOption(),
+                  let index = format.methods.firstIndex(where: { $0.methodName == methodName })
+            else {
+                return
+            }
+            controls.methodPopup.selectItem(at: index)
+        }
+
+        func selectLevel(_ levelValue: Int) {
+            guard let format = selectedFormatOption() else { return }
+            let options = selectedMethodOption()?.levelOptions ?? format.levelOptions
+            if let index = options.firstIndex(where: { $0.levelValue == levelValue }) {
+                controls.levelPopup.selectItem(at: index)
+            }
+        }
+
+        func selectDictionarySize(_ dictionarySize: UInt64) {
+            guard let method = selectedMethodOption() else { return }
+            Self.selectOption(method.dictionaryOptions,
+                              selectedValue: dictionarySize,
+                              on: controls.dictionaryPopup)
+        }
+
+        func selectWordSize(_ wordSize: UInt32) {
+            guard let method = selectedMethodOption() else { return }
+            Self.selectOption(method.wordOptions,
+                              selectedValue: wordSize,
+                              on: controls.wordPopup)
+        }
+
+        func selectEncryption(_ encryption: SZEncryptionMethod) {
+            guard let format = selectedFormatOption() else { return }
+            Self.selectOption(format.encryptionOptions,
+                              selectedValue: encryption,
+                              on: controls.encryptionPopup)
+        }
+
         func setAdvancedOptionsSummary(_ summary: String) {
             controls.advancedOptionsSummaryLabel.stringValue = summary
         }

@@ -311,11 +311,32 @@ extension CompressDialogController {
     }
 
     enum DialogPreferences {
-        private static var defaults: UserDefaults {
-            SZSharedUserDefaults.defaults
+        struct FormatPreferences: Equatable {
+            var level: Int
+            var methodName: String?
+            var dictionarySize: UInt64
+            var wordSize: UInt32
+            var solidMode: Bool
+            var threadText: String
+            var parameters: String
+            var encryption: SZEncryptionMethod
+        }
+
+        private struct StoredFormatPreferences: Codable {
+            let version: Int
+            let level: Int
+            let methodName: String?
+            let dictionarySize: UInt64
+            let wordSize: UInt32
+            let solidMode: Bool
+            let threadText: String
+            let parameters: String
+            let encryptionRawValue: Int
         }
 
         private static let formatKey = "FileManager.CompressFormat"
+        private static let formatOptionsKeyPrefix = "FileManager.CompressFormatOptions."
+        private static let formatOptionsVersion = 1
         private static let updateModeKey = "FileManager.CompressUpdateMode"
         private static let pathModeKey = "FileManager.CompressPathMode"
         private static let openSharedKey = "FileManager.CompressOpenSharedFiles"
@@ -339,8 +360,61 @@ extension CompressDialogController {
         private static let timePrecisionKey = "FileManager.CompressTimePrecision"
         private static let timePrecisionSetKey = "FileManager.CompressTimePrecisionSet"
 
+        private static func formatOptionsDefaultsKey(forFormatName formatName: String) -> String? {
+            let normalized = formatName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard !normalized.isEmpty else {
+                return nil
+            }
+            return formatOptionsKeyPrefix + normalized
+        }
+
+        static func formatPreferences(forFormatName formatName: String,
+                                      defaults: UserDefaults = SZSharedUserDefaults.defaults) -> FormatPreferences?
+        {
+            guard let key = formatOptionsDefaultsKey(forFormatName: formatName),
+                  let data = defaults.data(forKey: key),
+                  let stored = try? PropertyListDecoder().decode(StoredFormatPreferences.self, from: data),
+                  stored.version == formatOptionsVersion
+            else {
+                return nil
+            }
+
+            return FormatPreferences(level: stored.level,
+                                     methodName: stored.methodName,
+                                     dictionarySize: stored.dictionarySize,
+                                     wordSize: stored.wordSize,
+                                     solidMode: stored.solidMode,
+                                     threadText: stored.threadText,
+                                     parameters: stored.parameters,
+                                     encryption: SZEncryptionMethod(rawValue: stored.encryptionRawValue) ?? .none)
+        }
+
+        static func recordFormatPreferences(_ preferences: FormatPreferences,
+                                            forFormatName formatName: String,
+                                            defaults: UserDefaults = SZSharedUserDefaults.defaults)
+        {
+            guard let key = formatOptionsDefaultsKey(forFormatName: formatName) else {
+                return
+            }
+
+            let stored = StoredFormatPreferences(version: formatOptionsVersion,
+                                                 level: preferences.level,
+                                                 methodName: preferences.methodName,
+                                                 dictionarySize: preferences.dictionarySize,
+                                                 wordSize: preferences.wordSize,
+                                                 solidMode: preferences.solidMode,
+                                                 threadText: preferences.threadText,
+                                                 parameters: preferences.parameters,
+                                                 encryptionRawValue: preferences.encryption.rawValue)
+            guard let data = try? PropertyListEncoder().encode(stored) else {
+                return
+            }
+            defaults.set(data, forKey: key)
+        }
+
         static func format(defaultValue: String,
-                           allowedValues: [String]) -> String
+                           allowedValues: [String],
+                           defaults: UserDefaults = SZSharedUserDefaults.defaults) -> String
         {
             guard let value = defaults.string(forKey: formatKey),
                   allowedValues.contains(value)
@@ -350,35 +424,39 @@ extension CompressDialogController {
             return value
         }
 
-        static func updateMode(defaultValue: SZCompressionUpdateMode) -> SZCompressionUpdateMode {
+        static func updateMode(defaultValue: SZCompressionUpdateMode,
+                               defaults: UserDefaults = SZSharedUserDefaults.defaults) -> SZCompressionUpdateMode
+        {
             defaults.enumValue(forKey: updateModeKey, default: defaultValue)
         }
 
-        static func pathMode(defaultValue: SZCompressionPathMode) -> SZCompressionPathMode {
+        static func pathMode(defaultValue: SZCompressionPathMode,
+                             defaults: UserDefaults = SZSharedUserDefaults.defaults) -> SZCompressionPathMode
+        {
             defaults.enumValue(forKey: pathModeKey, default: defaultValue)
         }
 
-        static func openSharedFiles() -> Bool {
+        static func openSharedFiles(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> Bool {
             defaults.bool(forKey: openSharedKey)
         }
 
-        static func deleteAfterCompression() -> Bool {
+        static func deleteAfterCompression(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> Bool {
             defaults.bool(forKey: deleteAfterKey)
         }
 
-        static func encryptNames() -> Bool {
+        static func encryptNames(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> Bool {
             defaults.bool(forKey: encryptNamesKey)
         }
 
-        static func showPassword() -> Bool {
+        static func showPassword(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> Bool {
             defaults.bool(forKey: showPasswordKey)
         }
 
-        static func memoryUsage() -> String {
+        static func memoryUsage(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> String {
             defaults.string(forKey: memoryUsageKey) ?? ""
         }
 
-        static func hasStoredAdvancedOptions() -> Bool {
+        static func hasStoredAdvancedOptions(defaults: UserDefaults = SZSharedUserDefaults.defaults) -> Bool {
             let keys = [
                 storeSymbolicLinksKey,
                 storeHardLinksKey,
@@ -401,7 +479,8 @@ extension CompressDialogController {
 
         private static func advancedBoolPairState(valueKey: String,
                                                   setKey: String,
-                                                  defaultValue: Bool) -> AdvancedBoolPairState
+                                                  defaultValue: Bool,
+                                                  defaults: UserDefaults) -> AdvancedBoolPairState
         {
             let value = defaults.bool(forKey: valueKey, default: defaultValue)
             let isSet = defaults.bool(forKey: setKey, default: value != defaultValue)
@@ -410,44 +489,55 @@ extension CompressDialogController {
                                          value: isSet ? value : defaultValue)
         }
 
-        private static func advancedTimePrecisionState(defaults fallbackState: AdvancedTimePrecisionState) -> AdvancedTimePrecisionState {
-            let value = defaults.enumValue(forKey: timePrecisionKey, default: fallbackState.value)
-            let isSet = defaults.bool(forKey: timePrecisionSetKey,
-                                      default: value != fallbackState.value)
+        private static func advancedTimePrecisionState(defaults fallbackState: AdvancedTimePrecisionState,
+                                                       store: UserDefaults) -> AdvancedTimePrecisionState
+        {
+            let value = store.enumValue(forKey: timePrecisionKey, default: fallbackState.value)
+            let isSet = store.bool(forKey: timePrecisionSetKey,
+                                   default: value != fallbackState.value)
 
             return AdvancedTimePrecisionState(isSet: isSet,
                                               value: isSet ? value : fallbackState.value)
         }
 
-        static func advancedOptions(defaults fallbackState: AdvancedOptionsState) -> AdvancedOptionsState {
+        static func advancedOptions(defaults fallbackState: AdvancedOptionsState,
+                                    store: UserDefaults = SZSharedUserDefaults.defaults) -> AdvancedOptionsState
+        {
             AdvancedOptionsState(
-                storeSymbolicLinks: defaults.bool(forKey: storeSymbolicLinksKey,
-                                                  default: fallbackState.storeSymbolicLinks),
-                storeHardLinks: defaults.bool(forKey: storeHardLinksKey,
-                                              default: fallbackState.storeHardLinks),
-                storeAlternateDataStreams: defaults.bool(forKey: storeAlternateDataStreamsKey,
-                                                         default: fallbackState.storeAlternateDataStreams),
-                storeFileSecurity: defaults.bool(forKey: storeFileSecurityKey,
-                                                 default: fallbackState.storeFileSecurity),
-                preserveSourceAccessTime: defaults.bool(forKey: preserveSourceAccessTimeKey,
-                                                        default: fallbackState.preserveSourceAccessTime),
+                storeSymbolicLinks: store.bool(forKey: storeSymbolicLinksKey,
+                                               default: fallbackState.storeSymbolicLinks),
+                storeHardLinks: store.bool(forKey: storeHardLinksKey,
+                                           default: fallbackState.storeHardLinks),
+                storeAlternateDataStreams: store.bool(forKey: storeAlternateDataStreamsKey,
+                                                      default: fallbackState.storeAlternateDataStreams),
+                storeFileSecurity: store.bool(forKey: storeFileSecurityKey,
+                                              default: fallbackState.storeFileSecurity),
+                preserveSourceAccessTime: store.bool(forKey: preserveSourceAccessTimeKey,
+                                                     default: fallbackState.preserveSourceAccessTime),
                 storeModificationTime: advancedBoolPairState(valueKey: storeModificationTimeKey,
                                                              setKey: storeModificationTimeSetKey,
-                                                             defaultValue: fallbackState.storeModificationTime.value),
+                                                             defaultValue: fallbackState.storeModificationTime.value,
+                                                             defaults: store),
                 storeCreationTime: advancedBoolPairState(valueKey: storeCreationTimeKey,
                                                          setKey: storeCreationTimeSetKey,
-                                                         defaultValue: fallbackState.storeCreationTime.value),
+                                                         defaultValue: fallbackState.storeCreationTime.value,
+                                                         defaults: store),
                 storeAccessTime: advancedBoolPairState(valueKey: storeAccessTimeKey,
                                                        setKey: storeAccessTimeSetKey,
-                                                       defaultValue: fallbackState.storeAccessTime.value),
+                                                       defaultValue: fallbackState.storeAccessTime.value,
+                                                       defaults: store),
                 setArchiveTimeToLatestFile: advancedBoolPairState(valueKey: setArchiveTimeToLatestFileKey,
                                                                   setKey: setArchiveTimeToLatestFileSetKey,
-                                                                  defaultValue: fallbackState.setArchiveTimeToLatestFile.value),
-                timePrecision: advancedTimePrecisionState(defaults: fallbackState.timePrecision),
+                                                                  defaultValue: fallbackState.setArchiveTimeToLatestFile.value,
+                                                                  defaults: store),
+                timePrecision: advancedTimePrecisionState(defaults: fallbackState.timePrecision,
+                                                          store: store),
             )
         }
 
-        static func recordAdvancedOptions(_ state: AdvancedOptionsState) {
+        static func recordAdvancedOptions(_ state: AdvancedOptionsState,
+                                          defaults: UserDefaults = SZSharedUserDefaults.defaults)
+        {
             defaults.set(state.storeSymbolicLinks, forKey: storeSymbolicLinksKey)
             defaults.set(state.storeHardLinks, forKey: storeHardLinksKey)
             defaults.set(state.storeAlternateDataStreams, forKey: storeAlternateDataStreamsKey)
@@ -472,7 +562,8 @@ extension CompressDialogController {
                            deleteAfterCompression: Bool,
                            encryptNames: Bool,
                            showPassword: Bool,
-                           memoryUsage: String)
+                           memoryUsage: String,
+                           defaults: UserDefaults = SZSharedUserDefaults.defaults)
         {
             defaults.set(format, forKey: formatKey)
             defaults.set(updateMode.rawValue, forKey: updateModeKey)
