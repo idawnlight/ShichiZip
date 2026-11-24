@@ -78,7 +78,7 @@ targets:
           CFBundleName: $(SHICHIZIP_QUICK_ACTION_DISPLAY_NAME)
           CFBundleShortVersionString: $(MARKETING_VERSION)
           CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-          LSMinimumSystemVersion: "14.0"
+          LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
           ShichiZipHostAppDisplayName: $(SHICHIZIP_HOST_APP_DISPLAY_NAME)
           ShichiZipQuickActionAppGroupIdentifier: $(SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER)
           ShichiZipQuickActionURLScheme: $(SHICHIZIP_QUICK_ACTION_URL_SCHEME)

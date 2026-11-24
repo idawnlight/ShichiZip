@@ -38,7 +38,7 @@
 		</dict>
 	</array>
 	<key>LSMinimumSystemVersion</key>
-	<string>14.0</string>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSHumanReadableCopyright</key>

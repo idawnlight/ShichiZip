@@ -96,7 +96,7 @@ targets:
           CFBundleShortVersionString: $(MARKETING_VERSION)
           CFBundleVersion: $(CURRENT_PROJECT_VERSION)
           CFBundleAllowMixedLocalizations: true
-          LSMinimumSystemVersion: "14.0"
+          LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
           ShichiZipQuickActionAppGroupIdentifier: $(SHICHIZIP_QUICK_ACTION_APP_GROUP_IDENTIFIER)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.quicklook.preview
